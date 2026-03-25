@@ -6,7 +6,13 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from toolclaw.benchmarks.baseline_runner import run_baseline
-from toolclaw.benchmarks.metrics import EvalRow, summarize, write_report_md, write_rows_csv
+from toolclaw.benchmarks.metrics import (
+    EvalRow,
+    summarize,
+    summarize_by_scenario,
+    write_report_md,
+    write_rows_csv,
+)
 from toolclaw.benchmarks.tau_runner import run_toolclaw_lite
 from toolclaw.schemas.workflow import Workflow
 
@@ -99,7 +105,11 @@ def main() -> None:
     csv_path = outdir / "comparison.csv"
     report_path = outdir / "report.md"
     write_rows_csv(rows, csv_path)
-    write_report_md(summarize(rows), report_path)
+    write_report_md(
+        summary=summarize(rows),
+        scenario_summary=summarize_by_scenario(rows),
+        report_path=report_path,
+    )
 
     print(f"wrote: {csv_path}")
     print(f"wrote: {report_path}")

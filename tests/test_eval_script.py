@@ -56,8 +56,5 @@ def test_run_eval_script_generates_csv_and_report(tmp_path: Path) -> None:
 
     report = report_path.read_text(encoding="utf-8")
     assert "ToolClaw Phase-1 Evaluation Report" in report
-
-    print(completed.stdout)
-    print(completed.stderr)
-
-
+    assert "Delta (ToolClaw-lite vs Baseline)" in report
+    assert "Scenario Breakdown" in report
