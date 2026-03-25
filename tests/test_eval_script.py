@@ -58,3 +58,37 @@ def test_run_eval_script_generates_csv_and_report(tmp_path: Path) -> None:
     assert "ToolClaw Phase-1 Evaluation Report" in report
     assert "Delta (ToolClaw-lite vs Baseline)" in report
     assert "Scenario Breakdown" in report
+
+
+def test_run_eval_script_with_planner_mode(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "task_id": "task_success_planner_001",
+            "scenario": "success",
+            "query": "retrieve and write report",
+        }
+    ]
+    taskset_path = tmp_path / "taskset_planner.json"
+    taskset_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    outdir = tmp_path / "eval_out_planner"
+    cmd = [
+        sys.executable,
+        "scripts/run_eval.py",
+        "--taskset",
+        str(taskset_path),
+        "--outdir",
+        str(outdir),
+        "--mode",
+        "planner",
+    ]
+    completed = subprocess.run(
+        cmd,
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+    assert (outdir / "comparison.csv").exists()

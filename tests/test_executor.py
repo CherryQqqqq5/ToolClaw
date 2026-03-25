@@ -45,3 +45,21 @@ def test_executor_triggers_repair_and_applies_backup_tool(tmp_path: Path) -> Non
     assert EventType.REPAIR_TRIGGERED.value in event_types
     assert EventType.REPAIR_APPLIED.value in event_types
     assert EventType.STOP.value in event_types
+
+
+def test_switch_tool_repair_updates_workflow_state(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    workflow.execution_plan[1].inputs["force_environment_failure"] = True
+
+    trace = SequentialExecutor().run(
+        workflow=workflow,
+        run_id="run_switch_update_001",
+        output_path=str(tmp_path / "run_switch_update.json"),
+        backup_tool_map={"write_tool": "backup_write_tool"},
+    )
+
+    assert trace.metrics.success is True
+    assert workflow.execution_plan[1].tool_id == "backup_write_tool"
+    write_binding = [b for b in workflow.tool_bindings if b.capability_id == "cap_write"][0]
+    assert write_binding.primary_tool == "backup_write_tool"
+    assert "write_tool" in write_binding.backup_tools

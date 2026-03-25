@@ -244,10 +244,14 @@ class SequentialExecutor:
         output_path: str,
         resume_patch: "ResumePatch",
     ) -> ExecutionOutcome:
+        workflow = resume_patch.workflow
         if resume_patch.resume_step_id in {step.step_id for step in workflow.execution_plan}:
             for step in workflow.execution_plan:
                 if step.step_id == resume_patch.resume_step_id:
-                    step.inputs.update(resume_patch.state_updates)
+                    for key, value in resume_patch.state_updates.items():
+                        if key in {"abort", "tool_id"}:
+                            continue
+                        step.inputs[key] = value
                     break
 
         start_step_index = 0
@@ -297,9 +301,18 @@ class SequentialExecutor:
         backup_tool_map: Dict[str, str],
     ) -> RepairApplyResult:
         if repair.repair_type.value == "switch_tool":
-            backup_tool_id = backup_tool_map.get(step.tool_id or "")
+            backup_tool_id = self._resolve_switch_tool_target(step=step, repair=repair, backup_tool_map=backup_tool_map)
             if not backup_tool_id:
                 return RepairApplyResult(applied=False, message="no backup tool")
+
+            step.tool_id = backup_tool_id
+            for binding in workflow.tool_bindings:
+                if binding.capability_id == step.capability_id:
+                    previous_primary = binding.primary_tool
+                    binding.primary_tool = backup_tool_id
+                    if previous_primary not in binding.backup_tools:
+                        binding.backup_tools.append(previous_primary)
+                    break
 
             retry_result = run_mock_tool(backup_tool_id, dict(step.inputs))
             trace.add_event(
@@ -310,12 +323,24 @@ class SequentialExecutor:
                 tool_id=backup_tool_id,
                 output={"repair_type": repair.repair_type.value, "result": retry_result},
             )
-            return RepairApplyResult(applied=True, state_patch={step.expected_output or step.step_id: retry_result.get("payload")})
+            return RepairApplyResult(
+                applied=True,
+                workflow=workflow,
+                state_patch={step.expected_output or step.step_id: retry_result.get("payload")},
+            )
 
         if repair.repair_type.value == "rebind_args":
             patched = dict(step.inputs)
-            if "target_path" not in patched:
-                patched["target_path"] = "outputs/reports/recovered_report.txt"
+            for action in repair.actions:
+                if action.action_type.value != "state_patch" or not action.target:
+                    continue
+                target = action.target
+                if ".inputs." in target:
+                    key = target.split(".inputs.", 1)[1]
+                    patched[key] = action.value
+                elif target.endswith(".inputs") and isinstance(action.value, dict):
+                    patched.update(action.value)
+
             retry_result = run_mock_tool(step.tool_id or "", patched)
             step.inputs = patched
             trace.add_event(
@@ -326,13 +351,28 @@ class SequentialExecutor:
                 tool_id=step.tool_id,
                 output={"repair_type": repair.repair_type.value, "result": retry_result},
             )
-            return RepairApplyResult(applied=True, state_patch={step.expected_output or step.step_id: retry_result.get("payload")})
+            return RepairApplyResult(
+                applied=True,
+                workflow=workflow,
+                state_patch={step.expected_output or step.step_id: retry_result.get("payload")},
+            )
 
         if repair.repair_type.value == "ask_user":
             pending = self._materialize_pending_interaction(workflow, step, repair)
             return RepairApplyResult(applied=False, blocked=True, pending_interaction=pending)
 
         return RepairApplyResult(applied=False, message=f"unsupported repair_type={repair.repair_type.value}")
+
+    @staticmethod
+    def _resolve_switch_tool_target(
+        step: WorkflowStep,
+        repair: Repair,
+        backup_tool_map: Dict[str, str],
+    ) -> Optional[str]:
+        for action in repair.actions:
+            if action.action_type.value == "switch_tool" and isinstance(action.value, str):
+                return action.value
+        return backup_tool_map.get(step.tool_id or "")
 
     def _materialize_pending_interaction(
         self,

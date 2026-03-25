@@ -42,7 +42,7 @@ class RepairUpdater:
         repair: Repair,
         state_values: Dict[str, Any],
     ) -> InteractionRequest:
-        step_id = workflow.execution_plan[-1].step_id if workflow.execution_plan else "unknown"
+        step_id = self._resolve_repair_step_id(workflow=workflow, repair=repair)
         return InteractionRequest(
             interaction_id=f"int_{repair.repair_id}",
             question=repair.interaction.question or "Please provide missing data",
@@ -69,11 +69,9 @@ class RepairUpdater:
         reply: UserReply,
         state_values: Dict[str, Any],
     ) -> ResumePatch:
-        _ = repair
-        state_updates = dict(state_values)
-        state_updates.update(reply.payload)
-
-        resume_step_id = workflow.execution_plan[-1].step_id if workflow.execution_plan else "step_01"
+        _ = state_values
+        state_updates = dict(reply.payload)
+        resume_step_id = self._resolve_repair_step_id(workflow=workflow, repair=repair)
         return ResumePatch(
             workflow=workflow,
             resume_step_id=resume_step_id,
@@ -91,3 +89,14 @@ class RepairUpdater:
         if not reply.accepted:
             return False
         return isinstance(reply.payload, dict)
+
+    @staticmethod
+    def _resolve_repair_step_id(workflow: Workflow, repair: Repair) -> str:
+        if repair.workflow_patch.modified_steps:
+            return repair.workflow_patch.modified_steps[0]
+
+        for action in repair.actions:
+            if action.target and action.target.startswith("step_"):
+                return action.target.split(".")[0]
+
+        return workflow.execution_plan[-1].step_id if workflow.execution_plan else "step_01"

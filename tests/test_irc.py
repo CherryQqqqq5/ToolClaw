@@ -40,6 +40,7 @@ def test_repair_updater_ingests_reply_and_resumes_workflow(tmp_path: Path) -> No
     assert updater.validate_reply(request, reply)
 
     resume_patch = updater.ingest_reply(workflow, blocked.pending_interaction.repair, reply, blocked.final_state)
+    assert "retrieved_info" not in resume_patch.state_updates
     workflow.execution_plan[1].inputs.pop("force_environment_failure", None)
 
     resumed = executor.resume_from_patch(

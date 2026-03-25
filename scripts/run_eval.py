@@ -14,11 +14,25 @@ from toolclaw.benchmarks.metrics import (
     write_rows_csv,
 )
 from toolclaw.benchmarks.tau_runner import run_toolclaw_lite
+from toolclaw.planner.htgp import PlanningRequest, build_default_planner
 from toolclaw.schemas.workflow import Workflow
 
 
-def build_workflow_from_task(task: Dict[str, Any]) -> Workflow:
-    workflow = Workflow.demo()
+def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workflow:
+    if mode == "planner":
+        planner = build_default_planner()
+        demo = Workflow.demo()
+        request = PlanningRequest(
+            task=demo.task,
+            context=demo.context,
+            policy=demo.policy,
+        )
+        request.task.task_id = str(task["task_id"])
+        request.task.user_goal = str(task.get("query") or request.task.user_goal)
+        workflow = planner.plan(request).workflow
+    else:
+        workflow = Workflow.demo()
+
     workflow.task.task_id = str(task["task_id"])
 
     retrieve_query = task.get("query")
@@ -41,6 +55,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run baseline vs ToolClaw-lite evaluation")
     parser.add_argument("--taskset", required=True, help="Path to taskset JSON")
     parser.add_argument("--outdir", default="outputs/eval", help="Output directory")
+    parser.add_argument("--mode", choices=["demo", "planner"], default="demo", help="Workflow source mode")
     return parser.parse_args()
 
 
@@ -56,14 +71,14 @@ def main() -> None:
         raise ValueError("taskset JSON must be a list of task objects")
 
     for idx, task in enumerate(tasks, start=1):
-        workflow = build_workflow_from_task(task)
+        workflow = build_workflow_from_task(task, mode=args.mode)
         task_id = str(task["task_id"])
         scenario = str(task.get("scenario", "success"))
         backup_map = task.get("backup_tool_map", {"write_tool": "backup_write_tool"})
 
         baseline_trace_path = traces_dir / f"{idx:03d}_{task_id}_baseline.json"
         baseline_trace, baseline_stop = run_baseline(
-            workflow=build_workflow_from_task(task),
+            workflow=build_workflow_from_task(task, mode=args.mode),
             run_id=f"baseline_{task_id}",
             output_path=baseline_trace_path,
         )
