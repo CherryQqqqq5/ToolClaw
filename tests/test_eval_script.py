@@ -115,3 +115,38 @@ def test_run_eval_script_missing_taskset_shows_clear_error(tmp_path: Path) -> No
     assert completed.returncode != 0
     assert "taskset file not found" in completed.stderr
     assert "data/eval_tasks.sample.json" in completed.stderr
+
+
+def test_run_eval_script_placeholder_taskset_uses_sample() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    outdir = repo_root / "outputs" / "eval_placeholder_test"
+    if outdir.exists():
+        for child in outdir.glob("*"):
+            if child.is_file():
+                child.unlink()
+            elif child.is_dir():
+                for nested in child.glob("*"):
+                    if nested.is_file():
+                        nested.unlink()
+                child.rmdir()
+        outdir.rmdir()
+
+    cmd = [
+        sys.executable,
+        "scripts/run_eval.py",
+        "--taskset",
+        "path/to/taskset.json",
+        "--outdir",
+        str(outdir),
+    ]
+    completed = subprocess.run(
+        cmd,
+        cwd=repo_root,
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+    assert "using sample taskset" in completed.stderr
+    assert (outdir / "comparison.csv").exists()
+    assert (outdir / "report.md").exists()
