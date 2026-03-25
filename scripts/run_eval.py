@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run baseline vs ToolClaw-lite evaluation")
     parser.add_argument("--taskset", required=True, help="Path to taskset JSON")
     parser.add_argument("--outdir", default="outputs/eval", help="Output directory")
-    parser.add_argument("--mode", choices=["demo", "planner"], default="demo", help="Workflow source mode")
+    parser.add_argument("--mode", choices=["demo", "planner"], default="planner", help="Workflow source mode")
     return parser.parse_args()
 
 

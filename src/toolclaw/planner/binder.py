@@ -75,13 +75,16 @@ class ToolBinder:
         capabilities: Sequence[CapabilityNode],
         candidate_tools: Sequence[ToolSpec],
         context: WorkflowContext,
+        forbidden_tools: Optional[List[str]] = None,
     ) -> List[BindingResult]:
+        forbidden_tools = forbidden_tools or []
         return [
             self.bind_one(
                 BindingRequest(
                     capability=cap,
                     candidate_tools=candidate_tools,
                     context=context,
+                    forbidden_tools=forbidden_tools,
                 )
             )
             for cap in capabilities

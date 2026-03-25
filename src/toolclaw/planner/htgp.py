@@ -106,21 +106,54 @@ class RuleBasedCapabilitySelector(CapabilitySelector):
         hints: PlanningHints,
     ) -> List[CapabilityCandidate]:
         _ = context
-        candidates = [
-            CapabilityCandidate(
-                capability_id="cap_retrieve",
-                description="Retrieve relevant information",
-                score=0.9,
-                postconditions=["information_obtained"],
-            ),
-            CapabilityCandidate(
-                capability_id="cap_write",
-                description="Write final report artifact",
-                score=0.85,
-                preconditions=["information_obtained"],
-                postconditions=["artifact_ready"],
-            ),
-        ]
+        goal = task.user_goal.lower()
+        candidates: List[CapabilityCandidate] = []
+        if any(word in goal for word in ["search", "retrieve", "find", "collect"]):
+            candidates.append(
+                CapabilityCandidate(
+                    capability_id="cap_retrieve",
+                    description="Retrieve relevant information",
+                    score=0.9,
+                    postconditions=["information_obtained"],
+                )
+            )
+        if any(word in goal for word in ["summarize", "analyze"]):
+            candidates.append(
+                CapabilityCandidate(
+                    capability_id="cap_summarize",
+                    description="Summarize retrieved information",
+                    score=0.82,
+                    preconditions=["information_obtained"],
+                    postconditions=["summary_ready"],
+                )
+            )
+        if any(word in goal for word in ["write", "report", "save", "output"]):
+            preconditions = ["summary_ready"] if any(c.capability_id == "cap_summarize" for c in candidates) else ["information_obtained"]
+            candidates.append(
+                CapabilityCandidate(
+                    capability_id="cap_write",
+                    description="Write final report artifact",
+                    score=0.85,
+                    preconditions=preconditions,
+                    postconditions=["artifact_ready"],
+                )
+            )
+        if not candidates:
+            candidates = [
+                CapabilityCandidate(
+                    capability_id="cap_retrieve",
+                    description="Retrieve relevant information",
+                    score=0.6,
+                    postconditions=["information_obtained"],
+                ),
+                CapabilityCandidate(
+                    capability_id="cap_write",
+                    description="Write final report artifact",
+                    score=0.6,
+                    preconditions=["information_obtained"],
+                    postconditions=["artifact_ready"],
+                ),
+            ]
         preferred = set(hints.preferred_capabilities)
         for candidate in candidates:
             if candidate.capability_id in preferred:
@@ -145,7 +178,14 @@ class PolicyInjector:
         context: WorkflowContext,
         policy: Optional[WorkflowPolicy],
     ) -> CapabilityGraph:
-        _ = task, context, policy
+        _ = task, context
+        if not policy:
+            return graph
+
+        gated_capabilities = {rule.trigger for rule in policy.approval_rules if rule.action == "ask_user"}
+        for capability in graph.capabilities:
+            if capability.capability_id in gated_capabilities and "requires_approval" not in capability.preconditions:
+                capability.preconditions.append("requires_approval")
         return graph
 
     def compile_execution_plan(
@@ -162,6 +202,9 @@ class PolicyInjector:
             if capability.capability_id == "cap_retrieve":
                 inputs = {"query": task.user_goal}
                 expected_output = "retrieved_info"
+            elif capability.capability_id == "cap_summarize":
+                inputs = {"source_key": "retrieved_info"}
+                expected_output = "summary_text"
             elif capability.capability_id == "cap_write":
                 inputs = {"target_path": "outputs/reports/planned_report.txt"}
                 expected_output = "report_artifact"
@@ -201,7 +244,12 @@ class HTGPPlanner:
 
     def plan(self, request: PlanningRequest) -> PlanningResult:
         diagnostics = PlanningDiagnostics()
+        reusable_profile = self._load_reusable_profile(request)
         candidates = self.capability_selector.select(request.task, request.context, request.hints)
+        if reusable_profile["capability_order"]:
+            order = reusable_profile["capability_order"]
+            rank = {cap_id: idx for idx, cap_id in enumerate(order)}
+            candidates.sort(key=lambda c: rank.get(c.capability_id, len(rank)))
         built_graph = self.graph_builder.build(request.task, candidates)
         graph = built_graph[0] if isinstance(built_graph, tuple) else built_graph
         graph = self.policy_injector.inject(graph, request.task, request.context, request.policy)
@@ -210,6 +258,7 @@ class HTGPPlanner:
             capabilities=graph.capabilities,
             candidate_tools=request.context.candidate_tools,
             context=request.context,
+            forbidden_tools=request.hints.forbidden_tools,
         )
 
         bindings: List[ToolBinding] = []
@@ -220,6 +269,9 @@ class HTGPPlanner:
                 continue
 
             bindings.append(binding_result.binding)
+            recommended_tool = reusable_profile["recommended_bindings"].get(capability.capability_id)
+            if recommended_tool:
+                binding_result.binding.primary_tool = recommended_tool
             diagnostics.binding_scores[capability.capability_id] = binding_result.binding.binding_confidence
 
         execution_plan = self.policy_injector.compile_execution_plan(graph, bindings, request.task)
@@ -233,7 +285,7 @@ class HTGPPlanner:
             capability_graph=graph,
             tool_bindings=bindings,
             execution_plan=execution_plan,
-            policy=request.policy or WorkflowPolicy(),
+            policy=request.policy or Workflow.demo().policy,
             metadata={"planner_mode": request.planner_mode},
         )
 
@@ -272,7 +324,32 @@ class HTGPPlanner:
         )
         result.workflow.metadata["replanned_from_workflow_id"] = failed_workflow.workflow_id
         result.workflow.metadata["replan_state_keys"] = list(state_values.keys())
+        if error.evidence.tool_id:
+            result.diagnostics.rejected_tools[error.evidence.tool_id] = "failed_in_previous_run"
         return result
+
+    def _load_reusable_profile(self, request: PlanningRequest) -> Dict[str, Any]:
+        profile: Dict[str, Any] = {"capability_order": [], "recommended_bindings": {}}
+        if not self.asset_registry:
+            return profile
+
+        asset_ids = list(request.hints.reusable_asset_ids)
+        if not asset_ids and self.asset_registry:
+            signature = f"phase1::{request.task.user_goal.lower().strip().replace(' ', '_')}"
+            matches = self.asset_registry.query(signature, top_k=5)
+            asset_ids = [m.asset_id for m in matches]
+
+        for asset_id in asset_ids:
+            asset = self.asset_registry.get(asset_id)
+            if asset is None:
+                continue
+            capability_skeleton = getattr(asset, "capability_skeleton", None)
+            recommended_bindings = getattr(asset, "recommended_bindings", None)
+            if capability_skeleton:
+                profile["capability_order"] = list(capability_skeleton)
+            if recommended_bindings:
+                profile["recommended_bindings"].update(dict(recommended_bindings))
+        return profile
 
 
 class DefaultCapabilityGraphBuilder(CapabilityGraphBuilder):
