@@ -1,0 +1,19 @@
+# Problem Definition
+
+# ToolClaw: A Training-Free Workflow Intelligence Layer for Complex Tool Use
+
+Recent tool-calling agents have achieved basic function invocation ability, but this ability does not automatically translate into stable success on complex real-world tasks. In many engineering and interactive settings, the agent may correctly perform individual local actions while still failing to accomplish the overall goal. The failure is often not caused by a single incorrect tool call, but by the lack of an explicit mechanism for organizing, controlling, repairing, and reusing multi-tool workflows.
+
+We formulate this gap as a **workflow intelligence problem**. Given a natural-language task, a candidate tool pool, environmental constraints, and possible user feedback, the system must decide not only which tools are relevant, but also which subset is necessary, how calls should be ordered, where checkpoints and rollback points should be placed, when user confirmation is required, and how execution failures should be repaired. Therefore, the object of study is not one-off tool invocation, but structured workflow execution under uncertainty, constraints, and interaction.
+
+ToolClaw is proposed as a reusable workflow intelligence layer on top of general tool-calling agents. It does not add new base-model capabilities or new tools. Instead, it introduces a system layer that transforms tool use from one-shot invocation into **policy-governed, interaction-correctable, and reusable workflow execution**. The key motivation is that complex tasks require not more tools, but better workflow organization and control.
+
+Concretely, ToolClaw targets five coupled challenges. First, tool discovery and optimal composition: the system must find not only relevant tools, but also an effective subset and structure of use. Second, dynamic workflow construction and control: the system must handle ordering, dependencies, checkpoints, rollback, and approval conditions. Third, interactive correction: user interaction should function as a repair signal rather than passive feedback. Fourth, runtime recovery: the system must recover from missing assets, permission issues, tool errors, and environmental gaps. Fifth, reusable accumulation: successful trajectories should be compiled into reusable assets such as skills, workflows, and policy snippets.
+
+The central hypothesis of ToolClaw is that shifting the control object from **atomic tools** to **structured workflows** can improve reliability, controllability, and reuse. In this view, planning happens first at the capability level and only later binds to concrete tools. User interaction is treated as an active control signal for repairing workflow state. Successful runs are not discarded after one session, but compiled into reusable artifacts that can support future execution.
+
+## Phase-1 focus
+
+In this proposal, we restrict ToolClaw to a **Phase-1 training-free prototype**. We do not perform supervised fine-tuning, reinforcement learning, preference optimization, or any parameter update in this stage. The goal of Phase-1 is to isolate and validate the contribution of the workflow intelligence layer itself, including planning, policy control, interactive correction, runtime recovery, and reusable artifact compilation, on top of frozen base models and existing tools.
+
+This design choice is deliberate. A training-free prototype is faster to implement, easier to debug, and better suited for answering the first research question: **Does explicit workflow intelligence independently improve complex tool use over vanilla tool-calling baselines?** Only after this system-level contribution is established do we consider Phase-2 training-based extensions.
