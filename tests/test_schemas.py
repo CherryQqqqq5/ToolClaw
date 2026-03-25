@@ -67,7 +67,10 @@ def test_schema_key_fields_non_empty_smoke() -> None:
 
     assert trace.run_id
     assert trace.events[0].event_type.value == "plan_generated"
-    assert trace.events[-1].event_type.value == "tool_result"
+    event_types = {event.event_type.value for event in trace.events}
+    assert "repair_triggered" in event_types
+    assert "repair_applied" in event_types
+    assert trace.events[-1].event_type.value == "stop"
 
     assert error.error_id
     assert error.state_context.active_step_id == "step_02"

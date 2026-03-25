@@ -1,34 +1,85 @@
-error:
-  error_id: "err_0001"
-  run_id: "run_0001"
-  workflow_id: "wf_0001"
-  step_id: "step_02"
-  timestamp: "2026-03-25T10:00:09Z"
-  phase: "phase1_training_free"
-  category: "binding_failure"
-  subtype: "wrong_argument_mapping"
-  severity: "medium"
-  stage: "execution"
-  symptoms:
-    - "tool returned invalid-argument error"
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: ToolClaw Error Schema v0
+
+type: object
+additionalProperties: false
+required:
+  - error_id
+  - run_id
+  - workflow_id
+  - timestamp
+  - phase
+  - category
+  - subtype
+  - severity
+  - stage
+  - symptoms
+  - evidence
+  - state_context
+  - recoverability
+
+properties:
+  error_id: { type: string }
+  run_id: { type: string }
+  workflow_id: { type: string }
+  step_id: { type: [string, 'null'] }
+  timestamp: { type: string, format: date-time }
+  phase: { type: string, enum: [phase1_training_free] }
+
+  category:
+    type: string
+    enum:
+      - selection_failure
+      - binding_failure
+      - ordering_failure
+      - state_failure
+      - constraint_failure
+      - permission_failure
+      - environment_failure
+      - interaction_failure
+      - recovery_failure
+
+  subtype: { type: string }
+  severity: { type: string, enum: [low, medium, high, fatal] }
+  stage: { type: string, enum: [planning, binding, execution, interaction, recovery] }
+  symptoms: { type: array, items: { type: string } }
+
   evidence:
-    tool_id: "tool_exec"
-    raw_message: "missing required field: file_path"
-    related_events:
-      - "evt_02"
-      - "evt_03"
+    type: object
+    additionalProperties: false
+    properties:
+      tool_id: { type: [string, 'null'] }
+      raw_message: { type: [string, 'null'] }
+      exception_type: { type: [string, 'null'] }
+      related_events: { type: array, items: { type: string } }
+      inputs: { type: object }
+      outputs: { type: object }
+      metadata: { type: object }
+
   root_cause_hypothesis:
-    - "planner selected correct capability but executor mapped incomplete args"
-    - "required asset not present in current state"
+    type: array
+    items: { type: string }
+
   state_context:
-    active_capability: "cap_transform"
-    missing_assets:
-      - "file_path"
-    policy_flags:
-      approval_pending: false
+    type: object
+    additionalProperties: false
+    properties:
+      active_capability: { type: [string, 'null'] }
+      active_step_id: { type: [string, 'null'] }
+      missing_assets: { type: array, items: { type: string } }
+      state_values: { type: object }
+      policy_flags: { type: object }
+
   recoverability:
-    recoverable: true
-    requires_user_input: false
-    requires_tool_switch: false
-    requires_rollback: false
-  failtax_label: "binding_failure"
+    type: object
+    additionalProperties: false
+    required: [recoverable, requires_user_input, requires_tool_switch, requires_rollback, requires_approval]
+    properties:
+      recoverable: { type: boolean }
+      requires_user_input: { type: boolean }
+      requires_tool_switch: { type: boolean }
+      requires_rollback: { type: boolean }
+      requires_approval: { type: boolean }
+
+  failtax_label: { type: [string, 'null'] }
+  metadata: { type: object }

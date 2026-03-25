@@ -1,93 +1,175 @@
-workflow:
-  workflow_id: "wf_0001"
-  version: "0.1"
-  phase: "phase1_training_free"
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: ToolClaw Workflow Schema v0
+
+type: object
+additionalProperties: false
+required:
+  - workflow_id
+  - version
+  - phase
+  - task
+  - context
+  - capability_graph
+  - tool_bindings
+  - execution_plan
+  - policy
+  - reusable_targets
+
+properties:
+  workflow_id:
+    type: string
+  version:
+    type: string
+  phase:
+    type: string
+    enum: [phase1_training_free]
+
   task:
-    task_id: "task_0001"
-    user_goal: "Natural-language task description"
-    success_criteria:
-      - "criterion_1"
-      - "criterion_2"
-    constraints:
-      budget_limit: null
-      time_limit: null
-      risk_level: "medium"
-      requires_user_approval: true
-      forbidden_actions: []
+    type: object
+    additionalProperties: false
+    required: [task_id, user_goal, success_criteria, constraints]
+    properties:
+      task_id: { type: string }
+      user_goal: { type: string }
+      success_criteria:
+        type: array
+        items: { type: string }
+      constraints:
+        type: object
+        additionalProperties: false
+        properties:
+          budget_limit: { type: [number, 'null'] }
+          time_limit: { type: [number, 'null'] }
+          risk_level: { type: string, enum: [low, medium, high] }
+          requires_user_approval: { type: boolean }
+          forbidden_actions:
+            type: array
+            items: { type: string }
+
   context:
-    environment:
-      platform: "local|web|api|mixed"
-      available_assets: []
-      missing_assets: []
-      permissions:
-        network: true
-        filesystem_read: true
-        filesystem_write: false
-        external_api: true
-    candidate_tools:
-      - tool_id: "tool_search"
-        description: "Search over documents or web"
-        input_schema_ref: "schema://tool_search"
-      - tool_id: "tool_exec"
-        description: "Execute a step"
-        input_schema_ref: "schema://tool_exec"
+    type: object
+    additionalProperties: false
+    required: [environment, candidate_tools]
+    properties:
+      environment:
+        type: object
+        additionalProperties: false
+        required: [platform, available_assets, missing_assets, permissions]
+        properties:
+          platform: { type: string, enum: [local, web, api, mixed] }
+          available_assets:
+            type: array
+            items: { type: string }
+          missing_assets:
+            type: array
+            items: { type: string }
+          permissions:
+            type: object
+            additionalProperties: false
+            properties:
+              network: { type: boolean }
+              filesystem_read: { type: boolean }
+              filesystem_write: { type: boolean }
+              external_api: { type: boolean }
+      candidate_tools:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required: [tool_id, description]
+          properties:
+            tool_id: { type: string }
+            description: { type: string }
+            input_schema_ref: { type: [string, 'null'] }
+            output_schema_ref: { type: [string, 'null'] }
+            metadata: { type: object }
+
   capability_graph:
-    capabilities:
-      - capability_id: "cap_retrieve"
-        description: "Retrieve required information/assets"
-        preconditions: []
-        postconditions: ["information_obtained"]
-      - capability_id: "cap_transform"
-        description: "Transform intermediate result"
-        preconditions: ["information_obtained"]
-        postconditions: ["artifact_ready"]
-    edges:
-      - from: "cap_retrieve"
-        to: "cap_transform"
-        condition: "information_obtained == true"
-  tool_binding:
-    - capability_id: "cap_retrieve"
-      primary_tool: "tool_search"
-      backup_tools: []
-      binding_confidence: 0.85
-    - capability_id: "cap_transform"
-      primary_tool: "tool_exec"
-      backup_tools: []
-      binding_confidence: 0.72
+    type: object
+    additionalProperties: false
+    required: [capabilities, edges]
+    properties:
+      capabilities:
+        type: array
+        minItems: 2
+        items:
+          type: object
+          additionalProperties: false
+          required: [capability_id, description]
+          properties:
+            capability_id: { type: string }
+            description: { type: string }
+            preconditions:
+              type: array
+              items: { type: string }
+            postconditions:
+              type: array
+              items: { type: string }
+      edges:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [source, target]
+          properties:
+            source: { type: string }
+            target: { type: string }
+            condition: { type: [string, 'null'] }
+
+  tool_bindings:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [capability_id, primary_tool]
+      properties:
+        capability_id: { type: string }
+        primary_tool: { type: string }
+        backup_tools:
+          type: array
+          items: { type: string }
+        binding_confidence: { type: number }
+
   execution_plan:
-    steps:
-      - step_id: "step_01"
-        capability_id: "cap_retrieve"
-        tool_id: "tool_search"
-        action_type: "tool_call"
-        inputs: {}
-        expected_output: "retrieved_info"
-        checkpoint: true
-        rollback_to: null
-        requires_user_confirmation: false
-      - step_id: "step_02"
-        capability_id: "cap_transform"
-        tool_id: "tool_exec"
-        action_type: "tool_call"
-        inputs: {}
-        expected_output: "final_artifact"
-        checkpoint: true
-        rollback_to: "step_01"
-        requires_user_confirmation: false
+    type: array
+    minItems: 2
+    items:
+      type: object
+      additionalProperties: false
+      required: [step_id, capability_id, tool_id, action_type, inputs]
+      properties:
+        step_id: { type: string }
+        capability_id: { type: string }
+        tool_id: { type: [string, 'null'] }
+        action_type: { type: string, enum: [tool_call, user_query, policy_check, repair] }
+        inputs: { type: object }
+        expected_output: { type: [string, 'null'] }
+        checkpoint: { type: boolean }
+        rollback_to: { type: [string, 'null'] }
+        requires_user_confirmation: { type: boolean }
+        metadata: { type: object }
+
   policy:
-    approval_rules:
-      - rule_id: "apr_01"
-        trigger: "risk_level == high"
-        action: "ask_user"
-    recovery_rules:
-      - rule_id: "rec_01"
-        trigger: "tool_unavailable"
-        action: "switch_to_backup_tool"
-    stop_rules:
-      - "success_criteria_satisfied"
-      - "hard_constraint_violated"
-      - "user_abort"
+    type: object
+    additionalProperties: false
+    required: [approval_rules, recovery_rules, stop_rules]
+    properties:
+      approval_rules: { type: array }
+      recovery_rules: { type: array }
+      stop_rules:
+        type: array
+        items: { type: string }
+
   reusable_targets:
-    compile_skill: true
-    compile_workflow: true
-    compile_policy_snippet: true
+    type: object
+    additionalProperties: false
+    required: [compile_skill, compile_workflow, compile_policy_snippet]
+    properties:
+      compile_skill: { type: boolean }
+      compile_workflow: { type: boolean }
+      compile_policy_snippet: { type: boolean }
+
+  metadata:
+    type: object

@@ -1,62 +1,96 @@
-trace:
-  run_id: "run_0001"
-  workflow_id: "wf_0001"
-  task_id: "task_0001"
-  phase: "phase1_training_free"
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: ToolClaw Trace Schema v0
+
+type: object
+additionalProperties: false
+required:
+  - run_id
+  - workflow_id
+  - task_id
+  - phase
+  - metadata
+  - state_snapshots
+  - events
+  - metrics
+
+properties:
+  run_id: { type: string }
+  workflow_id: { type: string }
+  task_id: { type: string }
+  phase:
+    type: string
+    enum: [phase1_training_free]
+
   metadata:
-    model_name: "frozen_base_model"
-    mode: "toolclaw|baseline"
-    start_time: "2026-03-25T10:00:00Z"
-    end_time: null
+    type: object
+    additionalProperties: false
+    required: [model_name, mode, start_time]
+    properties:
+      model_name: { type: string }
+      mode: { type: string, enum: [baseline, toolclaw] }
+      start_time: { type: string, format: date-time }
+      end_time: { type: [string, 'null'], format: date-time }
+      benchmark: { type: [string, 'null'] }
+      task_source: { type: [string, 'null'] }
+
   state_snapshots:
-    - snapshot_id: "snap_00"
-      timestamp: "2026-03-25T10:00:00Z"
-      active_step_id: null
-      completed_steps: []
-      pending_steps: ["step_01", "step_02"]
-      missing_assets: []
-      policy_state:
-        approval_pending: false
-        risk_level: "medium"
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [snapshot_id, timestamp, active_step_id]
+      properties:
+        snapshot_id: { type: string }
+        timestamp: { type: string, format: date-time }
+        active_step_id: { type: [string, 'null'] }
+        completed_steps: { type: array, items: { type: string } }
+        pending_steps: { type: array, items: { type: string } }
+        failed_steps: { type: array, items: { type: string } }
+        missing_assets: { type: array, items: { type: string } }
+        state_values: { type: object }
+
   events:
-    - event_id: "evt_01"
-      timestamp: "2026-03-25T10:00:01Z"
-      step_id: "step_01"
-      event_type: "plan_generated"
-      actor: "planner"
-      input_ref: "task_0001"
-      output:
-        summary: "Generated capability graph and step order"
-    - event_id: "evt_02"
-      timestamp: "2026-03-25T10:00:05Z"
-      step_id: "step_01"
-      event_type: "tool_call"
-      actor: "executor"
-      tool_id: "tool_search"
-      tool_args: {}
-      output: null
-    - event_id: "evt_03"
-      timestamp: "2026-03-25T10:00:06Z"
-      step_id: "step_01"
-      event_type: "tool_result"
-      actor: "environment"
-      tool_id: "tool_search"
-      output:
-        status: "success"
-        payload_ref: "artifact://retrieved_info"
-    - event_id: "evt_04"
-      timestamp: "2026-03-25T10:00:10Z"
-      step_id: "step_02"
-      event_type: "repair_applied"
-      actor: "repair_controller"
-      output:
-        repair_id: "rep_0001"
-        repair_type: "rebind_args"
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [event_id, timestamp, event_type, actor]
+      properties:
+        event_id: { type: string }
+        timestamp: { type: string, format: date-time }
+        step_id: { type: [string, 'null'] }
+        event_type:
+          type: string
+          enum:
+            - plan_generated
+            - tool_call
+            - tool_result
+            - user_query
+            - user_reply
+            - approval_request
+            - approval_response
+            - repair_triggered
+            - repair_applied
+            - checkpoint_saved
+            - rollback
+            - stop
+            - abort
+        actor: { type: string }
+        tool_id: { type: [string, 'null'] }
+        input_ref: { type: [string, 'null'] }
+        tool_args: { type: [object, 'null'] }
+        output: { type: [object, 'null'] }
+        message: { type: [string, 'null'] }
+        metadata: { type: object }
+
   metrics:
-    total_steps: 2
-    tool_calls: 2
-    user_queries: 0
-    repair_actions: 1
-    success: null
-    token_cost: null
-    latency_ms: null
+    type: object
+    additionalProperties: false
+    properties:
+      total_steps: { type: integer }
+      tool_calls: { type: integer }
+      user_queries: { type: integer }
+      repair_actions: { type: integer }
+      success: { type: [boolean, 'null'] }
+      token_cost: { type: [number, 'null'] }
+      latency_ms: { type: [integer, 'null'] }

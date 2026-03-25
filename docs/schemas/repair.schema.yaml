@@ -1,43 +1,106 @@
-repair:
-  repair_id: "rep_0001"
-  run_id: "run_0001"
-  workflow_id: "wf_0001"
-  triggered_by:
-    error_ids:
-      - "err_0001"
-    trigger_event_id: "evt_04"
-  phase: "phase1_training_free"
-  repair_type: "rebind_args"
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: ToolClaw Repair Schema v0
+
+type: object
+additionalProperties: false
+required:
+  - repair_id
+  - run_id
+  - workflow_id
+  - phase
+  - repair_type
+  - decision
+  - actions
+  - interaction
+  - workflow_patch
+  - post_conditions
+  - result
+  - timestamp
+
+properties:
+  repair_id: { type: string }
+  run_id: { type: string }
+  workflow_id: { type: string }
+  triggered_error_ids: { type: array, items: { type: string } }
+  trigger_event_id: { type: [string, 'null'] }
+  phase: { type: string, enum: [phase1_training_free] }
+
+  repair_type:
+    type: string
+    enum:
+      - ask_user
+      - request_approval
+      - rebind_args
+      - switch_tool
+      - switch_backup_path
+      - insert_missing_step
+      - reorder_steps
+      - rollback_to_checkpoint
+      - acquire_missing_asset
+      - relax_noncritical_constraint
+      - abort_workflow
+
   decision:
-    strategy: "direct_patch"
-    rationale: "Argument schema mismatch is recoverable without user intervention"
-    confidence: 0.81
+    type: object
+    additionalProperties: false
+    required: [strategy, rationale, confidence]
+    properties:
+      strategy: { type: string, enum: [direct_patch, user_in_the_loop, fallback, rollback_and_retry, safe_abort] }
+      rationale: { type: string }
+      confidence: { type: number }
+      metadata: { type: object }
+
   actions:
-    - action_id: "act_01"
-      action_type: "state_patch"
-      target: "step_02.inputs.file_path"
-      value_source: "artifact://retrieved_info.default_path"
-    - action_id: "act_02"
-      action_type: "re_execute_step"
-      target: "step_02"
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [action_id, action_type]
+      properties:
+        action_id: { type: string }
+        action_type:
+          type: string
+          enum: [state_patch, re_execute_step, switch_tool, insert_step, remove_step, reorder_steps, rollback, ask_user, request_approval, update_policy_flag, abort]
+        target: { type: [string, 'null'] }
+        value_source: { type: [string, 'null'] }
+        value: {}
+        metadata: { type: object }
+
   interaction:
-    ask_user: false
-    question: null
-    expected_answer_type: null
+    type: object
+    additionalProperties: false
+    properties:
+      ask_user: { type: boolean }
+      question: { type: [string, 'null'] }
+      expected_answer_type: { type: [string, 'null'] }
+      user_response: {}
+
   workflow_patch:
-    modified_steps:
-      - "step_02"
-    reordered_steps: []
-    inserted_steps: []
-    removed_steps: []
+    type: object
+    additionalProperties: false
+    properties:
+      modified_steps: { type: array, items: { type: string } }
+      reordered_steps: { type: array, items: { type: string } }
+      inserted_steps: { type: array, items: { type: string } }
+      removed_steps: { type: array, items: { type: string } }
+      metadata: { type: object }
+
   post_conditions:
-    expected_effects:
-      - "tool arguments become valid"
-      - "execution can continue"
-    stop_if:
-      - "same error repeats twice"
-      - "hard constraint violated"
+    type: object
+    additionalProperties: false
+    properties:
+      expected_effects: { type: array, items: { type: string } }
+      stop_if: { type: array, items: { type: string } }
+
   result:
-    status: "pending"
-    success: null
-    followup_error_id: null
+    type: object
+    additionalProperties: false
+    properties:
+      status: { type: string, enum: [pending, applied, succeeded, failed, aborted] }
+      success: { type: [boolean, 'null'] }
+      followup_error_id: { type: [string, 'null'] }
+      message: { type: [string, 'null'] }
+      metadata: { type: object }
+
+  timestamp: { type: string, format: date-time }
+  metadata: { type: object }

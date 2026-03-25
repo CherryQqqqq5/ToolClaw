@@ -56,10 +56,22 @@ class SequentialExecutor:
 
             ok = self._run_step(workflow, step, trace, tracker, backup_tool_map)
             if not ok:
+                trace.add_event(
+                    event_id="evt_stop_failed",
+                    event_type=EventType.STOP,
+                    actor="executor",
+                    output={"status": "failed", "reason": "step_execution_failed"},
+                )
                 trace.finalize(success=False, total_steps=len(workflow.execution_plan))
                 self._write_trace(trace, output_path)
                 return trace
 
+        trace.add_event(
+            event_id="evt_stop_success",
+            event_type=EventType.STOP,
+            actor="executor",
+            output={"status": "success", "reason": "success_criteria_satisfied"},
+        )
         trace.finalize(success=True, total_steps=len(workflow.execution_plan))
         self._write_trace(trace, output_path)
         return trace

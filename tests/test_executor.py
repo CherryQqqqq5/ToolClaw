@@ -23,6 +23,7 @@ def test_executor_runs_demo_workflow_and_writes_trace(tmp_path: Path) -> None:
     event_types = [evt["event_type"] for evt in trace_payload["events"]]
     assert EventType.TOOL_CALL.value in event_types
     assert EventType.TOOL_RESULT.value in event_types
+    assert EventType.STOP.value in event_types
 
 
 def test_executor_triggers_repair_and_applies_backup_tool(tmp_path: Path) -> None:
@@ -43,3 +44,4 @@ def test_executor_triggers_repair_and_applies_backup_tool(tmp_path: Path) -> Non
     event_types = [evt["event_type"] for evt in trace_payload["events"]]
     assert EventType.REPAIR_TRIGGERED.value in event_types
     assert EventType.REPAIR_APPLIED.value in event_types
+    assert EventType.STOP.value in event_types
