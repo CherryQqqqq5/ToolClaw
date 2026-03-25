@@ -1,0 +1,34 @@
+error:
+  error_id: "err_0001"
+  run_id: "run_0001"
+  workflow_id: "wf_0001"
+  step_id: "step_02"
+  timestamp: "2026-03-25T10:00:09Z"
+  phase: "phase1_training_free"
+  category: "binding_failure"
+  subtype: "wrong_argument_mapping"
+  severity: "medium"
+  stage: "execution"
+  symptoms:
+    - "tool returned invalid-argument error"
+  evidence:
+    tool_id: "tool_exec"
+    raw_message: "missing required field: file_path"
+    related_events:
+      - "evt_02"
+      - "evt_03"
+  root_cause_hypothesis:
+    - "planner selected correct capability but executor mapped incomplete args"
+    - "required asset not present in current state"
+  state_context:
+    active_capability: "cap_transform"
+    missing_assets:
+      - "file_path"
+    policy_flags:
+      approval_pending: false
+  recoverability:
+    recoverable: true
+    requires_user_input: false
+    requires_tool_switch: false
+    requires_rollback: false
+  failtax_label: "binding_failure"

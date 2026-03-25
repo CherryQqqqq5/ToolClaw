@@ -1,0 +1,93 @@
+workflow:
+  workflow_id: "wf_0001"
+  version: "0.1"
+  phase: "phase1_training_free"
+  task:
+    task_id: "task_0001"
+    user_goal: "Natural-language task description"
+    success_criteria:
+      - "criterion_1"
+      - "criterion_2"
+    constraints:
+      budget_limit: null
+      time_limit: null
+      risk_level: "medium"
+      requires_user_approval: true
+      forbidden_actions: []
+  context:
+    environment:
+      platform: "local|web|api|mixed"
+      available_assets: []
+      missing_assets: []
+      permissions:
+        network: true
+        filesystem_read: true
+        filesystem_write: false
+        external_api: true
+    candidate_tools:
+      - tool_id: "tool_search"
+        description: "Search over documents or web"
+        input_schema_ref: "schema://tool_search"
+      - tool_id: "tool_exec"
+        description: "Execute a step"
+        input_schema_ref: "schema://tool_exec"
+  capability_graph:
+    capabilities:
+      - capability_id: "cap_retrieve"
+        description: "Retrieve required information/assets"
+        preconditions: []
+        postconditions: ["information_obtained"]
+      - capability_id: "cap_transform"
+        description: "Transform intermediate result"
+        preconditions: ["information_obtained"]
+        postconditions: ["artifact_ready"]
+    edges:
+      - from: "cap_retrieve"
+        to: "cap_transform"
+        condition: "information_obtained == true"
+  tool_binding:
+    - capability_id: "cap_retrieve"
+      primary_tool: "tool_search"
+      backup_tools: []
+      binding_confidence: 0.85
+    - capability_id: "cap_transform"
+      primary_tool: "tool_exec"
+      backup_tools: []
+      binding_confidence: 0.72
+  execution_plan:
+    steps:
+      - step_id: "step_01"
+        capability_id: "cap_retrieve"
+        tool_id: "tool_search"
+        action_type: "tool_call"
+        inputs: {}
+        expected_output: "retrieved_info"
+        checkpoint: true
+        rollback_to: null
+        requires_user_confirmation: false
+      - step_id: "step_02"
+        capability_id: "cap_transform"
+        tool_id: "tool_exec"
+        action_type: "tool_call"
+        inputs: {}
+        expected_output: "final_artifact"
+        checkpoint: true
+        rollback_to: "step_01"
+        requires_user_confirmation: false
+  policy:
+    approval_rules:
+      - rule_id: "apr_01"
+        trigger: "risk_level == high"
+        action: "ask_user"
+    recovery_rules:
+      - rule_id: "rec_01"
+        trigger: "tool_unavailable"
+        action: "switch_to_backup_tool"
+    stop_rules:
+      - "success_criteria_satisfied"
+      - "hard_constraint_violated"
+      - "user_abort"
+  reusable_targets:
+    compile_skill: true
+    compile_workflow: true
+    compile_policy_snippet: true

@@ -1,0 +1,62 @@
+trace:
+  run_id: "run_0001"
+  workflow_id: "wf_0001"
+  task_id: "task_0001"
+  phase: "phase1_training_free"
+  metadata:
+    model_name: "frozen_base_model"
+    mode: "toolclaw|baseline"
+    start_time: "2026-03-25T10:00:00Z"
+    end_time: null
+  state_snapshots:
+    - snapshot_id: "snap_00"
+      timestamp: "2026-03-25T10:00:00Z"
+      active_step_id: null
+      completed_steps: []
+      pending_steps: ["step_01", "step_02"]
+      missing_assets: []
+      policy_state:
+        approval_pending: false
+        risk_level: "medium"
+  events:
+    - event_id: "evt_01"
+      timestamp: "2026-03-25T10:00:01Z"
+      step_id: "step_01"
+      event_type: "plan_generated"
+      actor: "planner"
+      input_ref: "task_0001"
+      output:
+        summary: "Generated capability graph and step order"
+    - event_id: "evt_02"
+      timestamp: "2026-03-25T10:00:05Z"
+      step_id: "step_01"
+      event_type: "tool_call"
+      actor: "executor"
+      tool_id: "tool_search"
+      tool_args: {}
+      output: null
+    - event_id: "evt_03"
+      timestamp: "2026-03-25T10:00:06Z"
+      step_id: "step_01"
+      event_type: "tool_result"
+      actor: "environment"
+      tool_id: "tool_search"
+      output:
+        status: "success"
+        payload_ref: "artifact://retrieved_info"
+    - event_id: "evt_04"
+      timestamp: "2026-03-25T10:00:10Z"
+      step_id: "step_02"
+      event_type: "repair_applied"
+      actor: "repair_controller"
+      output:
+        repair_id: "rep_0001"
+        repair_type: "rebind_args"
+  metrics:
+    total_steps: 2
+    tool_calls: 2
+    user_queries: 0
+    repair_actions: 1
+    success: null
+    token_cost: null
+    latency_ms: null
