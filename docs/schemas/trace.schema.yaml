@@ -1,0 +1,96 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: ToolClaw Trace Schema v0
+
+type: object
+additionalProperties: false
+required:
+  - run_id
+  - workflow_id
+  - task_id
+  - phase
+  - metadata
+  - state_snapshots
+  - events
+  - metrics
+
+properties:
+  run_id: { type: string }
+  workflow_id: { type: string }
+  task_id: { type: string }
+  phase:
+    type: string
+    enum: [phase1_training_free]
+
+  metadata:
+    type: object
+    additionalProperties: false
+    required: [model_name, mode, start_time]
+    properties:
+      model_name: { type: string }
+      mode: { type: string, enum: [baseline, toolclaw] }
+      start_time: { type: string, format: date-time }
+      end_time: { type: [string, 'null'], format: date-time }
+      benchmark: { type: [string, 'null'] }
+      task_source: { type: [string, 'null'] }
+
+  state_snapshots:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [snapshot_id, timestamp, active_step_id]
+      properties:
+        snapshot_id: { type: string }
+        timestamp: { type: string, format: date-time }
+        active_step_id: { type: [string, 'null'] }
+        completed_steps: { type: array, items: { type: string } }
+        pending_steps: { type: array, items: { type: string } }
+        failed_steps: { type: array, items: { type: string } }
+        missing_assets: { type: array, items: { type: string } }
+        state_values: { type: object }
+
+  events:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [event_id, timestamp, event_type, actor]
+      properties:
+        event_id: { type: string }
+        timestamp: { type: string, format: date-time }
+        step_id: { type: [string, 'null'] }
+        event_type:
+          type: string
+          enum:
+            - plan_generated
+            - tool_call
+            - tool_result
+            - user_query
+            - user_reply
+            - approval_request
+            - approval_response
+            - repair_triggered
+            - repair_applied
+            - checkpoint_saved
+            - rollback
+            - stop
+            - abort
+        actor: { type: string }
+        tool_id: { type: [string, 'null'] }
+        input_ref: { type: [string, 'null'] }
+        tool_args: { type: [object, 'null'] }
+        output: { type: [object, 'null'] }
+        message: { type: [string, 'null'] }
+        metadata: { type: object }
+
+  metrics:
+    type: object
+    additionalProperties: false
+    properties:
+      total_steps: { type: integer }
+      tool_calls: { type: integer }
+      user_queries: { type: integer }
+      repair_actions: { type: integer }
+      success: { type: [boolean, 'null'] }
+      token_cost: { type: [number, 'null'] }
+      latency_ms: { type: [integer, 'null'] }
