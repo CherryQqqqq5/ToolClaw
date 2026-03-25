@@ -1,9 +1,9 @@
 import json
 
-from toolclaw.schemas.workflow import Workflow, Phase as WorkflowPhase, ActionType
-from toolclaw.schemas.trace import Trace, RunMode, EventType
-from toolclaw.schemas.error import ToolClawError, ErrorCategory, ErrorSeverity
-from toolclaw.schemas.repair import Repair, RepairType, RepairStrategy, RepairStatus
+from toolclaw.schemas.error import ErrorCategory, ErrorSeverity, ToolClawError
+from toolclaw.schemas.repair import Repair, RepairStatus, RepairStrategy, RepairType
+from toolclaw.schemas.trace import EventType, RunMode, Trace
+from toolclaw.schemas.workflow import ActionType, Phase as WorkflowPhase, Workflow
 
 
 def test_schema_demo_instantiation_smoke() -> None:
@@ -18,17 +18,25 @@ def test_schema_demo_instantiation_smoke() -> None:
     assert isinstance(repair, Repair)
 
 
-def test_schema_to_dict_json_serializable_smoke() -> None:
-    workflow_dict = Workflow.demo().to_dict()
-    trace_dict = Trace.demo().to_dict()
-    error_dict = ToolClawError.demo().to_dict()
-    repair_dict = Repair.demo().to_dict()
+def test_schema_to_dict_json_serializable_and_key_consistency() -> None:
+    workflow = Workflow.demo()
+    trace = Trace.demo()
+    error = ToolClawError.demo()
+    repair = Repair.demo()
 
-    # smoke check: should be JSON-serializable
+    workflow_dict = workflow.to_dict()
+    trace_dict = trace.to_dict()
+    error_dict = error.to_dict()
+    repair_dict = repair.to_dict()
+
     json.dumps(workflow_dict)
     json.dumps(trace_dict)
     json.dumps(error_dict)
     json.dumps(repair_dict)
+
+    assert workflow_dict["workflow_id"] == trace_dict["workflow_id"] == error_dict["workflow_id"] == repair_dict["workflow_id"]
+    assert trace_dict["run_id"] == error_dict["run_id"] == repair_dict["run_id"]
+    assert workflow_dict["task"]["task_id"] == trace_dict["task_id"]
 
 
 def test_schema_enum_values_smoke() -> None:
@@ -54,20 +62,20 @@ def test_schema_key_fields_non_empty_smoke() -> None:
 
     assert workflow.workflow_id
     assert workflow.task.task_id
-    assert len(workflow.execution_plan) > 0
-    assert workflow.phase.value == "phase1_training_free"
+    assert workflow.execution_plan[0].step_id == "step_01"
+    assert workflow.execution_plan[1].step_id == "step_02"
 
     assert trace.run_id
-    assert trace.workflow_id
-    assert len(trace.events) > 0
-    assert trace.metadata.mode.value in {"baseline", "toolclaw"}
+    assert trace.events[0].event_type.value == "plan_generated"
+    event_types = {event.event_type.value for event in trace.events}
+    assert "repair_triggered" in event_types
+    assert "repair_applied" in event_types
+    assert trace.events[-1].event_type.value == "stop"
 
     assert error.error_id
-    assert error.run_id
-    assert error.category.value
-    assert len(error.symptoms) > 0
+    assert error.state_context.active_step_id == "step_02"
+    assert error.evidence.tool_id == "write_tool"
 
     assert repair.repair_id
-    assert repair.run_id
-    assert repair.repair_type.value
-    assert repair.decision.rationale
+    assert repair.triggered_error_ids[0] == "err_demo_001"
+    assert repair.actions[0].target == "step_02.inputs.target_path"
