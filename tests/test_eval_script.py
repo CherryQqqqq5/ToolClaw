@@ -92,3 +92,26 @@ def test_run_eval_script_with_planner_mode(tmp_path: Path) -> None:
     )
     assert completed.returncode == 0
     assert (outdir / "comparison.csv").exists()
+
+
+def test_run_eval_script_missing_taskset_shows_clear_error(tmp_path: Path) -> None:
+    outdir = tmp_path / "eval_out_missing"
+    missing_path = tmp_path / "does_not_exist.json"
+    cmd = [
+        sys.executable,
+        "scripts/run_eval.py",
+        "--taskset",
+        str(missing_path),
+        "--outdir",
+        str(outdir),
+    ]
+    completed = subprocess.run(
+        cmd,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode != 0
+    assert "taskset file not found" in completed.stderr
+    assert "data/eval_tasks.sample.json" in completed.stderr

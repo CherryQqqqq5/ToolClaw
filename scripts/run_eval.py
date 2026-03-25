@@ -66,9 +66,20 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
     return workflow
 
 
+def existing_json_path(value: str) -> Path:
+    path = Path(value)
+    if not path.exists():
+        raise argparse.ArgumentTypeError(
+            f"taskset file not found: {path}. Provide a real JSON file path (for example: data/eval_tasks.sample.json)."
+        )
+    if not path.is_file():
+        raise argparse.ArgumentTypeError(f"taskset path is not a file: {path}")
+    return path
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run baseline vs ToolClaw-lite evaluation")
-    parser.add_argument("--taskset", required=True, help="Path to taskset JSON")
+    parser.add_argument("--taskset", type=existing_json_path, required=True, help="Path to taskset JSON")
     parser.add_argument("--outdir", default="outputs/eval", help="Output directory")
     parser.add_argument("--mode", choices=["demo", "planner"], default="planner", help="Workflow source mode")
     return parser.parse_args()
@@ -76,7 +87,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    taskset_path = Path(args.taskset)
+    taskset_path: Path = args.taskset
     outdir = Path(args.outdir)
     traces_dir = outdir / "traces"
     rows: List[EvalRow] = []
