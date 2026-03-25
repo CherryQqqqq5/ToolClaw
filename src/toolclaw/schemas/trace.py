@@ -254,7 +254,35 @@ class Trace:
             actor="environment",
             step_id="step_02",
             tool_id="write_tool",
-            output={"status": "success", "payload_ref": "artifact://demo_report"},
+            output={"status": "failed", "reason": "missing required field: target_path"},
+        )
+
+        trace.add_event(
+            event_id="evt_06",
+            event_type=EventType.REPAIR_TRIGGERED,
+            actor="recovery_engine",
+            step_id="step_02",
+            tool_id="write_tool",
+            output={"repair_type": "rebind_args"},
+        )
+
+        trace.add_event(
+            event_id="evt_07",
+            event_type=EventType.REPAIR_APPLIED,
+            actor="executor",
+            step_id="step_02",
+            tool_id="write_tool",
+            output={
+                "patched_target_path": "outputs/reports/demo_report.txt",
+                "status": "success",
+            },
+        )
+
+        trace.add_event(
+            event_id="evt_08",
+            event_type=EventType.STOP,
+            actor="executor",
+            output={"status": "success", "reason": "success_criteria_satisfied"},
         )
 
         trace.finalize(success=True, total_steps=2)
