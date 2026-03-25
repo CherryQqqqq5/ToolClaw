@@ -13,8 +13,14 @@ from toolclaw.benchmarks.metrics import (
     write_report_md,
     write_rows_csv,
 )
-from toolclaw.benchmarks.tau_runner import run_toolclaw_lite
+from toolclaw.compiler.swpc import SWPCCompiler
+from toolclaw.execution.executor import SequentialExecutor
+from toolclaw.interaction.irc import InteractionLoopConfig, InteractionShell
+from toolclaw.interaction.repair_updater import RepairUpdater
+from toolclaw.interaction.user_simulator import SimulatedPolicy
+from toolclaw.main import ToolClawRuntime
 from toolclaw.planner.htgp import PlanningRequest, build_default_planner
+from toolclaw.registry import InMemoryAssetRegistry
 from toolclaw.schemas.workflow import Workflow
 
 
@@ -65,6 +71,14 @@ def main() -> None:
     outdir = Path(args.outdir)
     traces_dir = outdir / "traces"
     rows: List[EvalRow] = []
+    planner = build_default_planner(asset_registry=InMemoryAssetRegistry())
+    runtime = ToolClawRuntime(
+        planner=planner,
+        executor=SequentialExecutor(),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=InMemoryAssetRegistry(),
+    )
 
     tasks = json.loads(taskset_path.read_text(encoding="utf-8"))
     if not isinstance(tasks, list):
@@ -74,7 +88,6 @@ def main() -> None:
         workflow = build_workflow_from_task(task, mode=args.mode)
         task_id = str(task["task_id"])
         scenario = str(task.get("scenario", "success"))
-        backup_map = task.get("backup_tool_map", {"write_tool": "backup_write_tool"})
 
         baseline_trace_path = traces_dir / f"{idx:03d}_{task_id}_baseline.json"
         baseline_trace, baseline_stop = run_baseline(
@@ -97,21 +110,39 @@ def main() -> None:
         )
 
         toolclaw_trace_path = traces_dir / f"{idx:03d}_{task_id}_toolclaw_lite.json"
-        toolclaw_trace, toolclaw_stop = run_toolclaw_lite(
-            workflow=workflow,
-            run_id=f"toolclaw_{task_id}",
-            output_path=toolclaw_trace_path,
-            backup_tool_map=backup_map,
+        policy_cfg = task.get("simulated_policy", {})
+        shell = InteractionShell(
+            runtime=runtime,
+            config=InteractionLoopConfig(
+                simulator_policy=SimulatedPolicy(
+                    mode=policy_cfg.get("mode", "cooperative"),
+                    missing_arg_values=policy_cfg.get("missing_arg_values", {}),
+                    backup_tool_preferences=policy_cfg.get("backup_tool_preferences", {}),
+                )
+            ),
         )
+        planning_request = PlanningRequest(
+            task=workflow.task,
+            context=workflow.context,
+            policy=workflow.policy,
+        )
+        shell.run(
+            request=planning_request,
+            run_id=f"toolclaw_{task_id}",
+            output_path=str(toolclaw_trace_path),
+        )
+        trace_payload = json.loads(toolclaw_trace_path.read_text(encoding="utf-8"))
+        stop_event = next((e for e in reversed(trace_payload["events"]) if e["event_type"] == "stop"), None)
+        toolclaw_stop = stop_event["output"].get("reason", "unknown") if stop_event and isinstance(stop_event.get("output"), dict) else "unknown"
         rows.append(
             EvalRow(
                 task_id=task_id,
                 system="toolclaw_lite",
                 scenario=scenario,
-                success=bool(toolclaw_trace.metrics.success),
-                tool_calls=toolclaw_trace.metrics.tool_calls,
-                repair_actions=toolclaw_trace.metrics.repair_actions,
-                total_steps=toolclaw_trace.metrics.total_steps,
+                success=bool(trace_payload["metrics"]["success"]),
+                tool_calls=int(trace_payload["metrics"]["tool_calls"]),
+                repair_actions=int(trace_payload["metrics"]["repair_actions"]),
+                total_steps=int(trace_payload["metrics"]["total_steps"]),
                 stop_reason=toolclaw_stop,
                 trace_path=str(toolclaw_trace_path),
             )
