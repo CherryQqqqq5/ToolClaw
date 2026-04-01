@@ -1,3 +1,5 @@
+"""Compile successful traces into reusable skill, workflow, and policy artifacts."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -13,6 +15,9 @@ class WorkflowSnippet:
     task_signature: str
     capability_skeleton: List[str]
     recommended_bindings: Dict[str, str] = field(default_factory=dict)
+    version: int = 1
+    applicability_conditions: List[str] = field(default_factory=list)
+    quality_score: float = 0.0
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -22,6 +27,8 @@ class SkillHint:
     task_signature: str
     step_pattern: List[str]
     trigger_conditions: List[str] = field(default_factory=list)
+    version: int = 1
+    quality_score: float = 0.0
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -32,6 +39,8 @@ class PolicySnippet:
     stop_rules: List[str] = field(default_factory=list)
     approval_rules: List[Dict[str, Any]] = field(default_factory=list)
     recovery_rules: List[Dict[str, Any]] = field(default_factory=list)
+    version: int = 1
+    quality_score: float = 0.0
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -51,29 +60,9 @@ class SWPCCompiler:
         final_state: Dict[str, Any],
     ) -> CompiledArtifacts:
         signature = self.derive_task_signature(workflow)
-        workflow_snippet = WorkflowSnippet(
-            snippet_id=f"ws_{workflow.workflow_id}",
-            task_signature=signature,
-            capability_skeleton=[step.capability_id for step in workflow.execution_plan],
-            recommended_bindings={binding.capability_id: binding.primary_tool for binding in workflow.tool_bindings},
-            metadata={"final_success": trace.metrics.success},
-        )
-
-        skill_hint = SkillHint(
-            hint_id=f"sh_{workflow.workflow_id}",
-            task_signature=signature,
-            step_pattern=[step.step_id for step in workflow.execution_plan],
-            trigger_conditions=["phase1_training_free"],
-            metadata={"state_keys": sorted(final_state.keys())},
-        )
-
-        policy_snippet = PolicySnippet(
-            policy_id=f"ps_{workflow.workflow_id}",
-            task_signature=signature,
-            stop_rules=list(workflow.policy.stop_rules),
-            approval_rules=[rule.metadata | {"trigger": rule.trigger, "action": rule.action} for rule in workflow.policy.approval_rules],
-            recovery_rules=[rule.metadata | {"trigger": rule.trigger, "action": rule.action} for rule in workflow.policy.recovery_rules],
-        )
+        workflow_snippet = self.compile_workflow(workflow, trace)
+        skill_hint = self.compile_skill(workflow, final_state)
+        policy_snippet = self.compile_policy(workflow)
 
         return CompiledArtifacts(
             workflow_snippets=[workflow_snippet],
@@ -82,9 +71,44 @@ class SWPCCompiler:
             metadata={"trace_id": trace.run_id},
         )
 
+    def compile_workflow(self, workflow: Workflow, trace: Trace) -> WorkflowSnippet:
+        return WorkflowSnippet(
+            snippet_id=f"ws_{workflow.workflow_id}",
+            task_signature=self.derive_task_signature(workflow),
+            capability_skeleton=[step.capability_id for step in workflow.execution_plan],
+            recommended_bindings={binding.capability_id: binding.primary_tool for binding in workflow.tool_bindings},
+            applicability_conditions=["phase1_training_free"],
+            quality_score=self.score_artifact_quality(trace.metrics.success),
+            metadata={"final_success": trace.metrics.success},
+        )
+
+    def compile_skill(self, workflow: Workflow, final_state: Dict[str, Any]) -> SkillHint:
+        return SkillHint(
+            hint_id=f"sh_{workflow.workflow_id}",
+            task_signature=self.derive_task_signature(workflow),
+            step_pattern=[step.step_id for step in workflow.execution_plan],
+            trigger_conditions=["phase1_training_free"],
+            quality_score=1.0 if final_state else 0.6,
+            metadata={"state_keys": sorted(final_state.keys())},
+        )
+
+    def compile_policy(self, workflow: Workflow) -> PolicySnippet:
+        return PolicySnippet(
+            policy_id=f"ps_{workflow.workflow_id}",
+            task_signature=self.derive_task_signature(workflow),
+            stop_rules=list(workflow.policy.stop_rules),
+            approval_rules=[rule.metadata | {"trigger": rule.trigger, "action": rule.action} for rule in workflow.policy.approval_rules],
+            recovery_rules=[rule.metadata | {"trigger": rule.trigger, "action": rule.action} for rule in workflow.policy.recovery_rules],
+            quality_score=0.8,
+        )
+
     def derive_task_signature(
         self,
         workflow: Workflow,
     ) -> str:
         goal = workflow.task.user_goal.lower().strip().replace(" ", "_")
         return f"phase1::{goal}"
+
+    @staticmethod
+    def score_artifact_quality(success: bool | None) -> float:
+        return 1.0 if success else 0.4

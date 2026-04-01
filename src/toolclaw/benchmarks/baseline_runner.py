@@ -1,3 +1,5 @@
+"""Baseline runner that executes the workflow without repair or interaction."""
+
 from __future__ import annotations
 
 import json

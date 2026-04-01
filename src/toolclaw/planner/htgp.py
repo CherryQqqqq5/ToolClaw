@@ -1,3 +1,5 @@
+"""Hierarchical Tool Graph Planner that builds workflows from capabilities before tools."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -8,14 +10,20 @@ from toolclaw.planner.capability_graph import RuleBasedCapabilityGraphBuilder
 from toolclaw.schemas.error import ToolClawError
 from toolclaw.schemas.workflow import (
     ActionType,
+    ApprovalGate,
     CapabilityGraph,
     CapabilityNode,
+    CheckpointPolicy,
     Phase,
+    RollbackPolicy,
     TaskSpec,
     ToolBinding,
     ToolSpec,
     Workflow,
     WorkflowContext,
+    WorkflowEdge,
+    WorkflowGraph,
+    WorkflowNode,
     WorkflowPolicy,
     WorkflowStep,
 )
@@ -226,6 +234,39 @@ class PolicyInjector:
             )
         return steps
 
+    def compile_workflow_graph(
+        self,
+        graph: CapabilityGraph,
+        steps: List[WorkflowStep],
+    ) -> WorkflowGraph:
+        nodes: List[WorkflowNode] = []
+        edges: List[WorkflowEdge] = []
+        for idx, step in enumerate(steps):
+            nodes.append(
+                WorkflowNode(
+                    node_id=step.step_id,
+                    capability_id=step.capability_id,
+                    selected_tool=step.tool_id,
+                    tool_candidates=[step.tool_id] if step.tool_id else [],
+                    inputs=dict(step.inputs),
+                    expected_output=step.expected_output,
+                    dependencies=[steps[idx - 1].step_id] if idx > 0 else [],
+                    checkpoint_policy=CheckpointPolicy(enabled=step.checkpoint, reason="planner_injected"),
+                    rollback_policy=RollbackPolicy(rollback_to_step_id=step.rollback_to),
+                    approval_gate=ApprovalGate(required=step.requires_user_confirmation),
+                    metadata=dict(step.metadata),
+                )
+            )
+            if idx > 0:
+                edges.append(WorkflowEdge(source=steps[idx - 1].step_id, target=step.step_id))
+        return WorkflowGraph(
+            nodes=nodes,
+            edges=edges,
+            entry_nodes=[steps[0].step_id] if steps else [],
+            exit_nodes=[steps[-1].step_id] if steps else [],
+            metadata={"capability_count": len(graph.capabilities)},
+        )
+
 
 class HTGPPlanner:
     def __init__(
@@ -275,6 +316,7 @@ class HTGPPlanner:
             diagnostics.binding_scores[capability.capability_id] = binding_result.binding.binding_confidence
 
         execution_plan = self.policy_injector.compile_execution_plan(graph, bindings, request.task)
+        workflow_graph = self.policy_injector.compile_workflow_graph(graph, execution_plan)
 
         workflow = Workflow(
             workflow_id=f"wf_{request.task.task_id}",
@@ -285,6 +327,7 @@ class HTGPPlanner:
             capability_graph=graph,
             tool_bindings=bindings,
             execution_plan=execution_plan,
+            workflow_graph=workflow_graph,
             policy=request.policy or Workflow.demo().policy,
             metadata={"planner_mode": request.planner_mode},
         )
@@ -311,6 +354,8 @@ class HTGPPlanner:
             prior_failures=list(request.hints.prior_failures) + [error.category.value],
             user_style=dict(request.hints.user_style),
         )
+        if error.evidence.tool_id and error.evidence.tool_id not in replanning_hints.forbidden_tools:
+            replanning_hints.forbidden_tools.append(error.evidence.tool_id)
 
         # simple phase-1 strategy: preserve task/context/policy and re-run planning.
         result = self.plan(
@@ -322,8 +367,38 @@ class HTGPPlanner:
                 planner_mode=request.planner_mode,
             )
         )
+        failed_index = 0
+        for idx, step in enumerate(failed_workflow.execution_plan):
+            if step.step_id == error.step_id:
+                failed_index = idx
+                break
+
+        prefix = failed_workflow.execution_plan[:failed_index]
+        replanned_suffix_source = result.workflow.execution_plan[failed_index:] or result.workflow.execution_plan
+        replanned_suffix: List[WorkflowStep] = []
+        for offset, step in enumerate(replanned_suffix_source, start=failed_index + 1):
+            replanned_suffix.append(
+                WorkflowStep(
+                    step_id=f"step_{offset:02d}",
+                    capability_id=step.capability_id,
+                    tool_id=step.tool_id,
+                    action_type=step.action_type,
+                    inputs=dict(step.inputs),
+                    expected_output=step.expected_output,
+                    checkpoint=step.checkpoint,
+                    rollback_to=step.rollback_to,
+                    requires_user_confirmation=step.requires_user_confirmation,
+                    metadata=dict(step.metadata),
+                )
+            )
+        result.workflow.execution_plan = prefix + replanned_suffix
+        result.workflow.workflow_graph = self.policy_injector.compile_workflow_graph(
+            result.workflow.capability_graph,
+            result.workflow.execution_plan,
+        )
         result.workflow.metadata["replanned_from_workflow_id"] = failed_workflow.workflow_id
         result.workflow.metadata["replan_state_keys"] = list(state_values.keys())
+        result.workflow.metadata["replanned_suffix_from_step_id"] = error.step_id
         if error.evidence.tool_id:
             result.diagnostics.rejected_tools[error.evidence.tool_id] = "failed_in_previous_run"
         return result

@@ -1,3 +1,5 @@
+"""Thin wrapper for running the ToolClaw executor in tau-style experiments."""
+
 from __future__ import annotations
 
 from pathlib import Path

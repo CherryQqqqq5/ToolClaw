@@ -1,3 +1,5 @@
+"""Schema definitions for repair plans, workflow patches, and repair status."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -25,6 +27,8 @@ class RepairType(str, Enum):
     ROLLBACK_TO_CHECKPOINT = "rollback_to_checkpoint"
     ACQUIRE_MISSING_ASSET = "acquire_missing_asset"
     RELAX_NONCRITICAL_CONSTRAINT = "relax_noncritical_constraint"
+    REROUTE_BRANCH = "reroute_branch"
+    REPLAN_SUFFIX = "replan_suffix"
     ABORT_WORKFLOW = "abort_workflow"
 
 
@@ -94,6 +98,27 @@ class WorkflowPatch:
 
 
 @dataclass
+class GraphPatch:
+    inserted_edges: List[Dict[str, Any]] = field(default_factory=list)
+    removed_edges: List[Dict[str, Any]] = field(default_factory=list)
+    node_updates: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
+
+@dataclass
+class PolicyPatch:
+    approval_pending: Optional[bool] = None
+    approved_actions: List[str] = field(default_factory=list)
+    budget_delta: float = 0.0
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class AssetPatch:
+    missing_assets_resolved: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class RepairPostConditions:
     expected_effects: List[str] = field(default_factory=list)
     stop_if: List[str] = field(default_factory=list)
@@ -127,6 +152,9 @@ class Repair:
     actions: List[RepairAction] = field(default_factory=list)
     interaction: RepairInteraction = field(default_factory=RepairInteraction)
     workflow_patch: WorkflowPatch = field(default_factory=WorkflowPatch)
+    graph_patch: GraphPatch = field(default_factory=GraphPatch)
+    policy_patch: PolicyPatch = field(default_factory=PolicyPatch)
+    asset_patch: AssetPatch = field(default_factory=AssetPatch)
     post_conditions: RepairPostConditions = field(default_factory=RepairPostConditions)
     result: RepairResult = field(default_factory=RepairResult)
     timestamp: str = field(default_factory=utc_now_iso)

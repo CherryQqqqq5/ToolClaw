@@ -1,10 +1,14 @@
+"""Interactive repair loop that turns blocked execution into a correction dialogue."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from toolclaw.execution.executor import ExecutionOutcome
+from toolclaw.interaction.query_policy import QueryPolicy
 from toolclaw.interaction.repair_updater import RepairUpdater
+from toolclaw.interaction.uncertainty_detector import UncertaintyDetector
 from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
 from toolclaw.main import ToolClawRuntime
 from toolclaw.planner.htgp import PlanningRequest
@@ -24,11 +28,15 @@ class InteractionShell:
         runtime: ToolClawRuntime,
         repair_updater: Optional[RepairUpdater] = None,
         config: Optional[InteractionLoopConfig] = None,
+        uncertainty_detector: Optional[UncertaintyDetector] = None,
+        query_policy: Optional[QueryPolicy] = None,
     ) -> None:
         self.runtime = runtime
         self.repair_updater = repair_updater or runtime.repair_updater
         self.config = config or InteractionLoopConfig()
         self.simulator = UserSimulator(self.config.simulator_policy)
+        self.uncertainty_detector = uncertainty_detector or UncertaintyDetector()
+        self.query_policy = query_policy or QueryPolicy()
 
     def run(
         self,
@@ -42,11 +50,22 @@ class InteractionShell:
         while outcome.blocked and outcome.pending_interaction and turns < self.config.max_turns:
             turns += 1
             repair = outcome.pending_interaction.repair
+            report = self.uncertainty_detector.analyze_failure(
+                workflow=outcome.workflow,
+                repair=repair,
+                state_values=outcome.final_state,
+            )
+            query_plan = self.query_policy.decide_query(report)
             query = self.repair_updater.build_query(
                 workflow=outcome.workflow,
                 repair=repair,
                 state_values=outcome.final_state,
             )
+            if query_plan.ask and query_plan.question_text:
+                query.question = query_plan.question_text
+                query.expected_answer_type = query_plan.question_type
+                query.allowed_response_schema = query_plan.response_schema
+                query.metadata["uncertainty"] = report.primary_label
             reply = self.simulator.reply(query)
             if not self.repair_updater.validate_reply(query, reply):
                 return ExecutionOutcome(

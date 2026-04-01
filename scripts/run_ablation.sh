@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Run the lightweight ablation presets used by the Phase-1 prototype.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

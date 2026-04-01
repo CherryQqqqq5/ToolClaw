@@ -1,3 +1,5 @@
+"""Entry point for baseline vs ToolClaw-lite evaluation over normalized tasksets."""
+
 from __future__ import annotations
 
 import argparse
@@ -5,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 import sys
+from dataclasses import dataclass
 
 # Allow `python3 scripts/run_eval.py ...` from repo root without manual PYTHONPATH.
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -31,6 +34,20 @@ from toolclaw.main import ToolClawRuntime
 from toolclaw.planner.htgp import PlanningRequest, build_default_planner
 from toolclaw.registry import InMemoryAssetRegistry
 from toolclaw.schemas.workflow import Workflow
+
+
+@dataclass
+class EvalConfig:
+    mode: str = "planner"
+    systems: List[str] | None = None
+
+
+@dataclass
+class AblationConfig:
+    planning: bool = True
+    skill: bool = True
+    policy: bool = True
+    interactive: bool = True
 
 
 def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workflow:
@@ -82,7 +99,30 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--taskset", type=existing_json_path, required=True, help="Path to taskset JSON")
     parser.add_argument("--outdir", default="outputs/eval", help="Output directory")
     parser.add_argument("--mode", choices=["demo", "planner"], default="planner", help="Workflow source mode")
+    parser.add_argument(
+        "--systems",
+        default="baseline,toolclaw_lite",
+        help="Comma-separated systems to run: baseline,planning,skill,policy,interactive,toolclaw_lite",
+    )
     return parser.parse_args()
+
+
+def build_runtime(shared_registry: InMemoryAssetRegistry) -> ToolClawRuntime:
+    planner = build_default_planner(asset_registry=shared_registry)
+    return ToolClawRuntime(
+        planner=planner,
+        executor=SequentialExecutor(),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=shared_registry,
+    )
+
+
+def build_planning_request_for_system(workflow: Workflow, system: str) -> PlanningRequest:
+    request = PlanningRequest(task=workflow.task, context=workflow.context, policy=workflow.policy)
+    if system in {"baseline", "planning"}:
+        request.hints.reusable_asset_ids = []
+    return request
 
 
 def main() -> None:
@@ -91,14 +131,9 @@ def main() -> None:
     outdir = Path(args.outdir)
     traces_dir = outdir / "traces"
     rows: List[EvalRow] = []
-    planner = build_default_planner(asset_registry=InMemoryAssetRegistry())
-    runtime = ToolClawRuntime(
-        planner=planner,
-        executor=SequentialExecutor(),
-        repair_updater=RepairUpdater(),
-        compiler=SWPCCompiler(),
-        asset_registry=InMemoryAssetRegistry(),
-    )
+    systems = [item.strip() for item in args.systems.split(",") if item.strip()]
+    shared_registry = InMemoryAssetRegistry()
+    runtime = build_runtime(shared_registry)
 
     tasks = json.loads(taskset_path.read_text(encoding="utf-8"))
     if not isinstance(tasks, list):
@@ -109,64 +144,70 @@ def main() -> None:
         task_id = str(task["task_id"])
         scenario = str(task.get("scenario", "success"))
 
-        baseline_trace_path = traces_dir / f"{idx:03d}_{task_id}_baseline.json"
-        baseline_trace, baseline_stop = run_baseline(
-            workflow=build_workflow_from_task(task, mode=args.mode),
-            run_id=f"baseline_{task_id}",
-            output_path=baseline_trace_path,
-        )
-        rows.append(
-            EvalRow(
-                task_id=task_id,
-                system="baseline",
-                scenario=scenario,
-                success=bool(baseline_trace.metrics.success),
-                tool_calls=baseline_trace.metrics.tool_calls,
-                repair_actions=baseline_trace.metrics.repair_actions,
-                total_steps=baseline_trace.metrics.total_steps,
-                stop_reason=baseline_stop,
-                trace_path=str(baseline_trace_path),
+        if "baseline" in systems:
+            baseline_trace_path = traces_dir / f"{idx:03d}_{task_id}_baseline.json"
+            baseline_trace, baseline_stop = run_baseline(
+                workflow=build_workflow_from_task(task, mode=args.mode),
+                run_id=f"baseline_{task_id}",
+                output_path=baseline_trace_path,
             )
-        )
-
-        toolclaw_trace_path = traces_dir / f"{idx:03d}_{task_id}_toolclaw_lite.json"
-        policy_cfg = task.get("simulated_policy", {})
-        shell = InteractionShell(
-            runtime=runtime,
-            config=InteractionLoopConfig(
-                simulator_policy=SimulatedPolicy(
-                    mode=policy_cfg.get("mode", "cooperative"),
-                    missing_arg_values=policy_cfg.get("missing_arg_values", {}),
-                    backup_tool_preferences=policy_cfg.get("backup_tool_preferences", {}),
+            rows.append(
+                EvalRow(
+                    task_id=task_id,
+                    system="baseline",
+                    scenario=scenario,
+                    success=bool(baseline_trace.metrics.success),
+                    tool_calls=baseline_trace.metrics.tool_calls,
+                    repair_actions=baseline_trace.metrics.repair_actions,
+                    total_steps=baseline_trace.metrics.total_steps,
+                    stop_reason=baseline_stop,
+                    trace_path=str(baseline_trace_path),
                 )
-            ),
-        )
-        planning_request = PlanningRequest(
-            task=workflow.task,
-            context=workflow.context,
-            policy=workflow.policy,
-        )
-        shell.run(
-            request=planning_request,
-            run_id=f"toolclaw_{task_id}",
-            output_path=str(toolclaw_trace_path),
-        )
-        trace_payload = json.loads(toolclaw_trace_path.read_text(encoding="utf-8"))
-        stop_event = next((e for e in reversed(trace_payload["events"]) if e["event_type"] == "stop"), None)
-        toolclaw_stop = stop_event["output"].get("reason", "unknown") if stop_event and isinstance(stop_event.get("output"), dict) else "unknown"
-        rows.append(
-            EvalRow(
-                task_id=task_id,
-                system="toolclaw_lite",
-                scenario=scenario,
-                success=bool(trace_payload["metrics"]["success"]),
-                tool_calls=int(trace_payload["metrics"]["tool_calls"]),
-                repair_actions=int(trace_payload["metrics"]["repair_actions"]),
-                total_steps=int(trace_payload["metrics"]["total_steps"]),
-                stop_reason=toolclaw_stop,
-                trace_path=str(toolclaw_trace_path),
             )
-        )
+
+        for system in [s for s in systems if s != "baseline"]:
+            system_trace_path = traces_dir / f"{idx:03d}_{task_id}_{system}.json"
+            policy_cfg = task.get("simulated_policy", {})
+            shell = InteractionShell(
+                runtime=runtime,
+                config=InteractionLoopConfig(
+                    simulator_policy=SimulatedPolicy(
+                        mode=policy_cfg.get("mode", "cooperative"),
+                        missing_arg_values=policy_cfg.get("missing_arg_values", {}),
+                        backup_tool_preferences=policy_cfg.get("backup_tool_preferences", {}),
+                    )
+                ),
+            )
+            planning_request = build_planning_request_for_system(workflow, system)
+            if system == "planning":
+                runtime.executor.run_until_blocked(
+                    workflow=workflow,
+                    run_id=f"{system}_{task_id}",
+                    output_path=str(system_trace_path),
+                    backup_tool_map=task.get("backup_tool_map", {}),
+                )
+            else:
+                shell.run(
+                    request=planning_request,
+                    run_id=f"{system}_{task_id}",
+                    output_path=str(system_trace_path),
+                )
+            trace_payload = json.loads(system_trace_path.read_text(encoding="utf-8"))
+            stop_event = next((e for e in reversed(trace_payload["events"]) if e["event_type"] == "stop"), None)
+            stop_reason = stop_event["output"].get("reason", "unknown") if stop_event and isinstance(stop_event.get("output"), dict) else "unknown"
+            rows.append(
+                EvalRow(
+                    task_id=task_id,
+                    system=system,
+                    scenario=scenario,
+                    success=bool(trace_payload["metrics"]["success"]),
+                    tool_calls=int(trace_payload["metrics"]["tool_calls"]),
+                    repair_actions=int(trace_payload["metrics"]["repair_actions"]),
+                    total_steps=int(trace_payload["metrics"]["total_steps"]),
+                    stop_reason=stop_reason,
+                    trace_path=str(system_trace_path),
+                )
+            )
 
     csv_path = outdir / "comparison.csv"
     report_path = outdir / "report.md"

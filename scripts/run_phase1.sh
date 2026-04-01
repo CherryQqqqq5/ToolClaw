@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Run the default Phase-1 experiment configuration against a taskset.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

@@ -1,3 +1,5 @@
+"""Convert user replies into workflow, policy, and binding patches for resumption."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -32,6 +34,9 @@ class ResumePatch:
     resume_step_id: str
     state_updates: Dict[str, Any] = field(default_factory=dict)
     policy_updates: Dict[str, Any] = field(default_factory=dict)
+    graph_patch: Dict[str, Any] = field(default_factory=dict)
+    binding_patch: Dict[str, Any] = field(default_factory=dict)
+    missing_asset_patch: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -57,6 +62,7 @@ class RepairUpdater:
                 "properties": {
                     "target_path": {"type": "string"},
                     "tool_id": {"type": "string"},
+                    "approved": {"type": "boolean"},
                     "abort": {"type": "boolean"},
                 },
             },
@@ -71,11 +77,20 @@ class RepairUpdater:
     ) -> ResumePatch:
         _ = state_values
         state_updates = dict(reply.payload)
+        binding_patch = {}
+        policy_updates = {}
+        if "tool_id" in reply.payload:
+            binding_patch["tool_id"] = reply.payload["tool_id"]
+        if "approved" in reply.payload:
+            policy_updates["approved"] = bool(reply.payload["approved"])
         resume_step_id = self._resolve_repair_step_id(workflow=workflow, repair=repair)
         return ResumePatch(
             workflow=workflow,
             resume_step_id=resume_step_id,
             state_updates=state_updates,
+            policy_updates=policy_updates,
+            binding_patch=binding_patch,
+            missing_asset_patch={k: v for k, v in reply.payload.items() if k not in {"tool_id", "approved", "abort"}},
             metadata={"interaction_id": reply.interaction_id, "accepted": reply.accepted},
         )
 
@@ -89,6 +104,10 @@ class RepairUpdater:
         if not reply.accepted:
             return False
         return isinstance(reply.payload, dict)
+
+    def apply_reply_to_workflow(self, workflow: Workflow, resume_patch: ResumePatch) -> Workflow:
+        workflow.patch_with_resume(resume_patch)
+        return workflow
 
     @staticmethod
     def _resolve_repair_step_id(workflow: Workflow, repair: Repair) -> str:

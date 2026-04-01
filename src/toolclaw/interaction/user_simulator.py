@@ -1,3 +1,5 @@
+"""Synthetic user policies used in Phase-1 to emulate feedback during blocked runs."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -11,6 +13,9 @@ class SimulatedPolicy:
     mode: str = "cooperative"  # cooperative | strict | abortive
     missing_arg_values: Dict[str, Any] = field(default_factory=dict)
     backup_tool_preferences: Dict[str, str] = field(default_factory=dict)
+    approval_responses: Dict[str, bool] = field(default_factory=dict)
+    constraint_overrides: Dict[str, Any] = field(default_factory=dict)
+    tool_switch_hints: Dict[str, str] = field(default_factory=dict)
 
 
 class UserSimulator:
@@ -28,6 +33,10 @@ class UserSimulator:
 
         payload: Dict[str, Any] = {}
         payload.update(self.policy.missing_arg_values)
+        payload.update(self.policy.constraint_overrides)
+        payload.update(self.policy.tool_switch_hints)
+        if "approval" in request.expected_answer_type or "approve" in request.question.lower():
+            payload["approved"] = self.policy.approval_responses.get(request.interaction_id, True)
 
         if self.policy.mode == "strict" and not payload:
             payload = {"abort": True}

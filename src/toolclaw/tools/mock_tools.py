@@ -1,3 +1,5 @@
+"""Mock tools used by the prototype to exercise selection, repair, and replanning flows."""
+
 from __future__ import annotations
 
 from typing import Any, Callable, Dict
@@ -39,10 +41,16 @@ def _backup_write_tool(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _ordering_write_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    _ = args
+    raise ToolExecutionError("dependency order violated for write operation")
+
+
 MOCK_TOOL_REGISTRY: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
     "search_tool": _search_tool,
     "write_tool": _write_tool,
     "backup_write_tool": _backup_write_tool,
+    "ordering_write_tool": _ordering_write_tool,
 }
 
 

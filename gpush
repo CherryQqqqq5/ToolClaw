@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Stage, commit, and push the current branch with the ToolClaw git defaults.
+
+set -euo pipefail
+
+SOURCE_PATH="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE_PATH" ]; do
+  LINK_TARGET="$(readlink "$SOURCE_PATH")"
+  if [[ "$LINK_TARGET" == /* ]]; then
+    SOURCE_PATH="$LINK_TARGET"
+  else
+    SOURCE_DIR="$(cd "$(dirname "$SOURCE_PATH")" && pwd)"
+    SOURCE_PATH="$SOURCE_DIR/$LINK_TARGET"
+  fi
+done
+
+ROOT_DIR="$(cd "$(dirname "$SOURCE_PATH")" && pwd)"
+source "$ROOT_DIR/scripts/git_helpers.sh"
+
+cd "$ROOT_DIR"
+toolclaw_require_git_repo
+toolclaw_ensure_identity
+toolclaw_ensure_origin
+
+COMMIT_MESSAGE="${1:-}"
+BRANCH="${2:-$(toolclaw_current_branch)}"
+
+if [[ -z "$COMMIT_MESSAGE" ]]; then
+  COMMIT_MESSAGE="chore: sync local updates"
+fi
+
+if [[ -n "$(git status --porcelain)" ]]; then
+  git add -A
+  # Avoid creating an empty commit when all staged changes were already committed elsewhere.
+  if ! git diff --cached --quiet; then
+    git commit -m "$COMMIT_MESSAGE"
+  fi
+fi
+
+git push -u origin "$BRANCH"
+toolclaw_print_repo_config

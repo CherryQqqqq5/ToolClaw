@@ -1,3 +1,5 @@
+"""Top-level runtime facade that wires planning, execution, interaction, and reuse."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,6 +21,9 @@ class ToolClawRuntime:
     compiler: SWPCCompiler
     asset_registry: AssetRegistry
 
+    def __post_init__(self) -> None:
+        self.executor.planner = self.planner
+
     def run_task(
         self,
         request: PlanningRequest,
@@ -33,6 +38,17 @@ class ToolClawRuntime:
         )
         self._compile_and_store_if_success(outcome)
         return outcome
+
+    def run_task_with_reuse(
+        self,
+        request: PlanningRequest,
+        run_id: str,
+        output_path: str,
+    ) -> ExecutionOutcome:
+        if not request.hints.reusable_asset_ids and self.asset_registry:
+            signature = f"phase1::{request.task.user_goal.lower().strip().replace(' ', '_')}"
+            request.hints.reusable_asset_ids = [match.asset_id for match in self.asset_registry.query(signature)]
+        return self.run_task(request=request, run_id=run_id, output_path=output_path)
 
     def resume_task(
         self,

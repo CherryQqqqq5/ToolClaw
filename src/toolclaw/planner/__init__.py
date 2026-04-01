@@ -23,3 +23,4 @@ __all__ = [
     "RuleBasedCapabilitySelector",
     "build_default_planner",
 ]
+"""Planner package for capability discovery, graph building, and tool binding."""

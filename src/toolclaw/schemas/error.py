@@ -1,3 +1,5 @@
+"""Schema definitions for classified ToolClaw failures and recovery context."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -20,6 +22,7 @@ class ErrorCategory(str, Enum):
     ORDERING_FAILURE = "ordering_failure"
     STATE_FAILURE = "state_failure"
     CONSTRAINT_FAILURE = "constraint_failure"
+    POLICY_FAILURE = "policy_failure"
     PERMISSION_FAILURE = "permission_failure"
     ENVIRONMENT_FAILURE = "environment_failure"
     INTERACTION_FAILURE = "interaction_failure"
@@ -41,6 +44,17 @@ class ErrorStage(str, Enum):
     RECOVERY = "recovery"
 
 
+class FailTaxLabel(str, Enum):
+    SELECTION_FAILURE = "selection_failure"
+    BINDING_FAILURE = "binding_failure"
+    ORDERING_FAILURE = "ordering_failure"
+    STATE_FAILURE = "state_failure"
+    POLICY_FAILURE = "policy_failure"
+    PERMISSION_FAILURE = "permission_failure"
+    ENVIRONMENT_FAILURE = "environment_failure"
+    RECOVERY_FAILURE = "recovery_failure"
+
+
 @dataclass
 class ErrorEvidence:
     tool_id: Optional[str] = None
@@ -49,6 +63,14 @@ class ErrorEvidence:
     related_events: List[str] = field(default_factory=list)
     inputs: Dict[str, Any] = field(default_factory=dict)
     outputs: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class RootCauseHint:
+    label: str
+    confidence: float = 0.0
+    rationale: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -68,6 +90,19 @@ class Recoverability:
     requires_tool_switch: bool = False
     requires_rollback: bool = False
     requires_approval: bool = False
+
+
+@dataclass
+class FailureRecord:
+    failtax_label: FailTaxLabel
+    category: ErrorCategory
+    subtype: str = "unknown"
+    step_id: Optional[str] = None
+    tool_id: Optional[str] = None
+    root_cause: Optional[str] = None
+    recoverable: bool = True
+    evidence: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

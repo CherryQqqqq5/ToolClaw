@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Pull the current branch with rebase/autostash after enforcing ToolClaw git defaults.
+
+set -euo pipefail
+
+SOURCE_PATH="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE_PATH" ]; do
+  LINK_TARGET="$(readlink "$SOURCE_PATH")"
+  if [[ "$LINK_TARGET" == /* ]]; then
+    SOURCE_PATH="$LINK_TARGET"
+  else
+    SOURCE_DIR="$(cd "$(dirname "$SOURCE_PATH")" && pwd)"
+    SOURCE_PATH="$SOURCE_DIR/$LINK_TARGET"
+  fi
+done
+
+ROOT_DIR="$(cd "$(dirname "$SOURCE_PATH")" && pwd)"
+source "$ROOT_DIR/scripts/git_helpers.sh"
+
+cd "$ROOT_DIR"
+toolclaw_require_git_repo
+toolclaw_ensure_identity
+toolclaw_ensure_origin
+
+BRANCH="${1:-$(toolclaw_current_branch)}"
+
+git fetch origin "$BRANCH"
+git pull --rebase --autostash origin "$BRANCH"
+toolclaw_print_repo_config

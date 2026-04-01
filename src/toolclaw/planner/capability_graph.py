@@ -1,3 +1,5 @@
+"""Rule-based capability graph construction from planner candidates and templates."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

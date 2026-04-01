@@ -1,7 +1,17 @@
+"""Runtime state container for completed steps, checkpoints, and transient values."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
+
+@dataclass
+class CheckpointState:
+    checkpoint_id: str
+    completed_steps: List[str] = field(default_factory=list)
+    failed_steps: List[str] = field(default_factory=list)
+    state_values: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -12,6 +22,7 @@ class StateTracker:
     completed_steps: List[str] = field(default_factory=list)
     failed_steps: List[str] = field(default_factory=list)
     state_values: Dict[str, Any] = field(default_factory=dict)
+    checkpoints: Dict[str, CheckpointState] = field(default_factory=dict)
 
     def set_current_step(self, step_id: Optional[str]) -> None:
         self.current_step_id = step_id
@@ -36,3 +47,29 @@ class StateTracker:
             "failed_steps": list(self.failed_steps),
             "state_values": dict(self.state_values),
         }
+
+    def save_checkpoint(self, checkpoint_id: str) -> None:
+        self.checkpoints[checkpoint_id] = CheckpointState(
+            checkpoint_id=checkpoint_id,
+            completed_steps=list(self.completed_steps),
+            failed_steps=list(self.failed_steps),
+            state_values=dict(self.state_values),
+        )
+
+    def restore_checkpoint(self, checkpoint_id: str) -> bool:
+        checkpoint = self.checkpoints.get(checkpoint_id)
+        if checkpoint is None:
+            return False
+        self.completed_steps = list(checkpoint.completed_steps)
+        self.failed_steps = list(checkpoint.failed_steps)
+        self.state_values = dict(checkpoint.state_values)
+        self.current_step_id = None
+        return True
+
+    def update_policy_state(self, patch: Dict[str, Any]) -> None:
+        self.state_values.update(patch)
+
+    def register_missing_asset(self, asset_key: str) -> None:
+        self.state_values.setdefault("__missing_assets__", [])
+        if asset_key not in self.state_values["__missing_assets__"]:
+            self.state_values["__missing_assets__"].append(asset_key)

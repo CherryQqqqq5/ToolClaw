@@ -1,3 +1,5 @@
+"""Trace schema for step events, snapshots, policy checks, and run-level metrics."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -17,6 +19,8 @@ class RunMode(str, Enum):
 
 class EventType(str, Enum):
     PLAN_GENERATED = "plan_generated"
+    PREFLIGHT_CHECK = "preflight_check"
+    POLICY_CHECK = "policy_check"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
     USER_QUERY = "user_query"
@@ -26,7 +30,10 @@ class EventType(str, Enum):
     REPAIR_TRIGGERED = "repair_triggered"
     REPAIR_APPLIED = "repair_applied"
     CHECKPOINT_SAVED = "checkpoint_saved"
+    CHECKPOINT_CREATED = "checkpoint_created"
     ROLLBACK = "rollback"
+    REPLAN_TRIGGERED = "replan_triggered"
+    REPLAN_APPLIED = "replan_applied"
     STOP = "stop"
     ABORT = "abort"
 
@@ -46,6 +53,30 @@ class PolicyState:
     approval_pending: bool = False
     risk_level: str = "medium"
     budget_remaining: Optional[float] = None
+
+
+@dataclass
+class PolicyEvent:
+    rule_id: Optional[str] = None
+    decision: str = "allow"
+    rationale: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class CheckpointRecord:
+    checkpoint_id: str
+    step_id: Optional[str] = None
+    reason: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class CostMetrics:
+    estimated_cost: float = 0.0
+    actual_cost: float = 0.0
+    estimated_latency_ms: int = 0
+    actual_latency_ms: int = 0
 
 
 @dataclass

@@ -1,3 +1,5 @@
+"""CSV/report helpers for comparing systems on normalized evaluation outputs."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

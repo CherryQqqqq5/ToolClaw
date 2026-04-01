@@ -1,3 +1,5 @@
+"""Translate classified failures into concrete repair plans for the executor."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,6 +7,7 @@ from typing import Optional
 
 from toolclaw.schemas.error import ToolClawError, ErrorCategory
 from toolclaw.schemas.repair import (
+    PolicyPatch,
     Repair,
     RepairAction,
     RepairActionType,
@@ -32,6 +35,7 @@ class RecoveryEngine:
     Currently supported mappings:
     1. binding_failure -> rebind_args
     2. environment_failure -> switch_tool / ask_user
+    3. policy_failure -> request_approval
     """
 
     def __init__(self, config: Optional[RecoveryConfig] = None) -> None:
@@ -50,6 +54,10 @@ class RecoveryEngine:
                 error=error,
                 backup_tool_id=backup_tool_id,
             )
+        if error.category == ErrorCategory.POLICY_FAILURE:
+            return self._repair_policy_failure(error)
+        if error.category in {ErrorCategory.ORDERING_FAILURE, ErrorCategory.STATE_FAILURE, ErrorCategory.PERMISSION_FAILURE, ErrorCategory.RECOVERY_FAILURE}:
+            return self._repair_replan_or_rollback(error)
 
         raise NotImplementedError(
             f"Phase-1 recovery currently does not support category={error.category.value}"
@@ -248,4 +256,69 @@ class RecoveryEngine:
 
         raise NotImplementedError(
             "Environment failure occurred without backup tool, and ask_user fallback is disabled."
+        )
+
+    def _repair_policy_failure(self, error: ToolClawError) -> Repair:
+        step_id = error.step_id or "unknown_step"
+        return Repair(
+            repair_id=f"rep_{error.error_id}",
+            run_id=error.run_id,
+            workflow_id=error.workflow_id,
+            triggered_error_ids=[error.error_id],
+            repair_type=RepairType.REQUEST_APPROVAL,
+            decision=RepairDecision(
+                strategy=RepairStrategy.USER_IN_THE_LOOP,
+                rationale="Policy gate requires explicit approval before execution can continue.",
+                confidence=0.9,
+            ),
+            actions=[
+                RepairAction(
+                    action_id=f"act_approve_{error.error_id}",
+                    action_type=RepairActionType.REQUEST_APPROVAL,
+                    target=step_id,
+                )
+            ],
+            interaction=RepairInteraction(
+                ask_user=True,
+                question=f"Step {step_id} requires approval due to policy constraints. Approve execution?",
+                expected_answer_type="approval",
+                user_response=None,
+            ),
+            workflow_patch=WorkflowPatch(modified_steps=[step_id] if error.step_id else []),
+            policy_patch=PolicyPatch(approval_pending=True),
+            post_conditions=RepairPostConditions(
+                expected_effects=["approval decision is recorded", "execution can resume if approved"],
+                stop_if=["user rejects approval"],
+            ),
+            result=RepairResult(status=RepairStatus.PENDING, success=None),
+            metadata={"mapped_from_error_category": error.category.value, "phase": "phase1_training_free"},
+        )
+
+    def _repair_replan_or_rollback(self, error: ToolClawError) -> Repair:
+        step_id = error.step_id or "unknown_step"
+        return Repair(
+            repair_id=f"rep_{error.error_id}",
+            run_id=error.run_id,
+            workflow_id=error.workflow_id,
+            triggered_error_ids=[error.error_id],
+            repair_type=RepairType.REPLAN_SUFFIX,
+            decision=RepairDecision(
+                strategy=RepairStrategy.ROLLBACK_AND_RETRY,
+                rationale="Recover by rolling back to a checkpoint and replanning the remaining suffix.",
+                confidence=0.78,
+            ),
+            actions=[
+                RepairAction(
+                    action_id=f"act_rollback_{error.error_id}",
+                    action_type=RepairActionType.ROLLBACK,
+                    target=step_id,
+                )
+            ],
+            workflow_patch=WorkflowPatch(modified_steps=[step_id]),
+            post_conditions=RepairPostConditions(
+                expected_effects=["rollback restores a safe state", "failed suffix is replanned"],
+                stop_if=["no valid checkpoint exists", "replanned suffix still violates hard constraints"],
+            ),
+            result=RepairResult(status=RepairStatus.PENDING, success=None),
+            metadata={"mapped_from_error_category": error.category.value, "phase": "phase1_training_free"},
         )

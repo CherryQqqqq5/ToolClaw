@@ -2,8 +2,20 @@ import json
 from pathlib import Path
 
 from toolclaw.execution.executor import SequentialExecutor
+from toolclaw.planner.binder import ToolBinder
+from toolclaw.planner.capability_graph import CapabilityTemplateRegistry, RuleBasedCapabilityGraphBuilder
+from toolclaw.planner.htgp import HTGPPlanner, PolicyInjector, RuleBasedCapabilitySelector
 from toolclaw.schemas.trace import EventType
 from toolclaw.schemas.workflow import Workflow
+
+
+def build_planner() -> HTGPPlanner:
+    return HTGPPlanner(
+        capability_selector=RuleBasedCapabilitySelector(),
+        graph_builder=RuleBasedCapabilityGraphBuilder(CapabilityTemplateRegistry()),
+        binder=ToolBinder(),
+        policy_injector=PolicyInjector(),
+    )
 
 
 def test_executor_runs_demo_workflow_and_writes_trace(tmp_path: Path) -> None:
@@ -63,3 +75,24 @@ def test_switch_tool_repair_updates_workflow_state(tmp_path: Path) -> None:
     write_binding = [b for b in workflow.tool_bindings if b.capability_id == "cap_write"][0]
     assert write_binding.primary_tool == "backup_write_tool"
     assert "write_tool" in write_binding.backup_tools
+
+
+def test_executor_rolls_back_and_replans_suffix_when_ordering_failure_occurs(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    workflow.context.candidate_tools.append(type(workflow.context.candidate_tools[1])(tool_id="ordering_write_tool", description="write with wrong order"))
+    workflow.execution_plan[1].tool_id = "ordering_write_tool"
+    write_binding = [b for b in workflow.tool_bindings if b.capability_id == "cap_write"][0]
+    write_binding.primary_tool = "ordering_write_tool"
+
+    trace = SequentialExecutor(planner=build_planner()).run(
+        workflow=workflow,
+        run_id="run_replan_001",
+        output_path=str(tmp_path / "run_replan.json"),
+    )
+
+    assert trace.metrics.success is True
+    payload = json.loads((tmp_path / "run_replan.json").read_text(encoding="utf-8"))
+    event_types = [evt["event_type"] for evt in payload["events"]]
+    assert EventType.ROLLBACK.value in event_types
+    assert EventType.REPLAN_TRIGGERED.value in event_types
+    assert EventType.REPLAN_APPLIED.value in event_types
