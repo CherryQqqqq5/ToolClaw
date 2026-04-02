@@ -422,9 +422,11 @@ class SequentialExecutor:
         run_id: str,
         output_path: str,
         resume_patch: "ResumePatch",
+        backup_tool_map: Optional[Dict[str, str]] = None,
     ) -> ExecutionOutcome:
         workflow = resume_patch.workflow
-        initial_state = dict(resume_patch.state_updates)
+        initial_state = dict(resume_patch.base_state)
+        initial_state.update(resume_patch.state_updates)
         approved_steps = set(initial_state.get("__approved_steps__", []))
         approved_steps.update(initial_state.get("__approved_steps__", []))
         if resume_patch.policy_updates.get("approved"):
@@ -453,6 +455,7 @@ class SequentialExecutor:
             run_id=run_id,
             output_path=output_path,
             start_step_index=start_step_index,
+            backup_tool_map=backup_tool_map,
             initial_state=initial_state,
         )
 

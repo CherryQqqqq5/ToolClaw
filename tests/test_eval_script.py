@@ -94,6 +94,50 @@ def test_run_eval_script_with_planner_mode(tmp_path: Path) -> None:
     assert (outdir / "comparison.csv").exists()
 
 
+def test_run_eval_script_preserves_failure_injection_for_toolclaw_lite(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "task_id": "task_binding_planner_001",
+            "scenario": "binding_failure",
+            "query": "retrieve and write report",
+        },
+        {
+            "task_id": "task_env_planner_001",
+            "scenario": "environment_failure",
+            "query": "retrieve and write report",
+            "backup_tool_map": {"write_tool": "backup_write_tool"},
+        },
+    ]
+    taskset_path = tmp_path / "taskset_failures.json"
+    taskset_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    outdir = tmp_path / "eval_out_failures"
+    cmd = [
+        sys.executable,
+        "scripts/run_eval.py",
+        "--taskset",
+        str(taskset_path),
+        "--outdir",
+        str(outdir),
+        "--mode",
+        "planner",
+    ]
+    completed = subprocess.run(
+        cmd,
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
+    toolclaw_rows = {(row["task_id"], row["system"]): row for row in rows}
+    assert int(toolclaw_rows[("task_binding_planner_001", "toolclaw_lite")]["repair_actions"]) >= 1
+    assert int(toolclaw_rows[("task_env_planner_001", "toolclaw_lite")]["repair_actions"]) >= 1
+
+
 def test_run_eval_script_missing_taskset_shows_clear_error(tmp_path: Path) -> None:
     outdir = tmp_path / "eval_out_missing"
     missing_path = tmp_path / "does_not_exist.json"

@@ -119,7 +119,20 @@ def build_runtime(shared_registry: InMemoryAssetRegistry) -> ToolClawRuntime:
 
 
 def build_planning_request_for_system(workflow: Workflow, system: str) -> PlanningRequest:
-    request = PlanningRequest(task=workflow.task, context=workflow.context, policy=workflow.policy)
+    request = PlanningRequest(
+        task=workflow.task,
+        context=workflow.context,
+        policy=workflow.policy,
+        workflow_overrides={
+            "steps": {
+                step.step_id: {
+                    "inputs": dict(step.inputs),
+                    "tool_id": step.tool_id,
+                }
+                for step in workflow.execution_plan
+            }
+        },
+    )
     if system in {"baseline", "planning"}:
         request.hints.reusable_asset_ids = []
     return request
@@ -191,6 +204,7 @@ def main() -> None:
                     request=planning_request,
                     run_id=f"{system}_{task_id}",
                     output_path=str(system_trace_path),
+                    backup_tool_map=task.get("backup_tool_map", {}),
                 )
             trace_payload = json.loads(system_trace_path.read_text(encoding="utf-8"))
             stop_event = next((e for e in reversed(trace_payload["events"]) if e["event_type"] == "stop"), None)

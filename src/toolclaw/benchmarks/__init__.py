@@ -9,6 +9,7 @@ from toolclaw.benchmarks.adapters import (
     Tau2BenchAdapter,
     TauBenchAdapter,
 )
+from toolclaw.integrations.tau3 import Tau3BenchAdapter
 
 __all__ = [
     "BenchmarkAdapter",
@@ -17,5 +18,6 @@ __all__ = [
     "BFCLAdapter",
     "TauBenchAdapter",
     "Tau2BenchAdapter",
+    "Tau3BenchAdapter",
     "MCPRadarAdapter",
 ]

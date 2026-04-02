@@ -43,8 +43,14 @@ class InteractionShell:
         request: PlanningRequest,
         run_id: str,
         output_path: str,
+        backup_tool_map: Optional[Dict[str, str]] = None,
     ) -> ExecutionOutcome:
-        outcome = self.runtime.run_task(request=request, run_id=run_id, output_path=output_path)
+        outcome = self.runtime.run_task(
+            request=request,
+            run_id=run_id,
+            output_path=output_path,
+            backup_tool_map=backup_tool_map,
+        )
         turns = 0
 
         while outcome.blocked and outcome.pending_interaction and turns < self.config.max_turns:
@@ -86,6 +92,8 @@ class InteractionShell:
                 reply=reply,
                 run_id=run_id,
                 output_path=output_path,
+                backup_tool_map=backup_tool_map,
+                state_values=outcome.final_state,
             )
 
         if outcome.blocked:

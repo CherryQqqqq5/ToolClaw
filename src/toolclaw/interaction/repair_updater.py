@@ -32,6 +32,7 @@ class UserReply:
 class ResumePatch:
     workflow: Workflow
     resume_step_id: str
+    base_state: Dict[str, Any] = field(default_factory=dict)
     state_updates: Dict[str, Any] = field(default_factory=dict)
     policy_updates: Dict[str, Any] = field(default_factory=dict)
     graph_patch: Dict[str, Any] = field(default_factory=dict)
@@ -87,6 +88,7 @@ class RepairUpdater:
         return ResumePatch(
             workflow=workflow,
             resume_step_id=resume_step_id,
+            base_state=dict(state_values),
             state_updates=state_updates,
             policy_updates=policy_updates,
             binding_patch=binding_patch,

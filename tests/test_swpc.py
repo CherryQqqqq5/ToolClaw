@@ -58,7 +58,10 @@ def test_registry_retrieval_feeds_planner_hints() -> None:
     matches = registry.query(snippet.task_signature)
     request = PlanningRequest(
         task=TaskSpec(task_id="task_reuse_001", user_goal=Workflow.demo().task.user_goal, constraints=TaskConstraints()),
-        context=WorkflowContext(candidate_tools=[ToolSpec(tool_id="search_tool", description="search"), ToolSpec(tool_id="write_tool", description="write")]),
+        context=WorkflowContext(
+            environment=Workflow.demo().context.environment,
+            candidate_tools=[ToolSpec(tool_id="search_tool", description="search"), ToolSpec(tool_id="write_tool", description="write")],
+        ),
         hints=PlanningHints(reusable_asset_ids=[m.asset_id for m in matches]),
     )
     result = planner.plan(request)
@@ -89,7 +92,10 @@ def test_second_run_uses_compiled_asset_and_reduces_repairs(tmp_path: Path) -> N
     matches = registry.query(snippet.task_signature)
     request = PlanningRequest(
         task=TaskSpec(task_id="task_reuse_002", user_goal=Workflow.demo().task.user_goal, constraints=TaskConstraints()),
-        context=WorkflowContext(candidate_tools=[ToolSpec(tool_id="search_tool", description="search"), ToolSpec(tool_id="write_tool", description="write")]),
+        context=WorkflowContext(
+            environment=Workflow.demo().context.environment,
+            candidate_tools=[ToolSpec(tool_id="search_tool", description="search"), ToolSpec(tool_id="write_tool", description="write")],
+        ),
         hints=PlanningHints(reusable_asset_ids=[m.asset_id for m in matches]),
     )
     planned = planner.plan(request).workflow

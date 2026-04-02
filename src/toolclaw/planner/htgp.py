@@ -61,6 +61,7 @@ class PlanningRequest:
     policy: Optional[WorkflowPolicy] = None
     hints: PlanningHints = field(default_factory=PlanningHints)
     planner_mode: str = "phase1_rule_based"
+    workflow_overrides: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -190,11 +191,52 @@ class PolicyInjector:
         if not policy:
             return graph
 
-        gated_capabilities = {rule.trigger for rule in policy.approval_rules if rule.action == "ask_user"}
         for capability in graph.capabilities:
-            if capability.capability_id in gated_capabilities and "requires_approval" not in capability.preconditions:
+            if self._requires_approval(task=task, capability=capability, policy=policy) and "requires_approval" not in capability.preconditions:
                 capability.preconditions.append("requires_approval")
         return graph
+
+    @staticmethod
+    def _requires_approval(
+        task: TaskSpec,
+        capability: CapabilityNode,
+        policy: WorkflowPolicy,
+    ) -> bool:
+        for rule in policy.approval_rules:
+            if rule.action != "ask_user":
+                continue
+            if PolicyInjector._trigger_matches(rule.trigger, task=task, capability=capability):
+                return True
+        return False
+
+    @staticmethod
+    def _trigger_matches(
+        trigger: str,
+        task: TaskSpec,
+        capability: CapabilityNode,
+    ) -> bool:
+        normalized = trigger.strip().lower()
+        if not normalized:
+            return False
+        if normalized in {"always", "*"}:
+            return True
+        if normalized == capability.capability_id.lower():
+            return True
+        if normalized in capability.description.lower():
+            return True
+        if "==" not in normalized:
+            return False
+
+        lhs, rhs = [part.strip() for part in normalized.split("==", 1)]
+        rhs = rhs.strip("'\"")
+        if lhs == "risk_level":
+            return task.constraints.risk_level.value == rhs
+        if lhs == "capability_id":
+            return capability.capability_id.lower() == rhs
+        if lhs == "requires_user_approval":
+            expected = rhs in {"true", "1", "yes"}
+            return bool(task.constraints.requires_user_approval) is expected
+        return False
 
     def compile_execution_plan(
         self,
@@ -229,7 +271,11 @@ class PolicyInjector:
                     inputs=inputs,
                     expected_output=expected_output,
                     checkpoint=True,
-                    metadata={"policy_gate": "default_phase1"},
+                    requires_user_confirmation=("requires_approval" in capability.preconditions),
+                    metadata={
+                        "policy_gate": "default_phase1",
+                        "requires_approval": "requires_approval" in capability.preconditions,
+                    },
                 )
             )
         return steps
@@ -331,6 +377,7 @@ class HTGPPlanner:
             policy=request.policy or Workflow.demo().policy,
             metadata={"planner_mode": request.planner_mode},
         )
+        self._apply_request_overrides(workflow, request.workflow_overrides)
 
         artifact = PlanningArtifact(
             capability_graph=graph,
@@ -402,6 +449,38 @@ class HTGPPlanner:
         if error.evidence.tool_id:
             result.diagnostics.rejected_tools[error.evidence.tool_id] = "failed_in_previous_run"
         return result
+
+    @staticmethod
+    def _apply_request_overrides(workflow: Workflow, overrides: Dict[str, Dict[str, Any]]) -> None:
+        if not overrides:
+            return
+
+        step_overrides = overrides.get("steps", {})
+        if not isinstance(step_overrides, dict):
+            return
+
+        graph_nodes = {node.node_id: node for node in workflow.workflow_graph.nodes}
+        bindings_by_capability = {binding.capability_id: binding for binding in workflow.tool_bindings}
+        for step in workflow.execution_plan:
+            patch = step_overrides.get(step.step_id)
+            if not isinstance(patch, dict):
+                continue
+
+            if "inputs" in patch and isinstance(patch["inputs"], dict):
+                step.inputs = dict(patch["inputs"])
+                node = graph_nodes.get(step.step_id)
+                if node is not None:
+                    node.inputs = dict(step.inputs)
+
+            if "tool_id" in patch:
+                step.tool_id = patch["tool_id"]
+                node = graph_nodes.get(step.step_id)
+                if node is not None:
+                    node.selected_tool = step.tool_id
+                    node.tool_candidates = [step.tool_id] if step.tool_id else []
+                binding = bindings_by_capability.get(step.capability_id)
+                if binding is not None and step.tool_id:
+                    binding.primary_tool = step.tool_id
 
     def _load_reusable_profile(self, request: PlanningRequest) -> Dict[str, Any]:
         profile: Dict[str, Any] = {"capability_order": [], "recommended_bindings": {}}

@@ -7,7 +7,7 @@ from toolclaw.planner.htgp import (
 )
 from toolclaw.planner.binder import ToolBinder
 from toolclaw.planner.capability_graph import CapabilityTemplateRegistry, RuleBasedCapabilityGraphBuilder
-from toolclaw.schemas.workflow import TaskConstraints, TaskSpec, ToolSpec, WorkflowContext
+from toolclaw.schemas.workflow import PolicyRule, RiskLevel, TaskConstraints, TaskSpec, ToolSpec, WorkflowContext, WorkflowPolicy
 
 
 def build_planner() -> HTGPPlanner:
@@ -69,3 +69,28 @@ def test_planner_injects_checkpoint_and_policy_gates() -> None:
 
     assert all(step.checkpoint for step in result.workflow.execution_plan)
     assert all("policy_gate" in step.metadata for step in result.workflow.execution_plan)
+
+
+def test_planner_injects_approval_gate_from_policy_expression() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(
+            task_id="task_004",
+            user_goal="retrieve and write report",
+            constraints=TaskConstraints(risk_level=RiskLevel.HIGH),
+        ),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+            ]
+        ),
+        policy=WorkflowPolicy(
+            approval_rules=[PolicyRule(rule_id="apr_high_risk", trigger="risk_level == high", action="ask_user")]
+        ),
+    )
+
+    result = planner.plan(request)
+
+    assert all(step.requires_user_confirmation for step in result.workflow.execution_plan)
+    assert all(step.metadata["requires_approval"] is True for step in result.workflow.execution_plan)

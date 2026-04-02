@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Dict, Optional
 
 from toolclaw.compiler.swpc import SWPCCompiler
 from toolclaw.execution.executor import ExecutionOutcome, SequentialExecutor
@@ -29,12 +30,14 @@ class ToolClawRuntime:
         request: PlanningRequest,
         run_id: str,
         output_path: str,
+        backup_tool_map: Optional[Dict[str, str]] = None,
     ) -> ExecutionOutcome:
         plan_result = self.planner.plan(request)
         outcome = self.executor.run_until_blocked(
             workflow=plan_result.workflow,
             run_id=run_id,
             output_path=output_path,
+            backup_tool_map=backup_tool_map,
         )
         self._compile_and_store_if_success(outcome)
         return outcome
@@ -44,11 +47,17 @@ class ToolClawRuntime:
         request: PlanningRequest,
         run_id: str,
         output_path: str,
+        backup_tool_map: Optional[Dict[str, str]] = None,
     ) -> ExecutionOutcome:
         if not request.hints.reusable_asset_ids and self.asset_registry:
             signature = f"phase1::{request.task.user_goal.lower().strip().replace(' ', '_')}"
             request.hints.reusable_asset_ids = [match.asset_id for match in self.asset_registry.query(signature)]
-        return self.run_task(request=request, run_id=run_id, output_path=output_path)
+        return self.run_task(
+            request=request,
+            run_id=run_id,
+            output_path=output_path,
+            backup_tool_map=backup_tool_map,
+        )
 
     def resume_task(
         self,
@@ -57,18 +66,21 @@ class ToolClawRuntime:
         reply: UserReply,
         run_id: str,
         output_path: str,
+        backup_tool_map: Optional[Dict[str, str]] = None,
+        state_values: Optional[Dict[str, object]] = None,
     ) -> ExecutionOutcome:
         resume_patch = self.repair_updater.ingest_reply(
             workflow=workflow,
             repair=repair,
             reply=reply,
-            state_values={},
+            state_values=dict(state_values or {}),
         )
         outcome = self.executor.resume_from_patch(
             workflow=workflow,
             run_id=run_id,
             output_path=output_path,
             resume_patch=resume_patch,
+            backup_tool_map=backup_tool_map,
         )
         self._compile_and_store_if_success(outcome)
         return outcome
