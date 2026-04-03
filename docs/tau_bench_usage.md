@@ -83,3 +83,26 @@
   }
 ]
 ```
+
+
+## 6) 一键下载并对齐到 ToolClaw 接口（新增）
+
+如果你希望直接在本地生成可被 `scripts/run_tau_bench.py --source` 消费的数据，可以用：
+
+```bash
+python3 scripts/prepare_tau_bench_source.py \
+  --tau-repo-dir data/external/tau-bench \
+  --out data/tau_bench/tau_bench.aligned.jsonl \
+  --download-if-missing
+```
+
+说明：
+
+- 脚本会在 `--tau-repo-dir` 不存在时自动从官方仓库下载 zip。
+- 脚本会读取 `retail/airline` 的 `train/test` 任务文件，并转换成 ToolClaw `TauBenchAdapter` 可直接加载的 JSONL（每行一条样本）。
+- 生成后即可直接运行：
+
+```bash
+scripts/run_tau_bench_remote.sh data/tau_bench/tau_bench.aligned.jsonl outputs/tau_bench_remote planner baseline,toolclaw_lite smoke 1
+```
+
