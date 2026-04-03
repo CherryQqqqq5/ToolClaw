@@ -1,0 +1,6 @@
+wrote: outputs/tau_bench_remote/runs/run_01/comparison.csv
+wrote: outputs/tau_bench_remote/runs/run_01/report.md
+prepared tau-bench taskset: outputs/tau_bench_remote/prepared/tau_bench.normalized.json
+outputs written under: outputs/tau_bench_remote
+scoreboard: outputs/tau_bench_remote/scoreboard.json
+per-system summary: outputs/tau_bench_remote/per_system_summary.json

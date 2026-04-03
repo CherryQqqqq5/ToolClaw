@@ -1,0 +1,983 @@
+{
+  "benchmark": "tau_bench",
+  "source": "/cephfs/qiuyn/ToolClaw/data/tau_bench/tau_bench.aligned.jsonl",
+  "normalized_taskset": "/cephfs/qiuyn/ToolClaw/outputs/tau_bench_remote/prepared/tau_bench.normalized.json",
+  "mode": "planner",
+  "systems": [
+    "baseline",
+    "toolclaw_lite"
+  ],
+  "num_samples": 10,
+  "num_runs": 1,
+  "smoke": true,
+  "per_system_summary": {
+    "baseline": {
+      "num_samples": 10,
+      "num_runs": 1,
+      "mean_success_rate": 1.0,
+      "pass_at_k": 1.0,
+      "consistency": 1.0,
+      "rule_following": 1.0,
+      "interaction_quality": 1.0,
+      "tool_efficiency": 0.9,
+      "repair_overhead": 0.0,
+      "per_sample": {
+        "tau_retail_train_00001": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00002": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00003": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00004": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00005": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00006": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00007": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00008": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00009": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00010": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        }
+      }
+    },
+    "toolclaw_lite": {
+      "num_samples": 10,
+      "num_runs": 1,
+      "mean_success_rate": 1.0,
+      "pass_at_k": 1.0,
+      "consistency": 1.0,
+      "rule_following": 1.0,
+      "interaction_quality": 1.0,
+      "tool_efficiency": 0.9,
+      "repair_overhead": 0.0,
+      "per_sample": {
+        "tau_retail_train_00001": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00002": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00003": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00004": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00005": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00006": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00007": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00008": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00009": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        },
+        "tau_retail_train_00010": {
+          "scenario": "success",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "rule_following": 1.0,
+          "interaction_quality": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ]
+        }
+      }
+    }
+  },
+  "runs": [
+    {
+      "run_index": 1,
+      "system": "baseline",
+      "task_id": "tau_retail_train_00001",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/001_tau_retail_train_00001_baseline.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00001",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "toolclaw_lite",
+      "task_id": "tau_retail_train_00001",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/001_tau_retail_train_00001_toolclaw_lite.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00001",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "baseline",
+      "task_id": "tau_retail_train_00002",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/002_tau_retail_train_00002_baseline.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00002",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "toolclaw_lite",
+      "task_id": "tau_retail_train_00002",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/002_tau_retail_train_00002_toolclaw_lite.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00002",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "baseline",
+      "task_id": "tau_retail_train_00003",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/003_tau_retail_train_00003_baseline.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00003",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "toolclaw_lite",
+      "task_id": "tau_retail_train_00003",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/003_tau_retail_train_00003_toolclaw_lite.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00003",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "baseline",
+      "task_id": "tau_retail_train_00004",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/004_tau_retail_train_00004_baseline.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00004",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "toolclaw_lite",
+      "task_id": "tau_retail_train_00004",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/004_tau_retail_train_00004_toolclaw_lite.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00004",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "baseline",
+      "task_id": "tau_retail_train_00005",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/005_tau_retail_train_00005_baseline.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00005",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "toolclaw_lite",
+      "task_id": "tau_retail_train_00005",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/005_tau_retail_train_00005_toolclaw_lite.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00005",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "baseline",
+      "task_id": "tau_retail_train_00006",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/006_tau_retail_train_00006_baseline.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00006",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "toolclaw_lite",
+      "task_id": "tau_retail_train_00006",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/006_tau_retail_train_00006_toolclaw_lite.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00006",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "baseline",
+      "task_id": "tau_retail_train_00007",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/007_tau_retail_train_00007_baseline.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00007",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "toolclaw_lite",
+      "task_id": "tau_retail_train_00007",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/007_tau_retail_train_00007_toolclaw_lite.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00007",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "baseline",
+      "task_id": "tau_retail_train_00008",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/008_tau_retail_train_00008_baseline.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00008",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "toolclaw_lite",
+      "task_id": "tau_retail_train_00008",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/008_tau_retail_train_00008_toolclaw_lite.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00008",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "baseline",
+      "task_id": "tau_retail_train_00009",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/009_tau_retail_train_00009_baseline.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00009",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "toolclaw_lite",
+      "task_id": "tau_retail_train_00009",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/009_tau_retail_train_00009_toolclaw_lite.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00009",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "baseline",
+      "task_id": "tau_retail_train_00010",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/010_tau_retail_train_00010_baseline.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00010",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "toolclaw_lite",
+      "task_id": "tau_retail_train_00010",
+      "success": true,
+      "trace_path": "outputs/tau_bench_remote/runs/run_01/traces/010_tau_retail_train_00010_toolclaw_lite.json",
+      "score": {
+        "benchmark": "tau_bench",
+        "sample_id": "tau_retail_train_00010",
+        "success": true,
+        "metrics": {
+          "rule_following": 1.0,
+          "tool_efficiency": 0.9,
+          "repair_overhead": 0.0,
+          "interaction_events": 0.0,
+          "interaction_quality": 1.0,
+          "approval_following": 1.0,
+          "forbidden_action_following": 1.0,
+          "repair_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "success",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "required_approval": false,
+          "expected_interaction": false,
+          "interaction_events": 0,
+          "forbidden_violation": false
+        }
+      }
+    }
+  ]
+}

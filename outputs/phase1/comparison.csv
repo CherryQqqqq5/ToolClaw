@@ -1,0 +1,7 @@
+task_id,system,scenario,success,tool_calls,repair_actions,total_steps,stop_reason,trace_path
+task_success_001,baseline,success,True,2,0,2,success_criteria_satisfied,outputs/phase1/traces/001_task_success_001_baseline.json
+task_success_001,toolclaw_lite,success,True,2,0,2,success_criteria_satisfied,outputs/phase1/traces/001_task_success_001_toolclaw_lite.json
+task_binding_001,baseline,binding_failure,False,2,0,2,step_failed:step_02:missing required field: target_path,outputs/phase1/traces/002_task_binding_001_baseline.json
+task_binding_001,toolclaw_lite,binding_failure,True,2,1,2,success_criteria_satisfied,outputs/phase1/traces/002_task_binding_001_toolclaw_lite.json
+task_env_001,baseline,environment_failure,False,2,0,2,step_failed:step_02:environment unavailable for write operation,outputs/phase1/traces/003_task_env_001_baseline.json
+task_env_001,toolclaw_lite,environment_failure,True,2,1,2,success_criteria_satisfied,outputs/phase1/traces/003_task_env_001_toolclaw_lite.json

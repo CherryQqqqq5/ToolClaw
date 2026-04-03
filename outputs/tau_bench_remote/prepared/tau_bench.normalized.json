@@ -1,0 +1,186 @@
+[
+  {
+    "task_id": "tau_retail_train_00001",
+    "scenario": "success",
+    "query": "Your name is Omar Anderson and your zip code is 19031. You are logical, independent, relaxing, polite. Return #W6067464 via credit_card_4190576: Electric Kettle; Wall Clock;",
+    "target_path": "outputs/tau_bench/reports/tau_retail_train_00001.txt",
+    "metadata": {
+      "domain": "retail",
+      "split": "train",
+      "source": "tau_bench/envs/retail/tasks_train.py",
+      "annotator": "synthetic",
+      "user_id": "omar_anderson_3203",
+      "action_names": [
+        "return_delivered_order_items"
+      ],
+      "actions_count": 1,
+      "upstream_repo": "https://github.com/sierra-research/tau-bench"
+    }
+  },
+  {
+    "task_id": "tau_retail_train_00002",
+    "scenario": "success",
+    "query": "Your name is Sophia Nguyen and your zip code is 20171. You are confident, organized. Return #W6619432 via paypal_3738584: Dumbbell Set; Yoga Mat;",
+    "target_path": "outputs/tau_bench/reports/tau_retail_train_00002.txt",
+    "metadata": {
+      "domain": "retail",
+      "split": "train",
+      "source": "tau_bench/envs/retail/tasks_train.py",
+      "annotator": "synthetic",
+      "user_id": "sophia_nguyen_2370",
+      "action_names": [
+        "return_delivered_order_items"
+      ],
+      "actions_count": 1,
+      "upstream_repo": "https://github.com/sierra-research/tau-bench"
+    }
+  },
+  {
+    "task_id": "tau_retail_train_00003",
+    "scenario": "success",
+    "query": "Your name is James Li and your email is james.li4495@example.com. You are rigid, confident, happy, curious, pessimistic. Return #W4435622 via gift_card_1725971: Water Bottle;",
+    "target_path": "outputs/tau_bench/reports/tau_retail_train_00003.txt",
+    "metadata": {
+      "domain": "retail",
+      "split": "train",
+      "source": "tau_bench/envs/retail/tasks_train.py",
+      "annotator": "synthetic",
+      "user_id": "james_li_5688",
+      "action_names": [
+        "return_delivered_order_items"
+      ],
+      "actions_count": 1,
+      "upstream_repo": "https://github.com/sierra-research/tau-bench"
+    }
+  },
+  {
+    "task_id": "tau_retail_train_00004",
+    "scenario": "success",
+    "query": "Your name is Sofia Kovacs and your zip code is 19049. You are patient, confident. For #W7736983, exchange Coffee Maker {'color': 'black', 'capacity': '4 cups', 'type': 'espresso', 'features': 'timer'} to {'color': 'stainless steel', 'type': 'drip', 'features': 'built-in grinder'}; via paypal_6840891. Cancel order #W5765741 because ordered by mistake.",
+    "target_path": "outputs/tau_bench/reports/tau_retail_train_00004.txt",
+    "metadata": {
+      "domain": "retail",
+      "split": "train",
+      "source": "tau_bench/envs/retail/tasks_train.py",
+      "annotator": "synthetic",
+      "user_id": "sofia_kovacs_7075",
+      "action_names": [
+        "exchange_delivered_order_items",
+        "cancel_pending_order"
+      ],
+      "actions_count": 2,
+      "upstream_repo": "https://github.com/sierra-research/tau-bench"
+    }
+  },
+  {
+    "task_id": "tau_retail_train_00005",
+    "scenario": "success",
+    "query": "Your name is Juan Rossi and your zip code is 77209. You are cautious, logical, organized, flexible, shy. Cancel order #W7602708 because no longer needed.",
+    "target_path": "outputs/tau_bench/reports/tau_retail_train_00005.txt",
+    "metadata": {
+      "domain": "retail",
+      "split": "train",
+      "source": "tau_bench/envs/retail/tasks_train.py",
+      "annotator": "synthetic",
+      "user_id": "juan_rossi_6696",
+      "action_names": [
+        "cancel_pending_order"
+      ],
+      "actions_count": 1,
+      "upstream_repo": "https://github.com/sierra-research/tau-bench"
+    }
+  },
+  {
+    "task_id": "tau_retail_train_00006",
+    "scenario": "success",
+    "query": "Your name is Harper Thomas and your email is harper.thomas1454@example.com. You are logical, dependent, impatient, busy. For #W7425646, change payment to credit_card_1199336. For #W7425646, modify Smart Thermostat {'compatibility': 'Apple HomeKit', 'color': 'black'} to {}; via credit_card_1283450.",
+    "target_path": "outputs/tau_bench/reports/tau_retail_train_00006.txt",
+    "metadata": {
+      "domain": "retail",
+      "split": "train",
+      "source": "tau_bench/envs/retail/tasks_train.py",
+      "annotator": "synthetic",
+      "user_id": "harper_thomas_9402",
+      "action_names": [
+        "modify_pending_order_payment",
+        "modify_pending_order_items"
+      ],
+      "actions_count": 2,
+      "upstream_repo": "https://github.com/sierra-research/tau-bench"
+    }
+  },
+  {
+    "task_id": "tau_retail_train_00007",
+    "scenario": "success",
+    "query": "Your name is Ava Nguyen and your email is ava.nguyen3664@example.com. You are outgoing, flexible, pessimistic, cautious, messy. For #W1504875, exchange Notebook {'size': 'A6', 'cover type': 'soft cover'} to {'size': 'A5'}; via paypal_6262583.",
+    "target_path": "outputs/tau_bench/reports/tau_retail_train_00007.txt",
+    "metadata": {
+      "domain": "retail",
+      "split": "train",
+      "source": "tau_bench/envs/retail/tasks_train.py",
+      "annotator": "synthetic",
+      "user_id": "ava_nguyen_2175",
+      "action_names": [
+        "exchange_delivered_order_items"
+      ],
+      "actions_count": 1,
+      "upstream_repo": "https://github.com/sierra-research/tau-bench"
+    }
+  },
+  {
+    "task_id": "tau_retail_train_00008",
+    "scenario": "success",
+    "query": "Your name is Lucas Martin and your email is lucas.martin5733@example.com. You are patient, cautious, organized. For #W9318778, change payment to credit_card_7862034. For #W9318778, modify Bicycle {'frame size': 'medium', 'color': 'black', 'type': 'mountain'} to {'frame size': 'large', 'color': 'red'}; Air Purifier {'room size': 'medium', 'filter type': 'HEPA', 'features': 'quiet operation'} to {}; via credit_card_7862034.",
+    "target_path": "outputs/tau_bench/reports/tau_retail_train_00008.txt",
+    "metadata": {
+      "domain": "retail",
+      "split": "train",
+      "source": "tau_bench/envs/retail/tasks_train.py",
+      "annotator": "synthetic",
+      "user_id": "lucas_martin_4549",
+      "action_names": [
+        "modify_pending_order_payment",
+        "modify_pending_order_items"
+      ],
+      "actions_count": 2,
+      "upstream_repo": "https://github.com/sierra-research/tau-bench"
+    }
+  },
+  {
+    "task_id": "tau_retail_train_00009",
+    "scenario": "success",
+    "query": "Your name is Lucas Muller and your email is lucas.muller7899@example.com. You are patient, cautious. For #W3206099, modify Gaming Mouse {'color': 'black', 'sensor type': 'optical', 'connectivity': 'wired'} to {}; via gift_card_2748512. Return #W1523776 via gift_card_2748512: Smart Thermostat;",
+    "target_path": "outputs/tau_bench/reports/tau_retail_train_00009.txt",
+    "metadata": {
+      "domain": "retail",
+      "split": "train",
+      "source": "tau_bench/envs/retail/tasks_train.py",
+      "annotator": "synthetic",
+      "user_id": "lucas_muller_4380",
+      "action_names": [
+        "modify_pending_order_items",
+        "return_delivered_order_items"
+      ],
+      "actions_count": 2,
+      "upstream_repo": "https://github.com/sierra-research/tau-bench"
+    }
+  },
+  {
+    "task_id": "tau_retail_train_00010",
+    "scenario": "success",
+    "query": "Your name is Aarav Brown and your email is aarav.brown3708@example.com. You are busy, patient. For #W5065081, modify Water Bottle {'capacity': '750ml', 'material': 'glass', 'color': 'black'} to {'capacity': '500ml', 'material': 'stainless steel', 'color': 'green'}; via credit_card_3627996.",
+    "target_path": "outputs/tau_bench/reports/tau_retail_train_00010.txt",
+    "metadata": {
+      "domain": "retail",
+      "split": "train",
+      "source": "tau_bench/envs/retail/tasks_train.py",
+      "annotator": "synthetic",
+      "user_id": "aarav_brown_3744",
+      "action_names": [
+        "modify_pending_order_items"
+      ],
+      "actions_count": 1,
+      "upstream_repo": "https://github.com/sierra-research/tau-bench"
+    }
+  }
+]

@@ -1,0 +1,328 @@
+{
+  "baseline": {
+    "num_samples": 10,
+    "num_runs": 1,
+    "mean_success_rate": 1.0,
+    "pass_at_k": 1.0,
+    "consistency": 1.0,
+    "rule_following": 1.0,
+    "interaction_quality": 1.0,
+    "tool_efficiency": 0.9,
+    "repair_overhead": 0.0,
+    "per_sample": {
+      "tau_retail_train_00001": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00002": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00003": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00004": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00005": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00006": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00007": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00008": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00009": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00010": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      }
+    }
+  },
+  "toolclaw_lite": {
+    "num_samples": 10,
+    "num_runs": 1,
+    "mean_success_rate": 1.0,
+    "pass_at_k": 1.0,
+    "consistency": 1.0,
+    "rule_following": 1.0,
+    "interaction_quality": 1.0,
+    "tool_efficiency": 0.9,
+    "repair_overhead": 0.0,
+    "per_sample": {
+      "tau_retail_train_00001": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00002": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00003": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00004": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00005": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00006": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00007": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00008": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00009": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      },
+      "tau_retail_train_00010": {
+        "scenario": "success",
+        "num_runs": 1,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "rule_following": 1.0,
+        "interaction_quality": 1.0,
+        "tool_efficiency": 0.9,
+        "repair_overhead": 0.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied"
+        ]
+      }
+    }
+  }
+}

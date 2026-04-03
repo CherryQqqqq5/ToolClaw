@@ -1,0 +1,14 @@
+{
+  "benchmark": "tau_bench",
+  "source": "/cephfs/qiuyn/ToolClaw/data/tau_bench/tau_bench.aligned.jsonl",
+  "normalized_taskset": "/cephfs/qiuyn/ToolClaw/outputs/tau_bench_remote/prepared/tau_bench.normalized.json",
+  "sample_count": 10,
+  "mode": "planner",
+  "systems": [
+    "baseline",
+    "toolclaw_lite"
+  ],
+  "num_runs": 1,
+  "scoreboard_path": "/cephfs/qiuyn/ToolClaw/outputs/tau_bench_remote/scoreboard.json",
+  "per_system_summary_path": "/cephfs/qiuyn/ToolClaw/outputs/tau_bench_remote/per_system_summary.json"
+}
