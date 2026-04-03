@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Dict, Optional
 
 from toolclaw.integrations.tau3 import (
     FallbackAssistantMessage,
@@ -39,7 +40,7 @@ from toolclaw.schemas.workflow import (
 class FakeTool:
     name: str
     description: str
-    arg_map: dict[str, str] | None = None
+    arg_map: Optional[Dict[str, str]] = None
 
 
 def test_tau3_adapter_builds_planning_request_from_task_and_tools() -> None:

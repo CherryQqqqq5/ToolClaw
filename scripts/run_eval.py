@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import sys
 from dataclasses import dataclass
 
@@ -39,7 +39,7 @@ from toolclaw.schemas.workflow import Workflow
 @dataclass
 class EvalConfig:
     mode: str = "planner"
-    systems: List[str] | None = None
+    systems: Optional[List[str]] = None
 
 
 @dataclass

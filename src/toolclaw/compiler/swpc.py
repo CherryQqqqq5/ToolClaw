@@ -53,6 +53,12 @@ class CompiledArtifacts:
 
 
 class SWPCCompiler:
+    @staticmethod
+    def _serialize_policy_rule(rule: Any) -> Dict[str, Any]:
+        merged = dict(rule.metadata)
+        merged.update({"trigger": rule.trigger, "action": rule.action})
+        return merged
+
     def compile_from_trace(
         self,
         workflow: Workflow,
@@ -97,8 +103,8 @@ class SWPCCompiler:
             policy_id=f"ps_{workflow.workflow_id}",
             task_signature=self.derive_task_signature(workflow),
             stop_rules=list(workflow.policy.stop_rules),
-            approval_rules=[rule.metadata | {"trigger": rule.trigger, "action": rule.action} for rule in workflow.policy.approval_rules],
-            recovery_rules=[rule.metadata | {"trigger": rule.trigger, "action": rule.action} for rule in workflow.policy.recovery_rules],
+            approval_rules=[self._serialize_policy_rule(rule) for rule in workflow.policy.approval_rules],
+            recovery_rules=[self._serialize_policy_rule(rule) for rule in workflow.policy.recovery_rules],
             quality_score=0.8,
         )
 
