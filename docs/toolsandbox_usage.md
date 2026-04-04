@@ -62,6 +62,23 @@ python3 scripts/prepare_toolsandbox_official_run.py \
   --out data/toolsandbox/toolsandbox.official.aligned.jsonl
 ```
 
+If you want a fixed, reproducible formal dataset JSON in the same schema as `data/toolsandbox.formal.json`, build it directly from an official run:
+
+```bash
+python3 scripts/prepare_toolsandbox_formal_dataset.py \
+  --official-run-dir latest \
+  --exclude-augmented \
+  --out data/toolsandbox.formal.official.json
+```
+
+Then run the benchmark on that frozen dataset:
+
+```bash
+python3 scripts/run_toolsandbox.py \
+  --source data/toolsandbox.formal.official.json \
+  --outdir outputs/toolsandbox_bench_official_formal
+```
+
 ## Accepted Source Shape
 
 Recommended fields per sample:
