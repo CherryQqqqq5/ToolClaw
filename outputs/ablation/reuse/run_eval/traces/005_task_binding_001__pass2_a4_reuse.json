@@ -6,15 +6,15 @@
   "metadata": {
     "model_name": "phase1_executor",
     "mode": "toolclaw",
-    "start_time": "2026-04-04T13:46:11.108670+00:00",
-    "end_time": "2026-04-04T13:46:11.108740+00:00",
+    "start_time": "2026-04-04T15:00:50.796593+00:00",
+    "end_time": "2026-04-04T15:00:50.796712+00:00",
     "benchmark": null,
     "task_source": null
   },
   "state_snapshots": [
     {
       "snapshot_id": "snap_01_start",
-      "timestamp": "2026-04-04T13:46:11.108682+00:00",
+      "timestamp": "2026-04-04T15:00:50.796611+00:00",
       "active_step_id": "step_01",
       "completed_steps": [],
       "pending_steps": [
@@ -31,7 +31,7 @@
     },
     {
       "snapshot_id": "snap_02_start",
-      "timestamp": "2026-04-04T13:46:11.108713+00:00",
+      "timestamp": "2026-04-04T15:00:50.796676+00:00",
       "active_step_id": "step_02",
       "completed_steps": [
         "step_01"
@@ -54,7 +54,7 @@
   "events": [
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-04T13:46:11.108674+00:00",
+      "timestamp": "2026-04-04T15:00:50.796599+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -69,7 +69,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-04T13:46:11.108678+00:00",
+      "timestamp": "2026-04-04T15:00:50.796605+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -86,7 +86,7 @@
     },
     {
       "event_id": "evt_policy_before_step_01",
-      "timestamp": "2026-04-04T13:46:11.108696+00:00",
+      "timestamp": "2026-04-04T15:00:50.796652+00:00",
       "step_id": "step_01",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -109,7 +109,7 @@
     },
     {
       "event_id": "evt_call_step_01",
-      "timestamp": "2026-04-04T13:46:11.108699+00:00",
+      "timestamp": "2026-04-04T15:00:50.796657+00:00",
       "step_id": "step_01",
       "event_type": "tool_call",
       "actor": "executor",
@@ -124,7 +124,7 @@
     },
     {
       "event_id": "evt_result_step_01",
-      "timestamp": "2026-04-04T13:46:11.108702+00:00",
+      "timestamp": "2026-04-04T15:00:50.796661+00:00",
       "step_id": "step_01",
       "event_type": "tool_result",
       "actor": "environment",
@@ -140,7 +140,7 @@
     },
     {
       "event_id": "evt_checkpoint_step_01",
-      "timestamp": "2026-04-04T13:46:11.108709+00:00",
+      "timestamp": "2026-04-04T15:00:50.796671+00:00",
       "step_id": "step_01",
       "event_type": "checkpoint_created",
       "actor": "executor",
@@ -155,7 +155,7 @@
     },
     {
       "event_id": "evt_policy_before_step_02",
-      "timestamp": "2026-04-04T13:46:11.108724+00:00",
+      "timestamp": "2026-04-04T15:00:50.796691+00:00",
       "step_id": "step_02",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -178,7 +178,7 @@
     },
     {
       "event_id": "evt_call_step_02",
-      "timestamp": "2026-04-04T13:46:11.108726+00:00",
+      "timestamp": "2026-04-04T15:00:50.796694+00:00",
       "step_id": "step_02",
       "event_type": "tool_call",
       "actor": "executor",
@@ -193,7 +193,7 @@
     },
     {
       "event_id": "evt_result_step_02",
-      "timestamp": "2026-04-04T13:46:11.108729+00:00",
+      "timestamp": "2026-04-04T15:00:50.796698+00:00",
       "step_id": "step_02",
       "event_type": "tool_result",
       "actor": "environment",
@@ -209,7 +209,7 @@
     },
     {
       "event_id": "evt_checkpoint_step_02",
-      "timestamp": "2026-04-04T13:46:11.108735+00:00",
+      "timestamp": "2026-04-04T15:00:50.796706+00:00",
       "step_id": "step_02",
       "event_type": "checkpoint_created",
       "actor": "executor",
@@ -224,7 +224,7 @@
     },
     {
       "event_id": "evt_stop_success",
-      "timestamp": "2026-04-04T13:46:11.108738+00:00",
+      "timestamp": "2026-04-04T15:00:50.796709+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",

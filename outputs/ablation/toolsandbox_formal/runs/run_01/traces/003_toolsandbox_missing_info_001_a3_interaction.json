@@ -6,8 +6,8 @@
   "metadata": {
     "model_name": "phase1_executor",
     "mode": "toolclaw",
-    "start_time": "2026-04-04T13:46:11.337376+00:00",
-    "end_time": "2026-04-04T13:46:11.337457+00:00",
+    "start_time": "2026-04-04T15:00:52.049497+00:00",
+    "end_time": "2026-04-04T15:00:52.049654+00:00",
     "benchmark": null,
     "task_source": null,
     "toolsandbox_result": {
@@ -29,7 +29,7 @@
   "state_snapshots": [
     {
       "snapshot_id": "snap_01_start",
-      "timestamp": "2026-04-04T13:46:11.335662+00:00",
+      "timestamp": "2026-04-04T15:00:52.045043+00:00",
       "active_step_id": "step_01",
       "completed_steps": [],
       "pending_steps": [
@@ -46,7 +46,7 @@
     },
     {
       "snapshot_id": "snap_02_start",
-      "timestamp": "2026-04-04T13:46:11.335692+00:00",
+      "timestamp": "2026-04-04T15:00:52.045189+00:00",
       "active_step_id": "step_02",
       "completed_steps": [
         "step_01"
@@ -67,7 +67,7 @@
     },
     {
       "snapshot_id": "snap_02_start",
-      "timestamp": "2026-04-04T13:46:11.336161+00:00",
+      "timestamp": "2026-04-04T15:00:52.046580+00:00",
       "active_step_id": "step_02",
       "completed_steps": [],
       "pending_steps": [],
@@ -86,7 +86,7 @@
     },
     {
       "snapshot_id": "snap_02_start",
-      "timestamp": "2026-04-04T13:46:11.336758+00:00",
+      "timestamp": "2026-04-04T15:00:52.048050+00:00",
       "active_step_id": "step_02",
       "completed_steps": [],
       "pending_steps": [],
@@ -105,7 +105,7 @@
     },
     {
       "snapshot_id": "snap_02_start",
-      "timestamp": "2026-04-04T13:46:11.337387+00:00",
+      "timestamp": "2026-04-04T15:00:52.049519+00:00",
       "active_step_id": "step_02",
       "completed_steps": [],
       "pending_steps": [],
@@ -126,7 +126,7 @@
   "events": [
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-04T13:46:11.335653+00:00",
+      "timestamp": "2026-04-04T15:00:52.045006+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -141,7 +141,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-04T13:46:11.335657+00:00",
+      "timestamp": "2026-04-04T15:00:52.045016+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -158,7 +158,7 @@
     },
     {
       "event_id": "evt_policy_before_step_01",
-      "timestamp": "2026-04-04T13:46:11.335675+00:00",
+      "timestamp": "2026-04-04T15:00:52.045082+00:00",
       "step_id": "step_01",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -181,7 +181,7 @@
     },
     {
       "event_id": "evt_call_step_01",
-      "timestamp": "2026-04-04T13:46:11.335678+00:00",
+      "timestamp": "2026-04-04T15:00:52.045089+00:00",
       "step_id": "step_01",
       "event_type": "tool_call",
       "actor": "executor",
@@ -196,7 +196,7 @@
     },
     {
       "event_id": "evt_result_step_01",
-      "timestamp": "2026-04-04T13:46:11.335681+00:00",
+      "timestamp": "2026-04-04T15:00:52.045096+00:00",
       "step_id": "step_01",
       "event_type": "tool_result",
       "actor": "environment",
@@ -212,7 +212,7 @@
     },
     {
       "event_id": "evt_checkpoint_step_01",
-      "timestamp": "2026-04-04T13:46:11.335688+00:00",
+      "timestamp": "2026-04-04T15:00:52.045175+00:00",
       "step_id": "step_01",
       "event_type": "checkpoint_created",
       "actor": "executor",
@@ -227,7 +227,7 @@
     },
     {
       "event_id": "evt_policy_before_step_02",
-      "timestamp": "2026-04-04T13:46:11.335704+00:00",
+      "timestamp": "2026-04-04T15:00:52.045227+00:00",
       "step_id": "step_02",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -250,7 +250,7 @@
     },
     {
       "event_id": "evt_call_step_02",
-      "timestamp": "2026-04-04T13:46:11.335706+00:00",
+      "timestamp": "2026-04-04T15:00:52.045232+00:00",
       "step_id": "step_02",
       "event_type": "tool_call",
       "actor": "executor",
@@ -266,7 +266,7 @@
     },
     {
       "event_id": "evt_repair_triggered_step_02",
-      "timestamp": "2026-04-04T13:46:11.335757+00:00",
+      "timestamp": "2026-04-04T15:00:52.045338+00:00",
       "step_id": "step_02",
       "event_type": "repair_triggered",
       "actor": "recovery_engine",
@@ -345,7 +345,7 @@
           "message": null,
           "metadata": {}
         },
-        "timestamp": "2026-04-04T13:46:11.335731+00:00",
+        "timestamp": "2026-04-04T15:00:52.045285+00:00",
         "metadata": {
           "mapped_from_error_category": "environment_failure",
           "failed_tool_id": "write_tool",
@@ -360,7 +360,7 @@
     },
     {
       "event_id": "evt_stop_blocked",
-      "timestamp": "2026-04-04T13:46:11.335764+00:00",
+      "timestamp": "2026-04-04T15:00:52.045350+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",
@@ -376,7 +376,7 @@
     },
     {
       "event_id": "evt_user_query_01",
-      "timestamp": "2026-04-04T13:46:11.336128+00:00",
+      "timestamp": "2026-04-04T15:00:52.046512+00:00",
       "step_id": "step_02",
       "event_type": "user_query",
       "actor": "interaction_shell",
@@ -420,7 +420,7 @@
     },
     {
       "event_id": "evt_user_reply_01",
-      "timestamp": "2026-04-04T13:46:11.336133+00:00",
+      "timestamp": "2026-04-04T15:00:52.046523+00:00",
       "step_id": "step_02",
       "event_type": "user_reply",
       "actor": "user_simulator",
@@ -437,7 +437,7 @@
     },
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-04T13:46:11.336153+00:00",
+      "timestamp": "2026-04-04T15:00:52.046563+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -452,7 +452,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-04T13:46:11.336157+00:00",
+      "timestamp": "2026-04-04T15:00:52.046572+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -469,7 +469,7 @@
     },
     {
       "event_id": "evt_policy_before_step_02",
-      "timestamp": "2026-04-04T13:46:11.336179+00:00",
+      "timestamp": "2026-04-04T15:00:52.046609+00:00",
       "step_id": "step_02",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -492,7 +492,7 @@
     },
     {
       "event_id": "evt_call_step_02",
-      "timestamp": "2026-04-04T13:46:11.336182+00:00",
+      "timestamp": "2026-04-04T15:00:52.046614+00:00",
       "step_id": "step_02",
       "event_type": "tool_call",
       "actor": "executor",
@@ -508,7 +508,7 @@
     },
     {
       "event_id": "evt_repair_triggered_step_02",
-      "timestamp": "2026-04-04T13:46:11.336230+00:00",
+      "timestamp": "2026-04-04T15:00:52.046709+00:00",
       "step_id": "step_02",
       "event_type": "repair_triggered",
       "actor": "recovery_engine",
@@ -587,7 +587,7 @@
           "message": null,
           "metadata": {}
         },
-        "timestamp": "2026-04-04T13:46:11.336205+00:00",
+        "timestamp": "2026-04-04T15:00:52.046660+00:00",
         "metadata": {
           "mapped_from_error_category": "environment_failure",
           "failed_tool_id": "write_tool",
@@ -602,7 +602,7 @@
     },
     {
       "event_id": "evt_stop_blocked",
-      "timestamp": "2026-04-04T13:46:11.336235+00:00",
+      "timestamp": "2026-04-04T15:00:52.046719+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",
@@ -618,7 +618,7 @@
     },
     {
       "event_id": "evt_user_query_02",
-      "timestamp": "2026-04-04T13:46:11.336728+00:00",
+      "timestamp": "2026-04-04T15:00:52.047985+00:00",
       "step_id": "step_02",
       "event_type": "user_query",
       "actor": "interaction_shell",
@@ -662,7 +662,7 @@
     },
     {
       "event_id": "evt_user_reply_02",
-      "timestamp": "2026-04-04T13:46:11.336732+00:00",
+      "timestamp": "2026-04-04T15:00:52.047995+00:00",
       "step_id": "step_02",
       "event_type": "user_reply",
       "actor": "user_simulator",
@@ -679,7 +679,7 @@
     },
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-04T13:46:11.336749+00:00",
+      "timestamp": "2026-04-04T15:00:52.048031+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -694,7 +694,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-04T13:46:11.336754+00:00",
+      "timestamp": "2026-04-04T15:00:52.048040+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -711,7 +711,7 @@
     },
     {
       "event_id": "evt_policy_before_step_02",
-      "timestamp": "2026-04-04T13:46:11.336772+00:00",
+      "timestamp": "2026-04-04T15:00:52.048081+00:00",
       "step_id": "step_02",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -734,7 +734,7 @@
     },
     {
       "event_id": "evt_call_step_02",
-      "timestamp": "2026-04-04T13:46:11.336775+00:00",
+      "timestamp": "2026-04-04T15:00:52.048086+00:00",
       "step_id": "step_02",
       "event_type": "tool_call",
       "actor": "executor",
@@ -750,7 +750,7 @@
     },
     {
       "event_id": "evt_repair_triggered_step_02",
-      "timestamp": "2026-04-04T13:46:11.336825+00:00",
+      "timestamp": "2026-04-04T15:00:52.048187+00:00",
       "step_id": "step_02",
       "event_type": "repair_triggered",
       "actor": "recovery_engine",
@@ -829,7 +829,7 @@
           "message": null,
           "metadata": {}
         },
-        "timestamp": "2026-04-04T13:46:11.336799+00:00",
+        "timestamp": "2026-04-04T15:00:52.048136+00:00",
         "metadata": {
           "mapped_from_error_category": "environment_failure",
           "failed_tool_id": "write_tool",
@@ -844,7 +844,7 @@
     },
     {
       "event_id": "evt_stop_blocked",
-      "timestamp": "2026-04-04T13:46:11.336831+00:00",
+      "timestamp": "2026-04-04T15:00:52.048200+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",
@@ -860,7 +860,7 @@
     },
     {
       "event_id": "evt_user_query_03",
-      "timestamp": "2026-04-04T13:46:11.337362+00:00",
+      "timestamp": "2026-04-04T15:00:52.049468+00:00",
       "step_id": "step_02",
       "event_type": "user_query",
       "actor": "interaction_shell",
@@ -904,7 +904,7 @@
     },
     {
       "event_id": "evt_user_reply_03",
-      "timestamp": "2026-04-04T13:46:11.337366+00:00",
+      "timestamp": "2026-04-04T15:00:52.049476+00:00",
       "step_id": "step_02",
       "event_type": "user_reply",
       "actor": "user_simulator",
@@ -921,7 +921,7 @@
     },
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-04T13:46:11.337379+00:00",
+      "timestamp": "2026-04-04T15:00:52.049503+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -936,7 +936,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-04T13:46:11.337383+00:00",
+      "timestamp": "2026-04-04T15:00:52.049511+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -953,7 +953,7 @@
     },
     {
       "event_id": "evt_policy_before_step_02",
-      "timestamp": "2026-04-04T13:46:11.337400+00:00",
+      "timestamp": "2026-04-04T15:00:52.049546+00:00",
       "step_id": "step_02",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -976,7 +976,7 @@
     },
     {
       "event_id": "evt_call_step_02",
-      "timestamp": "2026-04-04T13:46:11.337403+00:00",
+      "timestamp": "2026-04-04T15:00:52.049551+00:00",
       "step_id": "step_02",
       "event_type": "tool_call",
       "actor": "executor",
@@ -992,7 +992,7 @@
     },
     {
       "event_id": "evt_repair_triggered_step_02",
-      "timestamp": "2026-04-04T13:46:11.337449+00:00",
+      "timestamp": "2026-04-04T15:00:52.049639+00:00",
       "step_id": "step_02",
       "event_type": "repair_triggered",
       "actor": "recovery_engine",
@@ -1071,7 +1071,7 @@
           "message": null,
           "metadata": {}
         },
-        "timestamp": "2026-04-04T13:46:11.337424+00:00",
+        "timestamp": "2026-04-04T15:00:52.049594+00:00",
         "metadata": {
           "mapped_from_error_category": "environment_failure",
           "failed_tool_id": "write_tool",
@@ -1086,7 +1086,7 @@
     },
     {
       "event_id": "evt_stop_blocked",
-      "timestamp": "2026-04-04T13:46:11.337455+00:00",
+      "timestamp": "2026-04-04T15:00:52.049650+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",
@@ -1102,7 +1102,7 @@
     },
     {
       "event_id": "evt_stop_035",
-      "timestamp": "2026-04-04T13:46:11.337930+00:00",
+      "timestamp": "2026-04-04T15:00:52.050727+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "interaction_shell",

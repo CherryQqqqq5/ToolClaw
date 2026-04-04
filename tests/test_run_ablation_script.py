@@ -49,6 +49,7 @@ def test_run_ablation_script_runs_toolsandbox_formal_slice(tmp_path: Path) -> No
             "TOOLSANDBOX_FORMAL_DATASET": str(tmp_path / "toolsandbox.formal.official.json"),
             "TOOLSANDBOX_FALLBACK_DATASET": str(fallback_dataset),
             "TOOLSANDBOX_OFFICIAL_DATA_ROOT": str(tmp_path / "missing_official_data"),
+            "TOOLSANDBOX_ABLATION_NUM_RUNS": "1",
         },
         capture_output=True,
         text=True,

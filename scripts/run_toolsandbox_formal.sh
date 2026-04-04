@@ -15,6 +15,9 @@ LIMIT="${TOOLSANDBOX_FORMAL_LIMIT:-}"
 REFRESH_DATASET="${TOOLSANDBOX_FORMAL_REFRESH:-0}"
 EXCLUDE_AUGMENTED="${TOOLSANDBOX_FORMAL_EXCLUDE_AUGMENTED:-1}"
 KEEP_NORMALIZED_TASKSET="${TOOLSANDBOX_FORMAL_KEEP_NORMALIZED_TASKSET:-0}"
+REQUIRE_OFFICIAL_RUN="${TOOLSANDBOX_REQUIRE_OFFICIAL_RUN:-0}"
+FULL_BENCHMARK="${TOOLSANDBOX_FULL_BENCHMARK:-0}"
+ASSET_REGISTRY_ROOT="${TOOLSANDBOX_ASSET_REGISTRY_ROOT:-}"
 
 usage() {
   cat <<EOF
@@ -41,6 +44,9 @@ Options:
   --official-data-root PATH   Root containing official ToolSandbox run dirs
   --fallback-dataset PATH     Bundled formal dataset used when official data is unavailable
   --limit N                   Limit formal dataset size when rebuilding
+  --require-official-run      Fail instead of falling back to bundled formal dataset
+  --full-benchmark            Force rebuild with augmentations included and require official data
+  --asset-registry-root PATH  Persist reusable assets under PATH/run_<n> across CLI invocations
   --refresh                   Rebuild the formal dataset before running
   --include-augmented         Keep distraction/scrambled augmentations
   --keep-normalized-taskset   Preserve normalized taskset emitted by runner
@@ -84,6 +90,21 @@ while [[ $# -gt 0 ]]; do
       ;;
     --limit)
       LIMIT="$2"
+      shift 2
+      ;;
+    --require-official-run)
+      REQUIRE_OFFICIAL_RUN=1
+      shift
+      ;;
+    --full-benchmark)
+      FULL_BENCHMARK=1
+      REFRESH_DATASET=1
+      EXCLUDE_AUGMENTED=0
+      REQUIRE_OFFICIAL_RUN=1
+      shift
+      ;;
+    --asset-registry-root)
+      ASSET_REGISTRY_ROOT="$2"
       shift 2
       ;;
     --refresh)
@@ -147,7 +168,16 @@ ensure_dataset() {
     return 0
   fi
 
+  if [[ "$REQUIRE_OFFICIAL_RUN" == "1" ]]; then
+    echo "failed to prepare ToolSandbox formal dataset from official run and fallback is disabled" >&2
+    return 1
+  fi
+
   echo "official ToolSandbox data unavailable; falling back to bundled formal dataset: $FALLBACK_DATASET_PATH" >&2
+  echo "this fallback dataset is not an official ToolSandbox run export and should not be treated as a full benchmark" >&2
+  if [[ "$EXCLUDE_AUGMENTED" == "0" ]]; then
+    echo "augmentations were requested, but fallback content depends on the bundled dataset and may still cover only the core benchmark slice" >&2
+  fi
   if ! seed_dataset_from_fallback; then
     echo "failed to prepare ToolSandbox formal dataset: official source unavailable and fallback dataset missing: $FALLBACK_DATASET_PATH" >&2
     return 1
@@ -155,6 +185,16 @@ ensure_dataset() {
 }
 
 ensure_dataset
+
+if [[ "$FULL_BENCHMARK" == "1" ]]; then
+  echo "running ToolSandbox full benchmark: official run required, augmentations included" >&2
+elif [[ "$EXCLUDE_AUGMENTED" == "1" ]]; then
+  echo "running ToolSandbox core benchmark only: augmentations excluded" >&2
+fi
+
+if [[ "$NUM_RUNS" == "1" ]]; then
+  echo "ToolSandbox num_runs=1: pass@k and consistency are single-run statistics only" >&2
+fi
 
 RUN_CMD=(
   python3 "$ROOT_DIR/scripts/run_toolsandbox.py"
@@ -166,6 +206,9 @@ RUN_CMD=(
 )
 if [[ "$KEEP_NORMALIZED_TASKSET" == "1" ]]; then
   RUN_CMD+=(--keep-normalized-taskset)
+fi
+if [[ -n "$ASSET_REGISTRY_ROOT" ]]; then
+  RUN_CMD+=(--asset-registry-root "$ASSET_REGISTRY_ROOT")
 fi
 
 PYTHONPATH="$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" "${RUN_CMD[@]}"

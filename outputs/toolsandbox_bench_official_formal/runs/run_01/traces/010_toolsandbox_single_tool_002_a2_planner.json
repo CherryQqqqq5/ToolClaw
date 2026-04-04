@@ -6,8 +6,8 @@
   "metadata": {
     "model_name": "phase1_executor",
     "mode": "toolclaw",
-    "start_time": "2026-04-04T13:45:59.122336+00:00",
-    "end_time": "2026-04-04T13:45:59.122453+00:00",
+    "start_time": "2026-04-04T15:00:50.749139+00:00",
+    "end_time": "2026-04-04T15:00:50.749298+00:00",
     "benchmark": null,
     "task_source": null,
     "toolsandbox_result": {
@@ -27,7 +27,7 @@
   "state_snapshots": [
     {
       "snapshot_id": "snap_01_start",
-      "timestamp": "2026-04-04T13:45:59.122349+00:00",
+      "timestamp": "2026-04-04T15:00:50.749154+00:00",
       "active_step_id": "step_01",
       "completed_steps": [],
       "pending_steps": [
@@ -44,7 +44,7 @@
     },
     {
       "snapshot_id": "snap_02_start",
-      "timestamp": "2026-04-04T13:45:59.122381+00:00",
+      "timestamp": "2026-04-04T15:00:50.749191+00:00",
       "active_step_id": "step_02",
       "completed_steps": [
         "step_01"
@@ -67,7 +67,7 @@
   "events": [
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-04T13:45:59.122340+00:00",
+      "timestamp": "2026-04-04T15:00:50.749143+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -82,7 +82,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-04T13:45:59.122344+00:00",
+      "timestamp": "2026-04-04T15:00:50.749149+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -101,7 +101,7 @@
     },
     {
       "event_id": "evt_policy_before_step_01",
-      "timestamp": "2026-04-04T13:45:59.122363+00:00",
+      "timestamp": "2026-04-04T15:00:50.749171+00:00",
       "step_id": "step_01",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -124,7 +124,7 @@
     },
     {
       "event_id": "evt_call_step_01",
-      "timestamp": "2026-04-04T13:45:59.122366+00:00",
+      "timestamp": "2026-04-04T15:00:50.749174+00:00",
       "step_id": "step_01",
       "event_type": "tool_call",
       "actor": "executor",
@@ -139,7 +139,7 @@
     },
     {
       "event_id": "evt_result_step_01",
-      "timestamp": "2026-04-04T13:45:59.122369+00:00",
+      "timestamp": "2026-04-04T15:00:50.749178+00:00",
       "step_id": "step_01",
       "event_type": "tool_result",
       "actor": "environment",
@@ -155,7 +155,7 @@
     },
     {
       "event_id": "evt_checkpoint_step_01",
-      "timestamp": "2026-04-04T13:45:59.122377+00:00",
+      "timestamp": "2026-04-04T15:00:50.749187+00:00",
       "step_id": "step_01",
       "event_type": "checkpoint_created",
       "actor": "executor",
@@ -170,7 +170,7 @@
     },
     {
       "event_id": "evt_policy_before_step_02",
-      "timestamp": "2026-04-04T13:45:59.122392+00:00",
+      "timestamp": "2026-04-04T15:00:50.749205+00:00",
       "step_id": "step_02",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -193,7 +193,7 @@
     },
     {
       "event_id": "evt_call_step_02",
-      "timestamp": "2026-04-04T13:45:59.122394+00:00",
+      "timestamp": "2026-04-04T15:00:50.749208+00:00",
       "step_id": "step_02",
       "event_type": "tool_call",
       "actor": "executor",
@@ -208,7 +208,7 @@
     },
     {
       "event_id": "evt_repair_triggered_step_02",
-      "timestamp": "2026-04-04T13:45:59.122445+00:00",
+      "timestamp": "2026-04-04T15:00:50.749284+00:00",
       "step_id": "step_02",
       "event_type": "repair_triggered",
       "actor": "recovery_engine",
@@ -287,7 +287,7 @@
           "message": null,
           "metadata": {}
         },
-        "timestamp": "2026-04-04T13:45:59.122415+00:00",
+        "timestamp": "2026-04-04T15:00:50.749235+00:00",
         "metadata": {
           "mapped_from_error_category": "environment_failure",
           "failed_tool_id": null,
@@ -302,7 +302,7 @@
     },
     {
       "event_id": "evt_stop_blocked",
-      "timestamp": "2026-04-04T13:45:59.122451+00:00",
+      "timestamp": "2026-04-04T15:00:50.749294+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",

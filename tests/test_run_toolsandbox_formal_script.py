@@ -127,3 +127,32 @@ def test_run_toolsandbox_formal_script_falls_back_to_bundled_dataset_when_offici
     rows = json.loads(dataset_path.read_text(encoding="utf-8"))
     assert rows[0]["name"] == "toolsandbox_fallback_001"
     assert "falling back to bundled formal dataset" in completed.stderr
+
+
+def test_run_toolsandbox_formal_script_full_benchmark_requires_official_run(tmp_path: Path) -> None:
+    fallback_dataset = tmp_path / "toolsandbox.formal.json"
+    fallback_dataset.write_text(json.dumps([]), encoding="utf-8")
+
+    completed = subprocess.run(
+        [
+            "bash",
+            "scripts/run_toolsandbox_formal.sh",
+            "--dataset",
+            str(tmp_path / "toolsandbox.formal.official.json"),
+            "--outdir",
+            str(tmp_path / "toolsandbox_bench_official_formal"),
+            "--official-data-root",
+            str(tmp_path / "missing_official_data"),
+            "--fallback-dataset",
+            str(fallback_dataset),
+            "--full-benchmark",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode != 0
+    assert "fallback is disabled" in completed.stderr

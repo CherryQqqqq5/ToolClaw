@@ -33,7 +33,7 @@ from toolclaw.interaction.repair_updater import RepairUpdater
 from toolclaw.interaction.user_simulator import SimulatedPolicy
 from toolclaw.main import ToolClawRuntime
 from toolclaw.planner.htgp import PlanningRequest, build_default_planner
-from toolclaw.registry import InMemoryAssetRegistry
+from toolclaw.registry import AssetRegistry, FileAssetRegistry, InMemoryAssetRegistry
 from toolclaw.schemas.workflow import RiskLevel, TaskConstraints, ToolSpec, Workflow
 
 
@@ -209,10 +209,18 @@ def parse_args() -> argparse.Namespace:
             "Supported legacy aliases: baseline,planning,interactive,toolclaw_lite."
         ),
     )
+    parser.add_argument(
+        "--asset-registry-root",
+        default=None,
+        help=(
+            "Optional directory for file-backed reusable assets. "
+            "When set, each non-baseline system persists artifacts under <root>/<system_id> so reuse can survive across CLI invocations."
+        ),
+    )
     return parser.parse_args()
 
 
-def build_runtime(asset_registry: Optional[InMemoryAssetRegistry] = None) -> ToolClawRuntime:
+def build_runtime(asset_registry: Optional[AssetRegistry] = None) -> ToolClawRuntime:
     registry = asset_registry or InMemoryAssetRegistry()
     planner = build_default_planner(asset_registry=registry)
     return ToolClawRuntime(
@@ -508,11 +516,15 @@ def main() -> None:
     traces_dir = outdir / "traces"
     rows: List[EvalRow] = []
     system_specs = parse_systems(args.systems)
-    runtimes: Dict[str, ToolClawRuntime] = {
-        spec.system_id: build_runtime()
-        for spec in system_specs
-        if spec.execution_mode != "baseline"
-    }
+    asset_registry_root = Path(args.asset_registry_root) if args.asset_registry_root else None
+    runtimes: Dict[str, ToolClawRuntime] = {}
+    for spec in system_specs:
+        if spec.execution_mode == "baseline":
+            continue
+        asset_registry: Optional[AssetRegistry] = None
+        if asset_registry_root is not None:
+            asset_registry = FileAssetRegistry(str(asset_registry_root / spec.system_id))
+        runtimes[spec.system_id] = build_runtime(asset_registry=asset_registry)
 
     tasks = json.loads(taskset_path.read_text(encoding="utf-8"))
     if not isinstance(tasks, list):

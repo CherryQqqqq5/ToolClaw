@@ -178,6 +178,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--smoke", action="store_true", help="Run a small smoke slice (min(limit, 10))")
     parser.add_argument("--num-runs", type=int, default=1, help="Repeat runs to estimate pass@k and consistency")
     parser.add_argument(
+        "--asset-registry-root",
+        default=None,
+        help="Optional root for file-backed reusable assets. Each benchmark repetition uses a separate subdirectory under this root.",
+    )
+    parser.add_argument(
         "--require-result-summary",
         action="store_true",
         help="Fail if the prepared ToolSandbox source does not include any merged result_summary / toolsandbox_result signal",
@@ -346,7 +351,10 @@ def main() -> None:
     run_records: List[Dict[str, Any]] = []
     for run_index in range(1, args.num_runs + 1):
         run_outdir = runs_root / f"run_{run_index:02d}"
-        invoke_run_eval(normalized_path, run_outdir, args.mode, systems)
+        asset_registry_root = None
+        if args.asset_registry_root:
+            asset_registry_root = Path(args.asset_registry_root) / f"run_{run_index:02d}"
+        invoke_run_eval(normalized_path, run_outdir, args.mode, systems, asset_registry_root=asset_registry_root)
         for row in load_run_rows(run_outdir / "comparison.csv"):
             trace_path = Path(row["trace_path"])
             trace_payload = json.loads(trace_path.read_text(encoding="utf-8"))

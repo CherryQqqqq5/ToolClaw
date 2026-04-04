@@ -6,8 +6,8 @@
   "metadata": {
     "model_name": "baseline_executor",
     "mode": "baseline",
-    "start_time": "2026-04-04T13:46:11.355293+00:00",
-    "end_time": "2026-04-04T13:46:11.355312+00:00",
+    "start_time": "2026-04-04T15:00:52.086636+00:00",
+    "end_time": "2026-04-04T15:00:52.086672+00:00",
     "benchmark": null,
     "task_source": null,
     "toolsandbox_result": {
@@ -30,7 +30,7 @@
   "events": [
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-04T13:46:11.355296+00:00",
+      "timestamp": "2026-04-04T15:00:52.086644+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "baseline_executor",
@@ -45,7 +45,7 @@
     },
     {
       "event_id": "evt_call_step_01",
-      "timestamp": "2026-04-04T13:46:11.355299+00:00",
+      "timestamp": "2026-04-04T15:00:52.086649+00:00",
       "step_id": "step_01",
       "event_type": "tool_call",
       "actor": "baseline_executor",
@@ -60,7 +60,7 @@
     },
     {
       "event_id": "evt_result_step_01",
-      "timestamp": "2026-04-04T13:46:11.355302+00:00",
+      "timestamp": "2026-04-04T15:00:52.086655+00:00",
       "step_id": "step_01",
       "event_type": "tool_result",
       "actor": "environment",
@@ -76,7 +76,7 @@
     },
     {
       "event_id": "evt_call_step_02",
-      "timestamp": "2026-04-04T13:46:11.355305+00:00",
+      "timestamp": "2026-04-04T15:00:52.086660+00:00",
       "step_id": "step_02",
       "event_type": "tool_call",
       "actor": "baseline_executor",
@@ -91,7 +91,7 @@
     },
     {
       "event_id": "evt_result_step_02",
-      "timestamp": "2026-04-04T13:46:11.355307+00:00",
+      "timestamp": "2026-04-04T15:00:52.086664+00:00",
       "step_id": "step_02",
       "event_type": "tool_result",
       "actor": "environment",
@@ -107,7 +107,7 @@
     },
     {
       "event_id": "evt_stop_success",
-      "timestamp": "2026-04-04T13:46:11.355310+00:00",
+      "timestamp": "2026-04-04T15:00:52.086669+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "baseline_executor",

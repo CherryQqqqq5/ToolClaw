@@ -9,6 +9,55 @@ Important distinction for any paper or experiment note:
 
 Do not report proxy-evaluation numbers as official ToolSandbox execution numbers.
 
+## 0. Experimental Guardrails
+
+The current ToolSandbox scripts support several modes that look similar from the outside but are not interchangeable in a writeup.
+
+### Official-source requirement
+
+If you want to claim a real ToolSandbox-derived formal benchmark, you should have an official run directory under:
+
+- `data/external/ToolSandbox/data/<official_run_dir>/`
+
+At minimum this should include:
+
+- `result_summary.json`
+
+Preferably it should also include:
+
+- `trajectories/<scenario>/conversation.json`
+- `trajectories/<scenario>/scenario_export.json` or another accepted scenario export file
+
+That is the data path consumed by `prepare_toolsandbox_official_run.py` and `prepare_toolsandbox_formal_dataset.py`.
+
+### Core vs full benchmark
+
+Current wrapper semantics:
+
+- `scripts/run_toolsandbox_formal.sh` by default runs the **core benchmark** because augmentations are excluded
+- `scripts/run_toolsandbox_formal.sh --full-benchmark` is the stronger mode for a real full benchmark because it:
+  - rebuilds from an official run
+  - includes augmentations
+  - disables fallback to the bundled core dataset
+
+If no official run exists locally, the wrapper can still seed `data/toolsandbox.formal.official.json` from the bundled `data/toolsandbox.formal.json`, but that output is only a local convenience path and should not be described as a full official benchmark.
+
+### Repeat count
+
+`num_runs=1` is useful for smoke or one-shot debugging only.
+
+If you want `mean_success_rate`, `pass@k`, or `consistency` to be meaningful, run with `--num-runs >= 3`.
+
+### Reuse persistence
+
+Default Phase-1 execution uses an in-memory asset registry, so A4 reuse is only guaranteed within the current process.
+
+If you want reuse artifacts to survive across repeated CLI invocations, you must opt into a file-backed registry with:
+
+- `run_eval.py --asset-registry-root ...`
+- `run_toolsandbox_bench.py --asset-registry-root ...`
+- `run_toolsandbox_formal.sh --asset-registry-root ...`
+
 The immediate goal is not to maximize a single leaderboard number. The goal is to isolate where ToolClaw's workflow layer should create measurable gains over a direct tool-calling baseline:
 
 - planning under multi-tool dependencies
@@ -108,3 +157,41 @@ For one paper-style table, report:
 | Delta | ... | ... | ... | ... | ... | ... | ... | ... |
 
 This is the smallest table that still answers whether ToolClaw helps, where it helps, and what it costs.
+
+## 7. Recommended Commands
+
+Core benchmark, local validation only:
+
+```bash
+scripts/run_toolsandbox_formal.sh \
+  --num-runs 3
+```
+
+Full benchmark from a real official run:
+
+```bash
+scripts/run_toolsandbox_formal.sh \
+  --full-benchmark \
+  --num-runs 3
+```
+
+Full benchmark with persistent A4 reuse across repeated launches:
+
+```bash
+scripts/run_toolsandbox_formal.sh \
+  --full-benchmark \
+  --num-runs 3 \
+  --asset-registry-root outputs/toolsandbox_assets
+```
+
+Default ablation entry now also launches a ToolSandbox sub-run. Its ToolSandbox defaults are:
+
+- `--refresh`
+- `--include-augmented`
+- `--num-runs 3`
+
+If you want ablation runs to fail when official ToolSandbox data is missing, set:
+
+```bash
+TOOLSANDBOX_ABLATION_REQUIRE_OFFICIAL=1 bash scripts/run_ablation.sh
+```

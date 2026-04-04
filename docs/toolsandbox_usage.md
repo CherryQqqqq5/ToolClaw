@@ -29,8 +29,15 @@ scripts/run_toolsandbox_formal.sh
 That wrapper:
 
 - defaults to `data/toolsandbox.formal.official.json`
-- auto-builds that frozen dataset from the latest official ToolSandbox run if it does not exist yet
+- first tries to auto-build that frozen dataset from the latest official ToolSandbox run
+- falls back to `data/toolsandbox.formal.json` when no official run is available, unless you explicitly disable fallback
 - then runs the benchmark into `outputs/toolsandbox_bench_official_formal`
+
+Important default semantics:
+
+- default formal runs are **core benchmark** runs because augmentations are excluded unless you pass `--include-augmented` or `--full-benchmark`
+- default `--num-runs` is `1`, so `pass@k` and `consistency` are only single-run statistics unless you raise it
+- fallback-generated `data/toolsandbox.formal.official.json` is convenient for local execution, but it is **not** an official ToolSandbox run export and should not be described as a full official benchmark
 
 If you already ran the vendored official ToolSandbox CLI, you can auto-discover the latest official run directory and feed it into the current ToolClaw runner directly:
 
@@ -119,6 +126,63 @@ Keep augmentation slices in the rebuilt formal dataset:
 scripts/run_toolsandbox_formal.sh --refresh --include-augmented
 ```
 
+For a real full-benchmark run, prefer the stronger guardrail:
+
+```bash
+scripts/run_toolsandbox_formal.sh \
+  --full-benchmark \
+  --num-runs 3
+```
+
+`--full-benchmark` means:
+
+- official ToolSandbox run data is required
+- the dataset is rebuilt with augmentations included
+- fallback to bundled core data is disabled
+
+If you want ToolClaw A4 reuse artifacts to survive across separate CLI invocations, add a file-backed asset registry:
+
+```bash
+scripts/run_toolsandbox_formal.sh \
+  --full-benchmark \
+  --num-runs 3 \
+  --asset-registry-root outputs/toolsandbox_assets
+```
+
+Without `--asset-registry-root`, `run_eval.py` uses an in-memory registry and A4 reuse only exists inside the current process.
+
+## Recommended Recipes
+
+Core benchmark smoke / local validation:
+
+```bash
+scripts/run_toolsandbox_formal.sh
+```
+
+Core benchmark with more stable statistics:
+
+```bash
+scripts/run_toolsandbox_formal.sh \
+  --num-runs 3
+```
+
+Full benchmark from a real official run:
+
+```bash
+scripts/run_toolsandbox_formal.sh \
+  --full-benchmark \
+  --num-runs 3
+```
+
+Full benchmark with persistent A4 reuse across repeated CLI launches:
+
+```bash
+scripts/run_toolsandbox_formal.sh \
+  --full-benchmark \
+  --num-runs 3 \
+  --asset-registry-root outputs/toolsandbox_assets
+```
+
 ## Accepted Source Shape
 
 Recommended fields per sample:
@@ -182,6 +246,34 @@ That means:
 - scoring uses the current ToolClaw run's proxy `toolsandbox_result`, not the imported external summary
 - execution still runs through the repo's current ToolClaw planner/executor path, while normalized tasks preserve `messages`, `milestones`, `tool_allow_list`, and optional reference summaries
 - the sample file is only for smoke / interface validation, not for official benchmark claims
+
+## Reuse Semantics
+
+`A4` has two distinct modes in current scripts:
+
+- default mode: `run_eval.py` creates an `InMemoryAssetRegistry`, so compiled artifacts only survive for the lifetime of the current CLI process
+- persistent mode: pass `--asset-registry-root` to `run_eval.py`, `run_toolsandbox_bench.py`, or `run_toolsandbox_formal.sh` to switch to `FileAssetRegistry`
+
+This distinction matters for experiment claims:
+
+- second-pass reuse inside a single invocation is valid with the default in-memory registry
+- cross-command or cross-session reuse claims require a file-backed registry
+
+## ToolSandbox In Ablation Runs
+
+`scripts/run_ablation.sh` now includes a ToolSandbox formal sub-run by default.
+
+Its current ToolSandbox defaults are:
+
+- `--refresh`
+- `--include-augmented`
+- `--num-runs 3`
+
+Useful environment overrides:
+
+- `TOOLSANDBOX_ABLATION_REQUIRE_OFFICIAL=1` to fail if no official run is available
+- `TOOLSANDBOX_ABLATION_NUM_RUNS=<N>` to change repeat count
+- `TOOLSANDBOX_ABLATION_ASSET_ROOT=<PATH>` to persist A4 reuse artifacts across repeated ablation launches
 
 ## Official ToolSandbox Wrapper
 

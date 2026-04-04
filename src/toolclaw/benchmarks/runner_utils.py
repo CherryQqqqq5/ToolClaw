@@ -45,7 +45,14 @@ def normalize_systems(raw_systems: str) -> List[str]:
     return [item.strip() for item in raw_systems.split(",") if item.strip()]
 
 
-def invoke_run_eval(taskset_path: Path, run_outdir: Path, mode: str, systems: List[str]) -> None:
+def invoke_run_eval(
+    taskset_path: Path,
+    run_outdir: Path,
+    mode: str,
+    systems: List[str],
+    *,
+    asset_registry_root: Optional[Path] = None,
+) -> None:
     cmd: List[str] = [
         sys.executable,
         str(ROOT_DIR / "scripts" / "run_eval.py"),
@@ -58,6 +65,8 @@ def invoke_run_eval(taskset_path: Path, run_outdir: Path, mode: str, systems: Li
         "--systems",
         ",".join(systems),
     ]
+    if asset_registry_root is not None:
+        cmd.extend(["--asset-registry-root", str(asset_registry_root)])
     completed = subprocess.run(
         cmd,
         cwd=ROOT_DIR,

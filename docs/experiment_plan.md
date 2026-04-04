@@ -185,6 +185,10 @@ Included:
 Purpose:
 - test whether reuse provides cross-task or second-run benefit
 
+Operational note:
+- default CLI runs use an in-memory asset registry, so A4 reuse is guaranteed only within the current invocation
+- claims about reuse across repeated CLI launches or sessions require a file-backed registry such as `run_eval.py --asset-registry-root <path>`
+
 ---
 
 ## 4. Fixed Comparison Structure
@@ -424,6 +428,10 @@ Expected evidence:
 - A4 shows positive second-run improvement on T4
 - repeated tasks require fewer repairs, fewer user turns, or fewer tool calls
 
+Interpretation constraint:
+- if the evidence comes from multiple passes inside one process, the default in-memory registry is sufficient
+- if the evidence comes from separate commands or sessions, the experiment must use a persistent file-backed registry
+
 ---
 
 ## 10. Reporting Requirements
@@ -480,6 +488,12 @@ The report must explicitly interpret:
 
 Do not only show a final full-system result.
 
+For ToolSandbox-specific reporting, the report must also state:
+- whether the dataset came from an official ToolSandbox run or from a bundled fallback dataset
+- whether augmentations were included or excluded
+- the exact `num_runs` used for pass@k / consistency reporting
+- whether A4 reuse was in-memory only or backed by a persistent registry
+
 ---
 
 ## 11. Implementation Mapping to Code
@@ -534,6 +548,14 @@ This order should also be reflected in:
 - `scripts/run_phase1.sh`
 - `scripts/run_eval.sh`
 - `scripts/run_ablation.sh`
+
+For the ToolSandbox branch of `scripts/run_ablation.sh`, current experiment-oriented defaults are:
+- `--refresh`
+- `--include-augmented`
+- `--num-runs 3`
+
+If official ToolSandbox data is required for a given writeup, the run must additionally set:
+- `TOOLSANDBOX_ABLATION_REQUIRE_OFFICIAL=1`
 
 ---
 
