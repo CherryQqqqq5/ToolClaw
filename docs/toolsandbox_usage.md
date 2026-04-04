@@ -12,6 +12,18 @@ Compatibility alias:
 python3 scripts/run_toolsandbox.py
 ```
 
+For the fixed formal ToolSandbox entrypoint, use:
+
+```bash
+scripts/run_toolsandbox_formal.sh
+```
+
+That wrapper:
+
+- defaults to `data/toolsandbox.formal.official.json`
+- auto-builds that frozen dataset from the latest official ToolSandbox run if it does not exist yet
+- then runs the benchmark into `outputs/toolsandbox_bench_official_formal`
+
 If you already ran the vendored official ToolSandbox CLI, you can auto-discover the latest official run directory and feed it into the current ToolClaw runner directly:
 
 ```bash
@@ -77,6 +89,24 @@ Then run the benchmark on that frozen dataset:
 python3 scripts/run_toolsandbox.py \
   --source data/toolsandbox.formal.official.json \
   --outdir outputs/toolsandbox_bench_official_formal
+```
+
+Or use the dedicated formal wrapper so you do not need to retype the path plumbing:
+
+```bash
+scripts/run_toolsandbox_formal.sh
+```
+
+Force a rebuild from the latest official run before benchmarking:
+
+```bash
+scripts/run_toolsandbox_formal.sh --refresh
+```
+
+Keep augmentation slices in the rebuilt formal dataset:
+
+```bash
+scripts/run_toolsandbox_formal.sh --refresh --include-augmented
 ```
 
 ## Accepted Source Shape
