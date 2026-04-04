@@ -1,0 +1,66 @@
+[
+  {
+    "task_id": "task_success_001__pass1",
+    "scenario": "success",
+    "query": "target document summary",
+    "target_path": "outputs/reports/task_success_001.txt",
+    "metadata": {
+      "reuse_family_id": "task_success_001",
+      "reuse_pass_index": 1
+    }
+  },
+  {
+    "task_id": "task_binding_001__pass1",
+    "scenario": "binding_failure",
+    "query": "target document summary",
+    "metadata": {
+      "reuse_family_id": "task_binding_001",
+      "reuse_pass_index": 1
+    }
+  },
+  {
+    "task_id": "task_env_001__pass1",
+    "scenario": "environment_failure",
+    "query": "target document summary",
+    "target_path": "outputs/reports/task_env_001.txt",
+    "backup_tool_map": {
+      "write_tool": "backup_write_tool"
+    },
+    "metadata": {
+      "reuse_family_id": "task_env_001",
+      "reuse_pass_index": 1
+    }
+  },
+  {
+    "task_id": "task_success_001__pass2",
+    "scenario": "success",
+    "query": "target document summary",
+    "target_path": "outputs/reports/task_success_001.txt",
+    "metadata": {
+      "reuse_family_id": "task_success_001",
+      "reuse_pass_index": 2
+    }
+  },
+  {
+    "task_id": "task_binding_001__pass2",
+    "scenario": "binding_failure",
+    "query": "target document summary",
+    "metadata": {
+      "reuse_family_id": "task_binding_001",
+      "reuse_pass_index": 2
+    }
+  },
+  {
+    "task_id": "task_env_001__pass2",
+    "scenario": "environment_failure",
+    "query": "target document summary",
+    "target_path": "outputs/reports/task_env_001.txt",
+    "backup_tool_map": {
+      "write_tool": "backup_write_tool"
+    },
+    "metadata": {
+      "reuse_family_id": "task_env_001",
+      "reuse_pass_index": 2
+    }
+  }
+]

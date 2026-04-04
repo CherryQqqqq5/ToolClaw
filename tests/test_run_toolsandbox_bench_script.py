@@ -79,7 +79,14 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     report = report_path.read_text(encoding="utf-8")
     assert "ToolSandbox Benchmark Report" in report
     assert "result_summary_coverage" in report
+    assert "reference_summary_coverage" in report
     assert "state_dependency_score" in report
+
+    trace_payload = json.loads(
+        (outdir / "runs" / "run_01" / "traces" / "001_toolsandbox_cli_001_a0_baseline.json").read_text(encoding="utf-8")
+    )
+    assert trace_payload["metadata"]["toolsandbox_result"]["source"] == "toolclaw_proxy"
+    assert trace_payload["metadata"]["toolsandbox_result_source"] == "toolclaw_proxy"
 
 
 def test_run_toolsandbox_bench_script_merges_external_result_summaries(tmp_path: Path) -> None:
@@ -142,6 +149,7 @@ def test_run_toolsandbox_bench_script_merges_external_result_summaries(tmp_path:
 
     per_system = json.loads((outdir / "per_system_summary.json").read_text(encoding="utf-8"))
     assert float(per_system["a0_baseline"]["used_result_summary"]) >= 1.0
+    assert float(per_system["a0_baseline"]["reference_result_summary_available"]) >= 1.0
 
 
 def test_run_toolsandbox_bench_script_accepts_official_run_dir(tmp_path: Path) -> None:
@@ -210,3 +218,4 @@ def test_run_toolsandbox_bench_script_accepts_official_run_dir(tmp_path: Path) -
 
     per_system = json.loads((outdir / "per_system_summary.json").read_text(encoding="utf-8"))
     assert float(per_system["a0_baseline"]["used_result_summary"]) >= 1.0
+    assert float(per_system["a0_baseline"]["reference_result_summary_available"]) >= 1.0

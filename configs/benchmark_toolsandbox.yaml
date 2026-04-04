@@ -1,7 +1,19 @@
 benchmark: toolsandbox
 adapter: ToolSandboxAdapter
 
+evaluation_modes:
+  official_execution:
+    entrypoint: scripts/run_toolsandbox_official.sh
+    note: run inside the official ToolSandbox environment
+  toolclaw_proxy:
+    entrypoint: scripts/run_toolsandbox_formal.sh
+    note: ToolClaw execution over ToolSandbox-style tasks with current-run proxy summaries
+
 source:
+  preferred_defaults:
+    - data/toolsandbox.formal.official.json
+    - data/toolsandbox.formal.json
+    - data/toolsandbox.sample.json
   accepted_formats:
     - json
     - jsonl

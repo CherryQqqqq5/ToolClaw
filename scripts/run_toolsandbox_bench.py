@@ -33,7 +33,19 @@ from toolclaw.benchmarks.runner_utils import (
 )
 
 
-DEFAULT_SOURCE = ROOT_DIR / "data" / "toolsandbox.sample.json"
+def _default_source() -> Path:
+    candidates = [
+        ROOT_DIR / "data" / "toolsandbox.formal.official.json",
+        ROOT_DIR / "data" / "toolsandbox.formal.json",
+        ROOT_DIR / "data" / "toolsandbox.sample.json",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[-1]
+
+
+DEFAULT_SOURCE = _default_source()
 DEFAULT_OFFICIAL_DATA_ROOT = ROOT_DIR / "data" / "external" / "ToolSandbox" / "data"
 
 
@@ -75,6 +87,12 @@ def _category_breakdown(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, fl
             "result_summary_coverage": mean_or_zero(
                 [1.0 if record["score"]["diagnostics"].get("used_result_summary") else 0.0 for record in category_records]
             ),
+            "reference_summary_coverage": mean_or_zero(
+                [
+                    1.0 if record["score"]["diagnostics"].get("reference_result_summary_available") else 0.0
+                    for record in category_records
+                ]
+            ),
         }
     return summary
 
@@ -88,6 +106,7 @@ TOOLSANDBOX_GROUP_METRICS = [
     AggregateMetric("hallucination_avoidance"),
     AggregateMetric("state_dependency_score"),
     AggregateMetric("used_result_summary", source="diagnostics", label="result_summary_coverage"),
+    AggregateMetric("reference_result_summary_available", source="diagnostics", label="reference_summary_coverage"),
 ]
 
 
@@ -104,6 +123,7 @@ TOOLSANDBOX_CONFIG = BenchmarkScriptConfig(
         AggregateMetric("hallucination_avoidance"),
         AggregateMetric("state_dependency_score"),
         AggregateMetric("used_result_summary", source="diagnostics", label="result_summary_coverage"),
+        AggregateMetric("reference_result_summary_available", source="diagnostics", label="reference_summary_coverage"),
     ],
     signature_builder=lambda score, row: json.dumps(
         {
@@ -130,7 +150,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--source",
         default=str(DEFAULT_SOURCE),
-        help="Path to ToolSandbox-style JSON or JSONL sample file (defaults to data/toolsandbox.sample.json)",
+        help="Path to ToolSandbox-style JSON or JSONL source (defaults to formal ToolSandbox data when available)",
     )
     parser.add_argument(
         "--official-run-dir",
@@ -189,13 +209,13 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
         "",
         "## Aggregate",
         "",
-        "| system | mean_success_rate | pass@k | consistency | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| system | mean_success_rate | pass@k | consistency | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage | reference_summary_coverage |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     per_system = scoreboard["per_system_summary"]
     for system, stats in per_system.items():
         lines.append(
-            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('pass_at_k', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} |"
+            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('pass_at_k', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} | {float(stats.get('reference_result_summary_available', 0.0)):.3f} |"
         )
 
     lines.extend(
@@ -203,14 +223,14 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
             "",
             "## Category Breakdown",
             "",
-            "| system | category | rows | success_rate | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage |",
-            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| system | category | rows | success_rate | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage | reference_summary_coverage |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for system, stats in per_system.items():
         for category, category_stats in sorted(stats.get("per_category", {}).items()):
             lines.append(
-                f"| {system} | {category} | {int(category_stats.get('num_rows', 0))} | {float(category_stats.get('success_rate', 0.0)):.3f} | {float(category_stats.get('milestone_similarity', 0.0)):.3f} | {float(category_stats.get('milestone_coverage', 0.0)):.3f} | {float(category_stats.get('state_dependency_score', 0.0)):.3f} | {float(category_stats.get('hallucination_avoidance', 0.0)):.3f} | {float(category_stats.get('tool_efficiency', 0.0)):.3f} | {float(category_stats.get('turn_efficiency', 0.0)):.3f} | {float(category_stats.get('result_summary_coverage', 0.0)):.3f} |"
+                f"| {system} | {category} | {int(category_stats.get('num_rows', 0))} | {float(category_stats.get('success_rate', 0.0)):.3f} | {float(category_stats.get('milestone_similarity', 0.0)):.3f} | {float(category_stats.get('milestone_coverage', 0.0)):.3f} | {float(category_stats.get('state_dependency_score', 0.0)):.3f} | {float(category_stats.get('hallucination_avoidance', 0.0)):.3f} | {float(category_stats.get('tool_efficiency', 0.0)):.3f} | {float(category_stats.get('turn_efficiency', 0.0)):.3f} | {float(category_stats.get('result_summary_coverage', 0.0)):.3f} | {float(category_stats.get('reference_summary_coverage', 0.0)):.3f} |"
             )
 
     lines.extend(
@@ -218,13 +238,30 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
             "",
             "## Interpretation",
             "",
-            "- `milestone_similarity` and `milestone_coverage` should be read first when official ToolSandbox result summaries are available.",
-            "- `result_summary_coverage` shows how much of the benchmark is being scored with imported ToolSandbox-native signals instead of fallback heuristics.",
+            "- `result_summary_coverage` shows how much of the benchmark has a current ToolClaw-run ToolSandbox summary attached to the trace. This should be 1.0 for normal runs.",
+            "- `reference_summary_coverage` shows how much of the benchmark also carries imported external ToolSandbox summaries for offline comparison or dataset freezing.",
+            "- These scores come from ToolClaw proxy evaluation over ToolSandbox-style tasks unless you are reading outputs from the official ToolSandbox CLI directly.",
             "- `state_dependency_score` is only meaningful on `state_dependency` slices; interpret it through the category table rather than overall averages.",
             "- `turn_efficiency` and `tool_efficiency` are control metrics, not success substitutes.",
         ]
     )
     (outdir / "report.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def _attach_current_result_summary(
+    adapter: ToolSandboxAdapter,
+    sample: Any,
+    trace_path: Path,
+    trace_payload: Dict[str, Any],
+) -> Dict[str, Any]:
+    metadata = trace_payload.setdefault("metadata", {})
+    metadata["toolsandbox_result"] = adapter.build_proxy_result_summary(sample, trace_payload)
+    metadata["toolsandbox_result_source"] = "toolclaw_proxy"
+    reference_summary = adapter._extract_reference_result_summary(sample.raw_payload)
+    if reference_summary:
+        metadata["toolsandbox_reference_result"] = reference_summary
+    trace_path.write_text(json.dumps(trace_payload, indent=2), encoding="utf-8")
+    return trace_payload
 
 
 def _prepare_source_if_needed(source: str, result_source: str | None, prepared_dir: Path) -> Path:
@@ -311,8 +348,10 @@ def main() -> None:
         run_outdir = runs_root / f"run_{run_index:02d}"
         invoke_run_eval(normalized_path, run_outdir, args.mode, systems)
         for row in load_run_rows(run_outdir / "comparison.csv"):
-            trace_payload = json.loads(Path(row["trace_path"]).read_text(encoding="utf-8"))
+            trace_path = Path(row["trace_path"])
+            trace_payload = json.loads(trace_path.read_text(encoding="utf-8"))
             sample = next(sample for sample in samples if sample.sample_id == row["task_id"])
+            trace_payload = _attach_current_result_summary(adapter, sample, trace_path, trace_payload)
             run_records.append(
                 {
                     "run_index": run_index,

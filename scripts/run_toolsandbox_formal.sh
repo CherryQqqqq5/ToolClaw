@@ -10,6 +10,7 @@ MODE="${TOOLSANDBOX_FORMAL_MODE:-planner}"
 NUM_RUNS="${TOOLSANDBOX_FORMAL_NUM_RUNS:-1}"
 OFFICIAL_RUN_DIR="${TOOLSANDBOX_OFFICIAL_RUN_DIR:-latest}"
 OFFICIAL_DATA_ROOT="${TOOLSANDBOX_OFFICIAL_DATA_ROOT:-$ROOT_DIR/data/external/ToolSandbox/data}"
+FALLBACK_DATASET_PATH="${TOOLSANDBOX_FALLBACK_DATASET:-$ROOT_DIR/data/toolsandbox.formal.json}"
 LIMIT="${TOOLSANDBOX_FORMAL_LIMIT:-}"
 REFRESH_DATASET="${TOOLSANDBOX_FORMAL_REFRESH:-0}"
 EXCLUDE_AUGMENTED="${TOOLSANDBOX_FORMAL_EXCLUDE_AUGMENTED:-1}"
@@ -38,6 +39,7 @@ Options:
   --num-runs N                Repeat count
   --official-run-dir VALUE    Official ToolSandbox run dir or 'latest'
   --official-data-root PATH   Root containing official ToolSandbox run dirs
+  --fallback-dataset PATH     Bundled formal dataset used when official data is unavailable
   --limit N                   Limit formal dataset size when rebuilding
   --refresh                   Rebuild the formal dataset before running
   --include-augmented         Keep distraction/scrambled augmentations
@@ -74,6 +76,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --official-data-root)
       OFFICIAL_DATA_ROOT="$2"
+      shift 2
+      ;;
+    --fallback-dataset)
+      FALLBACK_DATASET_PATH="$2"
       shift 2
       ;;
     --limit)
@@ -120,9 +126,35 @@ build_dataset() {
   PYTHONPATH="$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" "${cmd[@]}"
 }
 
-if [[ "$REFRESH_DATASET" == "1" || ! -f "$DATASET_PATH" ]]; then
-  build_dataset
-fi
+seed_dataset_from_fallback() {
+  if [[ ! -f "$FALLBACK_DATASET_PATH" ]]; then
+    return 1
+  fi
+
+  mkdir -p "$(dirname "$DATASET_PATH")"
+  if [[ "$FALLBACK_DATASET_PATH" != "$DATASET_PATH" ]]; then
+    cp "$FALLBACK_DATASET_PATH" "$DATASET_PATH"
+  fi
+  echo "seeded ToolSandbox formal dataset from fallback: $FALLBACK_DATASET_PATH" >&2
+}
+
+ensure_dataset() {
+  if [[ "$REFRESH_DATASET" != "1" && -f "$DATASET_PATH" ]]; then
+    return 0
+  fi
+
+  if build_dataset; then
+    return 0
+  fi
+
+  echo "official ToolSandbox data unavailable; falling back to bundled formal dataset: $FALLBACK_DATASET_PATH" >&2
+  if ! seed_dataset_from_fallback; then
+    echo "failed to prepare ToolSandbox formal dataset: official source unavailable and fallback dataset missing: $FALLBACK_DATASET_PATH" >&2
+    return 1
+  fi
+}
+
+ensure_dataset
 
 RUN_CMD=(
   python3 "$ROOT_DIR/scripts/run_toolsandbox.py"

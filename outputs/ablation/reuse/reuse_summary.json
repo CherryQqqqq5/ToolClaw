@@ -1,0 +1,98 @@
+{
+  "taskset": "/Users/cherry/Documents/ToolClaw/data/eval_tasks.sample.json",
+  "systems": [
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_seed_tasks": 3,
+  "num_repeated_tasks": 6,
+  "per_system": {
+    "a3_interaction": {
+      "pass_1": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "avg_tool_calls": 2.0,
+        "avg_user_turns": 0.0,
+        "fail_stop_rate": 0.0
+      },
+      "pass_2": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "avg_tool_calls": 2.0,
+        "avg_user_turns": 0.0,
+        "fail_stop_rate": 0.0
+      },
+      "second_run_delta": {
+        "success_rate": 0.0,
+        "avg_tool_calls": 0.0,
+        "avg_user_turns": 0.0,
+        "fail_stop_rate": 0.0
+      }
+    },
+    "a4_reuse": {
+      "pass_1": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "avg_tool_calls": 2.0,
+        "avg_user_turns": 0.0,
+        "fail_stop_rate": 0.0
+      },
+      "pass_2": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "avg_tool_calls": 2.0,
+        "avg_user_turns": 0.0,
+        "fail_stop_rate": 0.0
+      },
+      "second_run_delta": {
+        "success_rate": 0.0,
+        "avg_tool_calls": 0.0,
+        "avg_user_turns": 0.0,
+        "fail_stop_rate": 0.0
+      }
+    }
+  },
+  "per_family": {
+    "a3_interaction": {
+      "task_binding_001": {
+        "pass_1_success": 1.0,
+        "pass_2_success": 1.0,
+        "pass_2_reused_artifact": 0.0,
+        "second_run_improvement": 0.0
+      },
+      "task_env_001": {
+        "pass_1_success": 1.0,
+        "pass_2_success": 1.0,
+        "pass_2_reused_artifact": 0.0,
+        "second_run_improvement": 0.0
+      },
+      "task_success_001": {
+        "pass_1_success": 1.0,
+        "pass_2_success": 1.0,
+        "pass_2_reused_artifact": 0.0,
+        "second_run_improvement": 0.0
+      }
+    },
+    "a4_reuse": {
+      "task_binding_001": {
+        "pass_1_success": 1.0,
+        "pass_2_success": 1.0,
+        "pass_2_reused_artifact": 1.0,
+        "second_run_improvement": 0.0
+      },
+      "task_env_001": {
+        "pass_1_success": 1.0,
+        "pass_2_success": 1.0,
+        "pass_2_reused_artifact": 1.0,
+        "second_run_improvement": 0.0
+      },
+      "task_success_001": {
+        "pass_1_success": 1.0,
+        "pass_2_success": 1.0,
+        "pass_2_reused_artifact": 1.0,
+        "second_run_improvement": 0.0
+      }
+    }
+  },
+  "run_eval_outdir": "/Users/cherry/Documents/ToolClaw/outputs/ablation/reuse/run_eval"
+}

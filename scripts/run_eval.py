@@ -147,8 +147,8 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         workflow.metadata["milestones"] = list(task.get("milestones", []))
     if task.get("tool_allow_list") is not None:
         workflow.metadata["tool_allow_list"] = list(task.get("tool_allow_list", []))
-    if task.get("result_summary") is not None:
-        workflow.metadata["toolsandbox_result"] = dict(task.get("result_summary", {}))
+    if task.get("reference_result_summary") is not None:
+        workflow.metadata["toolsandbox_reference_result"] = dict(task.get("reference_result_summary", {}))
     if task.get("ideal_turn_count") is not None:
         workflow.metadata["ideal_turn_count"] = task.get("ideal_turn_count")
     if task.get("ideal_tool_calls") is not None:

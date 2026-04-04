@@ -2,6 +2,13 @@
 
 This note fixes one concrete evaluation design for running ToolClaw on top of the ToolSandbox benchmark.
 
+Important distinction for any paper or experiment note:
+
+- `official ToolSandbox execution`: scenarios are executed inside the official ToolSandbox environment and scored by its own artifacts
+- `ToolClaw proxy evaluation over ToolSandbox-style tasks`: ToolClaw executes normalized tasks derived from ToolSandbox scenarios, and ToolClaw then writes a fresh proxy `toolsandbox_result` summary onto each trace
+
+Do not report proxy-evaluation numbers as official ToolSandbox execution numbers.
+
 The immediate goal is not to maximize a single leaderboard number. The goal is to isolate where ToolClaw's workflow layer should create measurable gains over a direct tool-calling baseline:
 
 - planning under multi-tool dependencies

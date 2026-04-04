@@ -61,15 +61,19 @@ def test_toolsandbox_adapter_scores_similarity_coverage_and_hallucination_avoida
             "milestones": ["locate thread", "draft response", "send response"],
             "ideal_turn_count": 4,
             "ideal_tool_calls": 2,
-            "result_summary": {
-                "similarity": 0.9,
-                "milestone_mapping": [0, 1, None],
-                "turn_count": 5,
-            },
+            "result_summary": {"similarity": 0.1},
         },
     )
     trace_payload = {
         "metrics": {"success": False, "tool_calls": 3},
+        "metadata": {
+            "toolsandbox_result": {
+                "similarity": 0.9,
+                "milestone_mapping": [0, 1, None],
+                "turn_count": 5,
+                "source": "toolclaw_proxy",
+            }
+        },
         "events": [
             {"event_type": "tool_call", "tool_id": "search_mail"},
             {"event_type": "tool_call", "tool_id": "send_mail"},
@@ -88,3 +92,36 @@ def test_toolsandbox_adapter_scores_similarity_coverage_and_hallucination_avoida
     assert score.metrics["hallucination_avoidance"] == 0.0
     assert score.metrics["state_dependency_score"] == 0.9
     assert score.diagnostics["used_result_summary"] is True
+    assert score.diagnostics["result_summary_source"] == "toolclaw_proxy"
+    assert score.diagnostics["reference_result_summary_available"] is True
+
+
+def test_toolsandbox_adapter_ignores_external_reference_summary_when_trace_summary_missing() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_004",
+        raw_payload={
+            "categories": ["State Dependency"],
+            "milestones": ["disable wifi", "confirm wifi disabled"],
+            "result_summary": {
+                "similarity": 0.99,
+                "milestone_mapping": [0, 1],
+                "turn_count": 2,
+            },
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": False, "tool_calls": 1},
+        "events": [
+            {"event_type": "tool_call", "tool_id": "set_wifi_status"},
+            {"event_type": "tool_result", "tool_id": "set_wifi_status"},
+        ],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.metrics["milestone_similarity"] == 0.5
+    assert score.metrics["milestone_coverage"] == 0.5
+    assert score.diagnostics["used_result_summary"] is True
+    assert score.diagnostics["result_summary_source"] == "toolclaw_proxy"
+    assert score.diagnostics["reference_result_summary_available"] is True

@@ -636,7 +636,7 @@ class ToolSandboxAdapter:
         target_path = sample.raw_payload.get("target_path") or f"{self.default_target_dir}/{task_id}.txt"
         tool_allow_list = self._tool_allow_list(sample.raw_payload)
         milestones = list(sample.raw_payload.get("milestones", []))
-        result_summary = self._extract_result_summary(sample.raw_payload, {})
+        reference_result_summary = self._extract_reference_result_summary(sample.raw_payload)
 
         task: Dict[str, Any] = {
             "task_id": task_id,
@@ -648,7 +648,7 @@ class ToolSandboxAdapter:
             "tool_allow_list": tool_allow_list,
             "ideal_turn_count": sample.raw_payload.get("ideal_turn_count"),
             "ideal_tool_calls": sample.raw_payload.get("ideal_tool_calls"),
-            "result_summary": result_summary,
+            "reference_result_summary": reference_result_summary,
             "metadata": {
                 "benchmark": self.benchmark_name,
                 "toolsandbox_categories": categories,
@@ -658,8 +658,8 @@ class ToolSandboxAdapter:
                 "ideal_tool_calls": sample.raw_payload.get("ideal_tool_calls"),
                 "messages": list(sample.raw_payload.get("messages", [])),
                 "milestones": milestones,
-                "toolsandbox_result": result_summary,
-                "result_summary_present": bool(result_summary),
+                "toolsandbox_reference_result": reference_result_summary,
+                "reference_result_summary_present": bool(reference_result_summary),
             },
         }
         if tool_allow_list:
@@ -673,7 +673,9 @@ class ToolSandboxAdapter:
     def score_trace(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> BenchmarkTraceScore:
         trace_metrics = trace_payload.get("metrics", {})
         trace_events = trace_payload.get("events", [])
-        result_summary = self._extract_result_summary(sample.raw_payload, trace_payload)
+        result_summary = self._extract_current_result_summary(trace_payload)
+        if not result_summary:
+            result_summary = self.build_proxy_result_summary(sample, trace_payload)
         categories = self._extract_categories(sample.raw_payload)
         similarity = self._extract_similarity(result_summary)
         success = bool(trace_metrics.get("success"))
@@ -694,6 +696,7 @@ class ToolSandboxAdapter:
         expected_turns = self._expected_turn_count(sample.raw_payload, categories)
         expected_tool_calls = self._expected_tool_calls(sample.raw_payload, categories)
         hallucination_free = self._hallucination_avoidance(sample.raw_payload, trace_events)
+        reference_result_summary = self._extract_reference_result_summary(sample.raw_payload)
 
         return BenchmarkTraceScore(
             benchmark=self.benchmark_name,
@@ -730,8 +733,40 @@ class ToolSandboxAdapter:
                 "tool_calls": tool_calls,
                 "user_queries": user_queries,
                 "used_result_summary": bool(result_summary),
+                "result_summary_source": str(result_summary.get("source") or result_summary.get("summary_source") or "toolclaw_proxy"),
+                "reference_result_summary_available": bool(reference_result_summary),
             },
         )
+
+    def build_proxy_result_summary(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> Dict[str, Any]:
+        trace_metrics = trace_payload.get("metrics", {})
+        trace_events = trace_payload.get("events", [])
+        milestones = list(sample.raw_payload.get("milestones", []))
+        success = bool(trace_metrics.get("success"))
+        tool_results = sum(1 for event in trace_events if event.get("event_type") == "tool_result")
+        user_queries = sum(1 for event in trace_events if event.get("event_type") == "user_query")
+        turn_count = self._extract_turn_count({}, trace_events)
+        matched_milestones = 0
+        if milestones:
+            progress_signals = max(tool_results, 0)
+            if self._interaction_expected(self._extract_categories(sample.raw_payload)) and user_queries > 0:
+                progress_signals += 1
+            if success:
+                matched_milestones = len(milestones)
+            else:
+                matched_milestones = min(len(milestones), progress_signals)
+        similarity = (matched_milestones / len(milestones)) if milestones else (1.0 if success else 0.0)
+        milestone_mapping: List[Any] = [idx for idx in range(matched_milestones)] + [None] * max(len(milestones) - matched_milestones, 0)
+        return {
+            "similarity": float(similarity),
+            "milestone_mapping": milestone_mapping,
+            "matched_milestones": matched_milestones,
+            "turn_count": turn_count,
+            "tool_calls": int(trace_metrics.get("tool_calls", 0)),
+            "success": success,
+            "source": "toolclaw_proxy",
+            "proxy_evaluation": True,
+        }
 
     def _make_sample(self, raw: Dict[str, Any], idx: int) -> BenchmarkSample:
         sample_id = str(
@@ -867,15 +902,30 @@ class ToolSandboxAdapter:
         return task_constraints
 
     @staticmethod
-    def _extract_result_summary(raw: Dict[str, Any], trace_payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_current_result_summary(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
         for container in (
             trace_payload,
             trace_payload.get("metadata", {}),
+        ):
+            if isinstance(container, dict):
+                summary = container.get("toolsandbox_result") or container.get("result_summary")
+                if isinstance(summary, dict):
+                    return summary
+        return {}
+
+    @staticmethod
+    def _extract_reference_result_summary(raw: Dict[str, Any]) -> Dict[str, Any]:
+        for container in (
             raw,
             raw.get("metadata", {}),
         ):
             if isinstance(container, dict):
-                summary = container.get("toolsandbox_result") or container.get("result_summary")
+                summary = (
+                    container.get("reference_result_summary")
+                    or container.get("toolsandbox_reference_result")
+                    or container.get("result_summary")
+                    or container.get("toolsandbox_result")
+                )
                 if isinstance(summary, dict):
                     return summary
         return {}

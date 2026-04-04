@@ -1,0 +1,17 @@
+{
+  "benchmark": "toolsandbox",
+  "source": "/Users/cherry/Documents/ToolClaw/data/toolsandbox.formal.official.json",
+  "normalized_taskset": "/Users/cherry/Documents/ToolClaw/outputs/ablation/toolsandbox_formal/prepared/toolsandbox.normalized.json",
+  "sample_count": 10,
+  "mode": "planner",
+  "systems": [
+    "a0_baseline",
+    "a1_recovery",
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_runs": 1,
+  "scoreboard_path": "/Users/cherry/Documents/ToolClaw/outputs/ablation/toolsandbox_formal/scoreboard.json",
+  "per_system_summary_path": "/Users/cherry/Documents/ToolClaw/outputs/ablation/toolsandbox_formal/per_system_summary.json"
+}

@@ -1,6 +1,14 @@
 # ToolSandbox In ToolClaw
 
-This repo now includes a ToolSandbox-style benchmark runner:
+This repo now includes a ToolSandbox-style benchmark runner.
+
+By default, it now prefers formal ToolSandbox data:
+
+- `data/toolsandbox.formal.official.json` if present
+- otherwise `data/toolsandbox.formal.json`
+- otherwise `data/toolsandbox.sample.json` for smoke only
+
+General runner:
 
 ```bash
 python3 scripts/run_toolsandbox_bench.py
@@ -32,9 +40,11 @@ python3 scripts/run_toolsandbox.py \
   --require-result-summary
 ```
 
-By default it uses the local smoke dataset:
+For formal runs, use the dedicated wrapper:
 
-- `data/toolsandbox.sample.json`
+```bash
+scripts/run_toolsandbox_formal.sh
+```
 
 You can also provide a custom source:
 
@@ -145,17 +155,33 @@ The ToolSandbox report now surfaces benchmark-native signals directly:
 - `turn_efficiency`
 - `tool_efficiency`
 - `result_summary_coverage`
+- `reference_summary_coverage`
 
 ## Current Limitation
 
-This is a ToolSandbox-style harness inside the current ToolClaw phase-1 runtime.
-It does **not** execute the official ToolSandbox environment yet.
+There are two different evaluation modes in this repo. Do not mix them in writeups.
+
+### 1. Official ToolSandbox execution
+
+- Executed by the vendored official ToolSandbox CLI
+- Command path: `scripts/run_toolsandbox_official.sh`
+- Ground truth lives under `data/external/ToolSandbox/data/<run_dir>/...`
+- Use this mode when you want to make claims about the official ToolSandbox environment
+
+### 2. ToolClaw proxy evaluation over ToolSandbox-style tasks
+
+- Executed by `scripts/run_toolsandbox.py`, `scripts/run_toolsandbox_bench.py`, or `scripts/run_toolsandbox_formal.sh`
+- Runs through the current ToolClaw phase-1 planner / executor / interaction stack
+- Each current ToolClaw trace is annotated with a fresh `toolsandbox_result` proxy summary generated from that run
+- Imported external ToolSandbox summaries are kept only as reference (`toolsandbox_reference_result`) for dataset freezing or offline comparison
+
+This means the current ToolClaw runner does **not** execute the official ToolSandbox environment yet.
 
 That means:
 
-- scoring can use ToolSandbox-like fields (`categories`, `milestones`, `result_summary`)
-- execution still runs through the repo's current ToolClaw planner/executor path, but the normalized task now preserves `messages`, `milestones`, `tool_allow_list`, and imported `result_summary`
-- the included sample file is only for smoke / interface validation, not for official benchmark claims
+- scoring uses the current ToolClaw run's proxy `toolsandbox_result`, not the imported external summary
+- execution still runs through the repo's current ToolClaw planner/executor path, while normalized tasks preserve `messages`, `milestones`, `tool_allow_list`, and optional reference summaries
+- the sample file is only for smoke / interface validation, not for official benchmark claims
 
 ## Official ToolSandbox Wrapper
 

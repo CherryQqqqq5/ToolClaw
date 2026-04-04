@@ -1,0 +1,1129 @@
+{
+  "run_id": "a3_interaction_toolsandbox_missing_info_001",
+  "workflow_id": "wf_toolsandbox_missing_info_001",
+  "task_id": "toolsandbox_missing_info_001",
+  "phase": "phase1_training_free",
+  "metadata": {
+    "model_name": "phase1_executor",
+    "mode": "toolclaw",
+    "start_time": "2026-04-04T13:45:59.082229+00:00",
+    "end_time": "2026-04-04T13:45:59.082317+00:00",
+    "benchmark": null,
+    "task_source": null,
+    "toolsandbox_result": {
+      "similarity": 0.6666666666666666,
+      "milestone_mapping": [
+        0,
+        1,
+        null
+      ],
+      "matched_milestones": 2,
+      "turn_count": 12,
+      "tool_calls": 5,
+      "success": false,
+      "source": "toolclaw_proxy",
+      "proxy_evaluation": true
+    },
+    "toolsandbox_result_source": "toolclaw_proxy"
+  },
+  "state_snapshots": [
+    {
+      "snapshot_id": "snap_01_start",
+      "timestamp": "2026-04-04T13:45:59.080267+00:00",
+      "active_step_id": "step_01",
+      "completed_steps": [],
+      "pending_steps": [
+        "step_02"
+      ],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {}
+    },
+    {
+      "snapshot_id": "snap_02_start",
+      "timestamp": "2026-04-04T13:45:59.080311+00:00",
+      "active_step_id": "step_02",
+      "completed_steps": [
+        "step_01"
+      ],
+      "pending_steps": [],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "retrieved_info": "summary for: retrieve and write report",
+        "__budget_spent__": 0.02,
+        "__time_spent_ms__": 150.0
+      }
+    },
+    {
+      "snapshot_id": "snap_02_start",
+      "timestamp": "2026-04-04T13:45:59.080894+00:00",
+      "active_step_id": "step_02",
+      "completed_steps": [],
+      "pending_steps": [],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "retrieved_info": "summary for: retrieve and write report",
+        "__budget_spent__": 0.02,
+        "__time_spent_ms__": 150.0
+      }
+    },
+    {
+      "snapshot_id": "snap_02_start",
+      "timestamp": "2026-04-04T13:45:59.081610+00:00",
+      "active_step_id": "step_02",
+      "completed_steps": [],
+      "pending_steps": [],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "retrieved_info": "summary for: retrieve and write report",
+        "__budget_spent__": 0.02,
+        "__time_spent_ms__": 150.0
+      }
+    },
+    {
+      "snapshot_id": "snap_02_start",
+      "timestamp": "2026-04-04T13:45:59.082244+00:00",
+      "active_step_id": "step_02",
+      "completed_steps": [],
+      "pending_steps": [],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "retrieved_info": "summary for: retrieve and write report",
+        "__budget_spent__": 0.02,
+        "__time_spent_ms__": 150.0
+      }
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-04T13:45:59.080253+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-04T13:45:59.080260+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": true,
+        "missing_assets": [],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_01",
+      "timestamp": "2026-04-04T13:45:59.080289+00:00",
+      "step_id": "step_01",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "low"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_01",
+      "timestamp": "2026-04-04T13:45:59.080293+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": {
+        "query": "retrieve and write report"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_01",
+      "timestamp": "2026-04-04T13:45:59.080297+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "summary for: retrieve and write report"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_checkpoint_step_01",
+      "timestamp": "2026-04-04T13:45:59.080307+00:00",
+      "step_id": "step_01",
+      "event_type": "checkpoint_created",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "checkpoint_id": "cp_step_01"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_02",
+      "timestamp": "2026-04-04T13:45:59.080325+00:00",
+      "step_id": "step_02",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "medium"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_02",
+      "timestamp": "2026-04-04T13:45:59.080328+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": {
+        "target_path": "outputs/toolsandbox/reports/toolsandbox_missing_info_001.txt",
+        "force_environment_failure": true
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_repair_triggered_step_02",
+      "timestamp": "2026-04-04T13:45:59.080393+00:00",
+      "step_id": "step_02",
+      "event_type": "repair_triggered",
+      "actor": "recovery_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "repair_id": "rep_err_step_02",
+        "run_id": "a3_interaction_toolsandbox_missing_info_001",
+        "workflow_id": "wf_toolsandbox_missing_info_001",
+        "triggered_error_ids": [
+          "err_step_02"
+        ],
+        "trigger_event_id": null,
+        "phase": "phase1_training_free",
+        "repair_type": "ask_user",
+        "decision": {
+          "strategy": "user_in_the_loop",
+          "rationale": "No backup tool is available, so the system asks the user for guidance or missing environment information.",
+          "confidence": 0.72,
+          "metadata": {}
+        },
+        "actions": [
+          {
+            "action_id": "act_ask_err_step_02",
+            "action_type": "ask_user",
+            "target": "step_02",
+            "value_source": null,
+            "value": null,
+            "metadata": {
+              "failed_tool": "write_tool"
+            }
+          }
+        ],
+        "interaction": {
+          "ask_user": true,
+          "question": "The current tool/environment failed at step_02. Do you want to provide an alternative tool, missing asset, or allow a different execution path?",
+          "expected_answer_type": "tool_or_asset_hint",
+          "user_response": null
+        },
+        "workflow_patch": {
+          "modified_steps": [],
+          "reordered_steps": [],
+          "inserted_steps": [],
+          "removed_steps": [],
+          "metadata": {}
+        },
+        "graph_patch": {
+          "inserted_edges": [],
+          "removed_edges": [],
+          "node_updates": {}
+        },
+        "policy_patch": {
+          "approval_pending": null,
+          "approved_actions": [],
+          "budget_delta": 0.0,
+          "metadata": {}
+        },
+        "asset_patch": {
+          "missing_assets_resolved": {},
+          "metadata": {}
+        },
+        "post_conditions": {
+          "expected_effects": [
+            "user provides missing environment hint or fallback path"
+          ],
+          "stop_if": [
+            "user aborts workflow",
+            "required environment remains unavailable"
+          ]
+        },
+        "result": {
+          "status": "pending",
+          "success": null,
+          "followup_error_id": null,
+          "message": null,
+          "metadata": {}
+        },
+        "timestamp": "2026-04-04T13:45:59.080358+00:00",
+        "metadata": {
+          "mapped_from_error_category": "environment_failure",
+          "failed_tool_id": "write_tool",
+          "phase": "phase1_training_free"
+        }
+      },
+      "message": null,
+      "metadata": {
+        "failtax_label": "environment_failure",
+        "root_cause": "tool or environment unavailable"
+      }
+    },
+    {
+      "event_id": "evt_stop_blocked",
+      "timestamp": "2026-04-04T13:45:59.080400+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "blocked",
+        "reason": "awaiting_user_interaction"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_user_query_01",
+      "timestamp": "2026-04-04T13:45:59.080853+00:00",
+      "step_id": "step_02",
+      "event_type": "user_query",
+      "actor": "interaction_shell",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "question": "Required information is missing. Please provide the missing asset, constraint, or preferred fallback.",
+        "expected_answer_type": "asset_or_constraint"
+      },
+      "message": "Required information is missing. Please provide the missing asset, constraint, or preferred fallback.",
+      "metadata": {
+        "interaction_id": "int_rep_err_step_02",
+        "context_summary": {
+          "workflow_id": "wf_toolsandbox_missing_info_001",
+          "step_id": "step_02",
+          "state_keys": [
+            "__budget_spent__",
+            "__time_spent_ms__",
+            "retrieved_info"
+          ]
+        },
+        "allowed_response_schema": {
+          "type": "object",
+          "properties": {
+            "target_path": {
+              "type": "string"
+            },
+            "tool_id": {
+              "type": "string"
+            },
+            "approved": {
+              "type": "boolean"
+            }
+          }
+        },
+        "query_metadata": {
+          "uncertainty": "missing_info"
+        }
+      }
+    },
+    {
+      "event_id": "evt_user_reply_01",
+      "timestamp": "2026-04-04T13:45:59.080859+00:00",
+      "step_id": "step_02",
+      "event_type": "user_reply",
+      "actor": "user_simulator",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {},
+      "message": "auto-reply",
+      "metadata": {
+        "interaction_id": "int_rep_err_step_02",
+        "accepted": true,
+        "reply_metadata": {}
+      }
+    },
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-04T13:45:59.080883+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-04T13:45:59.080889+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": true,
+        "missing_assets": [],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_02",
+      "timestamp": "2026-04-04T13:45:59.080911+00:00",
+      "step_id": "step_02",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "medium"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_02",
+      "timestamp": "2026-04-04T13:45:59.080914+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": {
+        "target_path": "outputs/toolsandbox/reports/toolsandbox_missing_info_001.txt",
+        "force_environment_failure": true
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_repair_triggered_step_02",
+      "timestamp": "2026-04-04T13:45:59.080971+00:00",
+      "step_id": "step_02",
+      "event_type": "repair_triggered",
+      "actor": "recovery_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "repair_id": "rep_err_step_02",
+        "run_id": "a3_interaction_toolsandbox_missing_info_001",
+        "workflow_id": "wf_toolsandbox_missing_info_001",
+        "triggered_error_ids": [
+          "err_step_02"
+        ],
+        "trigger_event_id": null,
+        "phase": "phase1_training_free",
+        "repair_type": "ask_user",
+        "decision": {
+          "strategy": "user_in_the_loop",
+          "rationale": "No backup tool is available, so the system asks the user for guidance or missing environment information.",
+          "confidence": 0.72,
+          "metadata": {}
+        },
+        "actions": [
+          {
+            "action_id": "act_ask_err_step_02",
+            "action_type": "ask_user",
+            "target": "step_02",
+            "value_source": null,
+            "value": null,
+            "metadata": {
+              "failed_tool": "write_tool"
+            }
+          }
+        ],
+        "interaction": {
+          "ask_user": true,
+          "question": "The current tool/environment failed at step_02. Do you want to provide an alternative tool, missing asset, or allow a different execution path?",
+          "expected_answer_type": "tool_or_asset_hint",
+          "user_response": null
+        },
+        "workflow_patch": {
+          "modified_steps": [],
+          "reordered_steps": [],
+          "inserted_steps": [],
+          "removed_steps": [],
+          "metadata": {}
+        },
+        "graph_patch": {
+          "inserted_edges": [],
+          "removed_edges": [],
+          "node_updates": {}
+        },
+        "policy_patch": {
+          "approval_pending": null,
+          "approved_actions": [],
+          "budget_delta": 0.0,
+          "metadata": {}
+        },
+        "asset_patch": {
+          "missing_assets_resolved": {},
+          "metadata": {}
+        },
+        "post_conditions": {
+          "expected_effects": [
+            "user provides missing environment hint or fallback path"
+          ],
+          "stop_if": [
+            "user aborts workflow",
+            "required environment remains unavailable"
+          ]
+        },
+        "result": {
+          "status": "pending",
+          "success": null,
+          "followup_error_id": null,
+          "message": null,
+          "metadata": {}
+        },
+        "timestamp": "2026-04-04T13:45:59.080944+00:00",
+        "metadata": {
+          "mapped_from_error_category": "environment_failure",
+          "failed_tool_id": "write_tool",
+          "phase": "phase1_training_free"
+        }
+      },
+      "message": null,
+      "metadata": {
+        "failtax_label": "environment_failure",
+        "root_cause": "tool or environment unavailable"
+      }
+    },
+    {
+      "event_id": "evt_stop_blocked",
+      "timestamp": "2026-04-04T13:45:59.080977+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "blocked",
+        "reason": "awaiting_user_interaction"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_user_query_02",
+      "timestamp": "2026-04-04T13:45:59.081576+00:00",
+      "step_id": "step_02",
+      "event_type": "user_query",
+      "actor": "interaction_shell",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "question": "Required information is missing. Please provide the missing asset, constraint, or preferred fallback.",
+        "expected_answer_type": "asset_or_constraint"
+      },
+      "message": "Required information is missing. Please provide the missing asset, constraint, or preferred fallback.",
+      "metadata": {
+        "interaction_id": "int_rep_err_step_02",
+        "context_summary": {
+          "workflow_id": "wf_toolsandbox_missing_info_001",
+          "step_id": "step_02",
+          "state_keys": [
+            "__budget_spent__",
+            "__time_spent_ms__",
+            "retrieved_info"
+          ]
+        },
+        "allowed_response_schema": {
+          "type": "object",
+          "properties": {
+            "target_path": {
+              "type": "string"
+            },
+            "tool_id": {
+              "type": "string"
+            },
+            "approved": {
+              "type": "boolean"
+            }
+          }
+        },
+        "query_metadata": {
+          "uncertainty": "missing_info"
+        }
+      }
+    },
+    {
+      "event_id": "evt_user_reply_02",
+      "timestamp": "2026-04-04T13:45:59.081582+00:00",
+      "step_id": "step_02",
+      "event_type": "user_reply",
+      "actor": "user_simulator",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {},
+      "message": "auto-reply",
+      "metadata": {
+        "interaction_id": "int_rep_err_step_02",
+        "accepted": true,
+        "reply_metadata": {}
+      }
+    },
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-04T13:45:59.081601+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-04T13:45:59.081605+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": true,
+        "missing_assets": [],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_02",
+      "timestamp": "2026-04-04T13:45:59.081627+00:00",
+      "step_id": "step_02",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "medium"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_02",
+      "timestamp": "2026-04-04T13:45:59.081629+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": {
+        "target_path": "outputs/toolsandbox/reports/toolsandbox_missing_info_001.txt",
+        "force_environment_failure": true
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_repair_triggered_step_02",
+      "timestamp": "2026-04-04T13:45:59.081681+00:00",
+      "step_id": "step_02",
+      "event_type": "repair_triggered",
+      "actor": "recovery_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "repair_id": "rep_err_step_02",
+        "run_id": "a3_interaction_toolsandbox_missing_info_001",
+        "workflow_id": "wf_toolsandbox_missing_info_001",
+        "triggered_error_ids": [
+          "err_step_02"
+        ],
+        "trigger_event_id": null,
+        "phase": "phase1_training_free",
+        "repair_type": "ask_user",
+        "decision": {
+          "strategy": "user_in_the_loop",
+          "rationale": "No backup tool is available, so the system asks the user for guidance or missing environment information.",
+          "confidence": 0.72,
+          "metadata": {}
+        },
+        "actions": [
+          {
+            "action_id": "act_ask_err_step_02",
+            "action_type": "ask_user",
+            "target": "step_02",
+            "value_source": null,
+            "value": null,
+            "metadata": {
+              "failed_tool": "write_tool"
+            }
+          }
+        ],
+        "interaction": {
+          "ask_user": true,
+          "question": "The current tool/environment failed at step_02. Do you want to provide an alternative tool, missing asset, or allow a different execution path?",
+          "expected_answer_type": "tool_or_asset_hint",
+          "user_response": null
+        },
+        "workflow_patch": {
+          "modified_steps": [],
+          "reordered_steps": [],
+          "inserted_steps": [],
+          "removed_steps": [],
+          "metadata": {}
+        },
+        "graph_patch": {
+          "inserted_edges": [],
+          "removed_edges": [],
+          "node_updates": {}
+        },
+        "policy_patch": {
+          "approval_pending": null,
+          "approved_actions": [],
+          "budget_delta": 0.0,
+          "metadata": {}
+        },
+        "asset_patch": {
+          "missing_assets_resolved": {},
+          "metadata": {}
+        },
+        "post_conditions": {
+          "expected_effects": [
+            "user provides missing environment hint or fallback path"
+          ],
+          "stop_if": [
+            "user aborts workflow",
+            "required environment remains unavailable"
+          ]
+        },
+        "result": {
+          "status": "pending",
+          "success": null,
+          "followup_error_id": null,
+          "message": null,
+          "metadata": {}
+        },
+        "timestamp": "2026-04-04T13:45:59.081656+00:00",
+        "metadata": {
+          "mapped_from_error_category": "environment_failure",
+          "failed_tool_id": "write_tool",
+          "phase": "phase1_training_free"
+        }
+      },
+      "message": null,
+      "metadata": {
+        "failtax_label": "environment_failure",
+        "root_cause": "tool or environment unavailable"
+      }
+    },
+    {
+      "event_id": "evt_stop_blocked",
+      "timestamp": "2026-04-04T13:45:59.081687+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "blocked",
+        "reason": "awaiting_user_interaction"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_user_query_03",
+      "timestamp": "2026-04-04T13:45:59.082213+00:00",
+      "step_id": "step_02",
+      "event_type": "user_query",
+      "actor": "interaction_shell",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "question": "Required information is missing. Please provide the missing asset, constraint, or preferred fallback.",
+        "expected_answer_type": "asset_or_constraint"
+      },
+      "message": "Required information is missing. Please provide the missing asset, constraint, or preferred fallback.",
+      "metadata": {
+        "interaction_id": "int_rep_err_step_02",
+        "context_summary": {
+          "workflow_id": "wf_toolsandbox_missing_info_001",
+          "step_id": "step_02",
+          "state_keys": [
+            "__budget_spent__",
+            "__time_spent_ms__",
+            "retrieved_info"
+          ]
+        },
+        "allowed_response_schema": {
+          "type": "object",
+          "properties": {
+            "target_path": {
+              "type": "string"
+            },
+            "tool_id": {
+              "type": "string"
+            },
+            "approved": {
+              "type": "boolean"
+            }
+          }
+        },
+        "query_metadata": {
+          "uncertainty": "missing_info"
+        }
+      }
+    },
+    {
+      "event_id": "evt_user_reply_03",
+      "timestamp": "2026-04-04T13:45:59.082218+00:00",
+      "step_id": "step_02",
+      "event_type": "user_reply",
+      "actor": "user_simulator",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {},
+      "message": "auto-reply",
+      "metadata": {
+        "interaction_id": "int_rep_err_step_02",
+        "accepted": true,
+        "reply_metadata": {}
+      }
+    },
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-04T13:45:59.082232+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-04T13:45:59.082236+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": true,
+        "missing_assets": [],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_02",
+      "timestamp": "2026-04-04T13:45:59.082259+00:00",
+      "step_id": "step_02",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "medium"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_02",
+      "timestamp": "2026-04-04T13:45:59.082261+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": {
+        "target_path": "outputs/toolsandbox/reports/toolsandbox_missing_info_001.txt",
+        "force_environment_failure": true
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_repair_triggered_step_02",
+      "timestamp": "2026-04-04T13:45:59.082309+00:00",
+      "step_id": "step_02",
+      "event_type": "repair_triggered",
+      "actor": "recovery_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "repair_id": "rep_err_step_02",
+        "run_id": "a3_interaction_toolsandbox_missing_info_001",
+        "workflow_id": "wf_toolsandbox_missing_info_001",
+        "triggered_error_ids": [
+          "err_step_02"
+        ],
+        "trigger_event_id": null,
+        "phase": "phase1_training_free",
+        "repair_type": "ask_user",
+        "decision": {
+          "strategy": "user_in_the_loop",
+          "rationale": "No backup tool is available, so the system asks the user for guidance or missing environment information.",
+          "confidence": 0.72,
+          "metadata": {}
+        },
+        "actions": [
+          {
+            "action_id": "act_ask_err_step_02",
+            "action_type": "ask_user",
+            "target": "step_02",
+            "value_source": null,
+            "value": null,
+            "metadata": {
+              "failed_tool": "write_tool"
+            }
+          }
+        ],
+        "interaction": {
+          "ask_user": true,
+          "question": "The current tool/environment failed at step_02. Do you want to provide an alternative tool, missing asset, or allow a different execution path?",
+          "expected_answer_type": "tool_or_asset_hint",
+          "user_response": null
+        },
+        "workflow_patch": {
+          "modified_steps": [],
+          "reordered_steps": [],
+          "inserted_steps": [],
+          "removed_steps": [],
+          "metadata": {}
+        },
+        "graph_patch": {
+          "inserted_edges": [],
+          "removed_edges": [],
+          "node_updates": {}
+        },
+        "policy_patch": {
+          "approval_pending": null,
+          "approved_actions": [],
+          "budget_delta": 0.0,
+          "metadata": {}
+        },
+        "asset_patch": {
+          "missing_assets_resolved": {},
+          "metadata": {}
+        },
+        "post_conditions": {
+          "expected_effects": [
+            "user provides missing environment hint or fallback path"
+          ],
+          "stop_if": [
+            "user aborts workflow",
+            "required environment remains unavailable"
+          ]
+        },
+        "result": {
+          "status": "pending",
+          "success": null,
+          "followup_error_id": null,
+          "message": null,
+          "metadata": {}
+        },
+        "timestamp": "2026-04-04T13:45:59.082283+00:00",
+        "metadata": {
+          "mapped_from_error_category": "environment_failure",
+          "failed_tool_id": "write_tool",
+          "phase": "phase1_training_free"
+        }
+      },
+      "message": null,
+      "metadata": {
+        "failtax_label": "environment_failure",
+        "root_cause": "tool or environment unavailable"
+      }
+    },
+    {
+      "event_id": "evt_stop_blocked",
+      "timestamp": "2026-04-04T13:45:59.082315+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "blocked",
+        "reason": "awaiting_user_interaction"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_035",
+      "timestamp": "2026-04-04T13:45:59.082811+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "interaction_shell",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "failed",
+        "reason": "interaction_turn_limit"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 2,
+    "tool_calls": 5,
+    "user_queries": 3,
+    "repair_actions": 0,
+    "success": false,
+    "token_cost": null,
+    "latency_ms": null
+  }
+}
