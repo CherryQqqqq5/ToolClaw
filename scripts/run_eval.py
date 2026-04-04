@@ -143,6 +143,14 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
 
 def existing_json_path(value: str) -> Path:
     path = Path(value)
+    placeholder_path = Path("path/to/taskset.json")
+    sample_path = ROOT_DIR / "data" / "eval_tasks.sample.json"
+    if path.as_posix() == placeholder_path.as_posix() and sample_path.exists():
+        print(
+            f"[run_eval] --taskset uses README placeholder path ({path}); using sample taskset at {sample_path}.",
+            file=sys.stderr,
+        )
+        return sample_path
     if not path.exists():
         raise argparse.ArgumentTypeError(
             f"taskset file not found: {path}. Provide a real JSON file path (for example: data/eval_tasks.sample.json)."
