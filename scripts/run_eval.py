@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -82,15 +83,25 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
             context=demo.context,
             policy=demo.policy,
         )
-        request.task.task_id = str(task["task_id"])
+        request.task.task_id = canonical_task_id(task)
         request.task.user_goal = str(task.get("query") or request.task.user_goal)
         workflow = planner.plan(request).workflow
     else:
         workflow = Workflow.demo()
 
-    workflow.task.task_id = str(task["task_id"])
+    workflow.task.task_id = canonical_task_id(task)
 
+    raw_metadata = task.get("metadata")
+    toolsandbox_metadata = raw_metadata if isinstance(raw_metadata, dict) and raw_metadata.get("benchmark") == "toolsandbox" else {}
     retrieve_query = task.get("query")
+    if not retrieve_query and isinstance(task.get("messages"), list):
+        for message in task["messages"]:
+            if not isinstance(message, dict):
+                continue
+            sender = str(message.get("sender") or message.get("role") or "").lower()
+            if sender == "user" and message.get("content"):
+                retrieve_query = str(message["content"])
+                break
     if retrieve_query:
         workflow.execution_plan[0].inputs["query"] = retrieve_query
 
@@ -128,9 +139,36 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         if candidate_tools:
             workflow.context.candidate_tools = candidate_tools
 
-    raw_metadata = task.get("metadata")
     if isinstance(raw_metadata, dict):
         workflow.metadata.update(raw_metadata)
+    if task.get("messages") is not None:
+        workflow.metadata["messages"] = list(task.get("messages", []))
+    if task.get("milestones") is not None:
+        workflow.metadata["milestones"] = list(task.get("milestones", []))
+    if task.get("tool_allow_list") is not None:
+        workflow.metadata["tool_allow_list"] = list(task.get("tool_allow_list", []))
+    if task.get("result_summary") is not None:
+        workflow.metadata["toolsandbox_result"] = dict(task.get("result_summary", {}))
+    if task.get("ideal_turn_count") is not None:
+        workflow.metadata["ideal_turn_count"] = task.get("ideal_turn_count")
+    if task.get("ideal_tool_calls") is not None:
+        workflow.metadata["ideal_tool_calls"] = task.get("ideal_tool_calls")
+
+    if toolsandbox_metadata:
+        allow_list = workflow.metadata.get("tool_allow_list") or []
+        scenario = str(task.get("scenario", "toolsandbox"))
+        ideal_tool_calls = task.get("ideal_tool_calls")
+        if (
+            len(allow_list) == 1
+            or scenario == "single_tool"
+            or ideal_tool_calls == 1
+        ):
+            workflow.execution_plan = workflow.execution_plan[:1]
+            workflow.tool_bindings = workflow.tool_bindings[:1]
+            workflow.workflow_graph.nodes = workflow.workflow_graph.nodes[:1]
+            workflow.workflow_graph.edges = []
+            workflow.workflow_graph.entry_nodes = ["step_01"]
+            workflow.workflow_graph.exit_nodes = ["step_01"]
 
     scenario = task.get("scenario", "success")
     if scenario == "binding_failure" and len(workflow.execution_plan) > 1:
@@ -237,7 +275,97 @@ def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any]) -> InteractionSh
     )
 
 
-def row_from_trace(task_id: str, system: str, scenario: str, trace_path: Path) -> EvalRow:
+def canonical_task_id(task: Dict[str, Any]) -> str:
+    for key in ("task_id", "sample_id", "name", "scenario_id", "id"):
+        value = task.get(key)
+        if value:
+            return str(value)
+    raise KeyError("task object must include one of: task_id, sample_id, name, scenario_id, id")
+
+
+def task_signature_for_query(query: str) -> str:
+    return f"phase1::{query.lower().strip().replace(' ', '_')}"
+
+
+def parse_reuse_pass_index(task_id: str, task: Dict[str, Any]) -> int:
+    metadata = task.get("metadata", {})
+    if isinstance(metadata, dict) and metadata.get("reuse_pass_index") is not None:
+        return int(metadata["reuse_pass_index"])
+    if task.get("reuse_pass_index") is not None:
+        return int(task["reuse_pass_index"])
+    match = re.search(r"__pass(\d+)$", task_id)
+    return int(match.group(1)) if match else 0
+
+
+def repeat_family_key(task_id: str, task: Dict[str, Any]) -> str:
+    metadata = task.get("metadata", {})
+    if isinstance(metadata, dict) and metadata.get("reuse_family_id"):
+        return str(metadata["reuse_family_id"])
+    if task.get("reuse_family_id"):
+        return str(task["reuse_family_id"])
+    if "__pass" in task_id:
+        return task_id.rsplit("__pass", 1)[0]
+    return task_id
+
+
+def repeat_family_key_from_task_id(task_id: str) -> str:
+    if "__pass" in task_id:
+        return task_id.rsplit("__pass", 1)[0]
+    return task_id
+
+
+def derive_task_family(task: Dict[str, Any], scenario: str, task_id: str) -> str:
+    metadata = task.get("metadata", {})
+    raw_family = task.get("task_family")
+    if raw_family is None and isinstance(metadata, dict):
+        raw_family = metadata.get("task_family")
+    if raw_family:
+        return str(raw_family)
+
+    categories = []
+    raw_categories = task.get("categories")
+    if isinstance(raw_categories, list):
+        categories.extend(str(item).strip().lower().replace(" ", "_") for item in raw_categories)
+    if isinstance(metadata, dict):
+        meta_categories = metadata.get("toolsandbox_categories")
+        if isinstance(meta_categories, list):
+            categories.extend(str(item).strip().lower() for item in meta_categories)
+
+    pass_index = parse_reuse_pass_index(task_id, task)
+    if pass_index > 0 or (isinstance(metadata, dict) and metadata.get("reuse_family_id")):
+        return "t4_repeated_reusable"
+    if scenario in {"binding_failure", "environment_failure", "permission_failure", "missing_asset", "policy_failure"}:
+        return "t1_static_recovery"
+    if scenario in {"multiple_user_turn", "approval_required", "insufficient_information"}:
+        return "t3_must_interact"
+    if any(category in {"multiple_user_turn", "insufficient_information"} for category in categories):
+        return "t3_must_interact"
+    if any(category in {"state_dependency", "canonicalization", "multiple_tool", "dynamic_branching"} for category in categories):
+        return "t2_dynamic_branching"
+    if scenario in {"state_dependency", "canonicalization", "multiple_tool", "dynamic_branching"}:
+        return "t2_dynamic_branching"
+    return "t0_general"
+
+
+def derive_failure_type(task: Dict[str, Any], scenario: str) -> str:
+    metadata = task.get("metadata", {})
+    raw_failure_type = task.get("failure_type")
+    if raw_failure_type is None and isinstance(metadata, dict):
+        raw_failure_type = metadata.get("failure_type")
+    if raw_failure_type:
+        return str(raw_failure_type)
+    return "none" if scenario == "success" else scenario
+
+
+def row_from_trace(
+    *,
+    task: Dict[str, Any],
+    system: str,
+    scenario: str,
+    trace_path: Path,
+    reused_artifact: bool,
+) -> EvalRow:
+    task_id = canonical_task_id(task)
     trace_payload = json.loads(trace_path.read_text(encoding="utf-8"))
     events = trace_payload.get("events", [])
     metrics = trace_payload.get("metrics", {})
@@ -248,15 +376,41 @@ def row_from_trace(task_id: str, system: str, scenario: str, trace_path: Path) -
         task_id=task_id,
         system=system,
         scenario=scenario,
+        task_family=derive_task_family(task, scenario, task_id),
+        failure_type=derive_failure_type(task, scenario),
         success=bool(metrics.get("success")),
         tool_calls=int(metrics.get("tool_calls", 0)),
         repair_actions=int(metrics.get("repair_actions", 0)),
         repair_triggered=repair_triggered,
         user_turns=int(metrics.get("user_queries", 0)),
         total_steps=int(metrics.get("total_steps", 0)),
+        reuse_pass_index=parse_reuse_pass_index(task_id, task),
+        reused_artifact=reused_artifact,
+        second_run_improvement=0.0,
         stop_reason=str(stop_reason),
         trace_path=str(trace_path),
     )
+
+
+def second_run_quality(row: EvalRow) -> float:
+    fail_stop = 0.0 if row.success else 1.0
+    return (100.0 if row.success else 0.0) - (20.0 * fail_stop) - float(row.tool_calls) - float(row.user_turns) - (0.5 * row.repair_actions)
+
+
+def annotate_second_run_improvement(rows: List[EvalRow]) -> None:
+    grouped: Dict[tuple[str, str], Dict[int, EvalRow]] = {}
+    for row in rows:
+        if row.reuse_pass_index <= 0:
+            continue
+        grouped.setdefault((row.system, repeat_family_key_from_task_id(row.task_id)), {})
+        grouped[(row.system, repeat_family_key_from_task_id(row.task_id))][row.reuse_pass_index] = row
+
+    for pass_map in grouped.values():
+        if 1 not in pass_map or 2 not in pass_map:
+            continue
+        pass_1 = pass_map[1]
+        pass_2 = pass_map[2]
+        pass_2.second_run_improvement = second_run_quality(pass_2) - second_run_quality(pass_1)
 
 
 def execute_system(
@@ -267,10 +421,17 @@ def execute_system(
     traces_dir: Path,
     runtime: Optional[ToolClawRuntime],
 ) -> EvalRow:
-    task_id = str(task["task_id"])
+    task_id = canonical_task_id(task)
     scenario = str(task.get("scenario", "success"))
     trace_path = traces_dir / f"{task_index:03d}_{task_id}_{spec.system_id}.json"
     backup_tool_map = task.get("backup_tool_map", {})
+    task_family = derive_task_family(task, scenario, task_id)
+    failure_type = derive_failure_type(task, scenario)
+    reused_artifact = False
+    if spec.use_reuse and runtime is not None:
+        query = str(task.get("query") or "")
+        if query:
+            reused_artifact = bool(runtime.asset_registry.query(task_signature_for_query(query)))
 
     if spec.execution_mode == "baseline":
         workflow = build_workflow_from_task(task, mode="demo")
@@ -283,12 +444,17 @@ def execute_system(
             task_id=task_id,
             system=spec.system_id,
             scenario=scenario,
+            task_family=task_family,
+            failure_type=failure_type,
             success=bool(baseline_trace.metrics.success),
             tool_calls=baseline_trace.metrics.tool_calls,
             repair_actions=baseline_trace.metrics.repair_actions,
             repair_triggered=0,
             user_turns=0,
             total_steps=baseline_trace.metrics.total_steps,
+            reuse_pass_index=parse_reuse_pass_index(task_id, task),
+            reused_artifact=False,
+            second_run_improvement=0.0,
             stop_reason=baseline_stop,
             trace_path=str(trace_path),
         )
@@ -308,7 +474,13 @@ def execute_system(
             output_path=str(trace_path),
             backup_tool_map=backup_tool_map,
         )
-        return row_from_trace(task_id, spec.system_id, scenario, trace_path)
+        return row_from_trace(
+            task=task,
+            system=spec.system_id,
+            scenario=scenario,
+            trace_path=trace_path,
+            reused_artifact=False,
+        )
 
     seed_workflow = build_workflow_from_task(task, mode="planner")
     request = build_planning_request(seed_workflow, allow_reuse=spec.use_reuse)
@@ -320,7 +492,13 @@ def execute_system(
         use_reuse=spec.use_reuse,
         compile_on_success=spec.compile_on_success,
     )
-    return row_from_trace(task_id, spec.system_id, scenario, trace_path)
+    return row_from_trace(
+        task=task,
+        system=spec.system_id,
+        scenario=scenario,
+        trace_path=trace_path,
+        reused_artifact=reused_artifact,
+    )
 
 
 def main() -> None:
@@ -354,8 +532,10 @@ def main() -> None:
 
     csv_path = outdir / "comparison.csv"
     report_path = outdir / "report.md"
+    annotate_second_run_improvement(rows)
     write_rows_csv(rows, csv_path)
     write_report_md(
+        rows=rows,
         summary=summarize(rows),
         scenario_summary=summarize_by_scenario(rows),
         report_path=report_path,

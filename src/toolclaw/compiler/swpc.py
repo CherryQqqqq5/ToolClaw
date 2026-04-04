@@ -15,6 +15,7 @@ class WorkflowSnippet:
     task_signature: str
     capability_skeleton: List[str]
     recommended_bindings: Dict[str, str] = field(default_factory=dict)
+    recommended_inputs: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     version: int = 1
     applicability_conditions: List[str] = field(default_factory=list)
     quality_score: float = 0.0
@@ -83,6 +84,7 @@ class SWPCCompiler:
             task_signature=self.derive_task_signature(workflow),
             capability_skeleton=[step.capability_id for step in workflow.execution_plan],
             recommended_bindings={binding.capability_id: binding.primary_tool for binding in workflow.tool_bindings},
+            recommended_inputs={step.capability_id: dict(step.inputs) for step in workflow.execution_plan},
             applicability_conditions=["phase1_training_free"],
             quality_score=self.score_artifact_quality(trace.metrics.success),
             metadata={"final_success": trace.metrics.success},

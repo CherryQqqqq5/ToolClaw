@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -32,6 +34,7 @@ from toolclaw.benchmarks.runner_utils import (
 
 
 DEFAULT_SOURCE = ROOT_DIR / "data" / "toolsandbox.sample.json"
+DEFAULT_OFFICIAL_DATA_ROOT = ROOT_DIR / "data" / "external" / "ToolSandbox" / "data"
 
 
 def _category_breakdown(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
@@ -60,8 +63,17 @@ def _category_breakdown(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, fl
             "tool_efficiency": mean_or_zero(
                 [float(record["score"]["metrics"].get("tool_efficiency", 0.0)) for record in category_records]
             ),
+            "turn_efficiency": mean_or_zero(
+                [float(record["score"]["metrics"].get("turn_efficiency", 0.0)) for record in category_records]
+            ),
             "hallucination_avoidance": mean_or_zero(
                 [float(record["score"]["metrics"].get("hallucination_avoidance", 0.0)) for record in category_records]
+            ),
+            "state_dependency_score": mean_or_zero(
+                [float(record["score"]["metrics"].get("state_dependency_score", 0.0)) for record in category_records]
+            ),
+            "result_summary_coverage": mean_or_zero(
+                [1.0 if record["score"]["diagnostics"].get("used_result_summary") else 0.0 for record in category_records]
             ),
         }
     return summary
@@ -72,7 +84,10 @@ TOOLSANDBOX_GROUP_METRICS = [
     AggregateMetric("milestone_coverage"),
     AggregateMetric("interaction_efficiency"),
     AggregateMetric("tool_efficiency"),
+    AggregateMetric("turn_efficiency"),
     AggregateMetric("hallucination_avoidance"),
+    AggregateMetric("state_dependency_score"),
+    AggregateMetric("used_result_summary", source="diagnostics", label="result_summary_coverage"),
 ]
 
 
@@ -87,6 +102,8 @@ TOOLSANDBOX_CONFIG = BenchmarkScriptConfig(
         AggregateMetric("tool_efficiency"),
         AggregateMetric("turn_efficiency"),
         AggregateMetric("hallucination_avoidance"),
+        AggregateMetric("state_dependency_score"),
+        AggregateMetric("used_result_summary", source="diagnostics", label="result_summary_coverage"),
     ],
     signature_builder=lambda score, row: json.dumps(
         {
@@ -115,6 +132,21 @@ def parse_args() -> argparse.Namespace:
         default=str(DEFAULT_SOURCE),
         help="Path to ToolSandbox-style JSON or JSONL sample file (defaults to data/toolsandbox.sample.json)",
     )
+    parser.add_argument(
+        "--official-run-dir",
+        default=None,
+        help="Official ToolSandbox run directory, or 'latest' to auto-discover under data/external/ToolSandbox/data",
+    )
+    parser.add_argument(
+        "--official-data-root",
+        default=str(DEFAULT_OFFICIAL_DATA_ROOT),
+        help="Root directory containing official ToolSandbox run directories for --official-run-dir auto-discovery",
+    )
+    parser.add_argument(
+        "--result-source",
+        default=None,
+        help="Optional JSON/JSONL file or directory containing official ToolSandbox result summaries to merge before scoring",
+    )
     parser.add_argument("--outdir", default="outputs/toolsandbox_bench", help="Output directory")
     parser.add_argument("--mode", choices=["demo", "planner"], default="planner", help="Workflow source mode")
     parser.add_argument(
@@ -125,6 +157,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=None, help="Limit number of samples")
     parser.add_argument("--smoke", action="store_true", help="Run a small smoke slice (min(limit, 10))")
     parser.add_argument("--num-runs", type=int, default=1, help="Repeat runs to estimate pass@k and consistency")
+    parser.add_argument(
+        "--require-result-summary",
+        action="store_true",
+        help="Fail if the prepared ToolSandbox source does not include any merged result_summary / toolsandbox_result signal",
+    )
     parser.add_argument("--keep-normalized-taskset", action="store_true", help="Keep the normalized taskset JSON file")
     return parser.parse_args()
 
@@ -137,6 +174,107 @@ def _write_toolsandbox_artifacts(summary: Dict[str, Any], outdir: Path) -> None:
         group_key="per_category",
         metrics=TOOLSANDBOX_GROUP_METRICS,
     )
+    (outdir / "per_category_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+
+def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
+    lines = [
+        "# ToolSandbox Benchmark Report",
+        "",
+        f"- source: `{scoreboard['source']}`",
+        f"- normalized_taskset: `{scoreboard['normalized_taskset']}`",
+        f"- samples: `{scoreboard['num_samples']}`",
+        f"- runs: `{scoreboard['num_runs']}`",
+        f"- systems: `{', '.join(scoreboard['systems'])}`",
+        "",
+        "## Aggregate",
+        "",
+        "| system | mean_success_rate | pass@k | consistency | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    per_system = scoreboard["per_system_summary"]
+    for system, stats in per_system.items():
+        lines.append(
+            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('pass_at_k', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Category Breakdown",
+            "",
+            "| system | category | rows | success_rate | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for system, stats in per_system.items():
+        for category, category_stats in sorted(stats.get("per_category", {}).items()):
+            lines.append(
+                f"| {system} | {category} | {int(category_stats.get('num_rows', 0))} | {float(category_stats.get('success_rate', 0.0)):.3f} | {float(category_stats.get('milestone_similarity', 0.0)):.3f} | {float(category_stats.get('milestone_coverage', 0.0)):.3f} | {float(category_stats.get('state_dependency_score', 0.0)):.3f} | {float(category_stats.get('hallucination_avoidance', 0.0)):.3f} | {float(category_stats.get('tool_efficiency', 0.0)):.3f} | {float(category_stats.get('turn_efficiency', 0.0)):.3f} | {float(category_stats.get('result_summary_coverage', 0.0)):.3f} |"
+            )
+
+    lines.extend(
+        [
+            "",
+            "## Interpretation",
+            "",
+            "- `milestone_similarity` and `milestone_coverage` should be read first when official ToolSandbox result summaries are available.",
+            "- `result_summary_coverage` shows how much of the benchmark is being scored with imported ToolSandbox-native signals instead of fallback heuristics.",
+            "- `state_dependency_score` is only meaningful on `state_dependency` slices; interpret it through the category table rather than overall averages.",
+            "- `turn_efficiency` and `tool_efficiency` are control metrics, not success substitutes.",
+        ]
+    )
+    (outdir / "report.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def _prepare_source_if_needed(source: str, result_source: str | None, prepared_dir: Path) -> Path:
+    source_path = Path(source)
+    if result_source is None and source_path.is_file():
+        return source_path
+
+    aligned_path = prepared_dir / "toolsandbox.aligned.jsonl"
+    cmd: List[str] = [
+        sys.executable,
+        str(ROOT_DIR / "scripts" / "prepare_toolsandbox_source.py"),
+        "--source",
+        str(source_path),
+        "--out",
+        str(aligned_path),
+    ]
+    if result_source is not None:
+        cmd.extend(["--result-source", result_source])
+    completed = subprocess.run(
+        cmd,
+        cwd=ROOT_DIR,
+        env={**os.environ, "PYTHONPATH": str(SRC_DIR)},
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise SystemExit(completed.returncode)
+    return aligned_path
+
+
+def _prepare_source_from_official_run(official_run_dir: str, official_data_root: str, prepared_dir: Path) -> Path:
+    aligned_path = prepared_dir / "toolsandbox.official.aligned.jsonl"
+    cmd: List[str] = [
+        sys.executable,
+        str(ROOT_DIR / "scripts" / "prepare_toolsandbox_official_run.py"),
+        "--run-dir",
+        official_run_dir,
+        "--data-root",
+        official_data_root,
+        "--out",
+        str(aligned_path),
+    ]
+    completed = subprocess.run(
+        cmd,
+        cwd=ROOT_DIR,
+        env={**os.environ, "PYTHONPATH": str(SRC_DIR)},
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise SystemExit(completed.returncode)
+    return aligned_path
 
 
 def main() -> None:
@@ -145,15 +283,21 @@ def main() -> None:
     outdir.mkdir(parents=True, exist_ok=True)
     prepared_dir = outdir / "prepared"
     prepared_dir.mkdir(parents=True, exist_ok=True)
+    if args.official_run_dir is not None:
+        source_for_adapter = _prepare_source_from_official_run(args.official_run_dir, args.official_data_root, prepared_dir)
+    else:
+        source_for_adapter = _prepare_source_if_needed(args.source, args.result_source, prepared_dir)
 
     adapter = ToolSandboxAdapter()
-    samples = adapter.load_samples(args.source)
+    samples = adapter.load_samples(str(source_for_adapter))
     if args.limit is not None:
         samples = samples[: args.limit]
     if args.smoke:
         samples = samples[: min(len(samples), 10)]
     if not samples:
         raise ValueError("No ToolSandbox samples loaded from source")
+    if args.require_result_summary and not any(sample.raw_payload.get("result_summary") for sample in samples):
+        raise ValueError("require-result-summary was set, but no ToolSandbox result_summary / toolsandbox_result was found")
     systems = normalize_systems(args.systems)
 
     normalized_tasks = [adapter.to_eval_task(sample) for sample in samples]
@@ -185,7 +329,7 @@ def main() -> None:
         samples=samples,
         systems=systems,
         run_records=run_records,
-        source=args.source,
+        source=str(source_for_adapter),
         mode=args.mode,
         normalized_path=normalized_path,
         num_runs=args.num_runs,
@@ -205,6 +349,7 @@ def main() -> None:
         keep_normalized_taskset=args.keep_normalized_taskset,
         extra_output_writers=_write_toolsandbox_artifacts,
     )
+    _write_toolsandbox_report(scoreboard, outdir)
 
     print(f"prepared toolsandbox taskset: {normalized_path}")
     print(f"outputs written under: {outdir}")

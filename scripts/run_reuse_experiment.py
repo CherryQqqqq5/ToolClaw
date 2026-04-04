@@ -65,6 +65,12 @@ def load_rows(csv_path: Path) -> List[Dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
+def repeat_family_key(task_id: str) -> str:
+    if "__pass" in task_id:
+        return task_id.rsplit("__pass", 1)[0]
+    return task_id
+
+
 def summarize_pass(rows: List[Dict[str, str]]) -> Dict[str, float]:
     success_rate = mean(1.0 if row["success"] == "True" else 0.0 for row in rows) if rows else 0.0
     avg_tool_calls = mean(float(row["tool_calls"]) for row in rows) if rows else 0.0
@@ -108,6 +114,21 @@ def write_report(summary: Dict[str, Any], out_path: Path) -> None:
             f"| {system} | {delta['success_rate']:+.3f} | {delta['avg_tool_calls']:+.2f} | {delta['avg_user_turns']:+.2f} | {delta['fail_stop_rate']:+.3f} |"
         )
 
+    lines.extend(
+        [
+            "",
+            "## Per-Family First-vs-Second-Run",
+            "",
+            "| system | repeat_family | pass_1_success | pass_2_success | pass_2_reused_artifact | second_run_improvement |",
+            "|---|---|---:|---:|---:|---:|",
+        ]
+    )
+    for system, family_rows in sorted(summary["per_family"].items()):
+        for repeat_family, stats in sorted(family_rows.items()):
+            lines.append(
+                f"| {system} | {repeat_family} | {stats['pass_1_success']:.3f} | {stats['pass_2_success']:.3f} | {stats['pass_2_reused_artifact']:.3f} | {stats['second_run_improvement']:.3f} |"
+            )
+
     out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -148,6 +169,7 @@ def main() -> None:
     rows = load_rows(run_eval_outdir / "comparison.csv")
     systems = sorted({row["system"] for row in rows})
     per_system: Dict[str, Any] = {}
+    per_family: Dict[str, Dict[str, Any]] = {}
     for system in systems:
         system_rows = [row for row in rows if row["system"] == system]
         pass_1_rows = [row for row in system_rows if row["task_id"].endswith("__pass1")]
@@ -164,6 +186,20 @@ def main() -> None:
                 "fail_stop_rate": pass_2["fail_stop_rate"] - pass_1["fail_stop_rate"],
             },
         }
+        family_summary: Dict[str, Any] = {}
+        families = sorted({repeat_family_key(row["task_id"]) for row in system_rows})
+        for family in families:
+            family_pass_1 = next((row for row in system_rows if repeat_family_key(row["task_id"]) == family and row["task_id"].endswith("__pass1")), None)
+            family_pass_2 = next((row for row in system_rows if repeat_family_key(row["task_id"]) == family and row["task_id"].endswith("__pass2")), None)
+            if family_pass_1 is None or family_pass_2 is None:
+                continue
+            family_summary[family] = {
+                "pass_1_success": 1.0 if family_pass_1["success"] == "True" else 0.0,
+                "pass_2_success": 1.0 if family_pass_2["success"] == "True" else 0.0,
+                "pass_2_reused_artifact": 1.0 if family_pass_2.get("reused_artifact") == "True" else 0.0,
+                "second_run_improvement": float(family_pass_2.get("second_run_improvement", 0.0)),
+            }
+        per_family[system] = family_summary
 
     summary = {
         "taskset": str(args.taskset.resolve()),
@@ -171,6 +207,7 @@ def main() -> None:
         "num_seed_tasks": len(tasks),
         "num_repeated_tasks": len(repeated_taskset),
         "per_system": per_system,
+        "per_family": per_family,
         "run_eval_outdir": str(run_eval_outdir.resolve()),
     }
     summary_path = outdir / "reuse_summary.json"

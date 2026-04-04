@@ -53,11 +53,18 @@ def test_run_eval_script_generates_csv_and_report(tmp_path: Path) -> None:
     assert len(rows) == 10
     systems = {row["system"] for row in rows}
     assert systems == {"a0_baseline", "a1_recovery", "a2_planner", "a3_interaction", "a4_reuse"}
+    assert "task_family" in rows[0]
+    assert "failure_type" in rows[0]
+    assert "reused_artifact" in rows[0]
+    assert "second_run_improvement" in rows[0]
 
     report = report_path.read_text(encoding="utf-8")
     assert "ToolClaw Phase-1 Evaluation Report" in report
     assert "Delta (A4 Reuse vs A0 Baseline)" in report
+    assert "Per-Task Results" in report
     assert "Scenario Breakdown" in report
+    assert "Failure-Type Breakdown" in report
+    assert "Task-Family Breakdown" in report
     assert "repair_success_rate" in report
     assert "avg_user_turns" in report
     assert "fail_stop_rate" in report
@@ -178,6 +185,45 @@ def test_run_eval_script_supports_legacy_aliases(tmp_path: Path) -> None:
     assert systems == {"a0_baseline", "a2_planner", "a3_interaction"}
 
 
+def test_run_eval_script_reports_repeated_family_contrast(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "task_id": "reuse_case_001__pass1",
+            "scenario": "binding_failure",
+            "query": "retrieve and write report",
+            "metadata": {"reuse_family_id": "reuse_case_001", "reuse_pass_index": 1},
+        },
+        {
+            "task_id": "reuse_case_001__pass2",
+            "scenario": "binding_failure",
+            "query": "retrieve and write report",
+            "metadata": {"reuse_family_id": "reuse_case_001", "reuse_pass_index": 2},
+        },
+    ]
+    taskset_path = tmp_path / "taskset_reuse.json"
+    taskset_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    outdir = tmp_path / "eval_out_reuse"
+    completed = subprocess.run(
+        [sys.executable, "scripts/run_eval.py", "--taskset", str(taskset_path), "--outdir", str(outdir), "--systems", "a3_interaction,a4_reuse"],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
+    a4_pass2 = next(row for row in rows if row["system"] == "a4_reuse" and row["task_id"].endswith("__pass2"))
+    assert a4_pass2["reused_artifact"] == "True"
+    assert float(a4_pass2["second_run_improvement"]) != 0.0
+
+    report = (outdir / "report.md").read_text(encoding="utf-8")
+    assert "Repeated-Family Analysis" in report
+    assert "reuse_case_001" in report
+
+
 def test_run_eval_script_missing_taskset_shows_clear_error(tmp_path: Path) -> None:
     outdir = tmp_path / "eval_out_missing"
     missing_path = tmp_path / "does_not_exist.json"
@@ -199,3 +245,15 @@ def test_run_eval_script_missing_taskset_shows_clear_error(tmp_path: Path) -> No
     assert completed.returncode != 0
     assert "taskset file not found" in completed.stderr
     assert "data/eval_tasks.sample.json" in completed.stderr
+
+
+def test_shell_wrappers_parse_as_bash() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    for script_name in ("scripts/run_eval.sh", "scripts/run_ablation.sh"):
+        completed = subprocess.run(
+            ["bash", "-n", script_name],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        )
+        assert completed.returncode == 0, completed.stderr

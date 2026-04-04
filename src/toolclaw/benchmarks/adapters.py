@@ -634,29 +634,40 @@ class ToolSandboxAdapter:
         query = self._extract_query(sample.raw_payload)
         task_id = sample.sample_id
         target_path = sample.raw_payload.get("target_path") or f"{self.default_target_dir}/{task_id}.txt"
+        tool_allow_list = self._tool_allow_list(sample.raw_payload)
+        milestones = list(sample.raw_payload.get("milestones", []))
+        result_summary = self._extract_result_summary(sample.raw_payload, {})
 
         task: Dict[str, Any] = {
             "task_id": task_id,
             "scenario": str(sample.raw_payload.get("execution_scenario") or (categories[0] if categories else "toolsandbox")),
             "query": query,
             "target_path": target_path,
+            "messages": list(sample.raw_payload.get("messages", [])),
+            "milestones": milestones,
+            "tool_allow_list": tool_allow_list,
+            "ideal_turn_count": sample.raw_payload.get("ideal_turn_count"),
+            "ideal_tool_calls": sample.raw_payload.get("ideal_tool_calls"),
+            "result_summary": result_summary,
             "metadata": {
                 "benchmark": self.benchmark_name,
                 "toolsandbox_categories": categories,
-                "tool_allow_list": self._tool_allow_list(sample.raw_payload),
-                "milestone_count": len(sample.raw_payload.get("milestones", [])),
+                "tool_allow_list": tool_allow_list,
+                "milestone_count": len(milestones),
                 "ideal_turn_count": sample.raw_payload.get("ideal_turn_count"),
                 "ideal_tool_calls": sample.raw_payload.get("ideal_tool_calls"),
+                "messages": list(sample.raw_payload.get("messages", [])),
+                "milestones": milestones,
+                "toolsandbox_result": result_summary,
+                "result_summary_present": bool(result_summary),
             },
         }
-        if self._tool_allow_list(sample.raw_payload):
-            task["candidate_tools"] = self._tool_allow_list(sample.raw_payload)
+        if tool_allow_list:
+            task["candidate_tools"] = tool_allow_list
         if "constraints" in sample.raw_payload:
             task["constraints"] = dict(sample.raw_payload["constraints"])
         if "simulated_policy" in sample.raw_payload:
             task["simulated_policy"] = dict(sample.raw_payload["simulated_policy"])
-        if "messages" in sample.raw_payload:
-            task["messages"] = list(sample.raw_payload["messages"])
         return task
 
     def score_trace(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> BenchmarkTraceScore:

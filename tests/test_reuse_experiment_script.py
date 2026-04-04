@@ -48,7 +48,10 @@ def test_run_reuse_experiment_script_generates_summary(tmp_path: Path) -> None:
     assert summary["num_seed_tasks"] == 1
     assert summary["num_repeated_tasks"] == 2
     assert set(summary["systems"]) == {"a3_interaction", "a4_reuse"}
+    assert "per_family" in summary
+    assert "reuse_eval_001" in summary["per_family"]["a4_reuse"]
 
     report = report_path.read_text(encoding="utf-8")
     assert "ToolClaw Reuse Experiment" in report
     assert "Second-Run Delta" in report
+    assert "Per-Family First-vs-Second-Run" in report

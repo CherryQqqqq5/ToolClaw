@@ -378,6 +378,7 @@ class HTGPPlanner:
             metadata={"planner_mode": request.planner_mode},
         )
         self._apply_request_overrides(workflow, request.workflow_overrides)
+        self._apply_reusable_hints(workflow, reusable_profile)
 
         artifact = PlanningArtifact(
             capability_graph=graph,
@@ -483,7 +484,7 @@ class HTGPPlanner:
                     binding.primary_tool = step.tool_id
 
     def _load_reusable_profile(self, request: PlanningRequest) -> Dict[str, Any]:
-        profile: Dict[str, Any] = {"capability_order": [], "recommended_bindings": {}}
+        profile: Dict[str, Any] = {"capability_order": [], "recommended_bindings": {}, "recommended_inputs": {}}
         if not self.asset_registry:
             return profile
 
@@ -499,11 +500,40 @@ class HTGPPlanner:
                 continue
             capability_skeleton = getattr(asset, "capability_skeleton", None)
             recommended_bindings = getattr(asset, "recommended_bindings", None)
+            recommended_inputs = getattr(asset, "recommended_inputs", None)
             if capability_skeleton:
                 profile["capability_order"] = list(capability_skeleton)
             if recommended_bindings:
                 profile["recommended_bindings"].update(dict(recommended_bindings))
+            if recommended_inputs:
+                profile["recommended_inputs"].update(
+                    {
+                        capability_id: dict(inputs)
+                        for capability_id, inputs in dict(recommended_inputs).items()
+                        if isinstance(inputs, dict)
+                    }
+                )
         return profile
+
+    @staticmethod
+    def _apply_reusable_hints(workflow: Workflow, reusable_profile: Dict[str, Any]) -> None:
+        recommended_inputs = reusable_profile.get("recommended_inputs", {})
+        if not isinstance(recommended_inputs, dict):
+            return
+
+        graph_nodes = {node.node_id: node for node in workflow.workflow_graph.nodes}
+        for step in workflow.execution_plan:
+            suggested_inputs = recommended_inputs.get(step.capability_id)
+            if not isinstance(suggested_inputs, dict):
+                continue
+            for key, value in suggested_inputs.items():
+                if key not in step.inputs:
+                    step.inputs[key] = value
+            node = graph_nodes.get(step.step_id)
+            if node is not None:
+                for key, value in suggested_inputs.items():
+                    if key not in node.inputs:
+                        node.inputs[key] = value
 
 
 class DefaultCapabilityGraphBuilder(CapabilityGraphBuilder):

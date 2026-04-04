@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import csv
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import mean
 from typing import Dict, Iterable, List, Tuple
-import csv
 
 
 @dataclass
@@ -14,12 +14,17 @@ class EvalRow:
     task_id: str
     system: str
     scenario: str
+    task_family: str
+    failure_type: str
     success: bool
     tool_calls: int
     repair_actions: int
     repair_triggered: int
     user_turns: int
     total_steps: int
+    reuse_pass_index: int
+    reused_artifact: bool
+    second_run_improvement: float
     stop_reason: str
     trace_path: str
 
@@ -33,12 +38,17 @@ def write_rows_csv(rows: Iterable[EvalRow], csv_path: Path) -> None:
                 "task_id",
                 "system",
                 "scenario",
+                "task_family",
+                "failure_type",
                 "success",
                 "tool_calls",
                 "repair_actions",
                 "repair_triggered",
                 "user_turns",
                 "total_steps",
+                "reuse_pass_index",
+                "reused_artifact",
+                "second_run_improvement",
                 "stop_reason",
                 "trace_path",
             ],
@@ -55,16 +65,7 @@ def summarize(rows: List[EvalRow]) -> Dict[str, Dict[str, float]]:
 
     summary: Dict[str, Dict[str, float]] = {}
     for system, sys_rows in grouped.items():
-        summary[system] = {
-            "num_tasks": float(len(sys_rows)),
-            "success_rate": mean(1.0 if r.success else 0.0 for r in sys_rows),
-            "repair_success_rate": _repair_success_rate(sys_rows),
-            "avg_tool_calls": mean(r.tool_calls for r in sys_rows),
-            "avg_user_turns": mean(r.user_turns for r in sys_rows),
-            "avg_repair_actions": mean(r.repair_actions for r in sys_rows),
-            "avg_total_steps": mean(r.total_steps for r in sys_rows),
-            "fail_stop_rate": mean(0.0 if r.success else 1.0 for r in sys_rows),
-        }
+        summary[system] = _aggregate_rows(sys_rows)
     return summary
 
 
@@ -72,39 +73,76 @@ def summarize_by_scenario(rows: List[EvalRow]) -> Dict[Tuple[str, str], Dict[str
     grouped: Dict[Tuple[str, str], List[EvalRow]] = {}
     for row in rows:
         grouped.setdefault((row.system, row.scenario), []).append(row)
+    return {key: _aggregate_rows(group_rows) for key, group_rows in grouped.items()}
 
-    summary: Dict[Tuple[str, str], Dict[str, float]] = {}
-    for key, key_rows in grouped.items():
+
+def summarize_by_failure_type(rows: List[EvalRow]) -> Dict[Tuple[str, str], Dict[str, float]]:
+    grouped: Dict[Tuple[str, str], List[EvalRow]] = {}
+    for row in rows:
+        grouped.setdefault((row.system, row.failure_type), []).append(row)
+    return {key: _aggregate_rows(group_rows) for key, group_rows in grouped.items()}
+
+
+def summarize_by_task_family(rows: List[EvalRow]) -> Dict[Tuple[str, str], Dict[str, float]]:
+    grouped: Dict[Tuple[str, str], List[EvalRow]] = {}
+    for row in rows:
+        grouped.setdefault((row.system, row.task_family), []).append(row)
+    return {key: _aggregate_rows(group_rows) for key, group_rows in grouped.items()}
+
+
+def summarize_repeated_families(rows: List[EvalRow]) -> Dict[Tuple[str, str], Dict[str, object]]:
+    grouped: Dict[Tuple[str, str], List[EvalRow]] = {}
+    for row in rows:
+        if row.reuse_pass_index <= 0:
+            continue
+        grouped.setdefault((row.system, _repeat_family_key(row.task_id)), []).append(row)
+
+    summary: Dict[Tuple[str, str], Dict[str, object]] = {}
+    for key, family_rows in grouped.items():
+        pass_map = {row.reuse_pass_index: row for row in family_rows}
+        if 1 not in pass_map or 2 not in pass_map:
+            continue
+        pass_1 = pass_map[1]
+        pass_2 = pass_map[2]
         summary[key] = {
-            "num_tasks": float(len(key_rows)),
-            "success_rate": mean(1.0 if r.success else 0.0 for r in key_rows),
-            "repair_success_rate": _repair_success_rate(key_rows),
-            "avg_tool_calls": mean(r.tool_calls for r in key_rows),
-            "avg_user_turns": mean(r.user_turns for r in key_rows),
-            "avg_repair_actions": mean(r.repair_actions for r in key_rows),
-            "fail_stop_rate": mean(0.0 if r.success else 1.0 for r in key_rows),
+            "pass_1_success": 1.0 if pass_1.success else 0.0,
+            "pass_2_success": 1.0 if pass_2.success else 0.0,
+            "pass_1_tool_calls": float(pass_1.tool_calls),
+            "pass_2_tool_calls": float(pass_2.tool_calls),
+            "pass_1_user_turns": float(pass_1.user_turns),
+            "pass_2_user_turns": float(pass_2.user_turns),
+            "pass_1_fail_stop": 0.0 if pass_1.success else 1.0,
+            "pass_2_fail_stop": 0.0 if pass_2.success else 1.0,
+            "pass_2_reused_artifact": 1.0 if pass_2.reused_artifact else 0.0,
+            "second_run_improvement": float(pass_2.second_run_improvement),
         }
     return summary
 
 
 def write_report_md(
+    *,
+    rows: List[EvalRow],
     summary: Dict[str, Dict[str, float]],
     scenario_summary: Dict[Tuple[str, str], Dict[str, float]],
     report_path: Path,
 ) -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
+    failure_summary = summarize_by_failure_type(rows)
+    family_summary = summarize_by_task_family(rows)
+    repeated_family_summary = summarize_repeated_families(rows)
+
     lines = [
         "# ToolClaw Phase-1 Evaluation Report",
         "",
         "## Aggregate Comparison",
         "",
-        "| system | tasks | success_rate | repair_success_rate | avg_tool_calls | avg_user_turns | avg_repair_actions | avg_total_steps | fail_stop_rate |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| system | tasks | success_rate | repair_success_rate | avg_tool_calls | avg_user_turns | avg_repair_actions | avg_total_steps | fail_stop_rate | reuse_usage_rate | mean_second_run_improvement |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
 
     for system, stats in summary.items():
         lines.append(
-            f"| {system} | {int(stats['num_tasks'])} | {stats['success_rate']:.3f} | {stats['repair_success_rate']:.3f} | {stats['avg_tool_calls']:.2f} | {stats['avg_user_turns']:.2f} | {stats['avg_repair_actions']:.2f} | {stats['avg_total_steps']:.2f} | {stats['fail_stop_rate']:.3f} |"
+            f"| {system} | {int(stats['num_tasks'])} | {stats['success_rate']:.3f} | {stats['repair_success_rate']:.3f} | {stats['avg_tool_calls']:.2f} | {stats['avg_user_turns']:.2f} | {stats['avg_repair_actions']:.2f} | {stats['avg_total_steps']:.2f} | {stats['fail_stop_rate']:.3f} | {stats['reuse_usage_rate']:.3f} | {stats['mean_second_run_improvement']:.3f} |"
         )
 
     a0 = summary.get("a0_baseline") or summary.get("baseline")
@@ -113,10 +151,6 @@ def write_report_md(
     a3 = summary.get("a3_interaction") or summary.get("toolclaw_lite")
     a4 = summary.get("a4_reuse")
     if a0 and a4:
-        success_uplift = a4["success_rate"] - a0["success_rate"]
-        call_delta = a4["avg_tool_calls"] - a0["avg_tool_calls"]
-        user_turn_delta = a4["avg_user_turns"] - a0["avg_user_turns"]
-        fail_stop_delta = a4["fail_stop_rate"] - a0["fail_stop_rate"]
         lines.extend(
             [
                 "",
@@ -124,10 +158,12 @@ def write_report_md(
                 "",
                 "| metric | delta |",
                 "|---|---:|",
-                f"| success_rate | {success_uplift:+.3f} |",
-                f"| avg_tool_calls | {call_delta:+.2f} |",
-                f"| avg_user_turns | {user_turn_delta:+.2f} |",
-                f"| fail_stop_rate | {fail_stop_delta:+.3f} |",
+                f"| success_rate | {a4['success_rate'] - a0['success_rate']:+.3f} |",
+                f"| avg_tool_calls | {a4['avg_tool_calls'] - a0['avg_tool_calls']:+.2f} |",
+                f"| avg_user_turns | {a4['avg_user_turns'] - a0['avg_user_turns']:+.2f} |",
+                f"| fail_stop_rate | {a4['fail_stop_rate'] - a0['fail_stop_rate']:+.3f} |",
+                f"| reuse_usage_rate | {a4['reuse_usage_rate'] - a0['reuse_usage_rate']:+.3f} |",
+                f"| mean_second_run_improvement | {a4['mean_second_run_improvement'] - a0['mean_second_run_improvement']:+.3f} |",
             ]
         )
 
@@ -141,7 +177,7 @@ def write_report_md(
     for label, left, right in ablation_pairs:
         if left and right:
             pair_lines.append(
-                f"| {label} | {right['success_rate'] - left['success_rate']:+.3f} | {right['repair_success_rate'] - left['repair_success_rate']:+.3f} | {right['avg_user_turns'] - left['avg_user_turns']:+.2f} | {right['fail_stop_rate'] - left['fail_stop_rate']:+.3f} |"
+                f"| {label} | {right['success_rate'] - left['success_rate']:+.3f} | {right['repair_success_rate'] - left['repair_success_rate']:+.3f} | {right['avg_user_turns'] - left['avg_user_turns']:+.2f} | {right['fail_stop_rate'] - left['fail_stop_rate']:+.3f} | {right['mean_second_run_improvement'] - left['mean_second_run_improvement']:+.3f} |"
             )
     if pair_lines:
         lines.extend(
@@ -149,10 +185,24 @@ def write_report_md(
                 "",
                 "## Ablation Deltas",
                 "",
-                "| pair | success_rate | repair_success_rate | avg_user_turns | fail_stop_rate |",
-                "|---|---:|---:|---:|---:|",
+                "| pair | success_rate | repair_success_rate | avg_user_turns | fail_stop_rate | mean_second_run_improvement |",
+                "|---|---:|---:|---:|---:|---:|",
                 *pair_lines,
             ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Per-Task Results",
+            "",
+            "| task_id | task_family | system | success | tool_calls | repair_actions | user_turns | stop_reason | failure_type | reused_artifact | second_run_improvement |",
+            "|---|---|---|---:|---:|---:|---:|---|---|---:|---:|",
+        ]
+    )
+    for row in rows:
+        lines.append(
+            f"| {row.task_id} | {row.task_family} | {row.system} | {1.0 if row.success else 0.0:.0f} | {row.tool_calls} | {row.repair_actions} | {row.user_turns} | {row.stop_reason} | {row.failure_type} | {1.0 if row.reused_artifact else 0.0:.0f} | {row.second_run_improvement:.3f} |"
         )
 
     lines.extend(
@@ -168,6 +218,49 @@ def write_report_md(
         lines.append(
             f"| {system} | {scenario} | {int(stats['num_tasks'])} | {stats['success_rate']:.3f} | {stats['repair_success_rate']:.3f} | {stats['avg_tool_calls']:.2f} | {stats['avg_user_turns']:.2f} | {stats['avg_repair_actions']:.2f} | {stats['fail_stop_rate']:.3f} |"
         )
+
+    lines.extend(
+        [
+            "",
+            "## Failure-Type Breakdown",
+            "",
+            "| system | failure_type | tasks | success_rate | repair_success_rate | fail_stop_rate |",
+            "|---|---|---:|---:|---:|---:|",
+        ]
+    )
+    for (system, failure_type), stats in sorted(failure_summary.items()):
+        lines.append(
+            f"| {system} | {failure_type} | {int(stats['num_tasks'])} | {stats['success_rate']:.3f} | {stats['repair_success_rate']:.3f} | {stats['fail_stop_rate']:.3f} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Task-Family Breakdown",
+            "",
+            "| system | task_family | tasks | success_rate | reuse_usage_rate | mean_second_run_improvement |",
+            "|---|---|---:|---:|---:|---:|",
+        ]
+    )
+    for (system, task_family), stats in sorted(family_summary.items()):
+        lines.append(
+            f"| {system} | {task_family} | {int(stats['num_tasks'])} | {stats['success_rate']:.3f} | {stats['reuse_usage_rate']:.3f} | {stats['mean_second_run_improvement']:.3f} |"
+        )
+
+    if repeated_family_summary:
+        lines.extend(
+            [
+                "",
+                "## Repeated-Family Analysis",
+                "",
+                "| system | repeat_family | pass_1_success | pass_2_success | pass_1_tool_calls | pass_2_tool_calls | pass_1_user_turns | pass_2_user_turns | pass_2_reused_artifact | second_run_improvement |",
+                "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+            ]
+        )
+        for (system, repeat_family), stats in sorted(repeated_family_summary.items()):
+            lines.append(
+                f"| {system} | {repeat_family} | {stats['pass_1_success']:.3f} | {stats['pass_2_success']:.3f} | {stats['pass_1_tool_calls']:.2f} | {stats['pass_2_tool_calls']:.2f} | {stats['pass_1_user_turns']:.2f} | {stats['pass_2_user_turns']:.2f} | {stats['pass_2_reused_artifact']:.3f} | {stats['second_run_improvement']:.3f} |"
+            )
 
     verdict = "inconclusive"
     if a0 and a4:
@@ -188,12 +281,28 @@ def write_report_md(
             "- repair_success_rate isolates whether triggered recovery paths actually salvage runs.",
             "- avg_user_turns controls interaction burden; A3/A4 should not buy gains with excessive turns.",
             "- fail_stop_rate should fall as recovery and interaction layers are added.",
-            "- Use per-task CSV to inspect failure clusters by scenario and stop_reason.",
-            "- If total task count is small (<30), treat this as a pilot rather than a final conclusion.",
+            "- reuse_usage_rate reports how often a system actually ran with a retrieved reusable artifact.",
+            "- mean_second_run_improvement is only meaningful on repeated families with explicit first-vs-second-run pairs.",
+            "- Use failure_type and task_family tables to keep benchmark slicing aligned with experimental claims.",
         ]
     )
 
     report_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _aggregate_rows(rows: List[EvalRow]) -> Dict[str, float]:
+    return {
+        "num_tasks": float(len(rows)),
+        "success_rate": mean(1.0 if r.success else 0.0 for r in rows),
+        "repair_success_rate": _repair_success_rate(rows),
+        "avg_tool_calls": mean(r.tool_calls for r in rows),
+        "avg_user_turns": mean(r.user_turns for r in rows),
+        "avg_repair_actions": mean(r.repair_actions for r in rows),
+        "avg_total_steps": mean(r.total_steps for r in rows),
+        "fail_stop_rate": mean(0.0 if r.success else 1.0 for r in rows),
+        "reuse_usage_rate": mean(1.0 if r.reused_artifact else 0.0 for r in rows),
+        "mean_second_run_improvement": mean(r.second_run_improvement for r in rows),
+    }
 
 
 def _repair_success_rate(rows: List[EvalRow]) -> float:
@@ -201,3 +310,9 @@ def _repair_success_rate(rows: List[EvalRow]) -> float:
     if not repaired_rows:
         return 0.0
     return mean(1.0 if row.success else 0.0 for row in repaired_rows)
+
+
+def _repeat_family_key(task_id: str) -> str:
+    if "__pass" in task_id:
+        return task_id.rsplit("__pass", 1)[0]
+    return task_id

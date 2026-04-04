@@ -22,9 +22,11 @@ metrics:
   secondary:
     - milestone_coverage
     - hallucination_avoidance
+    - state_dependency_score
     - interaction_efficiency
     - tool_efficiency
     - turn_efficiency
+    - result_summary_coverage
     - recovery_salvage_rate
 
 baselines:

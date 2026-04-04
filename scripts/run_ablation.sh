@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
-# Run the lightweight ablation presets used by the Phase-1 prototype.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TASKSET="${1:-$ROOT_DIR/data/eval_tasks.sample.json}"
-AB_ROOT="${2:-$ROOT_DIR/outputs/ablation}"
+OUTROOT="${2:-$ROOT_DIR/outputs/ablation}"
+REUSE_TASKSET="${3:-$TASKSET}"
+SYSTEMS="${4:-a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse}"
 
-mkdir -p "$AB_ROOT"
+mkdir -p "$OUTROOT"
 
-# Ablation A3: demo workflow path (no planner-generated workflow)
-PYTHONPATH="$ROOT_DIR/src" python3 "$ROOT_DIR/scripts/run_eval.py" \
-  --taskset "$TASKSET" \
-  --outdir "$AB_ROOT/a3_demo_mode" \
-  --mode demo
+"$ROOT_DIR/scripts/run_eval.sh" "$TASKSET" "$OUTROOT/matrix" "$SYSTEMS" planner
 
-# Ablation A4: planner workflow path
-PYTHONPATH="$ROOT_DIR/src" python3 "$ROOT_DIR/scripts/run_eval.py" \
-  --taskset "$TASKSET" \
-  --outdir "$AB_ROOT/a4_planner_mode" \
-  --mode planner
+PYTHONPATH="$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" python3 "$ROOT_DIR/scripts/run_reuse_experiment.py" \
+  --taskset "$REUSE_TASKSET" \
+  --outdir "$OUTROOT/reuse" \
+  --systems "a3_interaction,a4_reuse"
+
+echo "matrix: $OUTROOT/matrix"
+echo "reuse: $OUTROOT/reuse"
