@@ -50,14 +50,17 @@ def test_run_eval_script_generates_csv_and_report(tmp_path: Path) -> None:
     assert report_path.exists()
 
     rows = list(csv.DictReader(csv_path.read_text(encoding="utf-8").splitlines()))
-    assert len(rows) == 4
+    assert len(rows) == 10
     systems = {row["system"] for row in rows}
-    assert systems == {"baseline", "toolclaw_lite"}
+    assert systems == {"a0_baseline", "a1_recovery", "a2_planner", "a3_interaction", "a4_reuse"}
 
     report = report_path.read_text(encoding="utf-8")
     assert "ToolClaw Phase-1 Evaluation Report" in report
-    assert "Delta (ToolClaw-lite vs Baseline)" in report
+    assert "Delta (A4 Reuse vs A0 Baseline)" in report
     assert "Scenario Breakdown" in report
+    assert "repair_success_rate" in report
+    assert "avg_user_turns" in report
+    assert "fail_stop_rate" in report
 
 
 def test_run_eval_script_with_planner_mode(tmp_path: Path) -> None:
@@ -134,8 +137,45 @@ def test_run_eval_script_preserves_failure_injection_for_toolclaw_lite(tmp_path:
 
     rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
     toolclaw_rows = {(row["task_id"], row["system"]): row for row in rows}
-    assert int(toolclaw_rows[("task_binding_planner_001", "toolclaw_lite")]["repair_actions"]) >= 1
-    assert int(toolclaw_rows[("task_env_planner_001", "toolclaw_lite")]["repair_actions"]) >= 1
+    assert int(toolclaw_rows[("task_binding_planner_001", "a1_recovery")]["repair_actions"]) >= 1
+    assert int(toolclaw_rows[("task_env_planner_001", "a2_planner")]["repair_actions"]) >= 1
+
+
+def test_run_eval_script_supports_legacy_aliases(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "task_id": "task_alias_001",
+            "scenario": "success",
+            "query": "retrieve and write report",
+        }
+    ]
+    taskset_path = tmp_path / "taskset_alias.json"
+    taskset_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    outdir = tmp_path / "eval_out_alias"
+    cmd = [
+        sys.executable,
+        "scripts/run_eval.py",
+        "--taskset",
+        str(taskset_path),
+        "--outdir",
+        str(outdir),
+        "--systems",
+        "baseline,planning,interactive",
+    ]
+    completed = subprocess.run(
+        cmd,
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
+    systems = {row["system"] for row in rows}
+    assert systems == {"a0_baseline", "a2_planner", "a3_interaction"}
 
 
 def test_run_eval_script_missing_taskset_shows_clear_error(tmp_path: Path) -> None:

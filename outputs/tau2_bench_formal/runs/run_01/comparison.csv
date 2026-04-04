@@ -1,0 +1,41 @@
+task_id,system,scenario,success,tool_calls,repair_actions,repair_triggered,user_turns,total_steps,stop_reason,trace_path
+tau2_binding_auto_001,a0_baseline,binding_failure,False,2,0,0,0,2,step_failed:step_02:missing required field: target_path,outputs/tau2_bench_formal/runs/run_01/traces/001_tau2_binding_auto_001_a0_baseline.json
+tau2_binding_auto_001,a1_recovery,binding_failure,True,2,1,1,0,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/001_tau2_binding_auto_001_a1_recovery.json
+tau2_binding_auto_001,a2_planner,binding_failure,True,2,1,1,0,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/001_tau2_binding_auto_001_a2_planner.json
+tau2_binding_auto_001,a3_interaction,binding_failure,True,2,1,1,0,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/001_tau2_binding_auto_001_a3_interaction.json
+tau2_binding_auto_001,a4_reuse,binding_failure,True,2,1,1,0,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/001_tau2_binding_auto_001_a4_reuse.json
+tau2_env_backup_001,a0_baseline,environment_failure,False,2,0,0,0,2,step_failed:step_02:environment unavailable for write operation,outputs/tau2_bench_formal/runs/run_01/traces/002_tau2_env_backup_001_a0_baseline.json
+tau2_env_backup_001,a1_recovery,environment_failure,True,2,1,1,0,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/002_tau2_env_backup_001_a1_recovery.json
+tau2_env_backup_001,a2_planner,environment_failure,True,2,1,1,0,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/002_tau2_env_backup_001_a2_planner.json
+tau2_env_backup_001,a3_interaction,environment_failure,True,2,1,1,0,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/002_tau2_env_backup_001_a3_interaction.json
+tau2_env_backup_001,a4_reuse,environment_failure,True,2,1,1,0,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/002_tau2_env_backup_001_a4_reuse.json
+tau2_env_ask_user_001,a0_baseline,environment_failure,False,2,0,0,0,2,step_failed:step_02:environment unavailable for write operation,outputs/tau2_bench_formal/runs/run_01/traces/003_tau2_env_ask_user_001_a0_baseline.json
+tau2_env_ask_user_001,a1_recovery,environment_failure,False,2,0,1,0,2,awaiting_user_interaction,outputs/tau2_bench_formal/runs/run_01/traces/003_tau2_env_ask_user_001_a1_recovery.json
+tau2_env_ask_user_001,a2_planner,environment_failure,False,2,0,1,0,2,awaiting_user_interaction,outputs/tau2_bench_formal/runs/run_01/traces/003_tau2_env_ask_user_001_a2_planner.json
+tau2_env_ask_user_001,a3_interaction,environment_failure,False,5,0,4,3,2,interaction_turn_limit,outputs/tau2_bench_formal/runs/run_01/traces/003_tau2_env_ask_user_001_a3_interaction.json
+tau2_env_ask_user_001,a4_reuse,environment_failure,False,5,0,4,3,2,interaction_turn_limit,outputs/tau2_bench_formal/runs/run_01/traces/003_tau2_env_ask_user_001_a4_reuse.json
+tau2_approval_gate_001,a0_baseline,approval_required,True,2,0,0,0,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/004_tau2_approval_gate_001_a0_baseline.json
+tau2_approval_gate_001,a1_recovery,approval_required,False,0,0,1,0,2,awaiting_user_interaction,outputs/tau2_bench_formal/runs/run_01/traces/004_tau2_approval_gate_001_a1_recovery.json
+tau2_approval_gate_001,a2_planner,approval_required,False,0,0,1,0,2,awaiting_user_interaction,outputs/tau2_bench_formal/runs/run_01/traces/004_tau2_approval_gate_001_a2_planner.json
+tau2_approval_gate_001,a3_interaction,approval_required,True,2,0,2,2,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/004_tau2_approval_gate_001_a3_interaction.json
+tau2_approval_gate_001,a4_reuse,approval_required,True,2,0,2,2,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/004_tau2_approval_gate_001_a4_reuse.json
+tau2_binding_plus_approval_001,a0_baseline,binding_failure,False,2,0,0,0,2,step_failed:step_02:missing required field: target_path,outputs/tau2_bench_formal/runs/run_01/traces/005_tau2_binding_plus_approval_001_a0_baseline.json
+tau2_binding_plus_approval_001,a1_recovery,binding_failure,False,0,0,1,0,2,awaiting_user_interaction,outputs/tau2_bench_formal/runs/run_01/traces/005_tau2_binding_plus_approval_001_a1_recovery.json
+tau2_binding_plus_approval_001,a2_planner,binding_failure,False,0,0,1,0,2,awaiting_user_interaction,outputs/tau2_bench_formal/runs/run_01/traces/005_tau2_binding_plus_approval_001_a2_planner.json
+tau2_binding_plus_approval_001,a3_interaction,binding_failure,True,2,1,3,2,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/005_tau2_binding_plus_approval_001_a3_interaction.json
+tau2_binding_plus_approval_001,a4_reuse,binding_failure,True,2,1,3,2,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/005_tau2_binding_plus_approval_001_a4_reuse.json
+tau2_dual_control_001,a0_baseline,dual_control,True,2,0,0,0,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/006_tau2_dual_control_001_a0_baseline.json
+tau2_dual_control_001,a1_recovery,dual_control,False,0,0,1,0,2,awaiting_user_interaction,outputs/tau2_bench_formal/runs/run_01/traces/006_tau2_dual_control_001_a1_recovery.json
+tau2_dual_control_001,a2_planner,dual_control,False,0,0,1,0,2,awaiting_user_interaction,outputs/tau2_bench_formal/runs/run_01/traces/006_tau2_dual_control_001_a2_planner.json
+tau2_dual_control_001,a3_interaction,dual_control,True,2,0,2,2,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/006_tau2_dual_control_001_a3_interaction.json
+tau2_dual_control_001,a4_reuse,dual_control,True,2,0,2,2,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/006_tau2_dual_control_001_a4_reuse.json
+tau2_interaction_failure_001,a0_baseline,environment_failure,False,2,0,0,0,2,step_failed:step_02:environment unavailable for write operation,outputs/tau2_bench_formal/runs/run_01/traces/007_tau2_interaction_failure_001_a0_baseline.json
+tau2_interaction_failure_001,a1_recovery,environment_failure,False,2,0,1,0,2,awaiting_user_interaction,outputs/tau2_bench_formal/runs/run_01/traces/007_tau2_interaction_failure_001_a1_recovery.json
+tau2_interaction_failure_001,a2_planner,environment_failure,False,2,0,1,0,2,awaiting_user_interaction,outputs/tau2_bench_formal/runs/run_01/traces/007_tau2_interaction_failure_001_a2_planner.json
+tau2_interaction_failure_001,a3_interaction,environment_failure,False,2,0,1,1,2,invalid_user_reply,outputs/tau2_bench_formal/runs/run_01/traces/007_tau2_interaction_failure_001_a3_interaction.json
+tau2_interaction_failure_001,a4_reuse,environment_failure,False,2,0,1,1,2,invalid_user_reply,outputs/tau2_bench_formal/runs/run_01/traces/007_tau2_interaction_failure_001_a4_reuse.json
+tau2_policy_abort_001,a0_baseline,policy_failure,True,2,0,0,0,2,success_criteria_satisfied,outputs/tau2_bench_formal/runs/run_01/traces/008_tau2_policy_abort_001_a0_baseline.json
+tau2_policy_abort_001,a1_recovery,policy_failure,False,0,0,1,0,2,awaiting_user_interaction,outputs/tau2_bench_formal/runs/run_01/traces/008_tau2_policy_abort_001_a1_recovery.json
+tau2_policy_abort_001,a2_planner,policy_failure,False,0,0,1,0,2,awaiting_user_interaction,outputs/tau2_bench_formal/runs/run_01/traces/008_tau2_policy_abort_001_a2_planner.json
+tau2_policy_abort_001,a3_interaction,policy_failure,False,0,0,1,1,2,invalid_user_reply,outputs/tau2_bench_formal/runs/run_01/traces/008_tau2_policy_abort_001_a3_interaction.json
+tau2_policy_abort_001,a4_reuse,policy_failure,False,0,0,1,1,2,invalid_user_reply,outputs/tau2_bench_formal/runs/run_01/traces/008_tau2_policy_abort_001_a4_reuse.json

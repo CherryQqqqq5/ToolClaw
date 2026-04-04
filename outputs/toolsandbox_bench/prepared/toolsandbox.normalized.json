@@ -1,0 +1,64 @@
+[
+  {
+    "task_id": "toolsandbox_state_dep_001",
+    "scenario": "state_dependency",
+    "query": "retrieve and write report",
+    "target_path": "outputs/toolsandbox/reports/toolsandbox_state_dep_001.txt",
+    "metadata": {
+      "benchmark": "toolsandbox",
+      "toolsandbox_categories": [
+        "state_dependency",
+        "multiple_tool"
+      ],
+      "tool_allow_list": [
+        "search_tool",
+        "write_tool"
+      ],
+      "milestone_count": 2,
+      "ideal_turn_count": 2,
+      "ideal_tool_calls": 2
+    },
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Find the relevant information, then write the report to the destination file."
+      }
+    ]
+  },
+  {
+    "task_id": "toolsandbox_missing_info_001",
+    "scenario": "insufficient_information",
+    "query": "retrieve and write report",
+    "target_path": "outputs/toolsandbox/reports/toolsandbox_missing_info_001.txt",
+    "metadata": {
+      "benchmark": "toolsandbox",
+      "toolsandbox_categories": [
+        "insufficient_information",
+        "multiple_user_turn"
+      ],
+      "tool_allow_list": [
+        "search_tool",
+        "write_tool"
+      ],
+      "milestone_count": 3,
+      "ideal_turn_count": 3,
+      "ideal_tool_calls": 2
+    },
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Prepare the report, but you may need to clarify missing output details before saving."
+      }
+    ]
+  }
+]

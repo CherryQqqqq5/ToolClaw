@@ -1,0 +1,39 @@
+benchmark: tau2_bench
+adapter: Tau2BenchAdapter
+
+source:
+  accepted_formats:
+    - json
+    - jsonl
+  recommended_fields:
+    - sample_id
+    - scenario
+    - query
+    - simulated_policy
+    - backup_tool_map
+    - candidate_tools
+    - expected_user_turns
+    - expected_repairs
+
+metrics:
+  primary:
+    - interactive_correction
+    - interaction_efficiency
+    - repair_salvage
+  secondary:
+    - repair_efficiency
+    - approval_following
+    - tool_efficiency
+
+baselines:
+  - id: B0_direct_agent
+    definition: same runtime without ToolClaw repair/interaction loop
+  - id: A_toolclaw
+    definition: ToolClaw closed-loop interaction shell over the same taskset
+
+priority_scenarios:
+  - binding_failure
+  - environment_failure
+  - approval_required
+  - policy_failure
+  - dual_control

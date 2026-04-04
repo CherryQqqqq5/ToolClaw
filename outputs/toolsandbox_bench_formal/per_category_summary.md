@@ -1,0 +1,39 @@
+# ToolSandbox Category Summary
+
+| system | per_category | rows | success_rate | milestone_similarity | milestone_coverage | interaction_efficiency | tool_efficiency | hallucination_avoidance |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| a0_baseline | canonicalization | 5 | 0.800 | 0.800 | 0.800 | 0.800 | 0.970 | 0.800 |
+| a0_baseline | insufficient_information | 2 | 0.000 | 0.000 | 0.000 | 0.000 | 1.000 | 1.000 |
+| a0_baseline | multiple_tool | 4 | 0.750 | 0.750 | 0.750 | 0.750 | 1.000 | 1.000 |
+| a0_baseline | multiple_user_turn | 3 | 0.333 | 0.333 | 0.333 | 0.283 | 1.000 | 1.000 |
+| a0_baseline | single_tool | 2 | 1.000 | 1.000 | 1.000 | 1.000 | 0.850 | 0.000 |
+| a0_baseline | single_user_turn | 2 | 0.500 | 0.500 | 0.500 | 0.500 | 0.925 | 0.500 |
+| a0_baseline | state_dependency | 4 | 1.000 | 1.000 | 1.000 | 0.963 | 1.000 | 1.000 |
+| a1_recovery | canonicalization | 5 | 0.800 | 0.800 | 0.800 | 0.800 | 0.970 | 0.800 |
+| a1_recovery | insufficient_information | 2 | 0.500 | 0.500 | 0.500 | 0.425 | 1.000 | 1.000 |
+| a1_recovery | multiple_tool | 4 | 0.750 | 0.750 | 0.750 | 0.750 | 1.000 | 1.000 |
+| a1_recovery | multiple_user_turn | 3 | 0.000 | 0.000 | 0.000 | 0.000 | 1.000 | 1.000 |
+| a1_recovery | single_tool | 2 | 1.000 | 1.000 | 1.000 | 1.000 | 0.850 | 0.000 |
+| a1_recovery | single_user_turn | 2 | 1.000 | 1.000 | 1.000 | 0.925 | 0.925 | 0.500 |
+| a1_recovery | state_dependency | 4 | 0.750 | 0.750 | 0.750 | 0.750 | 1.000 | 1.000 |
+| a2_planner | canonicalization | 5 | 0.800 | 0.800 | 0.800 | 0.800 | 0.970 | 0.800 |
+| a2_planner | insufficient_information | 2 | 0.500 | 0.500 | 0.500 | 0.425 | 1.000 | 1.000 |
+| a2_planner | multiple_tool | 4 | 0.750 | 0.750 | 0.750 | 0.750 | 1.000 | 1.000 |
+| a2_planner | multiple_user_turn | 3 | 0.000 | 0.000 | 0.000 | 0.000 | 1.000 | 1.000 |
+| a2_planner | single_tool | 2 | 1.000 | 1.000 | 1.000 | 1.000 | 0.850 | 0.000 |
+| a2_planner | single_user_turn | 2 | 1.000 | 1.000 | 1.000 | 0.925 | 0.925 | 0.500 |
+| a2_planner | state_dependency | 4 | 0.750 | 0.750 | 0.750 | 0.750 | 1.000 | 1.000 |
+| a3_interaction | canonicalization | 5 | 1.000 | 1.000 | 1.000 | 0.880 | 0.970 | 0.800 |
+| a3_interaction | insufficient_information | 2 | 0.500 | 0.500 | 0.500 | 0.425 | 0.775 | 1.000 |
+| a3_interaction | multiple_tool | 4 | 0.750 | 0.750 | 0.750 | 0.750 | 0.887 | 1.000 |
+| a3_interaction | multiple_user_turn | 3 | 0.667 | 0.667 | 0.667 | 0.217 | 0.850 | 1.000 |
+| a3_interaction | single_tool | 2 | 1.000 | 1.000 | 1.000 | 1.000 | 0.850 | 0.000 |
+| a3_interaction | single_user_turn | 2 | 1.000 | 1.000 | 1.000 | 0.925 | 0.925 | 0.500 |
+| a3_interaction | state_dependency | 4 | 1.000 | 1.000 | 1.000 | 0.812 | 1.000 | 1.000 |
+| a4_reuse | canonicalization | 5 | 1.000 | 1.000 | 1.000 | 0.880 | 0.970 | 0.800 |
+| a4_reuse | insufficient_information | 2 | 0.500 | 0.500 | 0.500 | 0.425 | 0.775 | 1.000 |
+| a4_reuse | multiple_tool | 4 | 0.750 | 0.750 | 0.750 | 0.750 | 0.887 | 1.000 |
+| a4_reuse | multiple_user_turn | 3 | 0.667 | 0.667 | 0.667 | 0.217 | 0.850 | 1.000 |
+| a4_reuse | single_tool | 2 | 1.000 | 1.000 | 1.000 | 1.000 | 0.850 | 0.000 |
+| a4_reuse | single_user_turn | 2 | 1.000 | 1.000 | 1.000 | 0.925 | 0.925 | 0.500 |
+| a4_reuse | state_dependency | 4 | 1.000 | 1.000 | 1.000 | 0.812 | 1.000 | 1.000 |

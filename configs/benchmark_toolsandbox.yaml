@@ -1,0 +1,45 @@
+benchmark: toolsandbox
+adapter: ToolSandboxAdapter
+
+source:
+  accepted_formats:
+    - json
+    - jsonl
+  recommended_fields:
+    - name
+    - messages
+    - tool_allow_list
+    - categories
+    - milestones
+    - ideal_turn_count
+    - ideal_tool_calls
+    - result_summary
+
+metrics:
+  primary:
+    - milestone_similarity
+    - binary_success_rate
+  secondary:
+    - milestone_coverage
+    - hallucination_avoidance
+    - interaction_efficiency
+    - tool_efficiency
+    - turn_efficiency
+    - recovery_salvage_rate
+
+baselines:
+  - id: B0_direct_agent
+    definition: same model, same ToolSandbox tool list, no ToolClaw planner/repair/interaction controller
+  - id: B1_native_toolsandbox_agent
+    definition: ToolSandbox native direct agent for the same backbone when available
+  - id: A_toolclaw
+    definition: same backbone wrapped with ToolClaw workflow control
+
+priority_categories:
+  - insufficient_information
+  - state_dependency
+  - multiple_user_turn
+  - multiple_tool
+  - canonicalization
+  - single_tool
+  - single_user_turn

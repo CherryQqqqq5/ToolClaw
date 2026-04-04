@@ -1,0 +1,14 @@
+{
+  "benchmark": "toolsandbox",
+  "source": "/Users/cherry/Documents/ToolClaw/data/toolsandbox.sample.json",
+  "normalized_taskset": "/Users/cherry/Documents/ToolClaw/outputs/toolsandbox_bench/prepared/toolsandbox.normalized.json",
+  "sample_count": 2,
+  "mode": "planner",
+  "systems": [
+    "baseline",
+    "toolclaw_lite"
+  ],
+  "num_runs": 1,
+  "scoreboard_path": "/Users/cherry/Documents/ToolClaw/outputs/toolsandbox_bench/scoreboard.json",
+  "per_system_summary_path": "/Users/cherry/Documents/ToolClaw/outputs/toolsandbox_bench/per_system_summary.json"
+}

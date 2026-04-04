@@ -31,6 +31,7 @@ class ToolClawRuntime:
         run_id: str,
         output_path: str,
         backup_tool_map: Optional[Dict[str, str]] = None,
+        compile_on_success: bool = True,
     ) -> ExecutionOutcome:
         plan_result = self.planner.plan(request)
         outcome = self.executor.run_until_blocked(
@@ -39,7 +40,7 @@ class ToolClawRuntime:
             output_path=output_path,
             backup_tool_map=backup_tool_map,
         )
-        self._compile_and_store_if_success(outcome)
+        self._compile_and_store_if_success(outcome, enabled=compile_on_success)
         return outcome
 
     def run_task_with_reuse(
@@ -48,6 +49,7 @@ class ToolClawRuntime:
         run_id: str,
         output_path: str,
         backup_tool_map: Optional[Dict[str, str]] = None,
+        compile_on_success: bool = True,
     ) -> ExecutionOutcome:
         if not request.hints.reusable_asset_ids and self.asset_registry:
             signature = f"phase1::{request.task.user_goal.lower().strip().replace(' ', '_')}"
@@ -57,6 +59,7 @@ class ToolClawRuntime:
             run_id=run_id,
             output_path=output_path,
             backup_tool_map=backup_tool_map,
+            compile_on_success=compile_on_success,
         )
 
     def resume_task(
@@ -68,6 +71,7 @@ class ToolClawRuntime:
         output_path: str,
         backup_tool_map: Optional[Dict[str, str]] = None,
         state_values: Optional[Dict[str, object]] = None,
+        compile_on_success: bool = True,
     ) -> ExecutionOutcome:
         resume_patch = self.repair_updater.ingest_reply(
             workflow=workflow,
@@ -82,11 +86,11 @@ class ToolClawRuntime:
             resume_patch=resume_patch,
             backup_tool_map=backup_tool_map,
         )
-        self._compile_and_store_if_success(outcome)
+        self._compile_and_store_if_success(outcome, enabled=compile_on_success)
         return outcome
 
-    def _compile_and_store_if_success(self, outcome: ExecutionOutcome) -> None:
-        if not outcome.success:
+    def _compile_and_store_if_success(self, outcome: ExecutionOutcome, enabled: bool = True) -> None:
+        if not enabled or not outcome.success:
             return
 
         from toolclaw.schemas.trace import Trace

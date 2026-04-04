@@ -1,0 +1,17 @@
+{
+  "benchmark": "tau2_bench",
+  "source": "/Users/cherry/Documents/ToolClaw/data/tau2_bench.formal.json",
+  "normalized_taskset": "/Users/cherry/Documents/ToolClaw/outputs/tau2_bench_formal/prepared/tau2_bench.normalized.json",
+  "sample_count": 8,
+  "mode": "planner",
+  "systems": [
+    "a0_baseline",
+    "a1_recovery",
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_runs": 1,
+  "scoreboard_path": "/Users/cherry/Documents/ToolClaw/outputs/tau2_bench_formal/scoreboard.json",
+  "per_system_summary_path": "/Users/cherry/Documents/ToolClaw/outputs/tau2_bench_formal/per_system_summary.json"
+}

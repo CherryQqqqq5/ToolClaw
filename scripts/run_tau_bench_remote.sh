@@ -6,7 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE="${1:-}"
 OUTDIR="${2:-$ROOT_DIR/outputs/tau_bench_remote}"
 MODE="${3:-planner}"
-SYSTEMS="${4:-baseline,toolclaw_lite}"
+SYSTEMS="${4:-a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse}"
 RUN_KIND="${5:-smoke}" # smoke | full
 NUM_RUNS="${6:-1}"
 

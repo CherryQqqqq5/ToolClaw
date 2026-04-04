@@ -1,0 +1,119 @@
+{
+  "run_id": "a0_baseline_tau_retail_train_00049",
+  "workflow_id": "wf_demo_001",
+  "task_id": "tau_retail_train_00049",
+  "phase": "phase1_training_free",
+  "metadata": {
+    "model_name": "baseline_executor",
+    "mode": "baseline",
+    "start_time": "2026-04-03T14:55:16.425983+00:00",
+    "end_time": "2026-04-03T14:55:16.425999+00:00",
+    "benchmark": null,
+    "task_source": null
+  },
+  "state_snapshots": [],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-03T14:55:16.425986+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "baseline_executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_call_step_01",
+      "timestamp": "2026-04-03T14:55:16.425989+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_call",
+      "actor": "baseline_executor",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": {
+        "query": "Your name is Sophia Martin and your email is sophia.martin4832@example.com. You are optimistic, messy, creative. For #W1092119, change address to {'order_id': '#W1092119', 'address1': '760 Elm Avenue', 'address2': 'Suite 564', 'city': 'Houston', 'country': 'USA', 'state': 'TX', 'zip': '77034'} (same as #W1603792). For #W1092119, modify Luggage Set {'piece count': '3-piece', 'color': 'silver', 'material': 'softshell'} to {'piece count': '4-piece', 'color': 'blue'}; via credit_card_5694100."
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_01",
+      "timestamp": "2026-04-03T14:55:16.425992+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "summary for: Your name is Sophia Martin and your email is sophia.martin4832@example.com. You are optimistic, messy, creative. For #W1092119, change address to {'order_id': '#W1092119', 'address1': '760 Elm Avenue', 'address2': 'Suite 564', 'city': 'Houston', 'country': 'USA', 'state': 'TX', 'zip': '77034'} (same as #W1603792). For #W1092119, modify Luggage Set {'piece count': '3-piece', 'color': 'silver', 'material': 'softshell'} to {'piece count': '4-piece', 'color': 'blue'}; via credit_card_5694100."
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_call_step_02",
+      "timestamp": "2026-04-03T14:55:16.425993+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_call",
+      "actor": "baseline_executor",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": {
+        "target_path": "outputs/tau_bench/reports/tau_retail_train_00049.txt"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_02",
+      "timestamp": "2026-04-03T14:55:16.425996+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "wrote artifact to outputs/tau_bench/reports/tau_retail_train_00049.txt"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_success",
+      "timestamp": "2026-04-03T14:55:16.425998+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "baseline_executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "reason": "success_criteria_satisfied"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 2,
+    "tool_calls": 2,
+    "user_queries": 0,
+    "repair_actions": 0,
+    "success": true,
+    "token_cost": null,
+    "latency_ms": null
+  }
+}

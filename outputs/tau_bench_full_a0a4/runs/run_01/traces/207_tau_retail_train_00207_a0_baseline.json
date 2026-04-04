@@ -1,0 +1,119 @@
+{
+  "run_id": "a0_baseline_tau_retail_train_00207",
+  "workflow_id": "wf_demo_001",
+  "task_id": "tau_retail_train_00207",
+  "phase": "phase1_training_free",
+  "metadata": {
+    "model_name": "baseline_executor",
+    "mode": "baseline",
+    "start_time": "2026-04-03T14:55:16.841160+00:00",
+    "end_time": "2026-04-03T14:55:16.841182+00:00",
+    "benchmark": null,
+    "task_source": null
+  },
+  "state_snapshots": [],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-03T14:55:16.841164+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "baseline_executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_call_step_01",
+      "timestamp": "2026-04-03T14:55:16.841167+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_call",
+      "actor": "baseline_executor",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": {
+        "query": "Your name is Mei Kovacs and your email is mei.kovacs8232@example.com. You are rigid, curious, insecure, relaxing, independent. For #W8065207, exchange Garden Hose {'length': '50ft', 'material': 'latex', 'color': 'black'} to {}; Smart Watch {'color': 'gold', 'band material': 'leather', 'display': 'AMOLED'} to {'color': 'black', 'band material': 'silicone', 'display': 'LCD'}; via paypal_7644869. Return #W6390527 via paypal_7644869: Hiking Boots; Water Bottle;"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_01",
+      "timestamp": "2026-04-03T14:55:16.841171+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "summary for: Your name is Mei Kovacs and your email is mei.kovacs8232@example.com. You are rigid, curious, insecure, relaxing, independent. For #W8065207, exchange Garden Hose {'length': '50ft', 'material': 'latex', 'color': 'black'} to {}; Smart Watch {'color': 'gold', 'band material': 'leather', 'display': 'AMOLED'} to {'color': 'black', 'band material': 'silicone', 'display': 'LCD'}; via paypal_7644869. Return #W6390527 via paypal_7644869: Hiking Boots; Water Bottle;"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_call_step_02",
+      "timestamp": "2026-04-03T14:55:16.841174+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_call",
+      "actor": "baseline_executor",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": {
+        "target_path": "outputs/tau_bench/reports/tau_retail_train_00207.txt"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_02",
+      "timestamp": "2026-04-03T14:55:16.841177+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "wrote artifact to outputs/tau_bench/reports/tau_retail_train_00207.txt"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_success",
+      "timestamp": "2026-04-03T14:55:16.841179+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "baseline_executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "reason": "success_criteria_satisfied"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 2,
+    "tool_calls": 2,
+    "user_queries": 0,
+    "repair_actions": 0,
+    "success": true,
+    "token_cost": null,
+    "latency_ms": null
+  }
+}

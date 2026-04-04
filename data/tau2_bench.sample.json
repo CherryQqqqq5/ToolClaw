@@ -1,0 +1,33 @@
+[
+  {
+    "sample_id": "tau2_binding_001",
+    "scenario": "binding_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": ["search_tool", "write_tool"],
+    "simulated_policy": {
+      "mode": "cooperative",
+      "missing_arg_values": {
+        "target_path": "outputs/tau2_bench/reports/recovered_binding_001.txt"
+      }
+    },
+    "expected_user_turns": 1,
+    "expected_repairs": 1
+  },
+  {
+    "sample_id": "tau2_env_001",
+    "scenario": "environment_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": ["search_tool", "write_tool", "backup_write_tool"],
+    "backup_tool_map": {
+      "write_tool": "backup_write_tool"
+    },
+    "simulated_policy": {
+      "mode": "cooperative",
+      "backup_tool_preferences": {
+        "write_tool": "backup_write_tool"
+      }
+    },
+    "expected_user_turns": 1,
+    "expected_repairs": 1
+  }
+]

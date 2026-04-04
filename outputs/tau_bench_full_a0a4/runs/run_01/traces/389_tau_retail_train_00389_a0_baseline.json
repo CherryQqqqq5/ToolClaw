@@ -1,0 +1,119 @@
+{
+  "run_id": "a0_baseline_tau_retail_train_00389",
+  "workflow_id": "wf_demo_001",
+  "task_id": "tau_retail_train_00389",
+  "phase": "phase1_training_free",
+  "metadata": {
+    "model_name": "baseline_executor",
+    "mode": "baseline",
+    "start_time": "2026-04-03T14:55:17.553735+00:00",
+    "end_time": "2026-04-03T14:55:17.553762+00:00",
+    "benchmark": null,
+    "task_source": null
+  },
+  "state_snapshots": [],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-03T14:55:17.553739+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "baseline_executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_call_step_01",
+      "timestamp": "2026-04-03T14:55:17.553743+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_call",
+      "actor": "baseline_executor",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": {
+        "query": "Your name is Liam Gonzalez and your email is liam.gonzalez4478@example.com. You are relaxing, happy. Cancel order #W8747662 because no longer needed."
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_01",
+      "timestamp": "2026-04-03T14:55:17.553748+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "summary for: Your name is Liam Gonzalez and your email is liam.gonzalez4478@example.com. You are relaxing, happy. Cancel order #W8747662 because no longer needed."
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_call_step_02",
+      "timestamp": "2026-04-03T14:55:17.553751+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_call",
+      "actor": "baseline_executor",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": {
+        "target_path": "outputs/tau_bench/reports/tau_retail_train_00389.txt"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_02",
+      "timestamp": "2026-04-03T14:55:17.553755+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "wrote artifact to outputs/tau_bench/reports/tau_retail_train_00389.txt"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_success",
+      "timestamp": "2026-04-03T14:55:17.553759+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "baseline_executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "reason": "success_criteria_satisfied"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 2,
+    "tool_calls": 2,
+    "user_queries": 0,
+    "repair_actions": 0,
+    "success": true,
+    "token_cost": null,
+    "latency_ms": null
+  }
+}

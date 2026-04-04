@@ -1,0 +1,350 @@
+[
+  {
+    "sample_id": "tau2_binding_auto_001",
+    "scenario": "binding_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "expected_repairs": 1,
+    "expected_user_turns": 0,
+    "task_id": "tau2_binding_auto_001__pass1",
+    "metadata": {
+      "reuse_family_id": "tau2_binding_auto_001",
+      "reuse_pass_index": 1
+    }
+  },
+  {
+    "sample_id": "tau2_env_backup_001",
+    "scenario": "environment_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool",
+      "backup_write_tool"
+    ],
+    "backup_tool_map": {
+      "write_tool": "backup_write_tool"
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 0,
+    "task_id": "tau2_env_backup_001__pass1",
+    "metadata": {
+      "reuse_family_id": "tau2_env_backup_001",
+      "reuse_pass_index": 1
+    }
+  },
+  {
+    "sample_id": "tau2_env_ask_user_001",
+    "scenario": "environment_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool",
+      "backup_write_tool"
+    ],
+    "simulated_policy": {
+      "mode": "cooperative",
+      "tool_switch_hints": {
+        "tool_id": "backup_write_tool"
+      }
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 1,
+    "task_id": "tau2_env_ask_user_001__pass1",
+    "metadata": {
+      "reuse_family_id": "tau2_env_ask_user_001",
+      "reuse_pass_index": 1
+    }
+  },
+  {
+    "sample_id": "tau2_approval_gate_001",
+    "scenario": "approval_required",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "constraints": {
+      "requires_user_approval": true,
+      "risk_level": "high"
+    },
+    "simulated_policy": {
+      "mode": "cooperative"
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 1,
+    "task_id": "tau2_approval_gate_001__pass1",
+    "metadata": {
+      "reuse_family_id": "tau2_approval_gate_001",
+      "reuse_pass_index": 1
+    }
+  },
+  {
+    "sample_id": "tau2_binding_plus_approval_001",
+    "scenario": "binding_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "constraints": {
+      "requires_user_approval": true,
+      "risk_level": "high"
+    },
+    "simulated_policy": {
+      "mode": "cooperative"
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 1,
+    "task_id": "tau2_binding_plus_approval_001__pass1",
+    "metadata": {
+      "reuse_family_id": "tau2_binding_plus_approval_001",
+      "reuse_pass_index": 1
+    }
+  },
+  {
+    "sample_id": "tau2_dual_control_001",
+    "scenario": "dual_control",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool",
+      "backup_write_tool"
+    ],
+    "constraints": {
+      "requires_user_approval": true,
+      "risk_level": "high"
+    },
+    "backup_tool_map": {
+      "write_tool": "backup_write_tool"
+    },
+    "simulated_policy": {
+      "mode": "cooperative"
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 1,
+    "task_id": "tau2_dual_control_001__pass1",
+    "metadata": {
+      "reuse_family_id": "tau2_dual_control_001",
+      "reuse_pass_index": 1
+    }
+  },
+  {
+    "sample_id": "tau2_interaction_failure_001",
+    "scenario": "environment_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "simulated_policy": {
+      "mode": "strict"
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 1,
+    "task_id": "tau2_interaction_failure_001__pass1",
+    "metadata": {
+      "reuse_family_id": "tau2_interaction_failure_001",
+      "reuse_pass_index": 1
+    }
+  },
+  {
+    "sample_id": "tau2_policy_abort_001",
+    "scenario": "policy_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "constraints": {
+      "requires_user_approval": true,
+      "risk_level": "high"
+    },
+    "simulated_policy": {
+      "mode": "abortive"
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 1,
+    "task_id": "tau2_policy_abort_001__pass1",
+    "metadata": {
+      "reuse_family_id": "tau2_policy_abort_001",
+      "reuse_pass_index": 1
+    }
+  },
+  {
+    "sample_id": "tau2_binding_auto_001",
+    "scenario": "binding_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "expected_repairs": 1,
+    "expected_user_turns": 0,
+    "task_id": "tau2_binding_auto_001__pass2",
+    "metadata": {
+      "reuse_family_id": "tau2_binding_auto_001",
+      "reuse_pass_index": 2
+    }
+  },
+  {
+    "sample_id": "tau2_env_backup_001",
+    "scenario": "environment_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool",
+      "backup_write_tool"
+    ],
+    "backup_tool_map": {
+      "write_tool": "backup_write_tool"
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 0,
+    "task_id": "tau2_env_backup_001__pass2",
+    "metadata": {
+      "reuse_family_id": "tau2_env_backup_001",
+      "reuse_pass_index": 2
+    }
+  },
+  {
+    "sample_id": "tau2_env_ask_user_001",
+    "scenario": "environment_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool",
+      "backup_write_tool"
+    ],
+    "simulated_policy": {
+      "mode": "cooperative",
+      "tool_switch_hints": {
+        "tool_id": "backup_write_tool"
+      }
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 1,
+    "task_id": "tau2_env_ask_user_001__pass2",
+    "metadata": {
+      "reuse_family_id": "tau2_env_ask_user_001",
+      "reuse_pass_index": 2
+    }
+  },
+  {
+    "sample_id": "tau2_approval_gate_001",
+    "scenario": "approval_required",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "constraints": {
+      "requires_user_approval": true,
+      "risk_level": "high"
+    },
+    "simulated_policy": {
+      "mode": "cooperative"
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 1,
+    "task_id": "tau2_approval_gate_001__pass2",
+    "metadata": {
+      "reuse_family_id": "tau2_approval_gate_001",
+      "reuse_pass_index": 2
+    }
+  },
+  {
+    "sample_id": "tau2_binding_plus_approval_001",
+    "scenario": "binding_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "constraints": {
+      "requires_user_approval": true,
+      "risk_level": "high"
+    },
+    "simulated_policy": {
+      "mode": "cooperative"
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 1,
+    "task_id": "tau2_binding_plus_approval_001__pass2",
+    "metadata": {
+      "reuse_family_id": "tau2_binding_plus_approval_001",
+      "reuse_pass_index": 2
+    }
+  },
+  {
+    "sample_id": "tau2_dual_control_001",
+    "scenario": "dual_control",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool",
+      "backup_write_tool"
+    ],
+    "constraints": {
+      "requires_user_approval": true,
+      "risk_level": "high"
+    },
+    "backup_tool_map": {
+      "write_tool": "backup_write_tool"
+    },
+    "simulated_policy": {
+      "mode": "cooperative"
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 1,
+    "task_id": "tau2_dual_control_001__pass2",
+    "metadata": {
+      "reuse_family_id": "tau2_dual_control_001",
+      "reuse_pass_index": 2
+    }
+  },
+  {
+    "sample_id": "tau2_interaction_failure_001",
+    "scenario": "environment_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "simulated_policy": {
+      "mode": "strict"
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 1,
+    "task_id": "tau2_interaction_failure_001__pass2",
+    "metadata": {
+      "reuse_family_id": "tau2_interaction_failure_001",
+      "reuse_pass_index": 2
+    }
+  },
+  {
+    "sample_id": "tau2_policy_abort_001",
+    "scenario": "policy_failure",
+    "query": "retrieve and write report",
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "constraints": {
+      "requires_user_approval": true,
+      "risk_level": "high"
+    },
+    "simulated_policy": {
+      "mode": "abortive"
+    },
+    "expected_repairs": 1,
+    "expected_user_turns": 1,
+    "task_id": "tau2_policy_abort_001__pass2",
+    "metadata": {
+      "reuse_family_id": "tau2_policy_abort_001",
+      "reuse_pass_index": 2
+    }
+  }
+]

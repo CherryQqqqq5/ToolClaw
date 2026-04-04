@@ -1,0 +1,56 @@
+{
+  "taskset": "/Users/cherry/Documents/ToolClaw/data/tau2_bench.formal.json",
+  "systems": [
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_seed_tasks": 8,
+  "num_repeated_tasks": 16,
+  "per_system": {
+    "a3_interaction": {
+      "pass_1": {
+        "num_rows": 8.0,
+        "success_rate": 0.625,
+        "avg_tool_calls": 2.125,
+        "avg_user_turns": 1.375,
+        "fail_stop_rate": 0.375
+      },
+      "pass_2": {
+        "num_rows": 8.0,
+        "success_rate": 0.625,
+        "avg_tool_calls": 2.125,
+        "avg_user_turns": 1.375,
+        "fail_stop_rate": 0.375
+      },
+      "second_run_delta": {
+        "success_rate": 0.0,
+        "avg_tool_calls": 0.0,
+        "avg_user_turns": 0.0,
+        "fail_stop_rate": 0.0
+      }
+    },
+    "a4_reuse": {
+      "pass_1": {
+        "num_rows": 8.0,
+        "success_rate": 0.625,
+        "avg_tool_calls": 2.125,
+        "avg_user_turns": 1.375,
+        "fail_stop_rate": 0.375
+      },
+      "pass_2": {
+        "num_rows": 8.0,
+        "success_rate": 0.625,
+        "avg_tool_calls": 2.125,
+        "avg_user_turns": 1.375,
+        "fail_stop_rate": 0.375
+      },
+      "second_run_delta": {
+        "success_rate": 0.0,
+        "avg_tool_calls": 0.0,
+        "avg_user_turns": 0.0,
+        "fail_stop_rate": 0.0
+      }
+    }
+  },
+  "run_eval_outdir": "/Users/cherry/Documents/ToolClaw/outputs/reuse_experiment_tau2/run_eval"
+}

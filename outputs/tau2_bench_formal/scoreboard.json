@@ -1,0 +1,2095 @@
+{
+  "benchmark": "tau2_bench",
+  "source": "/Users/cherry/Documents/ToolClaw/data/tau2_bench.formal.json",
+  "normalized_taskset": "/Users/cherry/Documents/ToolClaw/outputs/tau2_bench_formal/prepared/tau2_bench.normalized.json",
+  "mode": "planner",
+  "systems": [
+    "a0_baseline",
+    "a1_recovery",
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_samples": 8,
+  "num_runs": 1,
+  "smoke": false,
+  "per_system_summary": {
+    "a0_baseline": {
+      "num_samples": 8,
+      "num_runs": 1,
+      "mean_success_rate": 0.375,
+      "pass_at_k": 0.375,
+      "consistency": 1.0,
+      "per_sample": {
+        "tau2_approval_gate_001": {
+          "scenario": "approval_required",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_binding_auto_001": {
+          "scenario": "binding_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "step_failed:step_02:missing required field: target_path"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_binding_plus_approval_001": {
+          "scenario": "binding_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "step_failed:step_02:missing required field: target_path"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 0.9
+        },
+        "tau2_dual_control_001": {
+          "scenario": "dual_control",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_env_ask_user_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "step_failed:step_02:environment unavailable for write operation"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_env_backup_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "step_failed:step_02:environment unavailable for write operation"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_interaction_failure_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "step_failed:step_02:environment unavailable for write operation"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_policy_abort_001": {
+          "scenario": "policy_failure",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        }
+      },
+      "interactive_correction": 0.0,
+      "interaction_efficiency": 0.375,
+      "repair_salvage": 1.0,
+      "repair_efficiency": 1.0,
+      "approval_following": 0.5625,
+      "tool_efficiency": 0.9
+    },
+    "a1_recovery": {
+      "num_samples": 8,
+      "num_runs": 1,
+      "mean_success_rate": 0.25,
+      "pass_at_k": 0.25,
+      "consistency": 1.0,
+      "per_sample": {
+        "tau2_approval_gate_001": {
+          "scenario": "approval_required",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "awaiting_user_interaction"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "tau2_binding_auto_001": {
+          "scenario": "binding_failure",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_binding_plus_approval_001": {
+          "scenario": "binding_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "awaiting_user_interaction"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "tau2_dual_control_001": {
+          "scenario": "dual_control",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "awaiting_user_interaction"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "tau2_env_ask_user_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "awaiting_user_interaction"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_env_backup_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_interaction_failure_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "awaiting_user_interaction"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_policy_abort_001": {
+          "scenario": "policy_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "awaiting_user_interaction"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        }
+      },
+      "interactive_correction": 0.0,
+      "interaction_efficiency": 0.25,
+      "repair_salvage": 1.0,
+      "repair_efficiency": 1.0,
+      "approval_following": 0.75,
+      "tool_efficiency": 0.95
+    },
+    "a2_planner": {
+      "num_samples": 8,
+      "num_runs": 1,
+      "mean_success_rate": 0.25,
+      "pass_at_k": 0.25,
+      "consistency": 1.0,
+      "per_sample": {
+        "tau2_approval_gate_001": {
+          "scenario": "approval_required",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "awaiting_user_interaction"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "tau2_binding_auto_001": {
+          "scenario": "binding_failure",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_binding_plus_approval_001": {
+          "scenario": "binding_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "awaiting_user_interaction"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "tau2_dual_control_001": {
+          "scenario": "dual_control",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "awaiting_user_interaction"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "tau2_env_ask_user_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "awaiting_user_interaction"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_env_backup_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_interaction_failure_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "awaiting_user_interaction"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_policy_abort_001": {
+          "scenario": "policy_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "awaiting_user_interaction"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        }
+      },
+      "interactive_correction": 0.0,
+      "interaction_efficiency": 0.25,
+      "repair_salvage": 1.0,
+      "repair_efficiency": 1.0,
+      "approval_following": 0.75,
+      "tool_efficiency": 0.95
+    },
+    "a3_interaction": {
+      "num_samples": 8,
+      "num_runs": 1,
+      "mean_success_rate": 0.625,
+      "pass_at_k": 0.625,
+      "consistency": 1.0,
+      "per_sample": {
+        "tau2_approval_gate_001": {
+          "scenario": "approval_required",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 4.0,
+          "interaction_efficiency": 0.8,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_binding_auto_001": {
+          "scenario": "binding_failure",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_binding_plus_approval_001": {
+          "scenario": "binding_failure",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 4.0,
+          "interaction_efficiency": 0.8,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_dual_control_001": {
+          "scenario": "dual_control",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 4.0,
+          "interaction_efficiency": 0.8,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_env_ask_user_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "interaction_turn_limit"
+          ],
+          "interactive_correction": 6.0,
+          "interaction_efficiency": 0.6,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.6
+        },
+        "tau2_env_backup_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_interaction_failure_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "invalid_user_reply"
+          ],
+          "interactive_correction": 2.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_policy_abort_001": {
+          "scenario": "policy_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "invalid_user_reply"
+          ],
+          "interactive_correction": 2.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        }
+      },
+      "interactive_correction": 2.75,
+      "interaction_efficiency": 0.875,
+      "repair_salvage": 1.0,
+      "repair_efficiency": 1.0,
+      "approval_following": 0.5625,
+      "tool_efficiency": 0.875
+    },
+    "a4_reuse": {
+      "num_samples": 8,
+      "num_runs": 1,
+      "mean_success_rate": 0.625,
+      "pass_at_k": 0.625,
+      "consistency": 1.0,
+      "per_sample": {
+        "tau2_approval_gate_001": {
+          "scenario": "approval_required",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 4.0,
+          "interaction_efficiency": 0.8,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_binding_auto_001": {
+          "scenario": "binding_failure",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_binding_plus_approval_001": {
+          "scenario": "binding_failure",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 4.0,
+          "interaction_efficiency": 0.8,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_dual_control_001": {
+          "scenario": "dual_control",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 4.0,
+          "interaction_efficiency": 0.8,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_env_ask_user_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "interaction_turn_limit"
+          ],
+          "interactive_correction": 6.0,
+          "interaction_efficiency": 0.6,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.6
+        },
+        "tau2_env_backup_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_interaction_failure_001": {
+          "scenario": "environment_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "invalid_user_reply"
+          ],
+          "interactive_correction": 2.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "tau2_policy_abort_001": {
+          "scenario": "policy_failure",
+          "num_runs": 1,
+          "success_rate": 0.0,
+          "pass_at_k": 0.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "invalid_user_reply"
+          ],
+          "interactive_correction": 2.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        }
+      },
+      "interactive_correction": 2.75,
+      "interaction_efficiency": 0.875,
+      "repair_salvage": 1.0,
+      "repair_efficiency": 1.0,
+      "approval_following": 0.5625,
+      "tool_efficiency": 0.875
+    }
+  },
+  "runs": [
+    {
+      "run_index": 1,
+      "system": "a0_baseline",
+      "task_id": "tau2_binding_auto_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/001_tau2_binding_auto_001_a0_baseline.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_binding_auto_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "binding_failure",
+          "stop_reason": "step_failed:step_02:missing required field: target_path",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a1_recovery",
+      "task_id": "tau2_binding_auto_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/001_tau2_binding_auto_001_a1_recovery.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_binding_auto_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "binding_failure",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 1,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a2_planner",
+      "task_id": "tau2_binding_auto_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/001_tau2_binding_auto_001_a2_planner.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_binding_auto_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "binding_failure",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 1,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a3_interaction",
+      "task_id": "tau2_binding_auto_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/001_tau2_binding_auto_001_a3_interaction.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_binding_auto_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "binding_failure",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 1,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a4_reuse",
+      "task_id": "tau2_binding_auto_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/001_tau2_binding_auto_001_a4_reuse.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_binding_auto_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "binding_failure",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 1,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a0_baseline",
+      "task_id": "tau2_env_backup_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/002_tau2_env_backup_001_a0_baseline.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_env_backup_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "step_failed:step_02:environment unavailable for write operation",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a1_recovery",
+      "task_id": "tau2_env_backup_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/002_tau2_env_backup_001_a1_recovery.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_env_backup_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 1,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a2_planner",
+      "task_id": "tau2_env_backup_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/002_tau2_env_backup_001_a2_planner.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_env_backup_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 1,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a3_interaction",
+      "task_id": "tau2_env_backup_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/002_tau2_env_backup_001_a3_interaction.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_env_backup_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 1,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a4_reuse",
+      "task_id": "tau2_env_backup_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/002_tau2_env_backup_001_a4_reuse.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_env_backup_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 1,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a0_baseline",
+      "task_id": "tau2_env_ask_user_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/003_tau2_env_ask_user_001_a0_baseline.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_env_ask_user_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "step_failed:step_02:environment unavailable for write operation",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a1_recovery",
+      "task_id": "tau2_env_ask_user_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/003_tau2_env_ask_user_001_a1_recovery.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_env_ask_user_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "awaiting_user_interaction",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a2_planner",
+      "task_id": "tau2_env_ask_user_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/003_tau2_env_ask_user_001_a2_planner.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_env_ask_user_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "awaiting_user_interaction",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a3_interaction",
+      "task_id": "tau2_env_ask_user_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/003_tau2_env_ask_user_001_a3_interaction.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_env_ask_user_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 6.0,
+          "interaction_efficiency": 0.6,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.6
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "interaction_turn_limit",
+          "tool_calls": 5,
+          "repair_actions": 0,
+          "user_queries": 3,
+          "user_replies": 3,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a4_reuse",
+      "task_id": "tau2_env_ask_user_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/003_tau2_env_ask_user_001_a4_reuse.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_env_ask_user_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 6.0,
+          "interaction_efficiency": 0.6,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.6
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "interaction_turn_limit",
+          "tool_calls": 5,
+          "repair_actions": 0,
+          "user_queries": 3,
+          "user_replies": 3,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a0_baseline",
+      "task_id": "tau2_approval_gate_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/004_tau2_approval_gate_001_a0_baseline.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_approval_gate_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "approval_required",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a1_recovery",
+      "task_id": "tau2_approval_gate_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/004_tau2_approval_gate_001_a1_recovery.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_approval_gate_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "approval_required",
+          "stop_reason": "awaiting_user_interaction",
+          "tool_calls": 0,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a2_planner",
+      "task_id": "tau2_approval_gate_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/004_tau2_approval_gate_001_a2_planner.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_approval_gate_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "approval_required",
+          "stop_reason": "awaiting_user_interaction",
+          "tool_calls": 0,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a3_interaction",
+      "task_id": "tau2_approval_gate_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/004_tau2_approval_gate_001_a3_interaction.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_approval_gate_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 4.0,
+          "interaction_efficiency": 0.8,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "approval_required",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 2,
+          "user_replies": 2,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a4_reuse",
+      "task_id": "tau2_approval_gate_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/004_tau2_approval_gate_001_a4_reuse.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_approval_gate_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 4.0,
+          "interaction_efficiency": 0.8,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "approval_required",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 2,
+          "user_replies": 2,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a0_baseline",
+      "task_id": "tau2_binding_plus_approval_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/005_tau2_binding_plus_approval_001_a0_baseline.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_binding_plus_approval_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "binding_failure",
+          "stop_reason": "step_failed:step_02:missing required field: target_path",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a1_recovery",
+      "task_id": "tau2_binding_plus_approval_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/005_tau2_binding_plus_approval_001_a1_recovery.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_binding_plus_approval_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "binding_failure",
+          "stop_reason": "awaiting_user_interaction",
+          "tool_calls": 0,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a2_planner",
+      "task_id": "tau2_binding_plus_approval_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/005_tau2_binding_plus_approval_001_a2_planner.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_binding_plus_approval_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "binding_failure",
+          "stop_reason": "awaiting_user_interaction",
+          "tool_calls": 0,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a3_interaction",
+      "task_id": "tau2_binding_plus_approval_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/005_tau2_binding_plus_approval_001_a3_interaction.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_binding_plus_approval_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 4.0,
+          "interaction_efficiency": 0.8,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "binding_failure",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 1,
+          "user_queries": 2,
+          "user_replies": 2,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a4_reuse",
+      "task_id": "tau2_binding_plus_approval_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/005_tau2_binding_plus_approval_001_a4_reuse.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_binding_plus_approval_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 4.0,
+          "interaction_efficiency": 0.8,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "binding_failure",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 1,
+          "user_queries": 2,
+          "user_replies": 2,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a0_baseline",
+      "task_id": "tau2_dual_control_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/006_tau2_dual_control_001_a0_baseline.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_dual_control_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "dual_control",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a1_recovery",
+      "task_id": "tau2_dual_control_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/006_tau2_dual_control_001_a1_recovery.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_dual_control_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "dual_control",
+          "stop_reason": "awaiting_user_interaction",
+          "tool_calls": 0,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a2_planner",
+      "task_id": "tau2_dual_control_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/006_tau2_dual_control_001_a2_planner.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_dual_control_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "dual_control",
+          "stop_reason": "awaiting_user_interaction",
+          "tool_calls": 0,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a3_interaction",
+      "task_id": "tau2_dual_control_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/006_tau2_dual_control_001_a3_interaction.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_dual_control_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 4.0,
+          "interaction_efficiency": 0.8,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "dual_control",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 2,
+          "user_replies": 2,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a4_reuse",
+      "task_id": "tau2_dual_control_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/006_tau2_dual_control_001_a4_reuse.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_dual_control_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 4.0,
+          "interaction_efficiency": 0.8,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "dual_control",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 2,
+          "user_replies": 2,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a0_baseline",
+      "task_id": "tau2_interaction_failure_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/007_tau2_interaction_failure_001_a0_baseline.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_interaction_failure_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "step_failed:step_02:environment unavailable for write operation",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a1_recovery",
+      "task_id": "tau2_interaction_failure_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/007_tau2_interaction_failure_001_a1_recovery.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_interaction_failure_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "awaiting_user_interaction",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a2_planner",
+      "task_id": "tau2_interaction_failure_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/007_tau2_interaction_failure_001_a2_planner.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_interaction_failure_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "awaiting_user_interaction",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a3_interaction",
+      "task_id": "tau2_interaction_failure_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/007_tau2_interaction_failure_001_a3_interaction.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_interaction_failure_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 2.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "invalid_user_reply",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 1,
+          "user_replies": 1,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a4_reuse",
+      "task_id": "tau2_interaction_failure_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/007_tau2_interaction_failure_001_a4_reuse.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_interaction_failure_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 2.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 1.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "environment_failure",
+          "stop_reason": "invalid_user_reply",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 1,
+          "user_replies": 1,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a0_baseline",
+      "task_id": "tau2_policy_abort_001",
+      "success": true,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/008_tau2_policy_abort_001_a0_baseline.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_policy_abort_001",
+        "success": true,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.0,
+          "tool_efficiency": 0.9
+        },
+        "diagnostics": {
+          "scenario": "policy_failure",
+          "stop_reason": "success_criteria_satisfied",
+          "tool_calls": 2,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a1_recovery",
+      "task_id": "tau2_policy_abort_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/008_tau2_policy_abort_001_a1_recovery.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_policy_abort_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "policy_failure",
+          "stop_reason": "awaiting_user_interaction",
+          "tool_calls": 0,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a2_planner",
+      "task_id": "tau2_policy_abort_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/008_tau2_policy_abort_001_a2_planner.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_policy_abort_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 0.0,
+          "interaction_efficiency": 0.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "policy_failure",
+          "stop_reason": "awaiting_user_interaction",
+          "tool_calls": 0,
+          "repair_actions": 0,
+          "user_queries": 0,
+          "user_replies": 0,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a3_interaction",
+      "task_id": "tau2_policy_abort_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/008_tau2_policy_abort_001_a3_interaction.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_policy_abort_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 2.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "policy_failure",
+          "stop_reason": "invalid_user_reply",
+          "tool_calls": 0,
+          "repair_actions": 0,
+          "user_queries": 1,
+          "user_replies": 1,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "a4_reuse",
+      "task_id": "tau2_policy_abort_001",
+      "success": false,
+      "trace_path": "outputs/tau2_bench_formal/runs/run_01/traces/008_tau2_policy_abort_001_a4_reuse.json",
+      "score": {
+        "benchmark": "tau2_bench",
+        "sample_id": "tau2_policy_abort_001",
+        "success": false,
+        "metrics": {
+          "interactive_correction": 2.0,
+          "interaction_efficiency": 1.0,
+          "repair_salvage": 1.0,
+          "repair_efficiency": 1.0,
+          "approval_following": 0.5,
+          "tool_efficiency": 1.0
+        },
+        "diagnostics": {
+          "scenario": "policy_failure",
+          "stop_reason": "invalid_user_reply",
+          "tool_calls": 0,
+          "repair_actions": 0,
+          "user_queries": 1,
+          "user_replies": 1,
+          "approval_requests": 0,
+          "approval_responses": 0,
+          "expected_interaction": true,
+          "expected_user_turns": 1,
+          "expected_repairs": 1
+        }
+      }
+    }
+  ]
+}

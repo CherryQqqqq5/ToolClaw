@@ -6,6 +6,7 @@ from toolclaw.benchmarks.adapters import (
     BenchmarkSample,
     BenchmarkTraceScore,
     MCPRadarAdapter,
+    ToolSandboxAdapter,
     Tau2BenchAdapter,
     TauBenchAdapter,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "BenchmarkSample",
     "BenchmarkTraceScore",
     "BFCLAdapter",
+    "ToolSandboxAdapter",
     "TauBenchAdapter",
     "Tau2BenchAdapter",
     "Tau3BenchAdapter",

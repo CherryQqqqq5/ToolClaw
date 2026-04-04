@@ -1,0 +1,355 @@
+{
+  "benchmark": "toolsandbox",
+  "source": "/Users/cherry/Documents/ToolClaw/data/toolsandbox.sample.json",
+  "normalized_taskset": "/Users/cherry/Documents/ToolClaw/outputs/toolsandbox_bench/prepared/toolsandbox.normalized.json",
+  "mode": "planner",
+  "systems": [
+    "baseline",
+    "toolclaw_lite"
+  ],
+  "num_samples": 2,
+  "num_runs": 1,
+  "smoke": false,
+  "per_system_summary": {
+    "baseline": {
+      "num_samples": 2,
+      "num_runs": 1,
+      "mean_success_rate": 1.0,
+      "pass_at_k": 1.0,
+      "consistency": 1.0,
+      "per_sample": {
+        "toolsandbox_missing_info_001": {
+          "scenario": "insufficient_information",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "interaction_efficiency": 0.85,
+          "tool_efficiency": 1.0,
+          "turn_efficiency": 0.8,
+          "hallucination_avoidance": 1.0,
+          "categories": [
+            "insufficient_information",
+            "multiple_user_turn"
+          ]
+        },
+        "toolsandbox_state_dep_001": {
+          "scenario": "state_dependency",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "interaction_efficiency": 1.0,
+          "tool_efficiency": 1.0,
+          "turn_efficiency": 0.6,
+          "hallucination_avoidance": 1.0,
+          "categories": [
+            "state_dependency",
+            "multiple_tool"
+          ]
+        }
+      },
+      "milestone_similarity": 1.0,
+      "milestone_coverage": 1.0,
+      "interaction_efficiency": 0.925,
+      "tool_efficiency": 1.0,
+      "turn_efficiency": 0.7,
+      "hallucination_avoidance": 1.0,
+      "per_category": {
+        "state_dependency": {
+          "num_rows": 1.0,
+          "success_rate": 1.0,
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "interaction_efficiency": 1.0,
+          "tool_efficiency": 1.0,
+          "hallucination_avoidance": 1.0
+        },
+        "multiple_tool": {
+          "num_rows": 1.0,
+          "success_rate": 1.0,
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "interaction_efficiency": 1.0,
+          "tool_efficiency": 1.0,
+          "hallucination_avoidance": 1.0
+        },
+        "insufficient_information": {
+          "num_rows": 1.0,
+          "success_rate": 1.0,
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "interaction_efficiency": 0.85,
+          "tool_efficiency": 1.0,
+          "hallucination_avoidance": 1.0
+        },
+        "multiple_user_turn": {
+          "num_rows": 1.0,
+          "success_rate": 1.0,
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "interaction_efficiency": 0.85,
+          "tool_efficiency": 1.0,
+          "hallucination_avoidance": 1.0
+        }
+      }
+    },
+    "toolclaw_lite": {
+      "num_samples": 2,
+      "num_runs": 1,
+      "mean_success_rate": 1.0,
+      "pass_at_k": 1.0,
+      "consistency": 1.0,
+      "per_sample": {
+        "toolsandbox_missing_info_001": {
+          "scenario": "insufficient_information",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "interaction_efficiency": 0.85,
+          "tool_efficiency": 1.0,
+          "turn_efficiency": 0.8,
+          "hallucination_avoidance": 1.0,
+          "categories": [
+            "insufficient_information",
+            "multiple_user_turn"
+          ]
+        },
+        "toolsandbox_state_dep_001": {
+          "scenario": "state_dependency",
+          "num_runs": 1,
+          "success_rate": 1.0,
+          "pass_at_k": 1.0,
+          "consistency": 1.0,
+          "distinct_outcomes": 1,
+          "stop_reasons": [
+            "success_criteria_satisfied"
+          ],
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "interaction_efficiency": 1.0,
+          "tool_efficiency": 1.0,
+          "turn_efficiency": 0.6,
+          "hallucination_avoidance": 1.0,
+          "categories": [
+            "state_dependency",
+            "multiple_tool"
+          ]
+        }
+      },
+      "milestone_similarity": 1.0,
+      "milestone_coverage": 1.0,
+      "interaction_efficiency": 0.925,
+      "tool_efficiency": 1.0,
+      "turn_efficiency": 0.7,
+      "hallucination_avoidance": 1.0,
+      "per_category": {
+        "state_dependency": {
+          "num_rows": 1.0,
+          "success_rate": 1.0,
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "interaction_efficiency": 1.0,
+          "tool_efficiency": 1.0,
+          "hallucination_avoidance": 1.0
+        },
+        "multiple_tool": {
+          "num_rows": 1.0,
+          "success_rate": 1.0,
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "interaction_efficiency": 1.0,
+          "tool_efficiency": 1.0,
+          "hallucination_avoidance": 1.0
+        },
+        "insufficient_information": {
+          "num_rows": 1.0,
+          "success_rate": 1.0,
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "interaction_efficiency": 0.85,
+          "tool_efficiency": 1.0,
+          "hallucination_avoidance": 1.0
+        },
+        "multiple_user_turn": {
+          "num_rows": 1.0,
+          "success_rate": 1.0,
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "interaction_efficiency": 0.85,
+          "tool_efficiency": 1.0,
+          "hallucination_avoidance": 1.0
+        }
+      }
+    }
+  },
+  "runs": [
+    {
+      "run_index": 1,
+      "system": "baseline",
+      "task_id": "toolsandbox_state_dep_001",
+      "success": true,
+      "trace_path": "outputs/toolsandbox_bench/runs/run_01/traces/001_toolsandbox_state_dep_001_baseline.json",
+      "score": {
+        "benchmark": "toolsandbox",
+        "sample_id": "toolsandbox_state_dep_001",
+        "success": true,
+        "metrics": {
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "tool_efficiency": 1.0,
+          "turn_efficiency": 0.6,
+          "interaction_efficiency": 1.0,
+          "hallucination_avoidance": 1.0,
+          "state_dependency_score": 1.0
+        },
+        "diagnostics": {
+          "categories": [
+            "state_dependency",
+            "multiple_tool"
+          ],
+          "primary_category": "state_dependency",
+          "similarity": null,
+          "matched_milestones": 0,
+          "total_milestones": 2,
+          "turn_count": 4,
+          "expected_turn_count": 2,
+          "expected_tool_calls": 2,
+          "tool_calls": 2,
+          "user_queries": 0,
+          "used_result_summary": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "toolclaw_lite",
+      "task_id": "toolsandbox_state_dep_001",
+      "success": true,
+      "trace_path": "outputs/toolsandbox_bench/runs/run_01/traces/001_toolsandbox_state_dep_001_toolclaw_lite.json",
+      "score": {
+        "benchmark": "toolsandbox",
+        "sample_id": "toolsandbox_state_dep_001",
+        "success": true,
+        "metrics": {
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "tool_efficiency": 1.0,
+          "turn_efficiency": 0.6,
+          "interaction_efficiency": 1.0,
+          "hallucination_avoidance": 1.0,
+          "state_dependency_score": 1.0
+        },
+        "diagnostics": {
+          "categories": [
+            "state_dependency",
+            "multiple_tool"
+          ],
+          "primary_category": "state_dependency",
+          "similarity": null,
+          "matched_milestones": 0,
+          "total_milestones": 2,
+          "turn_count": 4,
+          "expected_turn_count": 2,
+          "expected_tool_calls": 2,
+          "tool_calls": 2,
+          "user_queries": 0,
+          "used_result_summary": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "baseline",
+      "task_id": "toolsandbox_missing_info_001",
+      "success": true,
+      "trace_path": "outputs/toolsandbox_bench/runs/run_01/traces/002_toolsandbox_missing_info_001_baseline.json",
+      "score": {
+        "benchmark": "toolsandbox",
+        "sample_id": "toolsandbox_missing_info_001",
+        "success": true,
+        "metrics": {
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "tool_efficiency": 1.0,
+          "turn_efficiency": 0.8,
+          "interaction_efficiency": 0.85,
+          "hallucination_avoidance": 1.0,
+          "state_dependency_score": 1.0
+        },
+        "diagnostics": {
+          "categories": [
+            "insufficient_information",
+            "multiple_user_turn"
+          ],
+          "primary_category": "insufficient_information",
+          "similarity": null,
+          "matched_milestones": 0,
+          "total_milestones": 3,
+          "turn_count": 4,
+          "expected_turn_count": 3,
+          "expected_tool_calls": 2,
+          "tool_calls": 2,
+          "user_queries": 0,
+          "used_result_summary": false
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "system": "toolclaw_lite",
+      "task_id": "toolsandbox_missing_info_001",
+      "success": true,
+      "trace_path": "outputs/toolsandbox_bench/runs/run_01/traces/002_toolsandbox_missing_info_001_toolclaw_lite.json",
+      "score": {
+        "benchmark": "toolsandbox",
+        "sample_id": "toolsandbox_missing_info_001",
+        "success": true,
+        "metrics": {
+          "milestone_similarity": 1.0,
+          "milestone_coverage": 1.0,
+          "tool_efficiency": 1.0,
+          "turn_efficiency": 0.8,
+          "interaction_efficiency": 0.85,
+          "hallucination_avoidance": 1.0,
+          "state_dependency_score": 1.0
+        },
+        "diagnostics": {
+          "categories": [
+            "insufficient_information",
+            "multiple_user_turn"
+          ],
+          "primary_category": "insufficient_information",
+          "similarity": null,
+          "matched_milestones": 0,
+          "total_milestones": 3,
+          "turn_count": 4,
+          "expected_turn_count": 3,
+          "expected_tool_calls": 2,
+          "tool_calls": 2,
+          "user_queries": 0,
+          "used_result_summary": false
+        }
+      }
+    }
+  ]
+}
