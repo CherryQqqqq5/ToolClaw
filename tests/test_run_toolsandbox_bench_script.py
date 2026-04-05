@@ -85,6 +85,8 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     per_system_path = outdir / "per_system_summary.json"
     per_category_md_path = outdir / "per_category_summary.md"
     per_category_json_path = outdir / "per_category_summary.json"
+    focused_slice_md_path = outdir / "focused_slice_summary.md"
+    focused_slice_json_path = outdir / "focused_slice_summary.json"
     normalized_path = outdir / "prepared" / "toolsandbox.normalized.json"
     report_path = outdir / "report.md"
 
@@ -94,6 +96,8 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert per_system_path.exists()
     assert per_category_md_path.exists()
     assert per_category_json_path.exists()
+    assert focused_slice_md_path.exists()
+    assert focused_slice_json_path.exists()
     assert normalized_path.exists()
     assert report_path.exists()
     assert not (outdir / "comparison.csv").exists()
@@ -121,6 +125,16 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "result_summary_coverage" in report
     assert "reference_summary_coverage" in report
     assert "state_dependency_score" in report
+    assert "focused_slice_summary.md" in report
+
+    focused_slice_md = focused_slice_md_path.read_text(encoding="utf-8")
+    assert "ToolSandbox Focused Slice Summary" in focused_slice_md
+    focused_slice_json = json.loads(focused_slice_json_path.read_text(encoding="utf-8"))
+    assert focused_slice_json["focus_categories"] == [
+        "insufficient_information",
+        "multiple_user_turn",
+        "single_tool",
+    ]
 
     trace_payload = json.loads(
         (outdir / "runs" / "run_01" / "traces" / "001_toolsandbox_cli_001_a0_baseline.json").read_text(encoding="utf-8")

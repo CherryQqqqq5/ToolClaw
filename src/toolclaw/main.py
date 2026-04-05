@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, Optional
 
 from toolclaw.compiler.swpc import SWPCCompiler, build_task_signature_candidates
@@ -11,6 +13,7 @@ from toolclaw.interaction.repair_updater import RepairUpdater, UserReply
 from toolclaw.planner.htgp import HTGPPlanner, PlanningRequest
 from toolclaw.registry import AssetRegistry
 from toolclaw.schemas.repair import Repair
+from toolclaw.schemas.trace import EventType, Trace
 from toolclaw.schemas.workflow import Workflow
 
 
@@ -100,14 +103,7 @@ class ToolClawRuntime:
         if not enabled or not outcome.success:
             return
 
-        from toolclaw.schemas.trace import Trace
-
-        trace = Trace(
-            run_id=outcome.run_id,
-            workflow_id=outcome.workflow.workflow_id,
-            task_id=outcome.workflow.task.task_id,
-        )
-        trace.metrics.success = True
+        trace = self._load_trace_for_compilation(outcome)
         artifacts = self.compiler.compile_from_trace(
             workflow=outcome.workflow,
             trace=trace,
@@ -115,3 +111,48 @@ class ToolClawRuntime:
         )
         for artifact in artifacts.workflow_snippets + artifacts.skill_hints + artifacts.policy_snippets:
             self.asset_registry.upsert(artifact)
+
+    @staticmethod
+    def _load_trace_for_compilation(outcome: ExecutionOutcome) -> Trace:
+        trace = Trace(
+            run_id=outcome.run_id,
+            workflow_id=outcome.workflow.workflow_id,
+            task_id=outcome.workflow.task.task_id,
+        )
+        if not outcome.trace_path:
+            trace.metrics.success = bool(outcome.success)
+            return trace
+
+        trace_path = Path(outcome.trace_path)
+        if not trace_path.exists():
+            trace.metrics.success = bool(outcome.success)
+            return trace
+
+        payload = json.loads(trace_path.read_text(encoding="utf-8"))
+        metrics = dict(payload.get("metrics", {}))
+        trace.metrics.success = bool(metrics.get("success"))
+        trace.metrics.tool_calls = int(metrics.get("tool_calls", 0) or 0)
+        trace.metrics.user_queries = int(metrics.get("user_queries", 0) or 0)
+        trace.metrics.repair_actions = int(metrics.get("repair_actions", 0) or 0)
+        trace.metrics.total_steps = int(metrics.get("total_steps", 0) or 0)
+        for event in payload.get("events", []):
+            event_type = event.get("event_type")
+            if not event_type:
+                continue
+            trace.add_event(
+                event_id=str(event.get("event_id", "")),
+                event_type=EventType(event_type),
+                actor=str(event.get("actor", "executor")),
+                step_id=event.get("step_id"),
+                tool_id=event.get("tool_id"),
+                tool_args=event.get("tool_args"),
+                output=event.get("output"),
+                message=event.get("message"),
+                metadata=event.get("metadata"),
+            )
+        trace.metrics.success = bool(metrics.get("success"))
+        trace.metrics.tool_calls = int(metrics.get("tool_calls", 0) or 0)
+        trace.metrics.user_queries = int(metrics.get("user_queries", 0) or 0)
+        trace.metrics.repair_actions = int(metrics.get("repair_actions", 0) or 0)
+        trace.metrics.total_steps = int(metrics.get("total_steps", 0) or 0)
+        return trace

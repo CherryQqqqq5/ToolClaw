@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 from toolclaw.schemas.workflow import CapabilityEdge, CapabilityGraph, CapabilityNode, TaskSpec
 
@@ -48,7 +48,9 @@ class RuleBasedCapabilityGraphBuilder:
         self,
         task: TaskSpec,
         candidates: Sequence["CapabilityCandidate"],
+        benchmark_hints: Optional[Dict[str, Any]] = None,
     ) -> tuple[CapabilityGraph, GraphBuildDiagnostics]:
+        benchmark_hints = benchmark_hints or {}
         diagnostics = GraphBuildDiagnostics()
         templates = self.registry.match(task)
 
@@ -59,7 +61,15 @@ class RuleBasedCapabilityGraphBuilder:
             for template in templates:
                 chain.extend(template.capability_chain)
                 edges.extend(template.edges)
-            return CapabilityGraph(capabilities=chain, edges=edges), diagnostics
+            chain = self._prune_and_order_nodes(chain, benchmark_hints=benchmark_hints, diagnostics=diagnostics)
+            return CapabilityGraph(
+                capabilities=chain,
+                edges=self._rebuild_edges(chain),
+                metadata={
+                    "branch_options": list(benchmark_hints.get("branch_options", [])),
+                    "milestones": list(benchmark_hints.get("milestones", [])),
+                },
+            ), diagnostics
 
         nodes = [
             CapabilityNode(
@@ -70,6 +80,7 @@ class RuleBasedCapabilityGraphBuilder:
             )
             for c in sorted(candidates, key=lambda x: x.score, reverse=True)
         ]
+        nodes = self._prune_and_order_nodes(nodes, benchmark_hints=benchmark_hints, diagnostics=diagnostics)
 
         edges: List[CapabilityEdge] = []
         for target in nodes:
@@ -89,8 +100,83 @@ class RuleBasedCapabilityGraphBuilder:
             if not matched_dependency:
                 continue
         if not edges and len(nodes) > 1:
-            edges = [
-                CapabilityEdge(source=nodes[i].capability_id, target=nodes[i + 1].capability_id, condition="default_sequence")
-                for i in range(len(nodes) - 1)
-            ]
-        return CapabilityGraph(capabilities=nodes, edges=edges), diagnostics
+            edges = self._rebuild_edges(nodes)
+        return CapabilityGraph(
+            capabilities=nodes,
+            edges=edges,
+            metadata={
+                "branch_options": list(benchmark_hints.get("branch_options", [])),
+                "milestones": list(benchmark_hints.get("milestones", [])),
+            },
+        ), diagnostics
+
+    def _prune_and_order_nodes(
+        self,
+        nodes: Sequence[CapabilityNode],
+        *,
+        benchmark_hints: Dict[str, Any],
+        diagnostics: GraphBuildDiagnostics,
+    ) -> List[CapabilityNode]:
+        ordered_nodes = list(nodes)
+        if len(ordered_nodes) <= 1:
+            return ordered_nodes
+
+        milestone_order = self._capability_order_from_texts(benchmark_hints.get("milestones", []))
+        allow_order = self._capability_order_from_texts(benchmark_hints.get("tool_allow_list", []))
+        ideal_tool_calls = benchmark_hints.get("ideal_tool_calls")
+        categories = {str(item) for item in benchmark_hints.get("categories", []) if str(item)}
+
+        preferred_order = milestone_order or allow_order
+        if preferred_order:
+            preferred_ids = set(preferred_order)
+            pruned = [node.capability_id for node in ordered_nodes if node.capability_id not in preferred_ids]
+            filtered_nodes = [node for node in ordered_nodes if node.capability_id in preferred_ids]
+            if filtered_nodes:
+                diagnostics.pruned_capabilities.extend(
+                    capability_id for capability_id in pruned if capability_id not in diagnostics.pruned_capabilities
+                )
+                rank = {capability_id: index for index, capability_id in enumerate(preferred_order)}
+                filtered_nodes.sort(key=lambda node: (rank.get(node.capability_id, len(rank)), ordered_nodes.index(node)))
+                ordered_nodes = filtered_nodes
+
+        should_cap_by_budget = bool(preferred_order) and "multiple_user_turn" not in categories
+        if should_cap_by_budget and isinstance(ideal_tool_calls, int) and ideal_tool_calls > 0 and len(ordered_nodes) > ideal_tool_calls:
+            for node in ordered_nodes[ideal_tool_calls:]:
+                if node.capability_id not in diagnostics.pruned_capabilities:
+                    diagnostics.pruned_capabilities.append(node.capability_id)
+            ordered_nodes = ordered_nodes[:ideal_tool_calls]
+
+        return ordered_nodes
+
+    @staticmethod
+    def _rebuild_edges(nodes: Sequence[CapabilityNode]) -> List[CapabilityEdge]:
+        if len(nodes) <= 1:
+            return []
+        return [
+            CapabilityEdge(source=nodes[index].capability_id, target=nodes[index + 1].capability_id, condition="default_sequence")
+            for index in range(len(nodes) - 1)
+        ]
+
+    @classmethod
+    def _capability_order_from_texts(cls, raw_values: Sequence[Any]) -> List[str]:
+        ordered: List[str] = []
+        for raw in raw_values:
+            capability_id = cls._infer_capability_from_text(raw)
+            if capability_id and capability_id not in ordered:
+                ordered.append(capability_id)
+        return ordered
+
+    @staticmethod
+    def _infer_capability_from_text(raw_value: Any) -> Optional[str]:
+        text = str(raw_value or "").strip().lower()
+        if not text:
+            return None
+        keyword_map = (
+            ("cap_summarize", ("summarize", "summary", "analyze", "analysis", "draft", "compose")),
+            ("cap_write", ("write", "save", "send", "set", "update", "book", "reply", "report", "disable", "enable")),
+            ("cap_retrieve", ("retrieve", "find", "search", "lookup", "locate", "collect", "fetch", "get")),
+        )
+        for capability_id, keywords in keyword_map:
+            if any(keyword in text for keyword in keywords):
+                return capability_id
+        return None

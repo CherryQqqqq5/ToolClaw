@@ -1,7 +1,8 @@
 from pathlib import Path
 
 from toolclaw.compiler.swpc import SWPCCompiler
-from toolclaw.execution.executor import SequentialExecutor
+from toolclaw.execution.executor import ExecutionOutcome, SequentialExecutor
+from toolclaw.main import ToolClawRuntime
 from toolclaw.planner.htgp import (
     HTGPPlanner,
     PlanningHints,
@@ -12,6 +13,7 @@ from toolclaw.planner.htgp import (
 from toolclaw.planner.binder import ToolBinder
 from toolclaw.planner.capability_graph import CapabilityTemplateRegistry, RuleBasedCapabilityGraphBuilder
 from toolclaw.registry import InMemoryAssetRegistry
+from toolclaw.interaction.repair_updater import RepairUpdater
 from toolclaw.schemas.trace import Trace
 from toolclaw.schemas.workflow import TaskConstraints, TaskSpec, ToolSpec, Workflow, WorkflowContext
 
@@ -114,3 +116,62 @@ def test_second_run_uses_compiled_asset_and_reduces_repairs(tmp_path: Path) -> N
     first_trace = __import__("json").loads((tmp_path / "trace_first.json").read_text(encoding="utf-8"))
     second_trace = __import__("json").loads((tmp_path / "trace_second.json").read_text(encoding="utf-8"))
     assert second_trace["metrics"]["repair_actions"] <= first_trace["metrics"]["repair_actions"]
+
+
+def test_compiler_rejects_artifact_when_workflow_violates_overplanning_objective() -> None:
+    workflow = Workflow.demo()
+    workflow.metadata["benchmark_hints"] = {
+        "ideal_tool_calls": 1,
+        "ideal_turn_count": 0,
+        "overplanning_objective": {
+            "active": True,
+            "max_steps": 1,
+            "preferred_capabilities": ["cap_write"],
+            "allowed_tools": ["write_tool"],
+        },
+    }
+    trace = Trace.demo()
+
+    artifacts = SWPCCompiler().compile_from_trace(workflow=workflow, trace=trace, final_state={})
+
+    assert artifacts.workflow_snippets == []
+    assert artifacts.skill_hints == []
+    assert artifacts.policy_snippets == []
+    assert artifacts.metadata["compile_gate"]["allow_compile"] is False
+    assert artifacts.metadata["compile_gate"]["objective_consistent"] is False
+
+
+def test_runtime_compile_gate_uses_real_trace_metrics_before_upserting(tmp_path: Path) -> None:
+    registry = InMemoryAssetRegistry()
+    planner = build_planner(registry)
+    runtime = ToolClawRuntime(
+        planner=planner,
+        executor=SequentialExecutor(planner=planner),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=registry,
+    )
+    workflow = Workflow.demo()
+    workflow.metadata["benchmark_hints"] = {
+        "ideal_tool_calls": 1,
+        "ideal_turn_count": 0,
+        "overplanning_objective": {
+            "active": True,
+            "max_steps": 1,
+            "preferred_capabilities": ["cap_write"],
+            "allowed_tools": ["write_tool"],
+        },
+    }
+    trace_path = tmp_path / "compile_gate_trace.json"
+    trace_path.write_text(__import__("json").dumps(Trace.demo().to_dict()), encoding="utf-8")
+    outcome = ExecutionOutcome(
+        run_id="run_compile_gate_001",
+        workflow=workflow,
+        success=True,
+        trace_path=str(trace_path),
+    )
+    runtime._compile_and_store_if_success(outcome, enabled=True)
+
+    assert registry._assets == {}
+    trace_payload = __import__("json").loads(trace_path.read_text(encoding="utf-8"))
+    assert trace_payload["metrics"]["tool_calls"] >= 1

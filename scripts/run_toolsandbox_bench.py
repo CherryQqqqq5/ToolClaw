@@ -140,6 +140,12 @@ TOOLSANDBOX_GROUP_METRICS = [
     AggregateMetric("reference_result_summary_available", source="diagnostics", label="reference_summary_coverage"),
 ]
 
+FOCUSED_SLICE_CATEGORIES = (
+    "insufficient_information",
+    "multiple_user_turn",
+    "single_tool",
+)
+
 
 TOOLSANDBOX_CONFIG = BenchmarkScriptConfig(
     benchmark_name="toolsandbox",
@@ -231,6 +237,94 @@ def _write_toolsandbox_artifacts(summary: Dict[str, Any], outdir: Path) -> None:
         metrics=TOOLSANDBOX_GROUP_METRICS,
     )
     (outdir / "per_category_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    focused_summary = _focused_slice_summary(summary)
+    (outdir / "focused_slice_summary.json").write_text(json.dumps(focused_summary, indent=2), encoding="utf-8")
+    _write_focused_slice_markdown(focused_summary, outdir / "focused_slice_summary.md")
+
+
+def _focused_slice_summary(per_system_summary: Dict[str, Any]) -> Dict[str, Any]:
+    per_category: Dict[str, Dict[str, Any]] = {}
+    for system, system_summary in per_system_summary.items():
+        category_stats = dict(system_summary.get("per_category", {}))
+        per_category[system] = {
+            category: dict(category_stats.get(category, {}))
+            for category in FOCUSED_SLICE_CATEGORIES
+            if category in category_stats
+        }
+    deltas: Dict[str, Dict[str, Dict[str, float]]] = {}
+    delta_pairs = [
+        ("a3_interaction_minus_a0_baseline", "a3_interaction", "a0_baseline"),
+        ("a3_interaction_minus_a1_recovery", "a3_interaction", "a1_recovery"),
+        ("a3_interaction_minus_a2_planner", "a3_interaction", "a2_planner"),
+        ("a4_reuse_minus_a3_interaction", "a4_reuse", "a3_interaction"),
+    ]
+    metric_keys = (
+        "success_rate",
+        "milestone_similarity",
+        "interaction_efficiency",
+        "tool_efficiency",
+        "turn_efficiency",
+    )
+    for delta_name, right_system, left_system in delta_pairs:
+        right_summary = per_category.get(right_system, {})
+        left_summary = per_category.get(left_system, {})
+        category_delta: Dict[str, Dict[str, float]] = {}
+        for category in FOCUSED_SLICE_CATEGORIES:
+            if category not in right_summary or category not in left_summary:
+                continue
+            category_delta[category] = {
+                metric_key: float(right_summary[category].get(metric_key, 0.0)) - float(left_summary[category].get(metric_key, 0.0))
+                for metric_key in metric_keys
+            }
+        deltas[delta_name] = category_delta
+    return {
+        "focus_categories": list(FOCUSED_SLICE_CATEGORIES),
+        "per_system": per_category,
+        "deltas": deltas,
+    }
+
+
+def _write_focused_slice_markdown(summary: Dict[str, Any], out_path: Path) -> None:
+    lines = [
+        "# ToolSandbox Focused Slice Summary",
+        "",
+        "Focused categories:",
+        f"- {', '.join(summary.get('focus_categories', []))}",
+        "",
+        "| system | category | success_rate | milestone_similarity | interaction_efficiency | tool_efficiency | turn_efficiency |",
+        "|---|---|---:|---:|---:|---:|---:|",
+    ]
+    for system, category_map in sorted(summary.get("per_system", {}).items()):
+        for category in summary.get("focus_categories", []):
+            stats = category_map.get(category)
+            if not isinstance(stats, dict):
+                continue
+            lines.append(
+                f"| {system} | {category} | {float(stats.get('success_rate', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('interaction_efficiency', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} |"
+            )
+
+    delta_map = summary.get("deltas", {})
+    if isinstance(delta_map, dict) and delta_map:
+        lines.extend(
+            [
+                "",
+                "## Focused Deltas",
+                "",
+                "| delta | category | success_rate | milestone_similarity | interaction_efficiency | tool_efficiency | turn_efficiency |",
+                "|---|---|---:|---:|---:|---:|---:|",
+            ]
+        )
+        for delta_name, category_map in sorted(delta_map.items()):
+            if not isinstance(category_map, dict):
+                continue
+            for category in summary.get("focus_categories", []):
+                stats = category_map.get(category)
+                if not isinstance(stats, dict):
+                    continue
+                lines.append(
+                    f"| {delta_name} | {category} | {float(stats.get('success_rate', 0.0)):+.3f} | {float(stats.get('milestone_similarity', 0.0)):+.3f} | {float(stats.get('interaction_efficiency', 0.0)):+.3f} | {float(stats.get('tool_efficiency', 0.0)):+.3f} | {float(stats.get('turn_efficiency', 0.0)):+.3f} |"
+                )
+    out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
@@ -244,6 +338,7 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
         f"- systems: `{', '.join(scoreboard['systems'])}`",
         f"- raw_comparison: `{outdir / 'comparison.raw.csv'}`",
         f"- scored_comparison: `{outdir / 'comparison.scored.csv'}`",
+        f"- focused_slice_summary: `{outdir / 'focused_slice_summary.md'}`",
         "",
         "## Aggregate",
         "",

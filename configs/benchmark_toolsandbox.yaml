@@ -49,6 +49,19 @@ baselines:
   - id: A_toolclaw
     definition: same backbone wrapped with ToolClaw workflow control
 
+paper_focus_slices:
+  - insufficient_information
+  - multiple_user_turn
+  - single_tool
+
+reuse_protocols:
+  exact_rerun:
+    entrypoint: scripts/run_reuse_experiment.py
+    note: useful for second-run reuse sanity checks, but not the preferred main reuse claim
+  train_eval_split:
+    entrypoint: scripts/run_reuse_split_experiment.py
+    note: preferred protocol for testing reusable experience transfer across held-out but structurally similar tasks
+
 priority_categories:
   - insufficient_information
   - state_dependency

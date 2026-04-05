@@ -23,6 +23,7 @@ class BindingRequest:
     context: WorkflowContext
     state_values: Dict[str, Any] = field(default_factory=dict)
     forbidden_tools: List[str] = field(default_factory=list)
+    preferred_tools: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -40,6 +41,7 @@ class ToolBinder:
         capability_name = request.capability.description.lower()
         matches: List[ToolMatch] = []
         sole_candidate = len(request.candidate_tools) == 1
+        preferred_tools = set(request.preferred_tools)
 
         for tool in request.candidate_tools:
             if tool.tool_id in request.forbidden_tools:
@@ -55,6 +57,9 @@ class ToolBinder:
                 if "write" in tool.tool_id:
                     score += 0.8
                     reasons.append("keyword_match:write->write")
+            if tool.tool_id in preferred_tools:
+                score += 0.2
+                reasons.append("reusable_preference")
             if sole_candidate and score <= 0.15:
                 score = 0.55
                 reasons.append("sole_candidate_tool")
@@ -82,8 +87,10 @@ class ToolBinder:
         candidate_tools: Sequence[ToolSpec],
         context: WorkflowContext,
         forbidden_tools: Optional[List[str]] = None,
+        preferred_bindings: Optional[Dict[str, str]] = None,
     ) -> List[BindingResult]:
         forbidden_tools = forbidden_tools or []
+        preferred_bindings = preferred_bindings or {}
         return [
             self.bind_one(
                 BindingRequest(
@@ -91,6 +98,9 @@ class ToolBinder:
                     candidate_tools=candidate_tools,
                     context=context,
                     forbidden_tools=forbidden_tools,
+                    preferred_tools=[preferred_bindings[cap.capability_id]]
+                    if preferred_bindings.get(cap.capability_id)
+                    else [],
                 )
             )
             for cap in capabilities

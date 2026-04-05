@@ -230,6 +230,7 @@ class CapabilityGraphBuilder:
         self,
         task: TaskSpec,
         candidates: Sequence[CapabilityCandidate],
+        benchmark_hints: Optional[Dict[str, Any]] = None,
     ) -> CapabilityGraph:
         raise NotImplementedError
 
@@ -302,6 +303,12 @@ class PolicyInjector:
     ) -> List[WorkflowStep]:
         benchmark_hints = benchmark_hints or {}
         binding_by_cap = {binding.capability_id: binding for binding in bindings}
+        milestone_assignments = self._assign_milestones_to_capabilities(
+            [capability.capability_id for capability in graph.capabilities],
+            benchmark_hints.get("milestones", []),
+        )
+        branch_options = [str(item) for item in benchmark_hints.get("branch_options", []) if str(item)]
+        allowed_tools = [str(item) for item in benchmark_hints.get("tool_allow_list", []) if str(item)]
         steps: List[WorkflowStep] = []
         for idx, capability in enumerate(graph.capabilities, start=1):
             binding = binding_by_cap.get(capability.capability_id)
@@ -335,6 +342,14 @@ class PolicyInjector:
                         "policy_gate": "default_phase1",
                         "requires_approval": "requires_approval" in capability.preconditions,
                         "benchmark_hint_step": bool(benchmark_hints),
+                        "milestone_hint": milestone_assignments.get(capability.capability_id),
+                        "milestone_index": self._milestone_index(
+                            milestone_assignments.get(capability.capability_id),
+                            benchmark_hints.get("milestones", []),
+                        ),
+                        "allowed_tools": allowed_tools,
+                        "branch_options": branch_options if idx == len(graph.capabilities) and branch_options else [],
+                        "branch_sensitive": bool(idx == len(graph.capabilities) and branch_options),
                     },
                 )
             )
@@ -345,18 +360,25 @@ class PolicyInjector:
         graph: CapabilityGraph,
         steps: List[WorkflowStep],
         bindings: Optional[List[ToolBinding]] = None,
+        benchmark_hints: Optional[Dict[str, Any]] = None,
     ) -> WorkflowGraph:
+        benchmark_hints = benchmark_hints or {}
+        branch_options = [str(item) for item in benchmark_hints.get("branch_options", []) if str(item)]
+        allowed_tools = {str(item) for item in benchmark_hints.get("tool_allow_list", []) if str(item)}
         nodes: List[WorkflowNode] = []
         edges: List[WorkflowEdge] = []
         binding_by_capability = {binding.capability_id: binding for binding in (bindings or [])}
         for idx, step in enumerate(steps):
             binding = binding_by_capability.get(step.capability_id)
+            tool_candidates = ([step.tool_id] if step.tool_id else []) + (list(binding.backup_tools) if binding else [])
+            if allowed_tools:
+                tool_candidates = [tool_id for tool_id in tool_candidates if tool_id in allowed_tools]
             nodes.append(
                 WorkflowNode(
                     node_id=step.step_id,
                     capability_id=step.capability_id,
                     selected_tool=step.tool_id,
-                    tool_candidates=([step.tool_id] if step.tool_id else []) + (list(binding.backup_tools) if binding else []),
+                    tool_candidates=tool_candidates,
                     inputs=dict(step.inputs),
                     expected_output=step.expected_output,
                     dependencies=[steps[idx - 1].step_id] if idx > 0 else [],
@@ -367,18 +389,71 @@ class PolicyInjector:
                 )
             )
             if idx > 0:
-                edges.append(WorkflowEdge(source=steps[idx - 1].step_id, target=step.step_id, condition="on_success"))
+                edge_condition = "on_branch_resolved" if step.metadata.get("branch_sensitive") else "on_success"
+                edges.append(WorkflowEdge(source=steps[idx - 1].step_id, target=step.step_id, condition=edge_condition))
             if binding and binding.backup_tools:
                 edges.append(WorkflowEdge(source=step.step_id, target=step.step_id, condition="on_tool_failure_use_backup"))
             if step.requires_user_confirmation:
                 edges.append(WorkflowEdge(source=step.step_id, target=step.step_id, condition="on_approval_resume"))
+            if step.metadata.get("branch_sensitive") and branch_options:
+                for branch_option in branch_options:
+                    edges.append(
+                        WorkflowEdge(
+                            source=step.step_id,
+                            target=step.step_id,
+                            condition=f"on_branch:{branch_option}",
+                            edge_type="branch",
+                        )
+                    )
         return WorkflowGraph(
             nodes=nodes,
             edges=edges,
             entry_nodes=[steps[0].step_id] if steps else [],
             exit_nodes=[steps[-1].step_id] if steps else [],
-            metadata={"capability_count": len(graph.capabilities), "has_conditional_edges": any(edge.condition for edge in edges)},
+            metadata={
+                "capability_count": len(graph.capabilities),
+                "has_conditional_edges": any(edge.condition for edge in edges),
+                "branch_options": branch_options,
+            },
         )
+
+    @staticmethod
+    def _assign_milestones_to_capabilities(
+        capability_ids: Sequence[str],
+        raw_milestones: Sequence[Any],
+    ) -> Dict[str, str]:
+        assignments: Dict[str, str] = {}
+        remaining = [str(item) for item in raw_milestones if str(item)]
+        if not remaining:
+            return assignments
+        for capability_id in capability_ids:
+            for milestone in list(remaining):
+                if PolicyInjector._milestone_matches_capability(milestone, capability_id):
+                    assignments[capability_id] = milestone
+                    remaining.remove(milestone)
+                    break
+        return assignments
+
+    @staticmethod
+    def _milestone_index(milestone: Optional[str], raw_milestones: Sequence[Any]) -> Optional[int]:
+        if not milestone:
+            return None
+        normalized_milestones = [str(item) for item in raw_milestones if str(item)]
+        try:
+            return normalized_milestones.index(milestone)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _milestone_matches_capability(milestone: str, capability_id: str) -> bool:
+        text = milestone.strip().lower()
+        if capability_id == "cap_retrieve":
+            return any(keyword in text for keyword in ("retrieve", "find", "search", "lookup", "locate", "collect", "fetch", "get"))
+        if capability_id == "cap_summarize":
+            return any(keyword in text for keyword in ("summarize", "summary", "analyze", "analysis", "draft", "compose"))
+        if capability_id == "cap_write":
+            return any(keyword in text for keyword in ("write", "save", "send", "set", "update", "book", "reply", "report", "disable", "enable"))
+        return False
 
 
 class HTGPPlanner:
@@ -399,6 +474,10 @@ class HTGPPlanner:
     def plan(self, request: PlanningRequest) -> PlanningResult:
         diagnostics = PlanningDiagnostics()
         benchmark_hints = self._benchmark_hints(request)
+        benchmark_hints["overplanning_objective"] = self._build_overplanning_objective(
+            benchmark_hints,
+            completed_step_count=0,
+        )
         diagnostics.benchmark_hints_used = sorted(benchmark_hints["used_keys"])
         candidates = self.capability_selector.select(request.task, request.context, request.hints)
         bypass_applied = self._should_bypass(request, benchmark_hints)
@@ -417,9 +496,13 @@ class HTGPPlanner:
                 edges=[],
             )
         else:
-            built_graph = self.graph_builder.build(request.task, candidates)
+            built_graph = self.graph_builder.build(request.task, candidates, benchmark_hints=benchmark_hints)
             graph = built_graph[0] if isinstance(built_graph, tuple) else built_graph
-        reusable_profile = self._load_reusable_profile(request, graph)
+        reusable_profile = self._load_reusable_profile(
+            request,
+            graph,
+            overplanning_objective=benchmark_hints.get("overplanning_objective", {}),
+        )
         resolved_reusable_asset_ids = [
             str(asset_id) for asset_id in reusable_profile.get("asset_ids", []) if str(asset_id)
         ]
@@ -429,13 +512,22 @@ class HTGPPlanner:
             order = reusable_profile["capability_order"]
             rank = {cap_id: idx for idx, cap_id in enumerate(order)}
             graph.capabilities.sort(key=lambda capability: rank.get(capability.capability_id, len(rank)))
+        graph = self._apply_overplanning_objective_to_graph(
+            graph,
+            benchmark_hints.get("overplanning_objective", {}),
+        )
         graph = self.policy_injector.inject(graph, request.task, request.context, request.policy)
 
+        candidate_tools = request.context.candidate_tools
+        allowed_tools = {str(item) for item in benchmark_hints.get("tool_allow_list", []) if str(item)}
+        if allowed_tools:
+            candidate_tools = [tool for tool in request.context.candidate_tools if tool.tool_id in allowed_tools]
         binding_results = self.binder.bind_graph(
             capabilities=graph.capabilities,
-            candidate_tools=request.context.candidate_tools,
+            candidate_tools=candidate_tools,
             context=request.context,
             forbidden_tools=request.hints.forbidden_tools,
+            preferred_bindings=dict(reusable_profile.get("recommended_bindings", {})),
         )
 
         bindings: List[ToolBinding] = []
@@ -446,13 +538,10 @@ class HTGPPlanner:
                 continue
 
             bindings.append(binding_result.binding)
-            recommended_tool = reusable_profile["recommended_bindings"].get(capability.capability_id)
-            if recommended_tool:
-                binding_result.binding.primary_tool = recommended_tool
             diagnostics.binding_scores[capability.capability_id] = binding_result.binding.binding_confidence
 
         execution_plan = self.policy_injector.compile_execution_plan(graph, bindings, request.task, benchmark_hints=benchmark_hints)
-        workflow_graph = self.policy_injector.compile_workflow_graph(graph, execution_plan, bindings=bindings)
+        workflow_graph = self.policy_injector.compile_workflow_graph(graph, execution_plan, bindings=bindings, benchmark_hints=benchmark_hints)
         diagnostics.overplanning_risk = self._overplanning_risk(
             request=request,
             execution_plan=execution_plan,
@@ -490,6 +579,8 @@ class HTGPPlanner:
                     "ideal_tool_calls": benchmark_hints.get("ideal_tool_calls"),
                     "ideal_turn_count": benchmark_hints.get("ideal_turn_count"),
                     "milestones": list(benchmark_hints.get("milestones", [])),
+                    "branch_options": list(benchmark_hints.get("branch_options", [])),
+                    "overplanning_objective": dict(benchmark_hints.get("overplanning_objective", {})),
                 },
                 "reusable_context": {
                     "resolved_asset_ids": list(request.hints.reusable_asset_ids),
@@ -602,11 +693,12 @@ class HTGPPlanner:
         categories = [str(item) for item in user_style.get("categories", []) if str(item)]
         tool_allow_list = [str(item) for item in user_style.get("tool_allow_list", []) if str(item)]
         milestones = [str(item) for item in user_style.get("milestones", []) if str(item)]
+        branch_options = [str(item) for item in user_style.get("branch_options", []) if str(item)]
         ideal_tool_calls = HTGPPlanner._coerce_int(user_style.get("ideal_tool_calls"))
         ideal_turn_count = HTGPPlanner._coerce_int(user_style.get("ideal_turn_count"))
         used_keys = [
             key
-            for key in ("categories", "tool_allow_list", "ideal_tool_calls", "ideal_turn_count", "milestones")
+            for key in ("categories", "tool_allow_list", "ideal_tool_calls", "ideal_turn_count", "milestones", "branch_options")
             if user_style.get(key)
         ]
         return {
@@ -615,6 +707,7 @@ class HTGPPlanner:
             "ideal_tool_calls": ideal_tool_calls,
             "ideal_turn_count": ideal_turn_count,
             "milestones": milestones,
+            "branch_options": branch_options,
             "used_keys": used_keys,
         }
 
@@ -644,9 +737,11 @@ class HTGPPlanner:
         categories = set(benchmark_hints.get("categories", []))
         tool_allow_list = set(benchmark_hints.get("tool_allow_list", []))
         ideal_tool_calls = benchmark_hints.get("ideal_tool_calls")
+        overplanning_objective = benchmark_hints.get("overplanning_objective", {})
         planned_tools = [step.tool_id for step in execution_plan if step.tool_id]
         return {
             "bypass_applied": bypass_applied,
+            "objective_applied": bool(overplanning_objective.get("applied")),
             "single_tool_task": len(tool_allow_list) == 1 or "single_tool" in categories,
             "planned_steps": len(execution_plan),
             "ideal_tool_calls": ideal_tool_calls,
@@ -654,6 +749,7 @@ class HTGPPlanner:
             "steps_exceed_ideal": isinstance(ideal_tool_calls, int) and len(execution_plan) > ideal_tool_calls,
             "used_disallowed_tool": bool(tool_allow_list) and any(tool_id not in tool_allow_list for tool_id in planned_tools),
             "bound_capabilities": [binding.capability_id for binding in bindings],
+            "objective_reason": list(overplanning_objective.get("reason", [])),
         }
 
     @staticmethod
@@ -706,7 +802,14 @@ class HTGPPlanner:
                 break
 
         prefix = failed_workflow.execution_plan[:failed_index]
-        replanned_suffix_source = result.workflow.execution_plan[failed_index:] or result.workflow.execution_plan
+        replanned_suffix_source = self._prune_replanned_suffix(
+            failed_workflow=failed_workflow,
+            replanned_steps=result.workflow.execution_plan,
+            failed_index=failed_index,
+            benchmark_hints=self._benchmark_hints(request),
+        )
+        if not replanned_suffix_source:
+            replanned_suffix_source = result.workflow.execution_plan[failed_index:] or result.workflow.execution_plan
         replanned_suffix: List[WorkflowStep] = []
         for offset, step in enumerate(replanned_suffix_source, start=failed_index + 1):
             replanned_suffix.append(
@@ -727,6 +830,7 @@ class HTGPPlanner:
         result.workflow.workflow_graph = self.policy_injector.compile_workflow_graph(
             result.workflow.capability_graph,
             result.workflow.execution_plan,
+            benchmark_hints=self._benchmark_hints(request),
         )
         result.workflow.metadata["replanned_from_workflow_id"] = failed_workflow.workflow_id
         result.workflow.metadata["replan_state_keys"] = list(state_values.keys())
@@ -740,6 +844,166 @@ class HTGPPlanner:
         if error.evidence.tool_id:
             result.diagnostics.rejected_tools[error.evidence.tool_id] = "failed_in_previous_run"
         return result
+
+    @staticmethod
+    def _prune_replanned_suffix(
+        *,
+        failed_workflow: Workflow,
+        replanned_steps: List[WorkflowStep],
+        failed_index: int,
+        benchmark_hints: Dict[str, Any],
+    ) -> List[WorkflowStep]:
+        suffix = list(replanned_steps[failed_index:] or replanned_steps)
+        if not suffix:
+            return suffix
+        completed_steps = failed_workflow.execution_plan[:failed_index]
+        completed_milestones = sum(1 for step in completed_steps if step.metadata.get("milestone_index") is not None)
+        overplanning_objective = HTGPPlanner._build_overplanning_objective(
+            benchmark_hints,
+            completed_step_count=len(completed_steps),
+        )
+        if not overplanning_objective.get("active"):
+            return suffix
+
+        allowed_tools = set(overplanning_objective.get("allowed_tools", []))
+        if allowed_tools:
+            filtered_suffix = [step for step in suffix if not step.tool_id or step.tool_id in allowed_tools]
+            if filtered_suffix:
+                suffix = filtered_suffix
+
+        max_steps = overplanning_objective.get("max_steps")
+        if not isinstance(max_steps, int) or max_steps <= 0 or len(suffix) <= max_steps:
+            return suffix
+
+        anchored_steps: List[WorkflowStep] = []
+        for step in suffix:
+            milestone_index = step.metadata.get("milestone_index")
+            if isinstance(milestone_index, int) and milestone_index >= completed_milestones:
+                anchored_steps.append(step)
+        if overplanning_objective.get("preserve_terminal_branch_step") and suffix[-1].metadata.get("branch_sensitive"):
+            anchored_steps.append(suffix[-1])
+
+        selected: List[WorkflowStep] = []
+        for step in anchored_steps + suffix:
+            if step not in selected:
+                selected.append(step)
+            if len(selected) >= max_steps:
+                break
+        selected.sort(key=suffix.index)
+        return selected[:max_steps]
+
+    @staticmethod
+    def _build_overplanning_objective(
+        benchmark_hints: Dict[str, Any],
+        *,
+        completed_step_count: int,
+    ) -> Dict[str, Any]:
+        categories = {str(item) for item in benchmark_hints.get("categories", []) if str(item)}
+        tool_allow_list = [str(item) for item in benchmark_hints.get("tool_allow_list", []) if str(item)]
+        milestones = [str(item) for item in benchmark_hints.get("milestones", []) if str(item)]
+        branch_options = [str(item) for item in benchmark_hints.get("branch_options", []) if str(item)]
+        ideal_tool_calls = benchmark_hints.get("ideal_tool_calls")
+        preferred_capabilities = (
+            RuleBasedCapabilityGraphBuilder._capability_order_from_texts(milestones)
+            or RuleBasedCapabilityGraphBuilder._capability_order_from_texts(tool_allow_list)
+        )
+
+        low_branching_task = "multiple_user_turn" not in categories and (
+            "single_tool" in categories or len(tool_allow_list) <= 2 or bool(milestones)
+        )
+        remaining_milestones = max(len(preferred_capabilities) - completed_step_count, 0) if preferred_capabilities else 0
+        remaining_tool_budget = None
+        if isinstance(ideal_tool_calls, int) and ideal_tool_calls > 0:
+            remaining_tool_budget = max(ideal_tool_calls - completed_step_count, 1)
+
+        max_steps: Optional[int] = None
+        if remaining_milestones > 0:
+            max_steps = remaining_milestones
+        if remaining_tool_budget is not None:
+            max_steps = remaining_tool_budget if max_steps is None else min(max_steps, remaining_tool_budget)
+
+        reasons: List[str] = []
+        if preferred_capabilities:
+            reasons.append("preferred_capability_order")
+        if remaining_tool_budget is not None:
+            reasons.append("ideal_tool_budget")
+        if branch_options:
+            reasons.append("branch_sensitive_suffix")
+
+        active = low_branching_task and (bool(preferred_capabilities) or max_steps is not None or bool(branch_options))
+        return {
+            "active": active,
+            "applied": False,
+            "low_branching_task": low_branching_task,
+            "max_steps": max_steps,
+            "preferred_capabilities": preferred_capabilities,
+            "allowed_tools": tool_allow_list,
+            "preserve_terminal_branch_step": bool(branch_options),
+            "reason": reasons,
+        }
+
+    @staticmethod
+    def _apply_overplanning_objective_to_graph(
+        graph: CapabilityGraph,
+        objective: Dict[str, Any],
+    ) -> CapabilityGraph:
+        if not objective.get("active") or len(graph.capabilities) <= 1:
+            return graph
+
+        capabilities = list(graph.capabilities)
+        preferred_capabilities = [str(item) for item in objective.get("preferred_capabilities", []) if str(item)]
+        if preferred_capabilities:
+            preferred_set = set(preferred_capabilities)
+            ranked = {capability_id: idx for idx, capability_id in enumerate(preferred_capabilities)}
+            filtered = [capability for capability in capabilities if capability.capability_id in preferred_set]
+            if filtered:
+                filtered.sort(key=lambda capability: (ranked.get(capability.capability_id, len(ranked)), capabilities.index(capability)))
+                capabilities = filtered
+
+        max_steps = objective.get("max_steps")
+        if isinstance(max_steps, int) and max_steps > 0 and len(capabilities) > max_steps:
+            if objective.get("preserve_terminal_branch_step") and max_steps > 1:
+                terminal = capabilities[-1]
+                trimmed = capabilities[: max_steps - 1]
+                if terminal not in trimmed:
+                    trimmed.append(terminal)
+                capabilities = trimmed
+            else:
+                capabilities = capabilities[:max_steps]
+
+        if capabilities == graph.capabilities:
+            objective_metadata = dict(objective)
+            objective_metadata["applied"] = bool(
+                objective.get("preferred_capabilities")
+                or objective.get("max_steps") is not None
+            )
+            graph.metadata.setdefault("overplanning_objective", objective_metadata)
+            return graph
+
+        objective_metadata = dict(objective)
+        objective_metadata["applied"] = True
+        metadata = dict(graph.metadata)
+        metadata["overplanning_objective"] = objective_metadata
+        return CapabilityGraph(
+            capabilities=capabilities,
+            edges=HTGPPlanner._rebuild_capability_edges(capabilities),
+            metadata=metadata,
+        )
+
+    @staticmethod
+    def _rebuild_capability_edges(capabilities: Sequence[CapabilityNode]) -> List["CapabilityEdge"]:
+        if len(capabilities) <= 1:
+            return []
+        from toolclaw.schemas.workflow import CapabilityEdge
+
+        return [
+            CapabilityEdge(
+                source=capabilities[index].capability_id,
+                target=capabilities[index + 1].capability_id,
+                condition="objective_sequence",
+            )
+            for index in range(len(capabilities) - 1)
+        ]
 
     @staticmethod
     def _apply_request_overrides(workflow: Workflow, overrides: Dict[str, Dict[str, Any]]) -> None:
@@ -773,7 +1037,13 @@ class HTGPPlanner:
                 if binding is not None and step.tool_id:
                     binding.primary_tool = step.tool_id
 
-    def _load_reusable_profile(self, request: PlanningRequest, graph: Optional[CapabilityGraph] = None) -> Dict[str, Any]:
+    def _load_reusable_profile(
+        self,
+        request: PlanningRequest,
+        graph: Optional[CapabilityGraph] = None,
+        *,
+        overplanning_objective: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         profile: Dict[str, Any] = {
             "capability_order": [],
             "recommended_bindings": {},
@@ -817,7 +1087,11 @@ class HTGPPlanner:
                         if isinstance(inputs, dict)
                     }
                 )
-        return profile
+        return self._constrain_reusable_profile(
+            profile,
+            graph=graph,
+            overplanning_objective=overplanning_objective or {},
+        )
 
     @staticmethod
     def _apply_reusable_hints(workflow: Workflow, reusable_profile: Dict[str, Any]) -> None:
@@ -839,6 +1113,55 @@ class HTGPPlanner:
                     if key not in node.inputs:
                         node.inputs[key] = value
 
+    @staticmethod
+    def _constrain_reusable_profile(
+        profile: Dict[str, Any],
+        *,
+        graph: Optional[CapabilityGraph],
+        overplanning_objective: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        constrained = {
+            "capability_order": list(profile.get("capability_order", [])),
+            "recommended_bindings": dict(profile.get("recommended_bindings", {})),
+            "recommended_inputs": {
+                capability_id: dict(inputs)
+                for capability_id, inputs in dict(profile.get("recommended_inputs", {})).items()
+                if isinstance(inputs, dict)
+            },
+            "asset_ids": list(profile.get("asset_ids", [])),
+        }
+        allowed_capabilities = {capability.capability_id for capability in graph.capabilities} if graph else set()
+        preferred_capabilities = {
+            str(item) for item in overplanning_objective.get("preferred_capabilities", []) if str(item)
+        }
+        if preferred_capabilities:
+            allowed_capabilities = allowed_capabilities & preferred_capabilities if allowed_capabilities else preferred_capabilities
+
+        allowed_tools = {str(item) for item in overplanning_objective.get("allowed_tools", []) if str(item)}
+        if allowed_capabilities:
+            constrained["capability_order"] = [
+                capability_id
+                for capability_id in constrained["capability_order"]
+                if capability_id in allowed_capabilities
+            ]
+            constrained["recommended_bindings"] = {
+                capability_id: tool_id
+                for capability_id, tool_id in constrained["recommended_bindings"].items()
+                if capability_id in allowed_capabilities and (not allowed_tools or tool_id in allowed_tools)
+            }
+            constrained["recommended_inputs"] = {
+                capability_id: inputs
+                for capability_id, inputs in constrained["recommended_inputs"].items()
+                if capability_id in allowed_capabilities
+            }
+        elif allowed_tools:
+            constrained["recommended_bindings"] = {
+                capability_id: tool_id
+                for capability_id, tool_id in constrained["recommended_bindings"].items()
+                if tool_id in allowed_tools
+            }
+        return constrained
+
 
 class DefaultCapabilityGraphBuilder(CapabilityGraphBuilder):
     def __init__(self, delegate: RuleBasedCapabilityGraphBuilder) -> None:
@@ -848,8 +1171,9 @@ class DefaultCapabilityGraphBuilder(CapabilityGraphBuilder):
         self,
         task: TaskSpec,
         candidates: Sequence[CapabilityCandidate],
+        benchmark_hints: Optional[Dict[str, Any]] = None,
     ) -> CapabilityGraph:
-        graph, _ = self.delegate.build(task=task, candidates=candidates)
+        graph, _ = self.delegate.build(task=task, candidates=candidates, benchmark_hints=benchmark_hints)
         return graph
 
 

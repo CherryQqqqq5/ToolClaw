@@ -629,6 +629,7 @@ class ToolSandboxAdapter:
         request.hints.user_style["milestone_count"] = len(sample.raw_payload.get("milestones", []))
         request.hints.user_style["milestones"] = list(sample.raw_payload.get("milestones", []))
         request.hints.user_style["tool_allow_list"] = self._tool_allow_list(sample.raw_payload)
+        request.hints.user_style["branch_options"] = list(sample.raw_payload.get("branch_options", []))
         request.hints.user_style["ideal_tool_calls"] = sample.raw_payload.get("ideal_tool_calls")
         request.hints.user_style["ideal_turn_count"] = sample.raw_payload.get("ideal_turn_count")
         return request
@@ -649,6 +650,7 @@ class ToolSandboxAdapter:
             "target_path": target_path,
             "messages": list(sample.raw_payload.get("messages", [])),
             "milestones": milestones,
+            "branch_options": list(sample.raw_payload.get("branch_options", [])),
             "tool_allow_list": tool_allow_list,
             "ideal_turn_count": sample.raw_payload.get("ideal_turn_count"),
             "ideal_tool_calls": sample.raw_payload.get("ideal_tool_calls"),
@@ -662,6 +664,7 @@ class ToolSandboxAdapter:
                 "ideal_tool_calls": sample.raw_payload.get("ideal_tool_calls"),
                 "messages": list(sample.raw_payload.get("messages", [])),
                 "milestones": milestones,
+                "branch_options": list(sample.raw_payload.get("branch_options", [])),
                 "toolsandbox_reference_result": reference_result_summary,
                 "reference_result_summary_present": bool(reference_result_summary),
             },

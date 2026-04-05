@@ -150,6 +150,8 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         workflow.metadata["milestones"] = list(task.get("milestones", []))
     if task.get("tool_allow_list") is not None:
         workflow.metadata["tool_allow_list"] = list(task.get("tool_allow_list", []))
+    if task.get("branch_options") is not None:
+        workflow.metadata["branch_options"] = list(task.get("branch_options", []))
     if task.get("reference_result_summary") is not None:
         workflow.metadata["toolsandbox_reference_result"] = dict(task.get("reference_result_summary", {}))
     if task.get("ideal_turn_count") is not None:
@@ -287,6 +289,7 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
         or []
     )
     request.hints.user_style["tool_allow_list"] = list(workflow.metadata.get("tool_allow_list", []))
+    request.hints.user_style["branch_options"] = list(workflow.metadata.get("branch_options", []))
     request.hints.user_style["ideal_tool_calls"] = workflow.metadata.get("ideal_tool_calls")
     request.hints.user_style["ideal_turn_count"] = workflow.metadata.get("ideal_turn_count")
     request.hints.user_style["milestones"] = list(workflow.metadata.get("milestones", []))

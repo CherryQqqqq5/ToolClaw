@@ -167,6 +167,19 @@ scripts/run_toolsandbox_formal.sh \
   --num-runs 3
 ```
 
+Current ToolSandbox benchmark outputs now also include a focused slice summary for the three highest-value paper slices:
+
+- `focused_slice_summary.md`
+- `focused_slice_summary.json`
+
+These files prioritize:
+
+- `insufficient_information`
+- `multiple_user_turn`
+- `single_tool`
+
+and precompute A3-vs-baseline / A4-vs-A3 deltas for those categories.
+
 Full benchmark from a real official run:
 
 ```bash
@@ -183,6 +196,18 @@ scripts/run_toolsandbox_formal.sh \
   --num-runs 3 \
   --asset-registry-root outputs/toolsandbox_assets
 ```
+
+Two-stage reuse protocol with compile/eval splits:
+
+```bash
+python3 scripts/run_reuse_split_experiment.py \
+  --train-taskset data/toolsandbox.reuse.train.json \
+  --eval-taskset data/toolsandbox.reuse.eval.json \
+  --outdir outputs/reuse_split_toolsandbox \
+  --asset-registry-root outputs/reuse_split_toolsandbox/assets
+```
+
+This protocol is preferable to exact pass-1/pass-2 reruns when the goal is to test transferable reuse rather than repeated-memory effects.
 
 Default ablation entry now also launches a ToolSandbox sub-run. Its ToolSandbox defaults are:
 
