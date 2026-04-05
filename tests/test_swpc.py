@@ -45,6 +45,9 @@ def test_compiler_extracts_workflow_snippet_from_success_trace(tmp_path: Path) -
     assert len(artifacts.workflow_snippets) == 1
     assert len(artifacts.skill_hints) == 1
     assert len(artifacts.policy_snippets) == 1
+    assert "family=" in artifacts.workflow_snippets[0].task_signature
+    assert "caps=" in artifacts.workflow_snippets[0].task_signature
+    assert "fail=" in artifacts.workflow_snippets[0].task_signature
 
 
 def test_registry_retrieval_feeds_planner_hints() -> None:

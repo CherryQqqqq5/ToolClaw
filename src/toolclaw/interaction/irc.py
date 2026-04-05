@@ -65,13 +65,17 @@ class InteractionShell:
                 output_path=output_path,
                 backup_tool_map=backup_tool_map,
                 compile_on_success=compile_on_success,
-            )
+        )
         combined_trace = self._load_trace(output_path)
         turns = 0
+        failure_counts: Dict[str, int] = {}
 
         while outcome.blocked and outcome.pending_interaction and turns < self.config.max_turns:
             turns += 1
             repair = outcome.pending_interaction.repair
+            failure_signature = self._failure_signature(outcome)
+            repeat_count = failure_counts.get(failure_signature, 0)
+            failure_counts[failure_signature] = repeat_count + 1
             report = self.uncertainty_detector.analyze_failure(
                 workflow=outcome.workflow,
                 repair=repair,
@@ -88,6 +92,12 @@ class InteractionShell:
                 query.expected_answer_type = query_plan.question_type
                 query.allowed_response_schema = query_plan.response_schema
                 query.metadata["uncertainty"] = report.primary_label
+            self._escalate_query(
+                query=query,
+                outcome=outcome,
+                repeat_count=repeat_count,
+                backup_tool_map=backup_tool_map or {},
+            )
             reply = self.simulator.reply(query)
             self._append_interaction_events(combined_trace, query=query, reply=reply, turn_index=turns)
             if not self.repair_updater.validate_reply(query, reply):
@@ -231,6 +241,53 @@ class InteractionShell:
                 merged_metrics[key] = new_metrics[key]
         merged["metrics"] = merged_metrics
         return merged
+
+    @staticmethod
+    def _failure_signature(outcome: ExecutionOutcome) -> str:
+        if outcome.pending_interaction is None:
+            return "completed"
+        repair = outcome.pending_interaction.repair
+        return "::".join(
+            [
+                outcome.pending_interaction.step_id or "unknown_step",
+                repair.repair_type.value,
+                str(repair.metadata.get("mapped_from_error_category") or "unknown_error"),
+                str(repair.metadata.get("failed_tool_id") or "unknown_tool"),
+            ]
+        )
+
+    @staticmethod
+    def _escalate_query(
+        *,
+        query: Any,
+        outcome: ExecutionOutcome,
+        repeat_count: int,
+        backup_tool_map: Dict[str, str],
+    ) -> None:
+        if outcome.pending_interaction is None:
+            return
+        repair = outcome.pending_interaction.repair
+        step = outcome.workflow.get_step(outcome.pending_interaction.step_id)
+        query.metadata["repeat_failure_count"] = repeat_count
+        query.metadata["escalation_level"] = repeat_count
+        if repair.metadata.get("mapped_from_error_category") == "environment_failure":
+            query.metadata["clear_failure_flag_recommended"] = True
+        if repeat_count <= 0:
+            return
+
+        query.metadata["strategy_upgrade"] = "repeat_failure_escalation"
+        query.expected_answer_type = "escalated_patch"
+        query.question = (
+            f"{query.question} This is a repeated failure. "
+            "Prefer an alternate tool, a fallback execution path, or an explicit input patch instead of retrying unchanged."
+        )
+        if step is not None:
+            backup_tool_id = backup_tool_map.get(step.tool_id or "")
+            if backup_tool_id:
+                query.metadata["recommended_backup_tool"] = backup_tool_id
+                query.metadata["backup_tool_id"] = backup_tool_id
+                query.allowed_response_schema.setdefault("properties", {})
+                query.allowed_response_schema["properties"]["use_backup_tool"] = {"type": "boolean"}
 
     def _finalize_combined_trace(
         self,

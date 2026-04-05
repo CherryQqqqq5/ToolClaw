@@ -26,7 +26,7 @@ from toolclaw.benchmarks.metrics import (
     write_report_md,
     write_rows_csv,
 )
-from toolclaw.compiler.swpc import SWPCCompiler
+from toolclaw.compiler.swpc import SWPCCompiler, build_task_signature_candidates
 from toolclaw.execution.executor import SequentialExecutor
 from toolclaw.interaction.irc import InteractionLoopConfig, InteractionShell
 from toolclaw.interaction.repair_updater import RepairUpdater
@@ -141,6 +141,9 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
 
     if isinstance(raw_metadata, dict):
         workflow.metadata.update(raw_metadata)
+    workflow.metadata["task_family"] = derive_task_family(task, scenario=str(task.get("scenario", "success")), task_id=workflow.task.task_id)
+    workflow.metadata["failure_type"] = derive_failure_type(task, scenario=str(task.get("scenario", "success")))
+    workflow.metadata["scenario"] = str(task.get("scenario", "success"))
     if task.get("messages") is not None:
         workflow.metadata["messages"] = list(task.get("messages", []))
     if task.get("milestones") is not None:
@@ -158,17 +161,28 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         allow_list = workflow.metadata.get("tool_allow_list") or []
         scenario = str(task.get("scenario", "toolsandbox"))
         ideal_tool_calls = task.get("ideal_tool_calls")
-        if (
+        low_branching = (
             len(allow_list) == 1
-            or scenario == "single_tool"
+            or scenario in {"single_tool", "single_user_turn"}
             or ideal_tool_calls == 1
-        ):
+            or bool(toolsandbox_metadata.get("low_branching"))
+        )
+        if low_branching:
             workflow.execution_plan = workflow.execution_plan[:1]
             workflow.tool_bindings = workflow.tool_bindings[:1]
             workflow.workflow_graph.nodes = workflow.workflow_graph.nodes[:1]
             workflow.workflow_graph.edges = []
             workflow.workflow_graph.entry_nodes = ["step_01"]
             workflow.workflow_graph.exit_nodes = ["step_01"]
+            workflow.metadata["low_branching_fast_path"] = True
+            if allow_list and workflow.execution_plan:
+                selected_tool = str(allow_list[0])
+                workflow.execution_plan[0].tool_id = selected_tool
+                if workflow.tool_bindings:
+                    workflow.tool_bindings[0].primary_tool = selected_tool
+                if workflow.workflow_graph.nodes:
+                    workflow.workflow_graph.nodes[0].selected_tool = selected_tool
+                    workflow.workflow_graph.nodes[0].tool_candidates = [selected_tool]
 
     scenario = task.get("scenario", "success")
     if scenario == "binding_failure" and len(workflow.execution_plan) > 1:
@@ -264,6 +278,9 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
             }
         },
     )
+    request.hints.user_style["task_family"] = str(workflow.metadata.get("task_family", "t0_general"))
+    request.hints.user_style["failure_type"] = str(workflow.metadata.get("failure_type", "none"))
+    request.hints.user_style["scenario"] = str(workflow.metadata.get("scenario", "success"))
     if not allow_reuse:
         request.hints.reusable_asset_ids = []
     return request
@@ -291,8 +308,19 @@ def canonical_task_id(task: Dict[str, Any]) -> str:
     raise KeyError("task object must include one of: task_id, sample_id, name, scenario_id, id")
 
 
-def task_signature_for_query(query: str) -> str:
-    return f"phase1::{query.lower().strip().replace(' ', '_')}"
+def task_signature_candidates(
+    *,
+    query: str,
+    task_family: str | None = None,
+    failure_type: str | None = None,
+    capability_skeleton: Optional[List[str]] = None,
+) -> List[str]:
+    return build_task_signature_candidates(
+        user_goal=query,
+        task_family=task_family,
+        capability_skeleton=capability_skeleton,
+        failure_context=failure_type,
+    )
 
 
 def parse_reuse_pass_index(task_id: str, task: Dict[str, Any]) -> int:
@@ -439,7 +467,12 @@ def execute_system(
     if spec.use_reuse and runtime is not None:
         query = str(task.get("query") or "")
         if query:
-            reused_artifact = bool(runtime.asset_registry.query(task_signature_for_query(query)))
+            signature_candidates = task_signature_candidates(
+                query=query,
+                task_family=task_family,
+                failure_type=failure_type,
+            )
+            reused_artifact = any(runtime.asset_registry.query(signature) for signature in signature_candidates)
 
     if spec.execution_mode == "baseline":
         workflow = build_workflow_from_task(task, mode="demo")
@@ -491,6 +524,14 @@ def execute_system(
         )
 
     seed_workflow = build_workflow_from_task(task, mode="planner")
+    if spec.use_reuse and runtime is not None and not reused_artifact:
+        signature_candidates = task_signature_candidates(
+            query=seed_workflow.task.user_goal,
+            task_family=str(seed_workflow.metadata.get("task_family", task_family)),
+            failure_type=str(seed_workflow.metadata.get("failure_type", failure_type)),
+            capability_skeleton=[step.capability_id for step in seed_workflow.execution_plan],
+        )
+        reused_artifact = any(runtime.asset_registry.query(signature) for signature in signature_candidates)
     request = build_planning_request(seed_workflow, allow_reuse=spec.use_reuse)
     build_shell(runtime, task).run(
         request=request,
@@ -500,6 +541,8 @@ def execute_system(
         use_reuse=spec.use_reuse,
         compile_on_success=spec.compile_on_success,
     )
+    if spec.use_reuse:
+        reused_artifact = reused_artifact or bool(request.hints.reusable_asset_ids)
     return row_from_trace(
         task=task,
         system=spec.system_id,

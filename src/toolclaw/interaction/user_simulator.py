@@ -35,6 +35,10 @@ class UserSimulator:
         payload.update(self.policy.missing_arg_values)
         payload.update(self.policy.constraint_overrides)
         payload.update(self.policy.tool_switch_hints)
+        if request.metadata.get("recommended_backup_tool") and "tool_id" not in payload:
+            payload["tool_id"] = request.metadata["recommended_backup_tool"]
+        if request.metadata.get("clear_failure_flag_recommended") and "clear_failure_flag" not in payload:
+            payload["clear_failure_flag"] = True
         if "approval" in request.expected_answer_type or "approve" in request.question.lower():
             payload["approved"] = self.policy.approval_responses.get(request.interaction_id, True)
 

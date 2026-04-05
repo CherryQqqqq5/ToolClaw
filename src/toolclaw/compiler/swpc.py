@@ -53,6 +53,48 @@ class CompiledArtifacts:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
+def _normalize_signature_token(value: Any, *, default: str = "none") -> str:
+    text = str(value or "").strip().lower()
+    if not text:
+        return default
+    normalized = []
+    last_was_sep = False
+    for char in text:
+        if char.isalnum():
+            normalized.append(char)
+            last_was_sep = False
+        else:
+            if not last_was_sep:
+                normalized.append("_")
+                last_was_sep = True
+    token = "".join(normalized).strip("_")
+    return token or default
+
+
+def build_task_signature_candidates(
+    *,
+    user_goal: str,
+    task_family: str | None = None,
+    capability_skeleton: List[str] | None = None,
+    failure_context: str | None = None,
+) -> List[str]:
+    goal = _normalize_signature_token(user_goal, default="task")
+    family = _normalize_signature_token(task_family, default="t0_general")
+    failure = _normalize_signature_token(failure_context, default="none")
+    capabilities = capability_skeleton or []
+    capability_token = "+".join(_normalize_signature_token(capability, default="cap") for capability in capabilities) if capabilities else "unspecified"
+    candidates = [
+        f"phase1::family={family}::caps={capability_token}::fail={failure}::goal={goal}",
+        f"phase1::family={family}::fail={failure}::goal={goal}",
+        f"phase1::{goal}",
+    ]
+    deduped: List[str] = []
+    for candidate in candidates:
+        if candidate not in deduped:
+            deduped.append(candidate)
+    return deduped
+
+
 class SWPCCompiler:
     @staticmethod
     def _serialize_policy_rule(rule: Any) -> Dict[str, Any]:
@@ -114,8 +156,15 @@ class SWPCCompiler:
         self,
         workflow: Workflow,
     ) -> str:
-        goal = workflow.task.user_goal.lower().strip().replace(" ", "_")
-        return f"phase1::{goal}"
+        task_family = workflow.metadata.get("task_family")
+        failure_context = workflow.metadata.get("failure_type") or workflow.metadata.get("scenario")
+        capability_skeleton = [step.capability_id for step in workflow.execution_plan]
+        return build_task_signature_candidates(
+            user_goal=workflow.task.user_goal,
+            task_family=str(task_family) if task_family else None,
+            capability_skeleton=capability_skeleton,
+            failure_context=str(failure_context) if failure_context else None,
+        )[0]
 
     @staticmethod
     def score_artifact_quality(success: bool | None) -> float:

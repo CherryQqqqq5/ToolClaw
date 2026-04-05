@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from toolclaw.compiler.swpc import SWPCCompiler
+from toolclaw.compiler.swpc import SWPCCompiler, build_task_signature_candidates
 from toolclaw.execution.executor import ExecutionOutcome, SequentialExecutor
 from toolclaw.interaction.repair_updater import RepairUpdater, UserReply
 from toolclaw.planner.htgp import HTGPPlanner, PlanningRequest
@@ -52,8 +52,15 @@ class ToolClawRuntime:
         compile_on_success: bool = True,
     ) -> ExecutionOutcome:
         if not request.hints.reusable_asset_ids and self.asset_registry:
-            signature = f"phase1::{request.task.user_goal.lower().strip().replace(' ', '_')}"
-            request.hints.reusable_asset_ids = [match.asset_id for match in self.asset_registry.query(signature)]
+            signatures = build_task_signature_candidates(
+                user_goal=request.task.user_goal,
+                task_family=request.hints.user_style.get("task_family"),
+                failure_context=request.hints.user_style.get("failure_type"),
+            )
+            reusable_ids = []
+            for signature in signatures:
+                reusable_ids.extend(match.asset_id for match in self.asset_registry.query(signature))
+            request.hints.reusable_asset_ids = list(dict.fromkeys(reusable_ids))
         return self.run_task(
             request=request,
             run_id=run_id,

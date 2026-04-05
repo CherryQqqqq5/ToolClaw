@@ -38,6 +38,9 @@ class QueryPolicy:
                     "properties": {
                         "target_path": {"type": "string"},
                         "tool_id": {"type": "string"},
+                        "fallback_execution_path": {"type": "string"},
+                        "clear_failure_flag": {"type": "boolean"},
+                        "input_patch": {"type": "object"},
                         "approved": {"type": "boolean"},
                     },
                 },

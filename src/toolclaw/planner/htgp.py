@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence
 
+from toolclaw.compiler.swpc import build_task_signature_candidates
 from toolclaw.planner.binder import ToolBinder
 from toolclaw.planner.capability_graph import RuleBasedCapabilityGraphBuilder
 from toolclaw.schemas.error import ToolClawError
@@ -331,14 +332,14 @@ class HTGPPlanner:
 
     def plan(self, request: PlanningRequest) -> PlanningResult:
         diagnostics = PlanningDiagnostics()
-        reusable_profile = self._load_reusable_profile(request)
         candidates = self.capability_selector.select(request.task, request.context, request.hints)
+        built_graph = self.graph_builder.build(request.task, candidates)
+        graph = built_graph[0] if isinstance(built_graph, tuple) else built_graph
+        reusable_profile = self._load_reusable_profile(request, graph)
         if reusable_profile["capability_order"]:
             order = reusable_profile["capability_order"]
             rank = {cap_id: idx for idx, cap_id in enumerate(order)}
-            candidates.sort(key=lambda c: rank.get(c.capability_id, len(rank)))
-        built_graph = self.graph_builder.build(request.task, candidates)
-        graph = built_graph[0] if isinstance(built_graph, tuple) else built_graph
+            graph.capabilities.sort(key=lambda capability: rank.get(capability.capability_id, len(rank)))
         graph = self.policy_injector.inject(graph, request.task, request.context, request.policy)
 
         binding_results = self.binder.bind_graph(
@@ -375,7 +376,12 @@ class HTGPPlanner:
             execution_plan=execution_plan,
             workflow_graph=workflow_graph,
             policy=request.policy or Workflow.demo().policy,
-            metadata={"planner_mode": request.planner_mode},
+            metadata={
+                "planner_mode": request.planner_mode,
+                "task_family": str(request.hints.user_style.get("task_family", "t0_general")),
+                "failure_type": str(request.hints.user_style.get("failure_type", "none")),
+                "scenario": str(request.hints.user_style.get("scenario", "success")),
+            },
         )
         self._apply_request_overrides(workflow, request.workflow_overrides)
         self._apply_reusable_hints(workflow, reusable_profile)
@@ -483,15 +489,23 @@ class HTGPPlanner:
                 if binding is not None and step.tool_id:
                     binding.primary_tool = step.tool_id
 
-    def _load_reusable_profile(self, request: PlanningRequest) -> Dict[str, Any]:
+    def _load_reusable_profile(self, request: PlanningRequest, graph: Optional[CapabilityGraph] = None) -> Dict[str, Any]:
         profile: Dict[str, Any] = {"capability_order": [], "recommended_bindings": {}, "recommended_inputs": {}}
         if not self.asset_registry:
             return profile
 
         asset_ids = list(request.hints.reusable_asset_ids)
         if not asset_ids and self.asset_registry:
-            signature = f"phase1::{request.task.user_goal.lower().strip().replace(' ', '_')}"
-            matches = self.asset_registry.query(signature, top_k=5)
+            capability_skeleton = [capability.capability_id for capability in graph.capabilities] if graph else []
+            signatures = build_task_signature_candidates(
+                user_goal=request.task.user_goal,
+                task_family=request.hints.user_style.get("task_family"),
+                capability_skeleton=capability_skeleton,
+                failure_context=request.hints.user_style.get("failure_type"),
+            )
+            matches = []
+            for signature in signatures:
+                matches.extend(self.asset_registry.query(signature, top_k=5))
             asset_ids = [m.asset_id for m in matches]
 
         for asset_id in asset_ids:

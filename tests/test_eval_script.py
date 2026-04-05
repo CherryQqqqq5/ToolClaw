@@ -221,6 +221,7 @@ def test_run_eval_script_reports_repeated_family_contrast(tmp_path: Path) -> Non
 
     report = (outdir / "report.md").read_text(encoding="utf-8")
     assert "Repeated-Family Analysis" in report
+    assert "Repeated-Family A3 vs A4" in report
     assert "reuse_case_001" in report
 
 

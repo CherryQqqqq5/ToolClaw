@@ -51,7 +51,11 @@ class UncertaintyDetector:
                 primary_label="missing_info",
                 confidence=0.85,
                 information_gaps=[InformationGap(gap_type="asset_or_constraint", rationale="repair requires user guidance")],
-                metadata={"state_keys": sorted(state_values.keys())},
+                metadata={
+                    "state_keys": sorted(state_values.keys()),
+                    "failed_tool_id": repair.metadata.get("failed_tool_id"),
+                    "error_category": repair.metadata.get("mapped_from_error_category"),
+                },
             )
         return UncertaintyReport(
             primary_label="recoverable_runtime_error",

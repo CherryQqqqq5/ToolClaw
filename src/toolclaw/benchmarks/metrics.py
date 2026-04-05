@@ -262,6 +262,24 @@ def write_report_md(
                 f"| {system} | {repeat_family} | {stats['pass_1_success']:.3f} | {stats['pass_2_success']:.3f} | {stats['pass_1_tool_calls']:.2f} | {stats['pass_2_tool_calls']:.2f} | {stats['pass_1_user_turns']:.2f} | {stats['pass_2_user_turns']:.2f} | {stats['pass_2_reused_artifact']:.3f} | {stats['second_run_improvement']:.3f} |"
             )
 
+    a3_t4 = family_summary.get(("a3_interaction", "t4_repeated_reusable")) or family_summary.get(("toolclaw_lite", "t4_repeated_reusable"))
+    a4_t4 = family_summary.get(("a4_reuse", "t4_repeated_reusable"))
+    if a3_t4 and a4_t4:
+        lines.extend(
+            [
+                "",
+                "## Repeated-Family A3 vs A4",
+                "",
+                "| metric | a3_interaction | a4_reuse | delta_a4_minus_a3 |",
+                "|---|---:|---:|---:|",
+                f"| success_rate | {a3_t4['success_rate']:.3f} | {a4_t4['success_rate']:.3f} | {a4_t4['success_rate'] - a3_t4['success_rate']:+.3f} |",
+                f"| avg_repair_actions | {a3_t4['avg_repair_actions']:.2f} | {a4_t4['avg_repair_actions']:.2f} | {a4_t4['avg_repair_actions'] - a3_t4['avg_repair_actions']:+.2f} |",
+                f"| avg_user_turns | {a3_t4['avg_user_turns']:.2f} | {a4_t4['avg_user_turns']:.2f} | {a4_t4['avg_user_turns'] - a3_t4['avg_user_turns']:+.2f} |",
+                f"| reuse_usage_rate | {a3_t4['reuse_usage_rate']:.3f} | {a4_t4['reuse_usage_rate']:.3f} | {a4_t4['reuse_usage_rate'] - a3_t4['reuse_usage_rate']:+.3f} |",
+                f"| mean_second_run_improvement | {a3_t4['mean_second_run_improvement']:.3f} | {a4_t4['mean_second_run_improvement']:.3f} | {a4_t4['mean_second_run_improvement'] - a3_t4['mean_second_run_improvement']:+.3f} |",
+            ]
+        )
+
     verdict = "inconclusive"
     if a0 and a4:
         if a4["success_rate"] > a0["success_rate"]:
@@ -283,6 +301,7 @@ def write_report_md(
             "- fail_stop_rate should fall as recovery and interaction layers are added.",
             "- reuse_usage_rate reports how often a system actually ran with a retrieved reusable artifact.",
             "- mean_second_run_improvement is only meaningful on repeated families with explicit first-vs-second-run pairs.",
+            "- Interpret A4 reuse gains primarily through the repeated-family sections, not the full-task aggregate.",
             "- Use failure_type and task_family tables to keep benchmark slicing aligned with experimental claims.",
         ]
     )
