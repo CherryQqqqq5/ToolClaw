@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -419,6 +420,11 @@ class HTGPPlanner:
             built_graph = self.graph_builder.build(request.task, candidates)
             graph = built_graph[0] if isinstance(built_graph, tuple) else built_graph
         reusable_profile = self._load_reusable_profile(request, graph)
+        resolved_reusable_asset_ids = [
+            str(asset_id) for asset_id in reusable_profile.get("asset_ids", []) if str(asset_id)
+        ]
+        if resolved_reusable_asset_ids:
+            request.hints.reusable_asset_ids = list(dict.fromkeys(resolved_reusable_asset_ids))
         if reusable_profile["capability_order"]:
             order = reusable_profile["capability_order"]
             rank = {cap_id: idx for idx, cap_id in enumerate(order)}
@@ -477,6 +483,18 @@ class HTGPPlanner:
                 "task_family": str(request.hints.user_style.get("task_family", "t0_general")),
                 "failure_type": str(request.hints.user_style.get("failure_type", "none")),
                 "scenario": str(request.hints.user_style.get("scenario", "success")),
+                "planning_request": self._snapshot_request(request),
+                "benchmark_hints": {
+                    "categories": list(benchmark_hints.get("categories", [])),
+                    "tool_allow_list": list(benchmark_hints.get("tool_allow_list", [])),
+                    "ideal_tool_calls": benchmark_hints.get("ideal_tool_calls"),
+                    "ideal_turn_count": benchmark_hints.get("ideal_turn_count"),
+                    "milestones": list(benchmark_hints.get("milestones", [])),
+                },
+                "reusable_context": {
+                    "resolved_asset_ids": list(request.hints.reusable_asset_ids),
+                    "profile_loaded": bool(resolved_reusable_asset_ids),
+                },
             },
         )
         self._apply_request_overrides(workflow, request.workflow_overrides)
@@ -489,6 +507,94 @@ class HTGPPlanner:
             metadata={"candidate_count": len(candidates), "bypass_applied": bypass_applied, "benchmark_hints_used": diagnostics.benchmark_hints_used},
         )
         return PlanningResult(workflow=workflow, artifact=artifact, diagnostics=diagnostics)
+
+    @staticmethod
+    def _snapshot_request(request: PlanningRequest) -> Dict[str, Any]:
+        return {
+            "planner_mode": request.planner_mode,
+            "workflow_overrides": deepcopy(request.workflow_overrides),
+            "hints": {
+                "preferred_capabilities": list(request.hints.preferred_capabilities),
+                "forbidden_tools": list(request.hints.forbidden_tools),
+                "reusable_asset_ids": list(request.hints.reusable_asset_ids),
+                "prior_failures": list(request.hints.prior_failures),
+                "user_style": deepcopy(request.hints.user_style),
+            },
+        }
+
+    @classmethod
+    def request_from_workflow(cls, workflow: Workflow) -> PlanningRequest:
+        snapshot = workflow.metadata.get("planning_request", {})
+        hint_snapshot = snapshot.get("hints", {}) if isinstance(snapshot, dict) else {}
+        hints = PlanningHints(
+            preferred_capabilities=[
+                str(item) for item in hint_snapshot.get("preferred_capabilities", []) if str(item)
+            ],
+            forbidden_tools=[str(item) for item in hint_snapshot.get("forbidden_tools", []) if str(item)],
+            reusable_asset_ids=[str(item) for item in hint_snapshot.get("reusable_asset_ids", []) if str(item)],
+            prior_failures=[str(item) for item in hint_snapshot.get("prior_failures", []) if str(item)],
+            user_style=deepcopy(hint_snapshot.get("user_style", {}))
+            if isinstance(hint_snapshot.get("user_style", {}), dict)
+            else {},
+        )
+        planner_mode = (
+            str(snapshot.get("planner_mode"))
+            if isinstance(snapshot, dict) and snapshot.get("planner_mode")
+            else str(workflow.metadata.get("planner_mode", "phase1_rule_based"))
+        )
+        workflow_overrides = (
+            deepcopy(snapshot.get("workflow_overrides", {}))
+            if isinstance(snapshot, dict) and isinstance(snapshot.get("workflow_overrides", {}), dict)
+            else {}
+        )
+        return PlanningRequest(
+            task=workflow.task,
+            context=workflow.context,
+            policy=workflow.policy,
+            hints=hints,
+            planner_mode=planner_mode,
+            workflow_overrides=workflow_overrides,
+        )
+
+    @classmethod
+    def _merge_request_with_workflow_context(
+        cls,
+        request: PlanningRequest,
+        workflow: Workflow,
+    ) -> PlanningRequest:
+        inherited = cls.request_from_workflow(workflow)
+        merged_user_style = dict(inherited.hints.user_style)
+        merged_user_style.update(request.hints.user_style)
+        merged_hints = PlanningHints(
+            preferred_capabilities=list(
+                dict.fromkeys(
+                    [*inherited.hints.preferred_capabilities, *request.hints.preferred_capabilities]
+                )
+            ),
+            forbidden_tools=list(
+                dict.fromkeys([*inherited.hints.forbidden_tools, *request.hints.forbidden_tools])
+            ),
+            reusable_asset_ids=list(
+                dict.fromkeys([*inherited.hints.reusable_asset_ids, *request.hints.reusable_asset_ids])
+            ),
+            prior_failures=list(
+                dict.fromkeys([*inherited.hints.prior_failures, *request.hints.prior_failures])
+            ),
+            user_style=merged_user_style,
+        )
+        merged_overrides = deepcopy(inherited.workflow_overrides)
+        merged_overrides.update(request.workflow_overrides)
+        planner_mode = request.planner_mode
+        if planner_mode == "phase1_rule_based" and inherited.planner_mode != "phase1_rule_based":
+            planner_mode = inherited.planner_mode
+        return PlanningRequest(
+            task=request.task,
+            context=request.context,
+            policy=request.policy or inherited.policy,
+            hints=merged_hints,
+            planner_mode=planner_mode,
+            workflow_overrides=merged_overrides,
+        )
 
     @staticmethod
     def _benchmark_hints(request: PlanningRequest) -> Dict[str, Any]:
@@ -566,12 +672,18 @@ class HTGPPlanner:
         error: ToolClawError,
         state_values: Dict[str, Any],
     ) -> PlanningResult:
+        request = self._merge_request_with_workflow_context(request, failed_workflow)
+        replan_user_style = dict(request.hints.user_style)
+        replan_user_style.setdefault("failure_type", error.category.value)
+        replan_user_style["replan_error_category"] = error.category.value
+        replan_user_style["replan_trigger_step_id"] = error.step_id
+        replan_user_style["replan_state_keys"] = sorted(state_values.keys())
         replanning_hints = PlanningHints(
             preferred_capabilities=list(request.hints.preferred_capabilities),
             forbidden_tools=list(request.hints.forbidden_tools),
             reusable_asset_ids=list(request.hints.reusable_asset_ids),
             prior_failures=list(request.hints.prior_failures) + [error.category.value],
-            user_style=dict(request.hints.user_style),
+            user_style=replan_user_style,
         )
         if error.evidence.tool_id and error.evidence.tool_id not in replanning_hints.forbidden_tools:
             replanning_hints.forbidden_tools.append(error.evidence.tool_id)
@@ -584,6 +696,7 @@ class HTGPPlanner:
                 policy=request.policy,
                 hints=replanning_hints,
                 planner_mode=request.planner_mode,
+                workflow_overrides=deepcopy(request.workflow_overrides),
             )
         )
         failed_index = 0
@@ -618,6 +731,12 @@ class HTGPPlanner:
         result.workflow.metadata["replanned_from_workflow_id"] = failed_workflow.workflow_id
         result.workflow.metadata["replan_state_keys"] = list(state_values.keys())
         result.workflow.metadata["replanned_suffix_from_step_id"] = error.step_id
+        result.workflow.metadata["replan_context"] = {
+            "inherited_request_context": True,
+            "prior_failures": list(replanning_hints.prior_failures),
+            "reusable_asset_ids": list(replanning_hints.reusable_asset_ids),
+            "forbidden_tools": list(replanning_hints.forbidden_tools),
+        }
         if error.evidence.tool_id:
             result.diagnostics.rejected_tools[error.evidence.tool_id] = "failed_in_previous_run"
         return result
@@ -655,7 +774,12 @@ class HTGPPlanner:
                     binding.primary_tool = step.tool_id
 
     def _load_reusable_profile(self, request: PlanningRequest, graph: Optional[CapabilityGraph] = None) -> Dict[str, Any]:
-        profile: Dict[str, Any] = {"capability_order": [], "recommended_bindings": {}, "recommended_inputs": {}}
+        profile: Dict[str, Any] = {
+            "capability_order": [],
+            "recommended_bindings": {},
+            "recommended_inputs": {},
+            "asset_ids": [],
+        }
         if not self.asset_registry:
             return profile
 
@@ -672,6 +796,7 @@ class HTGPPlanner:
             for signature in signatures:
                 matches.extend(self.asset_registry.query(signature, top_k=5))
             asset_ids = [m.asset_id for m in matches]
+        profile["asset_ids"] = list(dict.fromkeys(str(asset_id) for asset_id in asset_ids if str(asset_id)))
 
         for asset_id in asset_ids:
             asset = self.asset_registry.get(asset_id)

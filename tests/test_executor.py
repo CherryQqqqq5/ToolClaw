@@ -2,10 +2,12 @@ import json
 from pathlib import Path
 
 from toolclaw.execution.executor import SequentialExecutor
+from toolclaw.execution.state_tracker import StateTracker
 from toolclaw.planner.binder import ToolBinder
 from toolclaw.planner.capability_graph import CapabilityTemplateRegistry, RuleBasedCapabilityGraphBuilder
-from toolclaw.planner.htgp import HTGPPlanner, PolicyInjector, RuleBasedCapabilitySelector
-from toolclaw.schemas.trace import EventType
+from toolclaw.planner.htgp import HTGPPlanner, PlanningHints, PlanningRequest, PolicyInjector, RuleBasedCapabilitySelector
+from toolclaw.schemas.error import ErrorCategory, ErrorEvidence, ErrorSeverity, ErrorStage, Recoverability, StateContext, ToolClawError
+from toolclaw.schemas.trace import EventType, Trace
 from toolclaw.schemas.workflow import Workflow
 
 
@@ -96,3 +98,62 @@ def test_executor_rolls_back_and_replans_suffix_when_ordering_failure_occurs(tmp
     assert EventType.ROLLBACK.value in event_types
     assert EventType.REPLAN_TRIGGERED.value in event_types
     assert EventType.REPLAN_APPLIED.value in event_types
+
+
+def test_executor_suffix_replan_preserves_request_hints_from_workflow_metadata() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=Workflow.demo().task,
+        context=Workflow.demo().context,
+        policy=Workflow.demo().policy,
+        hints=PlanningHints(
+                reusable_asset_ids=["asset_003"],
+                prior_failures=["binding_failure"],
+                user_style={
+                    "benchmark": "toolsandbox",
+                    "categories": ["multiple_user_turn"],
+                    "tool_allow_list": ["search_tool", "write_tool"],
+                    "ideal_tool_calls": 2,
+                    "milestones": ["retrieve info", "write artifact"],
+                },
+        ),
+    )
+    workflow = planner.plan(request).workflow
+    step = workflow.execution_plan[1]
+    step.rollback_to = "step_01"
+    tracker = StateTracker(
+        completed_steps=["step_01"],
+        state_values={"retrieved_info": "summary"},
+    )
+    tracker.save_checkpoint("cp_step_01")
+    trace = Trace(run_id="run_replan_ctx_002", workflow_id=workflow.workflow_id, task_id=workflow.task.task_id)
+    error = ToolClawError(
+        error_id="err_replan_ctx_002",
+        run_id="run_replan_ctx_002",
+        workflow_id=workflow.workflow_id,
+        step_id=step.step_id,
+        category=ErrorCategory.ORDERING_FAILURE,
+        subtype="ordering_error",
+        severity=ErrorSeverity.MEDIUM,
+        stage=ErrorStage.EXECUTION,
+        symptoms=["ordering failed"],
+        evidence=ErrorEvidence(tool_id=None, raw_message="ordering failed"),
+        root_cause_hypothesis=["synthetic test"],
+        state_context=StateContext(active_capability=step.capability_id, active_step_id=step.step_id),
+        recoverability=Recoverability(recoverable=True, requires_rollback=True),
+        failtax_label="ordering_failure",
+    )
+
+    replanned = SequentialExecutor(planner=planner)._attempt_rollback_and_suffix_replan(
+        workflow=workflow,
+        step=step,
+        error=error,
+        trace=trace,
+        tracker=tracker,
+    )
+
+    assert replanned is not None
+    replanned_workflow, _ = replanned
+    assert replanned_workflow.metadata["planning_request"]["hints"]["user_style"]["benchmark"] == "toolsandbox"
+    assert replanned_workflow.metadata["replan_context"]["reusable_asset_ids"] == ["asset_003"]
+    assert "ordering_failure" in replanned_workflow.metadata["replan_context"]["prior_failures"]

@@ -634,8 +634,6 @@ class SequentialExecutor:
             start_idx = self._step_index(workflow, step.step_id)
             return workflow, start_idx
 
-        from toolclaw.planner.htgp import PlanningRequest
-
         trace.add_event(
             event_id=f"evt_replan_triggered_{step.step_id}",
             event_type=EventType.REPLAN_TRIGGERED,
@@ -643,7 +641,7 @@ class SequentialExecutor:
             step_id=step.step_id,
             output={"error_id": error.error_id, "rollback_to": rollback_step_id},
         )
-        request = PlanningRequest(task=workflow.task, context=workflow.context, policy=workflow.policy)
+        request = self.planner.request_from_workflow(workflow)
         replanned = self.planner.replan_from_error(
             request=request,
             failed_workflow=workflow,
@@ -656,7 +654,11 @@ class SequentialExecutor:
             actor="executor",
             step_id=step.step_id,
             output={"new_steps": len(replanned.workflow.execution_plan)},
-            metadata={"replanned_from": workflow.workflow_id},
+            metadata={
+                "replanned_from": workflow.workflow_id,
+                "benchmark_hints_used": list(replanned.diagnostics.benchmark_hints_used),
+                "replan_context": dict(replanned.workflow.metadata.get("replan_context", {})),
+            },
         )
         return replanned.workflow, self._step_index(replanned.workflow, step.step_id)
 
