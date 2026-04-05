@@ -296,6 +296,7 @@ class InteractionShell:
             return
         repair = outcome.pending_interaction.repair
         step = outcome.workflow.get_step(outcome.pending_interaction.step_id)
+        uncertainty = str(query.metadata.get("uncertainty") or "")
         query.metadata["repeat_failure_count"] = repeat_count
         query.metadata["escalation_level"] = repeat_count
         if repair.metadata.get("mapped_from_error_category") == "environment_failure":
@@ -311,13 +312,20 @@ class InteractionShell:
         )
         if step is not None:
             backup_tool_id = backup_tool_map.get(step.tool_id or "")
-            if backup_tool_id:
+            if backup_tool_id and uncertainty in {"environment_unavailable", "tool_mismatch"}:
                 query.metadata["recommended_backup_tool"] = backup_tool_id
                 query.metadata["backup_tool_id"] = backup_tool_id
                 query.allowed_response_schema.setdefault("properties", {})
                 query.allowed_response_schema["properties"]["use_backup_tool"] = {"type": "boolean"}
                 query.metadata["repeat_failure_action"] = "force_backup_tool"
                 return
+        if uncertainty == "branch_disambiguation":
+            query.metadata["repeat_failure_action"] = "abort"
+            query.question = (
+                f"{query.question} The branch choice is still unresolved. "
+                "A deterministic abort is safer than retrying the same ambiguous branch."
+            )
+            return
         query.metadata["repeat_failure_action"] = "abort"
 
     @staticmethod

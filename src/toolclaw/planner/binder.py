@@ -39,6 +39,7 @@ class ToolBinder:
     def bind_one(self, request: BindingRequest) -> BindingResult:
         capability_name = request.capability.description.lower()
         matches: List[ToolMatch] = []
+        sole_candidate = len(request.candidate_tools) == 1
 
         for tool in request.candidate_tools:
             if tool.tool_id in request.forbidden_tools:
@@ -54,6 +55,9 @@ class ToolBinder:
                 if "write" in tool.tool_id:
                     score += 0.8
                     reasons.append("keyword_match:write->write")
+            if sole_candidate and score <= 0.15:
+                score = 0.55
+                reasons.append("sole_candidate_tool")
 
             if score > 0.15:
                 matches.append(ToolMatch(tool_id=tool.tool_id, score=score, reasons=reasons))

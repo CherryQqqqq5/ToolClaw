@@ -49,6 +49,8 @@ def test_toolsandbox_adapter_build_request_uses_allow_list_and_message_query() -
     assert request.hints.user_style["benchmark"] == "toolsandbox"
     assert request.hints.user_style["requires_interaction"] is True
     assert request.hints.user_style["categories"] == ["multiple_user_turn", "insufficient_information"]
+    assert request.hints.user_style["milestones"] == ["find contact", "ask clarification", "send message"]
+    assert request.hints.user_style["tool_allow_list"] == ["find_contact", "send_message"]
 
 
 def test_toolsandbox_adapter_scores_similarity_coverage_and_hallucination_avoidance() -> None:

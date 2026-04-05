@@ -55,6 +55,11 @@ class RepairUpdater:
         if step is not None:
             if step.capability_id == "cap_write" and not step.inputs.get("target_path"):
                 missing_input_keys.append("target_path")
+        branch_options = []
+        if step is not None and isinstance(step.metadata.get("branch_options"), list):
+            branch_options = [str(item) for item in step.metadata.get("branch_options", []) if str(item)]
+        if not branch_options and isinstance(repair.metadata.get("branch_options"), list):
+            branch_options = [str(item) for item in repair.metadata.get("branch_options", []) if str(item)]
         return InteractionRequest(
             interaction_id=f"int_{repair.repair_id}",
             question=self._default_question(repair=repair, step_id=step_id, missing_input_keys=missing_input_keys),
@@ -65,6 +70,8 @@ class RepairUpdater:
                 "state_keys": sorted(state_values.keys()),
                 "failed_tool_id": failed_tool_id,
                 "missing_input_keys": missing_input_keys,
+                "missing_assets": list(state_values.get("__missing_assets__", [])),
+                "branch_options": branch_options,
             },
             allowed_response_schema={
                 "type": "object",
@@ -75,6 +82,7 @@ class RepairUpdater:
                     "fallback_execution_path": {"type": "string"},
                     "clear_failure_flag": {"type": "boolean"},
                     "use_backup_tool": {"type": "boolean"},
+                    "branch_choice": {"type": "string"},
                     "approved": {"type": "boolean"},
                     "abort": {"type": "boolean"},
                 },
@@ -84,6 +92,7 @@ class RepairUpdater:
                 "failed_tool_id": failed_tool_id,
                 "backup_tool_id": repair.metadata.get("backup_tool_id"),
                 "mapped_from_error_category": repair.metadata.get("mapped_from_error_category"),
+                "branch_options": branch_options,
                 "patch_targets": self._default_patch_targets(repair=repair, missing_input_keys=missing_input_keys),
             },
         )
@@ -226,6 +235,8 @@ class RepairUpdater:
             patch_targets.setdefault("tool_id", "binding.primary_tool")
             patch_targets.setdefault("fallback_execution_path", "step.inputs.target_path")
             patch_targets.setdefault("clear_failure_flag", "state.force_environment_failure")
+        if repair.repair_type.value == "reroute_branch" or repair.metadata.get("branch_options"):
+            patch_targets.setdefault("branch_choice", "state.selected_branch")
         if repair.repair_type.value == "request_approval":
             patch_targets["approved"] = "policy.approved"
         return patch_targets

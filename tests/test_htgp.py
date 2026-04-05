@@ -94,3 +94,52 @@ def test_planner_injects_approval_gate_from_policy_expression() -> None:
 
     assert all(step.requires_user_confirmation for step in result.workflow.execution_plan)
     assert all(step.metadata["requires_approval"] is True for step in result.workflow.execution_plan)
+
+
+def test_planner_applies_bypass_for_single_tool_benchmark_hints() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_005", user_goal="save the final answer", constraints=TaskConstraints()),
+        context=WorkflowContext(candidate_tools=[ToolSpec(tool_id="write_tool", description="write")]),
+        hints=PlanningHints(
+            user_style={
+                "categories": ["single_tool"],
+                "tool_allow_list": ["write_tool"],
+                "ideal_tool_calls": 1,
+                "ideal_turn_count": 1,
+                "milestones": ["save artifact"],
+            }
+        ),
+    )
+
+    result = planner.plan(request)
+
+    assert len(result.workflow.execution_plan) == 1
+    assert result.workflow.execution_plan[0].tool_id == "write_tool"
+    assert result.diagnostics.overplanning_risk["bypass_applied"] is True
+    assert "tool_allow_list" in result.diagnostics.benchmark_hints_used
+
+
+def test_planner_records_overplanning_risk_when_steps_exceed_ideal() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_006", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+            ]
+        ),
+        hints=PlanningHints(
+            user_style={
+                "categories": ["multiple_user_turn"],
+                "tool_allow_list": ["search_tool", "write_tool"],
+                "ideal_tool_calls": 1,
+            }
+        ),
+    )
+
+    result = planner.plan(request)
+
+    assert result.diagnostics.overplanning_risk["steps_exceed_ideal"] is True
+    assert "overplanning_risk:steps_exceed_ideal_tool_calls" in result.diagnostics.warnings

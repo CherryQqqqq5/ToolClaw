@@ -71,8 +71,26 @@ class RuleBasedCapabilityGraphBuilder:
             for c in sorted(candidates, key=lambda x: x.score, reverse=True)
         ]
 
-        edges = [
-            CapabilityEdge(source=nodes[i].capability_id, target=nodes[i + 1].capability_id)
-            for i in range(len(nodes) - 1)
-        ]
+        edges: List[CapabilityEdge] = []
+        for target in nodes:
+            matched_dependency = False
+            for source in nodes:
+                if source.capability_id == target.capability_id:
+                    continue
+                if any(postcondition in target.preconditions for postcondition in source.postconditions):
+                    edges.append(
+                        CapabilityEdge(
+                            source=source.capability_id,
+                            target=target.capability_id,
+                            condition="preconditions_satisfied",
+                        )
+                    )
+                    matched_dependency = True
+            if not matched_dependency:
+                continue
+        if not edges and len(nodes) > 1:
+            edges = [
+                CapabilityEdge(source=nodes[i].capability_id, target=nodes[i + 1].capability_id, condition="default_sequence")
+                for i in range(len(nodes) - 1)
+            ]
         return CapabilityGraph(capabilities=nodes, edges=edges), diagnostics

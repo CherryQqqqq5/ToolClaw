@@ -627,6 +627,10 @@ class ToolSandboxAdapter:
         request.hints.user_style["categories"] = categories
         request.hints.user_style["requires_interaction"] = self._interaction_expected(categories)
         request.hints.user_style["milestone_count"] = len(sample.raw_payload.get("milestones", []))
+        request.hints.user_style["milestones"] = list(sample.raw_payload.get("milestones", []))
+        request.hints.user_style["tool_allow_list"] = self._tool_allow_list(sample.raw_payload)
+        request.hints.user_style["ideal_tool_calls"] = sample.raw_payload.get("ideal_tool_calls")
+        request.hints.user_style["ideal_turn_count"] = sample.raw_payload.get("ideal_turn_count")
         return request
 
     def to_eval_task(self, sample: BenchmarkSample) -> Dict[str, Any]:

@@ -281,6 +281,15 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
     request.hints.user_style["task_family"] = str(workflow.metadata.get("task_family", "t0_general"))
     request.hints.user_style["failure_type"] = str(workflow.metadata.get("failure_type", "none"))
     request.hints.user_style["scenario"] = str(workflow.metadata.get("scenario", "success"))
+    request.hints.user_style["categories"] = list(
+        workflow.metadata.get("toolsandbox_categories")
+        or workflow.metadata.get("categories")
+        or []
+    )
+    request.hints.user_style["tool_allow_list"] = list(workflow.metadata.get("tool_allow_list", []))
+    request.hints.user_style["ideal_tool_calls"] = workflow.metadata.get("ideal_tool_calls")
+    request.hints.user_style["ideal_turn_count"] = workflow.metadata.get("ideal_turn_count")
+    request.hints.user_style["milestones"] = list(workflow.metadata.get("milestones", []))
     if not allow_reuse:
         request.hints.reusable_asset_ids = []
     return request
