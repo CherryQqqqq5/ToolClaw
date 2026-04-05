@@ -1,0 +1,29 @@
+{
+  "asset_id": "ps_wf_toolsandbox_multi_turn_approval_001",
+  "asset_type": "PolicySnippet",
+  "task_signature": "phase1::family=t3_must_interact::caps=cap_write+cap_retrieve::fail=multiple_user_turn::goal=retrieve_and_write_report",
+  "payload": {
+    "policy_id": "ps_wf_toolsandbox_multi_turn_approval_001",
+    "task_signature": "phase1::family=t3_must_interact::caps=cap_write+cap_retrieve::fail=multiple_user_turn::goal=retrieve_and_write_report",
+    "stop_rules": [
+      "success_criteria_satisfied",
+      "hard_constraint_violated",
+      "user_abort"
+    ],
+    "approval_rules": [
+      {
+        "trigger": "risk_level == high",
+        "action": "ask_user"
+      }
+    ],
+    "recovery_rules": [
+      {
+        "trigger": "tool_unavailable",
+        "action": "switch_backup_tool"
+      }
+    ],
+    "version": 1,
+    "quality_score": 0.8,
+    "metadata": {}
+  }
+}
