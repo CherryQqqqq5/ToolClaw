@@ -174,6 +174,7 @@ def aggregate_records(
                 "task_id": record["task_id"],
                 "success": bool(record["score"]["success"]),
                 "trace_path": record["row"]["trace_path"],
+                "row": dict(record["row"]),
                 "score": record["score"],
             }
             for record in run_records
@@ -187,7 +188,7 @@ def write_system_markdown(summary: Dict[str, Any], out_path: Path, config: Bench
     separator = "|---|---:|---:|---:|---:|---:|" + "---:|" * len(metric_headers)
     lines = [f"# {config.system_summary_title}", "", header, separator]
     for system, stats in summary.items():
-        metric_values = " | ".join(f"{float(stats.get(metric.key, 0.0)):.3f}" for metric in config.aggregate_metrics)
+        metric_values = " | ".join(f"{_summary_metric_value(stats, metric):.3f}" for metric in config.aggregate_metrics)
         lines.append(
             f"| {system} | {stats['num_samples']} | {stats['num_runs']} | {stats['mean_success_rate']:.3f} | {stats['pass_at_k']:.3f} | {stats['consistency']:.3f} | {metric_values} |"
         )
@@ -209,11 +210,36 @@ def write_group_markdown(
     for system, stats in grouped_summary.items():
         groups = stats.get(group_key, {})
         for group_name, group_stats in sorted(groups.items()):
-            metric_values = " | ".join(f"{float(group_stats.get(metric.key, 0.0)):.3f}" for metric in metrics)
+            metric_values = " | ".join(f"{_summary_metric_value(group_stats, metric):.3f}" for metric in metrics)
             lines.append(
                 f"| {system} | {group_name} | {int(group_stats['num_rows'])} | {group_stats['success_rate']:.3f} | {metric_values} |"
             )
     out_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_csv_rows(rows: Sequence[Dict[str, Any]], out_path: Path) -> None:
+    if not rows:
+        out_path.write_text("", encoding="utf-8")
+        return
+
+    first_row = rows[0]
+    fieldnames = list(first_row.keys())
+    with out_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+
+
+def write_combined_run_rows(run_entries: Sequence[Dict[str, Any]], out_path: Path) -> None:
+    rows: List[Dict[str, Any]] = []
+    for entry in run_entries:
+        row = dict(entry.get("row", {}))
+        row["run_index"] = entry.get("run_index", 0)
+        ordered_row = {"run_index": row.pop("run_index")}
+        ordered_row.update(row)
+        rows.append(ordered_row)
+    write_csv_rows(rows, out_path)
 
 
 def finalize_outputs(
@@ -229,15 +255,24 @@ def finalize_outputs(
     scoreboard: Dict[str, Any],
     config: BenchmarkScriptConfig,
     keep_normalized_taskset: bool,
+    run_entries: Optional[Sequence[Dict[str, Any]]] = None,
+    comparison_filename: Optional[str] = "comparison.csv",
+    latest_comparison_filename: Optional[str] = "latest_run_comparison.csv",
     extra_output_writers: Optional[Callable[[Dict[str, Any], Path], None]] = None,
 ) -> None:
     latest_run_outdir = outdir / "runs" / f"run_{num_runs:02d}"
     latest_comparison = latest_run_outdir / "comparison.csv"
     latest_report = latest_run_outdir / "report.md"
-    if latest_comparison.exists():
-        shutil.copy2(latest_comparison, outdir / "comparison.csv")
+    if comparison_filename is not None:
+        if run_entries:
+            write_combined_run_rows(run_entries, outdir / comparison_filename)
+        elif latest_comparison.exists():
+            shutil.copy2(latest_comparison, outdir / comparison_filename)
+    if latest_comparison_filename is not None and latest_comparison.exists():
+        shutil.copy2(latest_comparison, outdir / latest_comparison_filename)
     if latest_report.exists():
         shutil.copy2(latest_report, outdir / "report.md")
+        shutil.copy2(latest_report, outdir / "latest_run_report.md")
 
     scoreboard_path = outdir / "scoreboard.json"
     scoreboard_path.write_text(json.dumps(scoreboard, indent=2), encoding="utf-8")
@@ -271,6 +306,16 @@ def _extract_stat(score_payload: Dict[str, Any], metric: AggregateMetric) -> flo
         value = score_payload.get("diagnostics", {}).get(metric.key, 0.0)
     else:
         value = score_payload.get("metrics", {}).get(metric.key, 0.0)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _summary_metric_value(summary_payload: Dict[str, Any], metric: AggregateMetric) -> float:
+    value = summary_payload.get(metric.key)
+    if value is None and metric.column_label != metric.key:
+        value = summary_payload.get(metric.column_label)
     try:
         return float(value)
     except (TypeError, ValueError):

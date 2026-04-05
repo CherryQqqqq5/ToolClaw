@@ -29,6 +29,7 @@ from toolclaw.benchmarks.runner_utils import (
     mean_or_zero,
     normalize_systems,
     score_to_payload,
+    write_csv_rows,
     write_group_markdown,
 )
 
@@ -49,10 +50,61 @@ DEFAULT_SOURCE = _default_source()
 DEFAULT_OFFICIAL_DATA_ROOT = ROOT_DIR / "data" / "external" / "ToolSandbox" / "data"
 
 
+def _bool_from_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes"}
+
+
+def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload: Dict[str, Any]) -> Dict[str, Any]:
+    metrics = dict(score_payload.get("metrics", {}))
+    diagnostics = dict(score_payload.get("diagnostics", {}))
+    categories = diagnostics.get("categories", [])
+    if not isinstance(categories, list):
+        categories = []
+    return {
+        "run_index": run_index,
+        "task_id": raw_row["task_id"],
+        "system": raw_row["system"],
+        "scenario": raw_row.get("scenario", "toolsandbox"),
+        "task_family": raw_row.get("task_family", ""),
+        "failure_type": raw_row.get("failure_type", ""),
+        "success": bool(score_payload.get("success")),
+        "raw_success": _bool_from_value(raw_row.get("success", "False")),
+        "stop_reason": raw_row.get("stop_reason", "unknown"),
+        "trace_path": raw_row.get("trace_path", ""),
+        "tool_calls": int(diagnostics.get("tool_calls", raw_row.get("tool_calls", 0) or 0)),
+        "user_queries": int(diagnostics.get("user_queries", raw_row.get("user_turns", 0) or 0)),
+        "turn_count": int(diagnostics.get("turn_count", 0) or 0),
+        "expected_turn_count": int(diagnostics.get("expected_turn_count", 0) or 0),
+        "expected_tool_calls": int(diagnostics.get("expected_tool_calls", 0) or 0),
+        "matched_milestones": int(diagnostics.get("matched_milestones", 0) or 0),
+        "total_milestones": int(diagnostics.get("total_milestones", 0) or 0),
+        "milestone_similarity": float(metrics.get("milestone_similarity", 0.0) or 0.0),
+        "milestone_coverage": float(metrics.get("milestone_coverage", 0.0) or 0.0),
+        "interaction_efficiency": float(metrics.get("interaction_efficiency", 0.0) or 0.0),
+        "tool_efficiency": float(metrics.get("tool_efficiency", 0.0) or 0.0),
+        "turn_efficiency": float(metrics.get("turn_efficiency", 0.0) or 0.0),
+        "hallucination_avoidance": float(metrics.get("hallucination_avoidance", 0.0) or 0.0),
+        "state_dependency_score": float(metrics.get("state_dependency_score", 0.0) or 0.0),
+        "result_summary_coverage": 1.0 if diagnostics.get("used_result_summary") else 0.0,
+        "reference_summary_coverage": 1.0 if diagnostics.get("reference_result_summary_available") else 0.0,
+        "primary_category": str(diagnostics.get("primary_category", raw_row.get("scenario", "toolsandbox"))),
+        "categories": json.dumps(categories, ensure_ascii=True),
+        "result_summary_source": str(diagnostics.get("result_summary_source", "toolclaw_proxy")),
+        "raw_repair_actions": int(raw_row.get("repair_actions", 0) or 0),
+        "raw_repair_triggered": int(raw_row.get("repair_triggered", 0) or 0),
+        "raw_total_steps": int(raw_row.get("total_steps", 0) or 0),
+        "reuse_pass_index": int(raw_row.get("reuse_pass_index", 0) or 0),
+        "reused_artifact": _bool_from_value(raw_row.get("reused_artifact", "False")),
+        "second_run_improvement": float(raw_row.get("second_run_improvement", 0.0) or 0.0),
+    }
+
+
 def _category_breakdown(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     grouped: Dict[str, List[Dict[str, Any]]] = {}
     for record in records:
-        categories = record["score"]["diagnostics"].get("categories", [])
+        categories = json.loads(record["row"].get("categories", "[]"))
         if not categories:
             categories = [record["row"].get("scenario", "toolsandbox")]
         for category in categories:
@@ -62,37 +114,16 @@ def _category_breakdown(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, fl
     for category, category_records in grouped.items():
         summary[category] = {
             "num_rows": float(len(category_records)),
-            "success_rate": mean_or_zero([1.0 if record["score"]["success"] else 0.0 for record in category_records]),
-            "milestone_similarity": mean_or_zero(
-                [float(record["score"]["metrics"].get("milestone_similarity", 0.0)) for record in category_records]
-            ),
-            "milestone_coverage": mean_or_zero(
-                [float(record["score"]["metrics"].get("milestone_coverage", 0.0)) for record in category_records]
-            ),
-            "interaction_efficiency": mean_or_zero(
-                [float(record["score"]["metrics"].get("interaction_efficiency", 0.0)) for record in category_records]
-            ),
-            "tool_efficiency": mean_or_zero(
-                [float(record["score"]["metrics"].get("tool_efficiency", 0.0)) for record in category_records]
-            ),
-            "turn_efficiency": mean_or_zero(
-                [float(record["score"]["metrics"].get("turn_efficiency", 0.0)) for record in category_records]
-            ),
-            "hallucination_avoidance": mean_or_zero(
-                [float(record["score"]["metrics"].get("hallucination_avoidance", 0.0)) for record in category_records]
-            ),
-            "state_dependency_score": mean_or_zero(
-                [float(record["score"]["metrics"].get("state_dependency_score", 0.0)) for record in category_records]
-            ),
-            "result_summary_coverage": mean_or_zero(
-                [1.0 if record["score"]["diagnostics"].get("used_result_summary") else 0.0 for record in category_records]
-            ),
-            "reference_summary_coverage": mean_or_zero(
-                [
-                    1.0 if record["score"]["diagnostics"].get("reference_result_summary_available") else 0.0
-                    for record in category_records
-                ]
-            ),
+            "success_rate": mean_or_zero([1.0 if _bool_from_value(record["row"].get("success")) else 0.0 for record in category_records]),
+            "milestone_similarity": mean_or_zero([float(record["row"].get("milestone_similarity", 0.0)) for record in category_records]),
+            "milestone_coverage": mean_or_zero([float(record["row"].get("milestone_coverage", 0.0)) for record in category_records]),
+            "interaction_efficiency": mean_or_zero([float(record["row"].get("interaction_efficiency", 0.0)) for record in category_records]),
+            "tool_efficiency": mean_or_zero([float(record["row"].get("tool_efficiency", 0.0)) for record in category_records]),
+            "turn_efficiency": mean_or_zero([float(record["row"].get("turn_efficiency", 0.0)) for record in category_records]),
+            "hallucination_avoidance": mean_or_zero([float(record["row"].get("hallucination_avoidance", 0.0)) for record in category_records]),
+            "state_dependency_score": mean_or_zero([float(record["row"].get("state_dependency_score", 0.0)) for record in category_records]),
+            "result_summary_coverage": mean_or_zero([float(record["row"].get("result_summary_coverage", 0.0)) for record in category_records]),
+            "reference_summary_coverage": mean_or_zero([float(record["row"].get("reference_summary_coverage", 0.0)) for record in category_records]),
         }
     return summary
 
@@ -211,6 +242,8 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
         f"- samples: `{scoreboard['num_samples']}`",
         f"- runs: `{scoreboard['num_runs']}`",
         f"- systems: `{', '.join(scoreboard['systems'])}`",
+        f"- raw_comparison: `{outdir / 'comparison.raw.csv'}`",
+        f"- scored_comparison: `{outdir / 'comparison.scored.csv'}`",
         "",
         "## Aggregate",
         "",
@@ -243,6 +276,8 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
             "",
             "## Interpretation",
             "",
+            "- All aggregate and category tables in this report are computed from `comparison.scored.csv`, not from raw `run_eval.py` rows.",
+            "- `comparison.raw.csv` preserves the original execution outputs from `run_eval.py` for audit and debugging.",
             "- `result_summary_coverage` shows how much of the benchmark has a current ToolClaw-run ToolSandbox summary attached to the trace. This should be 1.0 for normal runs.",
             "- `reference_summary_coverage` shows how much of the benchmark also carries imported external ToolSandbox summaries for offline comparison or dataset freezing.",
             "- These scores come from ToolClaw proxy evaluation over ToolSandbox-style tasks unless you are reading outputs from the official ToolSandbox CLI directly.",
@@ -348,6 +383,8 @@ def main() -> None:
 
     runs_root = outdir / "runs"
     runs_root.mkdir(parents=True, exist_ok=True)
+    raw_run_rows: List[Dict[str, Any]] = []
+    scored_run_rows: List[Dict[str, Any]] = []
     run_records: List[Dict[str, Any]] = []
     for run_index in range(1, args.num_runs + 1):
         run_outdir = runs_root / f"run_{run_index:02d}"
@@ -355,20 +392,29 @@ def main() -> None:
         if args.asset_registry_root:
             asset_registry_root = Path(args.asset_registry_root) / f"run_{run_index:02d}"
         invoke_run_eval(normalized_path, run_outdir, args.mode, systems, asset_registry_root=asset_registry_root)
-        for row in load_run_rows(run_outdir / "comparison.csv"):
-            trace_path = Path(row["trace_path"])
+        raw_rows = load_run_rows(run_outdir / "comparison.csv")
+        write_csv_rows(raw_rows, run_outdir / "comparison.raw.csv")
+        scored_rows_for_run: List[Dict[str, Any]] = []
+        for raw_row in raw_rows:
+            trace_path = Path(raw_row["trace_path"])
             trace_payload = json.loads(trace_path.read_text(encoding="utf-8"))
-            sample = next(sample for sample in samples if sample.sample_id == row["task_id"])
+            sample = next(sample for sample in samples if sample.sample_id == raw_row["task_id"])
             trace_payload = _attach_current_result_summary(adapter, sample, trace_path, trace_payload)
+            score_payload = score_to_payload(adapter.score_trace(sample, trace_payload))
+            scored_row = _build_scored_row(run_index=run_index, raw_row=raw_row, score_payload=score_payload)
+            raw_run_rows.append({"run_index": run_index, **raw_row})
+            scored_rows_for_run.append(scored_row)
+            scored_run_rows.append(scored_row)
             run_records.append(
                 {
                     "run_index": run_index,
-                    "system": row["system"],
-                    "task_id": row["task_id"],
-                    "row": row,
-                    "score": score_to_payload(adapter.score_trace(sample, trace_payload)),
+                    "system": raw_row["system"],
+                    "task_id": raw_row["task_id"],
+                    "row": scored_row,
+                    "score": score_payload,
                 }
             )
+        write_csv_rows(scored_rows_for_run, run_outdir / "comparison.scored.csv")
 
     scoreboard = aggregate_records(
         config=TOOLSANDBOX_CONFIG,
@@ -394,8 +440,19 @@ def main() -> None:
         scoreboard=scoreboard,
         config=TOOLSANDBOX_CONFIG,
         keep_normalized_taskset=args.keep_normalized_taskset,
+        comparison_filename=None,
+        latest_comparison_filename=None,
         extra_output_writers=_write_toolsandbox_artifacts,
     )
+    write_csv_rows(raw_run_rows, outdir / "comparison.raw.csv")
+    write_csv_rows(scored_run_rows, outdir / "comparison.scored.csv")
+    latest_run_index = args.num_runs
+    write_csv_rows([row for row in raw_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.raw.csv")
+    write_csv_rows([row for row in scored_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.scored.csv")
+    for obsolete_name in ("comparison.csv", "latest_run_comparison.csv"):
+        obsolete_path = outdir / obsolete_name
+        if obsolete_path.exists():
+            obsolete_path.unlink()
     _write_toolsandbox_report(scoreboard, outdir)
 
     print(f"prepared toolsandbox taskset: {normalized_path}")

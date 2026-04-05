@@ -598,6 +598,12 @@ class SequentialExecutor:
             repair=repair,
             question=repair.interaction.question or "Please provide guidance.",
             expected_answer_type=repair.interaction.expected_answer_type or "json_patch",
+            metadata={
+                "repair_type": repair.repair_type.value,
+                "mapped_from_error_category": repair.metadata.get("mapped_from_error_category"),
+                "failed_tool_id": repair.metadata.get("failed_tool_id") or step.tool_id,
+                "backup_tool_id": repair.metadata.get("backup_tool_id"),
+            },
         )
 
     def _attempt_rollback_and_suffix_replan(

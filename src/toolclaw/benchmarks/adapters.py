@@ -679,8 +679,6 @@ class ToolSandboxAdapter:
         categories = self._extract_categories(sample.raw_payload)
         similarity = self._extract_similarity(result_summary)
         success = bool(trace_metrics.get("success"))
-        if not success and similarity is not None:
-            success = similarity >= float(sample.raw_payload.get("success_threshold", self.default_success_threshold))
         milestone_mapping = self._extract_milestone_mapping(result_summary)
         total_milestones = self._expected_milestone_count(sample.raw_payload, milestone_mapping)
         matched_milestones = self._matched_milestones(milestone_mapping, result_summary)

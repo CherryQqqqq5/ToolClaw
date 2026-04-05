@@ -6,8 +6,8 @@
   "metadata": {
     "model_name": "baseline_executor",
     "mode": "baseline",
-    "start_time": "2026-04-04T15:00:50.706689+00:00",
-    "end_time": "2026-04-04T15:00:50.706715+00:00",
+    "start_time": "2026-04-05T07:22:00.189123+00:00",
+    "end_time": "2026-04-05T07:22:00.189136+00:00",
     "benchmark": null,
     "task_source": null,
     "toolsandbox_result": {
@@ -30,7 +30,7 @@
   "events": [
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-04T15:00:50.706695+00:00",
+      "timestamp": "2026-04-05T07:22:00.189126+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "baseline_executor",
@@ -45,7 +45,7 @@
     },
     {
       "event_id": "evt_call_step_01",
-      "timestamp": "2026-04-04T15:00:50.706699+00:00",
+      "timestamp": "2026-04-05T07:22:00.189127+00:00",
       "step_id": "step_01",
       "event_type": "tool_call",
       "actor": "baseline_executor",
@@ -60,7 +60,7 @@
     },
     {
       "event_id": "evt_result_step_01",
-      "timestamp": "2026-04-04T15:00:50.706703+00:00",
+      "timestamp": "2026-04-05T07:22:00.189130+00:00",
       "step_id": "step_01",
       "event_type": "tool_result",
       "actor": "environment",
@@ -76,7 +76,7 @@
     },
     {
       "event_id": "evt_call_step_02",
-      "timestamp": "2026-04-04T15:00:50.706706+00:00",
+      "timestamp": "2026-04-05T07:22:00.189132+00:00",
       "step_id": "step_02",
       "event_type": "tool_call",
       "actor": "baseline_executor",
@@ -89,7 +89,7 @@
     },
     {
       "event_id": "evt_stop_failed_step_02",
-      "timestamp": "2026-04-04T15:00:50.706712+00:00",
+      "timestamp": "2026-04-05T07:22:00.189135+00:00",
       "step_id": "step_02",
       "event_type": "stop",
       "actor": "baseline_executor",

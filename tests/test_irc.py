@@ -1,8 +1,15 @@
 from pathlib import Path
 
 from toolclaw.execution.executor import SequentialExecutor
+from toolclaw.interaction.irc import InteractionLoopConfig, InteractionShell
+from toolclaw.interaction.query_policy import QueryPolicy
 from toolclaw.interaction.repair_updater import RepairUpdater
+from toolclaw.interaction.uncertainty_detector import UncertaintyReport
 from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
+from toolclaw.main import ToolClawRuntime
+from toolclaw.compiler.swpc import SWPCCompiler
+from toolclaw.planner.htgp import PlanningRequest, build_default_planner
+from toolclaw.registry import InMemoryAssetRegistry
 from toolclaw.schemas.workflow import Workflow
 
 
@@ -113,3 +120,65 @@ def test_user_reject_reply_causes_safe_stop(tmp_path: Path) -> None:
     reject_reply = UserSimulator(SimulatedPolicy(mode="abortive")).reply(request)
 
     assert updater.validate_reply(request, reject_reply) is False
+
+
+def test_query_policy_uses_one_shot_target_path_patch_schema() -> None:
+    plan = QueryPolicy().decide_query(
+        UncertaintyReport(
+            primary_label="missing_info",
+            confidence=0.9,
+            metadata={"missing_input_keys": ["target_path"], "error_category": "binding_failure"},
+        )
+    )
+
+    assert plan.ask is True
+    assert plan.question_type == "target_path_patch"
+    assert plan.response_schema["required"] == ["target_path"]
+    assert plan.patch_targets == {"target_path": "step.inputs.target_path"}
+
+
+def test_interaction_shell_aborts_after_repeated_same_failure_signature(tmp_path: Path) -> None:
+    registry = InMemoryAssetRegistry()
+    runtime = ToolClawRuntime(
+        planner=build_default_planner(asset_registry=registry),
+        executor=SequentialExecutor(),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=registry,
+    )
+    shell = InteractionShell(
+        runtime=runtime,
+        config=InteractionLoopConfig(
+            max_turns=3,
+            simulator_policy=SimulatedPolicy(constraint_overrides={"clear_failure_flag": False}),
+        ),
+    )
+
+    demo = Workflow.demo()
+    overrides = {
+        "steps": {
+            "step_01": {"inputs": dict(demo.execution_plan[0].inputs), "tool_id": demo.execution_plan[0].tool_id},
+            "step_02": {
+                "inputs": {**demo.execution_plan[1].inputs, "force_environment_failure": True},
+                "tool_id": demo.execution_plan[1].tool_id,
+            },
+        }
+    }
+    request = PlanningRequest(
+        task=demo.task,
+        context=demo.context,
+        policy=demo.policy,
+        workflow_overrides=overrides,
+    )
+
+    outcome = shell.run(
+        request=request,
+        run_id="run_repeat_abort_001",
+        output_path=str(tmp_path / "repeat_abort_trace.json"),
+        backup_tool_map={},
+        use_reuse=False,
+        compile_on_success=False,
+    )
+
+    assert outcome.success is False
+    assert outcome.metadata["stopped_reason"] == "repeat_failure_abort"

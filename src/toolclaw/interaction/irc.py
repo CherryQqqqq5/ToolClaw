@@ -92,13 +92,41 @@ class InteractionShell:
                 query.expected_answer_type = query_plan.question_type
                 query.allowed_response_schema = query_plan.response_schema
                 query.metadata["uncertainty"] = report.primary_label
+                query.metadata["patch_targets"] = dict(query_plan.patch_targets)
             self._escalate_query(
                 query=query,
                 outcome=outcome,
                 repeat_count=repeat_count,
                 backup_tool_map=backup_tool_map or {},
             )
-            reply = self.simulator.reply(query)
+            auto_reply = self._repeat_failure_reply(
+                query=query,
+                outcome=outcome,
+                repeat_count=repeat_count,
+                backup_tool_map=backup_tool_map or {},
+            )
+            if auto_reply is not None:
+                reply = auto_reply
+            elif repeat_count > 0 and query.metadata.get("repeat_failure_action") == "abort":
+                self._finalize_combined_trace(
+                    combined_trace,
+                    output_path=output_path,
+                    success=False,
+                    stop_reason="repeat_failure_abort",
+                )
+                return ExecutionOutcome(
+                    run_id=outcome.run_id,
+                    workflow=outcome.workflow,
+                    success=False,
+                    blocked=False,
+                    pending_interaction=None,
+                    final_state=outcome.final_state,
+                    trace_path=outcome.trace_path,
+                    last_error_id=outcome.last_error_id,
+                    metadata={"stopped_reason": "repeat_failure_abort"},
+                )
+            else:
+                reply = self.simulator.reply(query)
             self._append_interaction_events(combined_trace, query=query, reply=reply, turn_index=turns)
             if not self.repair_updater.validate_reply(query, reply):
                 self._finalize_combined_trace(
@@ -288,6 +316,41 @@ class InteractionShell:
                 query.metadata["backup_tool_id"] = backup_tool_id
                 query.allowed_response_schema.setdefault("properties", {})
                 query.allowed_response_schema["properties"]["use_backup_tool"] = {"type": "boolean"}
+                query.metadata["repeat_failure_action"] = "force_backup_tool"
+                return
+        query.metadata["repeat_failure_action"] = "abort"
+
+    @staticmethod
+    def _repeat_failure_reply(
+        *,
+        query: Any,
+        outcome: ExecutionOutcome,
+        repeat_count: int,
+        backup_tool_map: Dict[str, str],
+    ) -> Any:
+        if repeat_count <= 0 or outcome.pending_interaction is None:
+            return None
+        if query.metadata.get("repeat_failure_action") != "force_backup_tool":
+            return None
+        step = outcome.workflow.get_step(outcome.pending_interaction.step_id)
+        backup_tool_id = str(query.metadata.get("backup_tool_id") or "")
+        if not backup_tool_id and step is not None:
+            backup_tool_id = str(backup_tool_map.get(step.tool_id or "") or "")
+        if not backup_tool_id:
+            return None
+        from toolclaw.interaction.repair_updater import UserReply
+
+        return UserReply(
+            interaction_id=query.interaction_id,
+            payload={"use_backup_tool": True, "clear_failure_flag": True},
+            raw_text="auto-escalated backup tool switch",
+            accepted=True,
+            metadata={
+                "patch_targets": dict(query.metadata.get("patch_targets", {})),
+                "escalation_level": int(query.metadata.get("escalation_level", 0)),
+                "auto_strategy": "repeat_failure_force_backup_tool",
+            },
+        )
 
     def _finalize_combined_trace(
         self,

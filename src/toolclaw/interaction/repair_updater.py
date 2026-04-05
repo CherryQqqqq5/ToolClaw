@@ -84,6 +84,7 @@ class RepairUpdater:
                 "failed_tool_id": failed_tool_id,
                 "backup_tool_id": repair.metadata.get("backup_tool_id"),
                 "mapped_from_error_category": repair.metadata.get("mapped_from_error_category"),
+                "patch_targets": self._default_patch_targets(repair=repair, missing_input_keys=missing_input_keys),
             },
         )
 
@@ -94,13 +95,16 @@ class RepairUpdater:
         reply: UserReply,
         state_values: Dict[str, Any],
     ) -> ResumePatch:
-        state_updates = self._normalize_state_updates(reply.payload)
+        patch_targets = reply.metadata.get("patch_targets", {})
+        state_updates = self._normalize_state_updates(reply.payload, patch_targets=patch_targets)
         binding_patch = {}
         policy_updates = {}
         selected_tool_id = self._selected_tool_id(repair=repair, payload=reply.payload)
         if selected_tool_id:
             binding_patch["tool_id"] = selected_tool_id
-        if "approved" in reply.payload:
+        if self._approval_from_payload(reply.payload, patch_targets=patch_targets) is not None:
+            policy_updates["approved"] = self._approval_from_payload(reply.payload, patch_targets=patch_targets)
+        elif "approved" in reply.payload:
             policy_updates["approved"] = bool(reply.payload["approved"])
         if self._should_clear_environment_failure(repair=repair, payload=reply.payload):
             state_updates["force_environment_failure"] = False
@@ -158,19 +162,43 @@ class RepairUpdater:
         return "Please provide missing data"
 
     @staticmethod
-    def _normalize_state_updates(payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalize_state_updates(payload: Dict[str, Any], *, patch_targets: Dict[str, Any] | None = None) -> Dict[str, Any]:
         state_updates: Dict[str, Any] = {}
+        schema_targets = patch_targets if isinstance(patch_targets, dict) else {}
         input_patch = payload.get("input_patch")
         if isinstance(input_patch, dict):
             state_updates.update(input_patch)
         for key, value in payload.items():
             if key in {"tool_id", "approved", "abort", "use_backup_tool", "clear_failure_flag", "input_patch"}:
                 continue
+            target = schema_targets.get(key)
+            if isinstance(target, str):
+                if target.startswith("step.inputs."):
+                    state_updates[target.split("step.inputs.", 1)[1]] = value
+                    continue
+                if target.startswith("state."):
+                    state_key = target.split("state.", 1)[1]
+                    if state_key == "force_environment_failure":
+                        continue
+                    state_updates[state_key] = value
+                    continue
+                if target == "binding.primary_tool":
+                    continue
+                if target == "policy.approved":
+                    continue
             if key == "fallback_execution_path":
                 state_updates.setdefault("target_path", value)
                 continue
             state_updates[key] = value
         return state_updates
+
+    @staticmethod
+    def _approval_from_payload(payload: Dict[str, Any], *, patch_targets: Dict[str, Any] | None = None) -> Optional[bool]:
+        schema_targets = patch_targets if isinstance(patch_targets, dict) else {}
+        for key, target in schema_targets.items():
+            if target == "policy.approved" and key in payload:
+                return bool(payload[key])
+        return None
 
     @staticmethod
     def _selected_tool_id(repair: Repair, payload: Dict[str, Any]) -> Optional[str]:
@@ -188,6 +216,19 @@ class RepairUpdater:
         if "clear_failure_flag" in payload:
             return bool(payload["clear_failure_flag"])
         return True
+
+    @staticmethod
+    def _default_patch_targets(repair: Repair, missing_input_keys: list[str]) -> Dict[str, str]:
+        patch_targets: Dict[str, str] = {}
+        for key in missing_input_keys:
+            patch_targets[key] = f"step.inputs.{key}"
+        if repair.metadata.get("mapped_from_error_category") == "environment_failure":
+            patch_targets.setdefault("tool_id", "binding.primary_tool")
+            patch_targets.setdefault("fallback_execution_path", "step.inputs.target_path")
+            patch_targets.setdefault("clear_failure_flag", "state.force_environment_failure")
+        if repair.repair_type.value == "request_approval":
+            patch_targets["approved"] = "policy.approved"
+        return patch_targets
 
     @staticmethod
     def _resolve_repair_step_id(workflow: Workflow, repair: Repair) -> str:

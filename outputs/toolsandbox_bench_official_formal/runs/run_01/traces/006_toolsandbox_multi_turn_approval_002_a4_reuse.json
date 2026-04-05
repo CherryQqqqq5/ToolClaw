@@ -6,8 +6,8 @@
   "metadata": {
     "model_name": "phase1_executor",
     "mode": "toolclaw",
-    "start_time": "2026-04-04T15:00:50.727434+00:00",
-    "end_time": "2026-04-04T15:00:50.727495+00:00",
+    "start_time": "2026-04-05T07:22:00.198476+00:00",
+    "end_time": "2026-04-05T07:22:00.198501+00:00",
     "benchmark": null,
     "task_source": null,
     "toolsandbox_result": {
@@ -30,7 +30,7 @@
   "state_snapshots": [
     {
       "snapshot_id": "snap_01_start",
-      "timestamp": "2026-04-04T15:00:50.725831+00:00",
+      "timestamp": "2026-04-05T07:22:00.197794+00:00",
       "active_step_id": "step_01",
       "completed_steps": [],
       "pending_steps": [
@@ -47,7 +47,7 @@
     },
     {
       "snapshot_id": "snap_01_start",
-      "timestamp": "2026-04-04T15:00:50.726494+00:00",
+      "timestamp": "2026-04-05T07:22:00.198144+00:00",
       "active_step_id": "step_01",
       "completed_steps": [],
       "pending_steps": [
@@ -65,15 +65,15 @@
           "step_01",
           "step_02"
         ],
-        "approved": true,
         "__approved_steps__": [
           "step_01"
-        ]
+        ],
+        "approved": true
       }
     },
     {
       "snapshot_id": "snap_02_start",
-      "timestamp": "2026-04-04T15:00:50.726548+00:00",
+      "timestamp": "2026-04-05T07:22:00.198162+00:00",
       "active_step_id": "step_02",
       "completed_steps": [
         "step_01"
@@ -91,10 +91,10 @@
           "step_01",
           "step_02"
         ],
-        "approved": true,
         "__approved_steps__": [
           "step_01"
         ],
+        "approved": true,
         "retrieved_info": "summary for: retrieve and write report",
         "__budget_spent__": 0.02,
         "__time_spent_ms__": 150.0
@@ -102,7 +102,7 @@
     },
     {
       "snapshot_id": "snap_02_start",
-      "timestamp": "2026-04-04T15:00:50.727449+00:00",
+      "timestamp": "2026-04-05T07:22:00.198483+00:00",
       "active_step_id": "step_02",
       "completed_steps": [],
       "pending_steps": [],
@@ -118,11 +118,11 @@
           "step_01",
           "step_02"
         ],
-        "approved": true,
         "__approved_steps__": [
           "step_01",
           "step_02"
         ],
+        "approved": true,
         "retrieved_info": "summary for: retrieve and write report",
         "__budget_spent__": 0.02,
         "__time_spent_ms__": 150.0
@@ -132,7 +132,7 @@
   "events": [
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-04T15:00:50.725763+00:00",
+      "timestamp": "2026-04-05T07:22:00.197790+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -147,7 +147,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-04T15:00:50.725772+00:00",
+      "timestamp": "2026-04-05T07:22:00.197792+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -164,7 +164,7 @@
     },
     {
       "event_id": "evt_policy_before_step_01",
-      "timestamp": "2026-04-04T15:00:50.725884+00:00",
+      "timestamp": "2026-04-05T07:22:00.197803+00:00",
       "step_id": "step_01",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -187,7 +187,7 @@
     },
     {
       "event_id": "evt_repair_triggered_step_01",
-      "timestamp": "2026-04-04T15:00:50.725963+00:00",
+      "timestamp": "2026-04-05T07:22:00.197827+00:00",
       "step_id": "step_01",
       "event_type": "repair_triggered",
       "actor": "recovery_engine",
@@ -266,7 +266,7 @@
           "message": null,
           "metadata": {}
         },
-        "timestamp": "2026-04-04T15:00:50.725924+00:00",
+        "timestamp": "2026-04-05T07:22:00.197812+00:00",
         "metadata": {
           "mapped_from_error_category": "policy_failure",
           "phase": "phase1_training_free"
@@ -277,7 +277,7 @@
     },
     {
       "event_id": "evt_stop_blocked",
-      "timestamp": "2026-04-04T15:00:50.725967+00:00",
+      "timestamp": "2026-04-05T07:22:00.197829+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",
@@ -293,7 +293,7 @@
     },
     {
       "event_id": "evt_user_query_01",
-      "timestamp": "2026-04-04T15:00:50.726449+00:00",
+      "timestamp": "2026-04-05T07:22:00.198130+00:00",
       "step_id": "step_01",
       "event_type": "user_query",
       "actor": "interaction_shell",
@@ -312,7 +312,9 @@
           "step_id": "step_01",
           "state_keys": [
             "__approval_pending_steps__"
-          ]
+          ],
+          "failed_tool_id": "search_tool",
+          "missing_input_keys": []
         },
         "allowed_response_schema": {
           "type": "object",
@@ -323,13 +325,19 @@
           }
         },
         "query_metadata": {
-          "uncertainty": "approval_needed"
+          "repair_type": "request_approval",
+          "failed_tool_id": "search_tool",
+          "backup_tool_id": null,
+          "mapped_from_error_category": "policy_failure",
+          "uncertainty": "approval_needed",
+          "repeat_failure_count": 0,
+          "escalation_level": 0
         }
       }
     },
     {
       "event_id": "evt_user_reply_01",
-      "timestamp": "2026-04-04T15:00:50.726457+00:00",
+      "timestamp": "2026-04-05T07:22:00.198132+00:00",
       "step_id": "step_01",
       "event_type": "user_reply",
       "actor": "user_simulator",
@@ -348,7 +356,7 @@
     },
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-04T15:00:50.726477+00:00",
+      "timestamp": "2026-04-05T07:22:00.198140+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -363,7 +371,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-04T15:00:50.726484+00:00",
+      "timestamp": "2026-04-05T07:22:00.198142+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -380,7 +388,7 @@
     },
     {
       "event_id": "evt_policy_before_step_01",
-      "timestamp": "2026-04-04T15:00:50.726522+00:00",
+      "timestamp": "2026-04-05T07:22:00.198153+00:00",
       "step_id": "step_01",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -403,7 +411,7 @@
     },
     {
       "event_id": "evt_call_step_01",
-      "timestamp": "2026-04-04T15:00:50.726526+00:00",
+      "timestamp": "2026-04-05T07:22:00.198154+00:00",
       "step_id": "step_01",
       "event_type": "tool_call",
       "actor": "executor",
@@ -418,7 +426,7 @@
     },
     {
       "event_id": "evt_result_step_01",
-      "timestamp": "2026-04-04T15:00:50.726531+00:00",
+      "timestamp": "2026-04-05T07:22:00.198156+00:00",
       "step_id": "step_01",
       "event_type": "tool_result",
       "actor": "environment",
@@ -434,7 +442,7 @@
     },
     {
       "event_id": "evt_checkpoint_step_01",
-      "timestamp": "2026-04-04T15:00:50.726543+00:00",
+      "timestamp": "2026-04-05T07:22:00.198160+00:00",
       "step_id": "step_01",
       "event_type": "checkpoint_created",
       "actor": "executor",
@@ -449,7 +457,7 @@
     },
     {
       "event_id": "evt_policy_before_step_02",
-      "timestamp": "2026-04-04T15:00:50.726563+00:00",
+      "timestamp": "2026-04-05T07:22:00.198168+00:00",
       "step_id": "step_02",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -472,7 +480,7 @@
     },
     {
       "event_id": "evt_repair_triggered_step_02",
-      "timestamp": "2026-04-04T15:00:50.726644+00:00",
+      "timestamp": "2026-04-05T07:22:00.198190+00:00",
       "step_id": "step_02",
       "event_type": "repair_triggered",
       "actor": "recovery_engine",
@@ -551,7 +559,7 @@
           "message": null,
           "metadata": {}
         },
-        "timestamp": "2026-04-04T15:00:50.726607+00:00",
+        "timestamp": "2026-04-05T07:22:00.198177+00:00",
         "metadata": {
           "mapped_from_error_category": "policy_failure",
           "phase": "phase1_training_free"
@@ -562,7 +570,7 @@
     },
     {
       "event_id": "evt_stop_blocked",
-      "timestamp": "2026-04-04T15:00:50.726648+00:00",
+      "timestamp": "2026-04-05T07:22:00.198191+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",
@@ -578,7 +586,7 @@
     },
     {
       "event_id": "evt_user_query_02",
-      "timestamp": "2026-04-04T15:00:50.727412+00:00",
+      "timestamp": "2026-04-05T07:22:00.198468+00:00",
       "step_id": "step_02",
       "event_type": "user_query",
       "actor": "interaction_shell",
@@ -602,7 +610,9 @@
             "__time_spent_ms__",
             "approved",
             "retrieved_info"
-          ]
+          ],
+          "failed_tool_id": "write_tool",
+          "missing_input_keys": []
         },
         "allowed_response_schema": {
           "type": "object",
@@ -613,13 +623,19 @@
           }
         },
         "query_metadata": {
-          "uncertainty": "approval_needed"
+          "repair_type": "request_approval",
+          "failed_tool_id": "write_tool",
+          "backup_tool_id": null,
+          "mapped_from_error_category": "policy_failure",
+          "uncertainty": "approval_needed",
+          "repeat_failure_count": 0,
+          "escalation_level": 0
         }
       }
     },
     {
       "event_id": "evt_user_reply_02",
-      "timestamp": "2026-04-04T15:00:50.727419+00:00",
+      "timestamp": "2026-04-05T07:22:00.198470+00:00",
       "step_id": "step_02",
       "event_type": "user_reply",
       "actor": "user_simulator",
@@ -638,7 +654,7 @@
     },
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-04T15:00:50.727438+00:00",
+      "timestamp": "2026-04-05T07:22:00.198478+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -653,7 +669,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-04T15:00:50.727443+00:00",
+      "timestamp": "2026-04-05T07:22:00.198481+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -670,7 +686,7 @@
     },
     {
       "event_id": "evt_policy_before_step_02",
-      "timestamp": "2026-04-04T15:00:50.727471+00:00",
+      "timestamp": "2026-04-05T07:22:00.198491+00:00",
       "step_id": "step_02",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -693,14 +709,14 @@
     },
     {
       "event_id": "evt_call_step_02",
-      "timestamp": "2026-04-04T15:00:50.727475+00:00",
+      "timestamp": "2026-04-05T07:22:00.198492+00:00",
       "step_id": "step_02",
       "event_type": "tool_call",
       "actor": "executor",
       "tool_id": "write_tool",
       "input_ref": null,
       "tool_args": {
-        "target_path": "outputs/toolsandbox/reports/toolsandbox_state_dep_002.txt"
+        "target_path": "target_path"
       },
       "output": null,
       "message": null,
@@ -708,7 +724,7 @@
     },
     {
       "event_id": "evt_result_step_02",
-      "timestamp": "2026-04-04T15:00:50.727479+00:00",
+      "timestamp": "2026-04-05T07:22:00.198494+00:00",
       "step_id": "step_02",
       "event_type": "tool_result",
       "actor": "environment",
@@ -717,14 +733,14 @@
       "tool_args": null,
       "output": {
         "status": "success",
-        "payload": "wrote artifact to outputs/toolsandbox/reports/toolsandbox_state_dep_002.txt"
+        "payload": "wrote artifact to target_path"
       },
       "message": null,
       "metadata": {}
     },
     {
       "event_id": "evt_checkpoint_step_02",
-      "timestamp": "2026-04-04T15:00:50.727489+00:00",
+      "timestamp": "2026-04-05T07:22:00.198498+00:00",
       "step_id": "step_02",
       "event_type": "checkpoint_created",
       "actor": "executor",
@@ -739,7 +755,7 @@
     },
     {
       "event_id": "evt_stop_success",
-      "timestamp": "2026-04-04T15:00:50.727492+00:00",
+      "timestamp": "2026-04-05T07:22:00.198500+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",

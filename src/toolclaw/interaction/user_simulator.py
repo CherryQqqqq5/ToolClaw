@@ -53,4 +53,9 @@ class UserSimulator:
             payload=payload,
             accepted=accepted,
             raw_text="auto-reply",
+            metadata={
+                "patch_targets": dict(request.metadata.get("patch_targets", {})),
+                "expected_answer_type": request.expected_answer_type,
+                "escalation_level": int(request.metadata.get("escalation_level", 0)),
+            },
         )

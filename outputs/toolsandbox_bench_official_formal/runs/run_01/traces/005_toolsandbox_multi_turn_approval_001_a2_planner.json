@@ -6,8 +6,8 @@
   "metadata": {
     "model_name": "phase1_executor",
     "mode": "toolclaw",
-    "start_time": "2026-04-04T15:00:50.712410+00:00",
-    "end_time": "2026-04-04T15:00:50.712516+00:00",
+    "start_time": "2026-04-05T07:22:00.192357+00:00",
+    "end_time": "2026-04-05T07:22:00.192401+00:00",
     "benchmark": null,
     "task_source": null,
     "toolsandbox_result": {
@@ -29,7 +29,7 @@
   "state_snapshots": [
     {
       "snapshot_id": "snap_01_start",
-      "timestamp": "2026-04-04T15:00:50.712428+00:00",
+      "timestamp": "2026-04-05T07:22:00.192364+00:00",
       "active_step_id": "step_01",
       "completed_steps": [],
       "pending_steps": [
@@ -48,7 +48,7 @@
   "events": [
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-04T15:00:50.712415+00:00",
+      "timestamp": "2026-04-05T07:22:00.192359+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -63,7 +63,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-04T15:00:50.712422+00:00",
+      "timestamp": "2026-04-05T07:22:00.192361+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -80,7 +80,7 @@
     },
     {
       "event_id": "evt_policy_before_step_01",
-      "timestamp": "2026-04-04T15:00:50.712450+00:00",
+      "timestamp": "2026-04-05T07:22:00.192372+00:00",
       "step_id": "step_01",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -103,7 +103,7 @@
     },
     {
       "event_id": "evt_repair_triggered_step_01",
-      "timestamp": "2026-04-04T15:00:50.712509+00:00",
+      "timestamp": "2026-04-05T07:22:00.192398+00:00",
       "step_id": "step_01",
       "event_type": "repair_triggered",
       "actor": "recovery_engine",
@@ -182,7 +182,7 @@
           "message": null,
           "metadata": {}
         },
-        "timestamp": "2026-04-04T15:00:50.712473+00:00",
+        "timestamp": "2026-04-05T07:22:00.192382+00:00",
         "metadata": {
           "mapped_from_error_category": "policy_failure",
           "phase": "phase1_training_free"
@@ -193,7 +193,7 @@
     },
     {
       "event_id": "evt_stop_blocked",
-      "timestamp": "2026-04-04T15:00:50.712513+00:00",
+      "timestamp": "2026-04-05T07:22:00.192399+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",

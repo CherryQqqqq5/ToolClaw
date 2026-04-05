@@ -143,6 +143,7 @@ def main() -> None:
         scoreboard=scoreboard,
         config=TAU2_CONFIG,
         keep_normalized_taskset=args.keep_normalized_taskset,
+        run_entries=scoreboard.get("runs"),
     )
 
     print(f"prepared tau2-bench taskset: {normalized_path}")
