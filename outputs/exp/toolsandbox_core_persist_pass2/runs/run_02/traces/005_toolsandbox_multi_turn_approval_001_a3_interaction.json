@@ -1,0 +1,813 @@
+{
+  "run_id": "a3_interaction_toolsandbox_multi_turn_approval_001",
+  "workflow_id": "wf_toolsandbox_multi_turn_approval_001",
+  "task_id": "toolsandbox_multi_turn_approval_001",
+  "phase": "phase1_training_free",
+  "metadata": {
+    "model_name": "phase1_executor",
+    "mode": "toolclaw",
+    "start_time": "2026-04-05T13:57:44.338343+00:00",
+    "end_time": "2026-04-05T13:57:44.338438+00:00",
+    "benchmark": null,
+    "task_source": null,
+    "toolsandbox_result": {
+      "similarity": 1.0,
+      "milestone_mapping": [
+        0,
+        1,
+        2
+      ],
+      "matched_milestones": 3,
+      "turn_count": 8,
+      "tool_calls": 2,
+      "success": true,
+      "source": "toolclaw_proxy",
+      "proxy_evaluation": true
+    },
+    "toolsandbox_result_source": "toolclaw_proxy"
+  },
+  "state_snapshots": [
+    {
+      "snapshot_id": "snap_01_start",
+      "timestamp": "2026-04-05T13:57:44.308457+00:00",
+      "active_step_id": "step_01",
+      "completed_steps": [],
+      "pending_steps": [
+        "step_02"
+      ],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {}
+    },
+    {
+      "snapshot_id": "snap_01_start",
+      "timestamp": "2026-04-05T13:57:44.311911+00:00",
+      "active_step_id": "step_01",
+      "completed_steps": [],
+      "pending_steps": [
+        "step_02"
+      ],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "__approval_pending_steps__": [
+          "step_01",
+          "step_02"
+        ],
+        "__approved_steps__": [
+          "step_01"
+        ],
+        "approved": true
+      }
+    },
+    {
+      "snapshot_id": "snap_02_start",
+      "timestamp": "2026-04-05T13:57:44.311977+00:00",
+      "active_step_id": "step_02",
+      "completed_steps": [
+        "step_01"
+      ],
+      "pending_steps": [],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "__approval_pending_steps__": [
+          "step_01",
+          "step_02"
+        ],
+        "__approved_steps__": [
+          "step_01"
+        ],
+        "approved": true,
+        "retrieved_info": "summary for: retrieve and write report",
+        "__budget_spent__": 0.02,
+        "__time_spent_ms__": 150.0
+      }
+    },
+    {
+      "snapshot_id": "snap_02_start",
+      "timestamp": "2026-04-05T13:57:44.338370+00:00",
+      "active_step_id": "step_02",
+      "completed_steps": [],
+      "pending_steps": [],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "__approval_pending_steps__": [
+          "step_01",
+          "step_02"
+        ],
+        "__approved_steps__": [
+          "step_01",
+          "step_02"
+        ],
+        "approved": true,
+        "retrieved_info": "summary for: retrieve and write report",
+        "__budget_spent__": 0.02,
+        "__time_spent_ms__": 150.0
+      }
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-05T13:57:44.308438+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-05T13:57:44.308447+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": true,
+        "missing_assets": [],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_01",
+      "timestamp": "2026-04-05T13:57:44.308488+00:00",
+      "step_id": "step_01",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": false,
+        "reason": "approval_required"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "approval",
+            "reason": "task risk level is high"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_repair_triggered_step_01",
+      "timestamp": "2026-04-05T13:57:44.308658+00:00",
+      "step_id": "step_01",
+      "event_type": "repair_triggered",
+      "actor": "recovery_engine",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "repair_id": "rep_err_policy_step_01",
+        "run_id": "a3_interaction_toolsandbox_multi_turn_approval_001",
+        "workflow_id": "wf_toolsandbox_multi_turn_approval_001",
+        "triggered_error_ids": [
+          "err_policy_step_01"
+        ],
+        "trigger_event_id": null,
+        "phase": "phase1_training_free",
+        "repair_type": "request_approval",
+        "decision": {
+          "strategy": "user_in_the_loop",
+          "rationale": "Policy gate requires explicit approval before execution can continue.",
+          "confidence": 0.9,
+          "metadata": {}
+        },
+        "actions": [
+          {
+            "action_id": "act_approve_err_policy_step_01",
+            "action_type": "request_approval",
+            "target": "step_01",
+            "value_source": null,
+            "value": null,
+            "metadata": {}
+          }
+        ],
+        "interaction": {
+          "ask_user": true,
+          "question": "Step step_01 requires approval due to policy constraints. Approve execution?",
+          "expected_answer_type": "approval",
+          "user_response": null
+        },
+        "workflow_patch": {
+          "modified_steps": [
+            "step_01"
+          ],
+          "reordered_steps": [],
+          "inserted_steps": [],
+          "removed_steps": [],
+          "metadata": {}
+        },
+        "graph_patch": {
+          "inserted_edges": [],
+          "removed_edges": [],
+          "node_updates": {}
+        },
+        "policy_patch": {
+          "approval_pending": true,
+          "approved_actions": [],
+          "budget_delta": 0.0,
+          "metadata": {}
+        },
+        "asset_patch": {
+          "missing_assets_resolved": {},
+          "metadata": {}
+        },
+        "post_conditions": {
+          "expected_effects": [
+            "approval decision is recorded",
+            "execution can resume if approved"
+          ],
+          "stop_if": [
+            "user rejects approval"
+          ]
+        },
+        "result": {
+          "status": "pending",
+          "success": null,
+          "followup_error_id": null,
+          "message": null,
+          "metadata": {}
+        },
+        "timestamp": "2026-04-05T13:57:44.308524+00:00",
+        "metadata": {
+          "mapped_from_error_category": "policy_failure",
+          "phase": "phase1_training_free"
+        }
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_blocked",
+      "timestamp": "2026-04-05T13:57:44.308665+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "blocked",
+        "reason": "awaiting_user_interaction"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_user_query_01",
+      "timestamp": "2026-04-05T13:57:44.311850+00:00",
+      "step_id": "step_01",
+      "event_type": "user_query",
+      "actor": "interaction_shell",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "question": "Approve this blocked action?",
+        "expected_answer_type": "approval"
+      },
+      "message": "Approve this blocked action?",
+      "metadata": {
+        "interaction_id": "int_rep_err_policy_step_01",
+        "context_summary": {
+          "workflow_id": "wf_toolsandbox_multi_turn_approval_001",
+          "step_id": "step_01",
+          "state_keys": [
+            "__approval_pending_steps__"
+          ],
+          "failed_tool_id": "search_tool",
+          "missing_input_keys": [],
+          "missing_assets": [],
+          "branch_options": []
+        },
+        "allowed_response_schema": {
+          "type": "object",
+          "properties": {
+            "approved": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "approved"
+          ],
+          "additionalProperties": false
+        },
+        "query_metadata": {
+          "repair_type": "request_approval",
+          "failed_tool_id": "search_tool",
+          "backup_tool_id": null,
+          "mapped_from_error_category": "policy_failure",
+          "branch_options": [],
+          "patch_targets": {
+            "approved": "policy.approved"
+          },
+          "uncertainty": "policy_approval",
+          "repeat_failure_count": 0,
+          "escalation_level": 0
+        }
+      }
+    },
+    {
+      "event_id": "evt_user_reply_01",
+      "timestamp": "2026-04-05T13:57:44.311859+00:00",
+      "step_id": "step_01",
+      "event_type": "user_reply",
+      "actor": "user_simulator",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "approved": true
+      },
+      "message": "auto-reply",
+      "metadata": {
+        "interaction_id": "int_rep_err_policy_step_01",
+        "accepted": true,
+        "reply_metadata": {
+          "patch_targets": {
+            "approved": "policy.approved"
+          },
+          "expected_answer_type": "approval",
+          "escalation_level": 0
+        }
+      }
+    },
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-05T13:57:44.311892+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-05T13:57:44.311901+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": true,
+        "missing_assets": [],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_01",
+      "timestamp": "2026-04-05T13:57:44.311941+00:00",
+      "step_id": "step_01",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "medium"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_01",
+      "timestamp": "2026-04-05T13:57:44.311947+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": {
+        "query": "retrieve and write report"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_01",
+      "timestamp": "2026-04-05T13:57:44.311954+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "summary for: retrieve and write report"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_checkpoint_step_01",
+      "timestamp": "2026-04-05T13:57:44.311968+00:00",
+      "step_id": "step_01",
+      "event_type": "checkpoint_created",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "checkpoint_id": "cp_step_01"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_02",
+      "timestamp": "2026-04-05T13:57:44.312002+00:00",
+      "step_id": "step_02",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": false,
+        "reason": "approval_required"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "approval",
+            "reason": "write-like actions can modify external state; task risk level is high"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_repair_triggered_step_02",
+      "timestamp": "2026-04-05T13:57:44.312160+00:00",
+      "step_id": "step_02",
+      "event_type": "repair_triggered",
+      "actor": "recovery_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "repair_id": "rep_err_policy_step_02",
+        "run_id": "a3_interaction_toolsandbox_multi_turn_approval_001",
+        "workflow_id": "wf_toolsandbox_multi_turn_approval_001",
+        "triggered_error_ids": [
+          "err_policy_step_02"
+        ],
+        "trigger_event_id": null,
+        "phase": "phase1_training_free",
+        "repair_type": "request_approval",
+        "decision": {
+          "strategy": "user_in_the_loop",
+          "rationale": "Policy gate requires explicit approval before execution can continue.",
+          "confidence": 0.9,
+          "metadata": {}
+        },
+        "actions": [
+          {
+            "action_id": "act_approve_err_policy_step_02",
+            "action_type": "request_approval",
+            "target": "step_02",
+            "value_source": null,
+            "value": null,
+            "metadata": {}
+          }
+        ],
+        "interaction": {
+          "ask_user": true,
+          "question": "Step step_02 requires approval due to policy constraints. Approve execution?",
+          "expected_answer_type": "approval",
+          "user_response": null
+        },
+        "workflow_patch": {
+          "modified_steps": [
+            "step_02"
+          ],
+          "reordered_steps": [],
+          "inserted_steps": [],
+          "removed_steps": [],
+          "metadata": {}
+        },
+        "graph_patch": {
+          "inserted_edges": [],
+          "removed_edges": [],
+          "node_updates": {}
+        },
+        "policy_patch": {
+          "approval_pending": true,
+          "approved_actions": [],
+          "budget_delta": 0.0,
+          "metadata": {}
+        },
+        "asset_patch": {
+          "missing_assets_resolved": {},
+          "metadata": {}
+        },
+        "post_conditions": {
+          "expected_effects": [
+            "approval decision is recorded",
+            "execution can resume if approved"
+          ],
+          "stop_if": [
+            "user rejects approval"
+          ]
+        },
+        "result": {
+          "status": "pending",
+          "success": null,
+          "followup_error_id": null,
+          "message": null,
+          "metadata": {}
+        },
+        "timestamp": "2026-04-05T13:57:44.312032+00:00",
+        "metadata": {
+          "mapped_from_error_category": "policy_failure",
+          "phase": "phase1_training_free"
+        }
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_blocked",
+      "timestamp": "2026-04-05T13:57:44.312167+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "blocked",
+        "reason": "awaiting_user_interaction"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_user_query_02",
+      "timestamp": "2026-04-05T13:57:44.338307+00:00",
+      "step_id": "step_02",
+      "event_type": "user_query",
+      "actor": "interaction_shell",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "question": "Approve this blocked action?",
+        "expected_answer_type": "approval"
+      },
+      "message": "Approve this blocked action?",
+      "metadata": {
+        "interaction_id": "int_rep_err_policy_step_02",
+        "context_summary": {
+          "workflow_id": "wf_toolsandbox_multi_turn_approval_001",
+          "step_id": "step_02",
+          "state_keys": [
+            "__approval_pending_steps__",
+            "__approved_steps__",
+            "__budget_spent__",
+            "__time_spent_ms__",
+            "approved",
+            "retrieved_info"
+          ],
+          "failed_tool_id": "write_tool",
+          "missing_input_keys": [],
+          "missing_assets": [],
+          "branch_options": []
+        },
+        "allowed_response_schema": {
+          "type": "object",
+          "properties": {
+            "approved": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "approved"
+          ],
+          "additionalProperties": false
+        },
+        "query_metadata": {
+          "repair_type": "request_approval",
+          "failed_tool_id": "write_tool",
+          "backup_tool_id": null,
+          "mapped_from_error_category": "policy_failure",
+          "branch_options": [],
+          "patch_targets": {
+            "approved": "policy.approved"
+          },
+          "uncertainty": "policy_approval",
+          "repeat_failure_count": 0,
+          "escalation_level": 0
+        }
+      }
+    },
+    {
+      "event_id": "evt_user_reply_02",
+      "timestamp": "2026-04-05T13:57:44.338317+00:00",
+      "step_id": "step_02",
+      "event_type": "user_reply",
+      "actor": "user_simulator",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "approved": true
+      },
+      "message": "auto-reply",
+      "metadata": {
+        "interaction_id": "int_rep_err_policy_step_02",
+        "accepted": true,
+        "reply_metadata": {
+          "patch_targets": {
+            "approved": "policy.approved"
+          },
+          "expected_answer_type": "approval",
+          "escalation_level": 0
+        }
+      }
+    },
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-05T13:57:44.338351+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-05T13:57:44.338360+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": true,
+        "missing_assets": [],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_02",
+      "timestamp": "2026-04-05T13:57:44.338402+00:00",
+      "step_id": "step_02",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "medium"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_02",
+      "timestamp": "2026-04-05T13:57:44.338408+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": {
+        "target_path": "outputs/toolsandbox/reports/toolsandbox_multi_turn_approval_001.txt"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_02",
+      "timestamp": "2026-04-05T13:57:44.338415+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "wrote artifact to outputs/toolsandbox/reports/toolsandbox_multi_turn_approval_001.txt"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_checkpoint_step_02",
+      "timestamp": "2026-04-05T13:57:44.338429+00:00",
+      "step_id": "step_02",
+      "event_type": "checkpoint_created",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "checkpoint_id": "cp_step_02"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_success",
+      "timestamp": "2026-04-05T13:57:44.338434+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "reason": "success_criteria_satisfied"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 2,
+    "tool_calls": 2,
+    "user_queries": 2,
+    "repair_actions": 0,
+    "success": true,
+    "token_cost": null,
+    "latency_ms": null
+  }
+}

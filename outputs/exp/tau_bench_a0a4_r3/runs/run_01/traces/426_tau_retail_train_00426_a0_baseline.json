@@ -1,0 +1,119 @@
+{
+  "run_id": "a0_baseline_tau_retail_train_00426",
+  "workflow_id": "wf_demo_001",
+  "task_id": "tau_retail_train_00426",
+  "phase": "phase1_training_free",
+  "metadata": {
+    "model_name": "baseline_executor",
+    "mode": "baseline",
+    "start_time": "2026-04-05T14:06:41.199522+00:00",
+    "end_time": "2026-04-05T14:06:41.199565+00:00",
+    "benchmark": null,
+    "task_source": null
+  },
+  "state_snapshots": [],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-05T14:06:41.199532+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "baseline_executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_call_step_01",
+      "timestamp": "2026-04-05T14:06:41.199539+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_call",
+      "actor": "baseline_executor",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": {
+        "query": "Your name is Noah Brown and your email is noah.brown7922@example.com. You are happy, messy, confident, cautious. Return #W7678072 via paypal_5727330: Gaming Mouse;"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_01",
+      "timestamp": "2026-04-05T14:06:41.199546+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "summary for: Your name is Noah Brown and your email is noah.brown7922@example.com. You are happy, messy, confident, cautious. Return #W7678072 via paypal_5727330: Gaming Mouse;"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_call_step_02",
+      "timestamp": "2026-04-05T14:06:41.199551+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_call",
+      "actor": "baseline_executor",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": {
+        "target_path": "outputs/tau_bench/reports/tau_retail_train_00426.txt"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_02",
+      "timestamp": "2026-04-05T14:06:41.199556+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "wrote artifact to outputs/tau_bench/reports/tau_retail_train_00426.txt"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_success",
+      "timestamp": "2026-04-05T14:06:41.199561+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "baseline_executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "reason": "success_criteria_satisfied"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 2,
+    "tool_calls": 2,
+    "user_queries": 0,
+    "repair_actions": 0,
+    "success": true,
+    "token_cost": null,
+    "latency_ms": null
+  }
+}

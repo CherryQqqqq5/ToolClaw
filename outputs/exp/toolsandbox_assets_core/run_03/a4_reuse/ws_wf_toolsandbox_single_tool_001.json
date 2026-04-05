@@ -1,0 +1,43 @@
+{
+  "asset_id": "ws_wf_toolsandbox_single_tool_001",
+  "asset_type": "WorkflowSnippet",
+  "task_signature": "phase1::family=t0_general::caps=cap_retrieve::fail=single_tool::goal=target_document_summary",
+  "payload": {
+    "snippet_id": "ws_wf_toolsandbox_single_tool_001",
+    "task_signature": "phase1::family=t0_general::caps=cap_retrieve::fail=single_tool::goal=target_document_summary",
+    "capability_skeleton": [
+      "cap_retrieve"
+    ],
+    "recommended_bindings": {
+      "cap_retrieve": "search_tool"
+    },
+    "recommended_inputs": {
+      "cap_retrieve": {
+        "query": "target document summary"
+      }
+    },
+    "version": 1,
+    "applicability_conditions": [
+      "phase1_training_free"
+    ],
+    "quality_score": 1.0,
+    "metadata": {
+      "final_success": true,
+      "compile_gate": {
+        "allow_compile": true,
+        "objective_active": true,
+        "objective_consistent": true,
+        "quality_score": 1.0,
+        "min_quality_score": 0.55,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 1.0,
+        "repair_score": 1.0,
+        "tool_calls": 1,
+        "user_queries": 0,
+        "repair_actions": 0,
+        "expected_tool_calls": 1,
+        "expected_turns": 1
+      }
+    }
+  }
+}

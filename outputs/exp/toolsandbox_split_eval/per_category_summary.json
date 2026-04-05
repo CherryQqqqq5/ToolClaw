@@ -1,0 +1,458 @@
+{
+  "a3_interaction": {
+    "num_samples": 5,
+    "num_runs": 3,
+    "mean_success_rate": 1.0,
+    "pass_at_k": 1.0,
+    "consistency": 1.0,
+    "per_sample": {
+      "toolsandbox_canonicalization_001": {
+        "scenario": "canonicalization",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
+        ],
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.6,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "used_result_summary": 1.0,
+        "reference_result_summary_available": 0.0,
+        "categories": [
+          "canonicalization",
+          "multiple_tool"
+        ]
+      },
+      "toolsandbox_canonicalization_002": {
+        "scenario": "canonicalization",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
+        ],
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.6,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "used_result_summary": 1.0,
+        "reference_result_summary_available": 0.0,
+        "categories": [
+          "canonicalization",
+          "state_dependency"
+        ]
+      },
+      "toolsandbox_multi_turn_approval_002": {
+        "scenario": "multiple_user_turn",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
+        ],
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 0.4,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.19999999999999996,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "used_result_summary": 1.0,
+        "reference_result_summary_available": 0.0,
+        "categories": [
+          "multiple_user_turn",
+          "canonicalization"
+        ]
+      },
+      "toolsandbox_single_tool_001": {
+        "scenario": "single_tool",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
+        ],
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.8,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "used_result_summary": 1.0,
+        "reference_result_summary_available": 0.0,
+        "categories": [
+          "single_tool",
+          "single_user_turn"
+        ]
+      },
+      "toolsandbox_single_tool_002": {
+        "scenario": "single_tool",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
+        ],
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.8,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "used_result_summary": 1.0,
+        "reference_result_summary_available": 0.0,
+        "categories": [
+          "single_tool",
+          "canonicalization"
+        ]
+      }
+    },
+    "milestone_similarity": 1.0,
+    "milestone_coverage": 1.0,
+    "interaction_efficiency": 0.88,
+    "tool_efficiency": 1.0,
+    "turn_efficiency": 0.6,
+    "hallucination_avoidance": 1.0,
+    "state_dependency_score": 1.0,
+    "used_result_summary": 1.0,
+    "reference_result_summary_available": 0.0,
+    "per_category": {
+      "multiple_user_turn": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 0.4,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.19999999999999996,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      },
+      "canonicalization": {
+        "num_rows": 12.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 0.85,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.55,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      },
+      "multiple_tool": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.6,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      },
+      "state_dependency": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.6,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      },
+      "single_tool": {
+        "num_rows": 6.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.8,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      },
+      "single_user_turn": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.8,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      }
+    }
+  },
+  "a4_reuse": {
+    "num_samples": 5,
+    "num_runs": 3,
+    "mean_success_rate": 1.0,
+    "pass_at_k": 1.0,
+    "consistency": 1.0,
+    "per_sample": {
+      "toolsandbox_canonicalization_001": {
+        "scenario": "canonicalization",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
+        ],
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.6,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "used_result_summary": 1.0,
+        "reference_result_summary_available": 0.0,
+        "categories": [
+          "canonicalization",
+          "multiple_tool"
+        ]
+      },
+      "toolsandbox_canonicalization_002": {
+        "scenario": "canonicalization",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
+        ],
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.6,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "used_result_summary": 1.0,
+        "reference_result_summary_available": 0.0,
+        "categories": [
+          "canonicalization",
+          "state_dependency"
+        ]
+      },
+      "toolsandbox_multi_turn_approval_002": {
+        "scenario": "multiple_user_turn",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
+        ],
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 0.25,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.0,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "used_result_summary": 1.0,
+        "reference_result_summary_available": 0.0,
+        "categories": [
+          "multiple_user_turn",
+          "canonicalization"
+        ]
+      },
+      "toolsandbox_single_tool_001": {
+        "scenario": "single_tool",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
+        ],
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.8,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "used_result_summary": 1.0,
+        "reference_result_summary_available": 0.0,
+        "categories": [
+          "single_tool",
+          "single_user_turn"
+        ]
+      },
+      "toolsandbox_single_tool_002": {
+        "scenario": "single_tool",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
+        ],
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.8,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "used_result_summary": 1.0,
+        "reference_result_summary_available": 0.0,
+        "categories": [
+          "single_tool",
+          "canonicalization"
+        ]
+      }
+    },
+    "milestone_similarity": 1.0,
+    "milestone_coverage": 1.0,
+    "interaction_efficiency": 0.85,
+    "tool_efficiency": 1.0,
+    "turn_efficiency": 0.56,
+    "hallucination_avoidance": 1.0,
+    "state_dependency_score": 1.0,
+    "used_result_summary": 1.0,
+    "reference_result_summary_available": 0.0,
+    "per_category": {
+      "multiple_user_turn": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 0.25,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.0,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      },
+      "canonicalization": {
+        "num_rows": 12.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 0.8125,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.5,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      },
+      "multiple_tool": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.6,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      },
+      "state_dependency": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.6,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      },
+      "single_tool": {
+        "num_rows": 6.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.8,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      },
+      "single_user_turn": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 0.8,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "benchmark": "toolsandbox",
+  "source": "/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.train.json",
+  "normalized_taskset": "/cephfs/qiuyn/ToolClaw/outputs/exp/toolsandbox_split_train/prepared/toolsandbox.normalized.json",
+  "sample_count": 5,
+  "mode": "planner",
+  "systems": [
+    "a4_reuse"
+  ],
+  "num_runs": 3,
+  "scoreboard_path": "/cephfs/qiuyn/ToolClaw/outputs/exp/toolsandbox_split_train/scoreboard.json",
+  "per_system_summary_path": "/cephfs/qiuyn/ToolClaw/outputs/exp/toolsandbox_split_train/per_system_summary.json"
+}

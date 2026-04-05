@@ -1,0 +1,43 @@
+{
+  "focus_categories": [
+    "insufficient_information",
+    "multiple_user_turn",
+    "single_tool"
+  ],
+  "per_system": {
+    "a4_reuse": {
+      "insufficient_information": {
+        "num_rows": 6.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 0.625,
+        "tool_efficiency": 0.925,
+        "turn_efficiency": 0.5,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      },
+      "multiple_user_turn": {
+        "num_rows": 6.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 0.325,
+        "tool_efficiency": 0.925,
+        "turn_efficiency": 0.09999999999999998,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 0.0
+      }
+    }
+  },
+  "deltas": {
+    "a3_interaction_minus_a0_baseline": {},
+    "a3_interaction_minus_a1_recovery": {},
+    "a3_interaction_minus_a2_planner": {},
+    "a4_reuse_minus_a3_interaction": {}
+  }
+}

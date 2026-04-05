@@ -1,0 +1,203 @@
+[
+  {
+    "name": "toolsandbox_state_dep_001",
+    "query": "retrieve and write report",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Retrieve the latest account summary and save a report."
+      }
+    ],
+    "tool_allow_list": [
+      "search_tool",
+      "write_tool"
+    ],
+    "candidate_tools": [
+      {
+        "tool_id": "search_tool",
+        "description": "Search information"
+      },
+      {
+        "tool_id": "write_tool",
+        "description": "Write report"
+      }
+    ],
+    "categories": [
+      "State Dependency",
+      "Multiple Tool Call"
+    ],
+    "milestones": [
+      "retrieve data",
+      "write artifact"
+    ],
+    "ideal_turn_count": 2,
+    "ideal_tool_calls": 2
+  },
+  {
+    "name": "toolsandbox_state_dep_002",
+    "query": "retrieve and write report",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Find the relevant details, then produce a report file."
+      }
+    ],
+    "tool_allow_list": [
+      "search_tool",
+      "write_tool"
+    ],
+    "candidate_tools": [
+      {
+        "tool_id": "search_tool",
+        "description": "Search information"
+      },
+      {
+        "tool_id": "write_tool",
+        "description": "Write report"
+      }
+    ],
+    "categories": [
+      "State Dependency",
+      "Canonicalization",
+      "Multiple Tool Call"
+    ],
+    "milestones": [
+      "retrieve data",
+      "normalize output",
+      "write artifact"
+    ],
+    "ideal_turn_count": 2,
+    "ideal_tool_calls": 2
+  },
+  {
+    "name": "toolsandbox_missing_info_001",
+    "query": "retrieve and write report",
+    "execution_scenario": "environment_failure",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Use the available tools to finish the report, and ask if you need missing context."
+      }
+    ],
+    "tool_allow_list": [
+      "search_tool",
+      "write_tool",
+      "backup_write_tool"
+    ],
+    "candidate_tools": [
+      {
+        "tool_id": "search_tool",
+        "description": "Search information"
+      },
+      {
+        "tool_id": "write_tool",
+        "description": "Write report"
+      },
+      {
+        "tool_id": "backup_write_tool",
+        "description": "Fallback report writer"
+      }
+    ],
+    "categories": [
+      "Insufficient Information",
+      "Multiple User Turn",
+      "Multiple Tool Call"
+    ],
+    "milestones": [
+      "retrieve data",
+      "detect missing environment information",
+      "complete report"
+    ],
+    "ideal_turn_count": 3,
+    "ideal_tool_calls": 2,
+    "simulated_policy": {
+      "mode": "cooperative",
+      "tool_switch_hints": {
+        "tool_id": "backup_write_tool"
+      }
+    }
+  },
+  {
+    "name": "toolsandbox_missing_info_002",
+    "query": "retrieve and write report",
+    "execution_scenario": "binding_failure",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Retrieve the material and save it correctly even if some fields are omitted."
+      }
+    ],
+    "tool_allow_list": [
+      "search_tool",
+      "write_tool"
+    ],
+    "candidate_tools": [
+      {
+        "tool_id": "search_tool",
+        "description": "Search information"
+      },
+      {
+        "tool_id": "write_tool",
+        "description": "Write report"
+      }
+    ],
+    "categories": [
+      "Insufficient Information",
+      "Single User Turn"
+    ],
+    "milestones": [
+      "retrieve data",
+      "repair missing argument",
+      "write artifact"
+    ],
+    "ideal_turn_count": 2,
+    "ideal_tool_calls": 2
+  },
+  {
+    "name": "toolsandbox_multi_turn_approval_001",
+    "query": "retrieve and write report",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Before writing anything, confirm policy approval if needed and then continue."
+      }
+    ],
+    "tool_allow_list": [
+      "search_tool",
+      "write_tool"
+    ],
+    "candidate_tools": [
+      {
+        "tool_id": "search_tool",
+        "description": "Search information"
+      },
+      {
+        "tool_id": "write_tool",
+        "description": "Write report"
+      }
+    ],
+    "categories": [
+      "Multiple User Turn",
+      "State Dependency"
+    ],
+    "milestones": [
+      "retrieve data",
+      "request approval",
+      "write artifact"
+    ],
+    "ideal_turn_count": 3,
+    "ideal_tool_calls": 2,
+    "constraints": {
+      "requires_user_approval": true,
+      "risk_level": "high"
+    },
+    "simulated_policy": {
+      "mode": "cooperative"
+    }
+  }
+]

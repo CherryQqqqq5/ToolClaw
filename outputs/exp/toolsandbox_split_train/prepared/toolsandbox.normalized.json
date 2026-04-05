@@ -1,0 +1,313 @@
+[
+  {
+    "task_id": "toolsandbox_state_dep_001",
+    "scenario": "state_dependency",
+    "query": "retrieve and write report",
+    "target_path": "outputs/toolsandbox/reports/toolsandbox_state_dep_001.txt",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Retrieve the latest account summary and save a report."
+      }
+    ],
+    "milestones": [
+      "retrieve data",
+      "write artifact"
+    ],
+    "branch_options": [],
+    "tool_allow_list": [
+      "search_tool",
+      "write_tool"
+    ],
+    "ideal_turn_count": 2,
+    "ideal_tool_calls": 2,
+    "reference_result_summary": {},
+    "metadata": {
+      "benchmark": "toolsandbox",
+      "toolsandbox_categories": [
+        "state_dependency",
+        "multiple_tool"
+      ],
+      "tool_allow_list": [
+        "search_tool",
+        "write_tool"
+      ],
+      "milestone_count": 2,
+      "ideal_turn_count": 2,
+      "ideal_tool_calls": 2,
+      "messages": [
+        {
+          "sender": "user",
+          "recipient": "agent",
+          "content": "Retrieve the latest account summary and save a report."
+        }
+      ],
+      "milestones": [
+        "retrieve data",
+        "write artifact"
+      ],
+      "branch_options": [],
+      "toolsandbox_reference_result": {},
+      "reference_result_summary_present": false
+    },
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ]
+  },
+  {
+    "task_id": "toolsandbox_state_dep_002",
+    "scenario": "state_dependency",
+    "query": "retrieve and write report",
+    "target_path": "outputs/toolsandbox/reports/toolsandbox_state_dep_002.txt",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Find the relevant details, then produce a report file."
+      }
+    ],
+    "milestones": [
+      "retrieve data",
+      "normalize output",
+      "write artifact"
+    ],
+    "branch_options": [],
+    "tool_allow_list": [
+      "search_tool",
+      "write_tool"
+    ],
+    "ideal_turn_count": 2,
+    "ideal_tool_calls": 2,
+    "reference_result_summary": {},
+    "metadata": {
+      "benchmark": "toolsandbox",
+      "toolsandbox_categories": [
+        "state_dependency",
+        "canonicalization",
+        "multiple_tool"
+      ],
+      "tool_allow_list": [
+        "search_tool",
+        "write_tool"
+      ],
+      "milestone_count": 3,
+      "ideal_turn_count": 2,
+      "ideal_tool_calls": 2,
+      "messages": [
+        {
+          "sender": "user",
+          "recipient": "agent",
+          "content": "Find the relevant details, then produce a report file."
+        }
+      ],
+      "milestones": [
+        "retrieve data",
+        "normalize output",
+        "write artifact"
+      ],
+      "branch_options": [],
+      "toolsandbox_reference_result": {},
+      "reference_result_summary_present": false
+    },
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ]
+  },
+  {
+    "task_id": "toolsandbox_missing_info_001",
+    "scenario": "environment_failure",
+    "query": "retrieve and write report",
+    "target_path": "outputs/toolsandbox/reports/toolsandbox_missing_info_001.txt",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Use the available tools to finish the report, and ask if you need missing context."
+      }
+    ],
+    "milestones": [
+      "retrieve data",
+      "detect missing environment information",
+      "complete report"
+    ],
+    "branch_options": [],
+    "tool_allow_list": [
+      "search_tool",
+      "write_tool",
+      "backup_write_tool"
+    ],
+    "ideal_turn_count": 3,
+    "ideal_tool_calls": 2,
+    "reference_result_summary": {},
+    "metadata": {
+      "benchmark": "toolsandbox",
+      "toolsandbox_categories": [
+        "insufficient_information",
+        "multiple_user_turn",
+        "multiple_tool"
+      ],
+      "tool_allow_list": [
+        "search_tool",
+        "write_tool",
+        "backup_write_tool"
+      ],
+      "milestone_count": 3,
+      "ideal_turn_count": 3,
+      "ideal_tool_calls": 2,
+      "messages": [
+        {
+          "sender": "user",
+          "recipient": "agent",
+          "content": "Use the available tools to finish the report, and ask if you need missing context."
+        }
+      ],
+      "milestones": [
+        "retrieve data",
+        "detect missing environment information",
+        "complete report"
+      ],
+      "branch_options": [],
+      "toolsandbox_reference_result": {},
+      "reference_result_summary_present": false
+    },
+    "candidate_tools": [
+      "search_tool",
+      "write_tool",
+      "backup_write_tool"
+    ],
+    "simulated_policy": {
+      "mode": "cooperative",
+      "tool_switch_hints": {
+        "tool_id": "backup_write_tool"
+      }
+    }
+  },
+  {
+    "task_id": "toolsandbox_missing_info_002",
+    "scenario": "binding_failure",
+    "query": "retrieve and write report",
+    "target_path": "outputs/toolsandbox/reports/toolsandbox_missing_info_002.txt",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Retrieve the material and save it correctly even if some fields are omitted."
+      }
+    ],
+    "milestones": [
+      "retrieve data",
+      "repair missing argument",
+      "write artifact"
+    ],
+    "branch_options": [],
+    "tool_allow_list": [
+      "search_tool",
+      "write_tool"
+    ],
+    "ideal_turn_count": 2,
+    "ideal_tool_calls": 2,
+    "reference_result_summary": {},
+    "metadata": {
+      "benchmark": "toolsandbox",
+      "toolsandbox_categories": [
+        "insufficient_information",
+        "single_user_turn"
+      ],
+      "tool_allow_list": [
+        "search_tool",
+        "write_tool"
+      ],
+      "milestone_count": 3,
+      "ideal_turn_count": 2,
+      "ideal_tool_calls": 2,
+      "messages": [
+        {
+          "sender": "user",
+          "recipient": "agent",
+          "content": "Retrieve the material and save it correctly even if some fields are omitted."
+        }
+      ],
+      "milestones": [
+        "retrieve data",
+        "repair missing argument",
+        "write artifact"
+      ],
+      "branch_options": [],
+      "toolsandbox_reference_result": {},
+      "reference_result_summary_present": false
+    },
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ]
+  },
+  {
+    "task_id": "toolsandbox_multi_turn_approval_001",
+    "scenario": "multiple_user_turn",
+    "query": "retrieve and write report",
+    "target_path": "outputs/toolsandbox/reports/toolsandbox_multi_turn_approval_001.txt",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Before writing anything, confirm policy approval if needed and then continue."
+      }
+    ],
+    "milestones": [
+      "retrieve data",
+      "request approval",
+      "write artifact"
+    ],
+    "branch_options": [],
+    "tool_allow_list": [
+      "search_tool",
+      "write_tool"
+    ],
+    "ideal_turn_count": 3,
+    "ideal_tool_calls": 2,
+    "reference_result_summary": {},
+    "metadata": {
+      "benchmark": "toolsandbox",
+      "toolsandbox_categories": [
+        "multiple_user_turn",
+        "state_dependency"
+      ],
+      "tool_allow_list": [
+        "search_tool",
+        "write_tool"
+      ],
+      "milestone_count": 3,
+      "ideal_turn_count": 3,
+      "ideal_tool_calls": 2,
+      "messages": [
+        {
+          "sender": "user",
+          "recipient": "agent",
+          "content": "Before writing anything, confirm policy approval if needed and then continue."
+        }
+      ],
+      "milestones": [
+        "retrieve data",
+        "request approval",
+        "write artifact"
+      ],
+      "branch_options": [],
+      "toolsandbox_reference_result": {},
+      "reference_result_summary_present": false
+    },
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "constraints": {
+      "requires_user_approval": true,
+      "risk_level": "high"
+    },
+    "simulated_policy": {
+      "mode": "cooperative"
+    }
+  }
+]

@@ -1,0 +1,119 @@
+{
+  "run_id": "a0_baseline_tau_airline_test_00050",
+  "workflow_id": "wf_demo_001",
+  "task_id": "tau_airline_test_00050",
+  "phase": "phase1_training_free",
+  "metadata": {
+    "model_name": "baseline_executor",
+    "mode": "baseline",
+    "start_time": "2026-04-05T14:08:27.717136+00:00",
+    "end_time": "2026-04-05T14:08:27.717180+00:00",
+    "benchmark": null,
+    "task_source": null
+  },
+  "state_snapshots": [],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-05T14:08:27.717147+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "baseline_executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_call_step_01",
+      "timestamp": "2026-04-05T14:08:27.717154+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_call",
+      "actor": "baseline_executor",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": {
+        "query": "You are Emma Kim (user id is emma_kim_9957). You want to cancel reservation MDCLVA. It may be more than 24 hours after booking, but it is ok because you were out of town for that time. Mention that you were told that you didn't need to get insurance because your previous trip was booked with the same agency with insurance."
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_01",
+      "timestamp": "2026-04-05T14:08:27.717161+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "summary for: You are Emma Kim (user id is emma_kim_9957). You want to cancel reservation MDCLVA. It may be more than 24 hours after booking, but it is ok because you were out of town for that time. Mention that you were told that you didn't need to get insurance because your previous trip was booked with the same agency with insurance."
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_call_step_02",
+      "timestamp": "2026-04-05T14:08:27.717166+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_call",
+      "actor": "baseline_executor",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": {
+        "target_path": "outputs/tau_bench/reports/tau_airline_test_00050.txt"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_02",
+      "timestamp": "2026-04-05T14:08:27.717171+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "wrote artifact to outputs/tau_bench/reports/tau_airline_test_00050.txt"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_success",
+      "timestamp": "2026-04-05T14:08:27.717176+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "baseline_executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "reason": "success_criteria_satisfied"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 2,
+    "tool_calls": 2,
+    "user_queries": 0,
+    "repair_actions": 0,
+    "success": true,
+    "token_cost": null,
+    "latency_ms": null
+  }
+}

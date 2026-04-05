@@ -1,0 +1,17 @@
+{
+  "benchmark": "toolsandbox",
+  "source": "/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.json",
+  "normalized_taskset": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_bench_formal_fallback/prepared/toolsandbox.normalized.json",
+  "sample_count": 10,
+  "mode": "planner",
+  "systems": [
+    "a0_baseline",
+    "a1_recovery",
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_runs": 3,
+  "scoreboard_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_bench_formal_fallback/scoreboard.json",
+  "per_system_summary_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_bench_formal_fallback/per_system_summary.json"
+}

@@ -1,0 +1,14 @@
+{
+  "benchmark": "toolsandbox",
+  "source": "/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.official.json",
+  "normalized_taskset": "/cephfs/qiuyn/ToolClaw/outputs/exp/toolsandbox_core_persist_pass2/prepared/toolsandbox.normalized.json",
+  "sample_count": 10,
+  "mode": "planner",
+  "systems": [
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_runs": 3,
+  "scoreboard_path": "/cephfs/qiuyn/ToolClaw/outputs/exp/toolsandbox_core_persist_pass2/scoreboard.json",
+  "per_system_summary_path": "/cephfs/qiuyn/ToolClaw/outputs/exp/toolsandbox_core_persist_pass2/per_system_summary.json"
+}

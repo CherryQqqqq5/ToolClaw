@@ -1,0 +1,39 @@
+{
+  "asset_id": "sh_wf_toolsandbox_single_tool_001",
+  "asset_type": "SkillHint",
+  "task_signature": "phase1::family=t0_general::caps=cap_retrieve::fail=single_tool::goal=target_document_summary",
+  "payload": {
+    "hint_id": "sh_wf_toolsandbox_single_tool_001",
+    "task_signature": "phase1::family=t0_general::caps=cap_retrieve::fail=single_tool::goal=target_document_summary",
+    "step_pattern": [
+      "step_01"
+    ],
+    "trigger_conditions": [
+      "phase1_training_free"
+    ],
+    "version": 1,
+    "quality_score": 1.0,
+    "metadata": {
+      "state_keys": [
+        "__budget_spent__",
+        "__time_spent_ms__",
+        "retrieved_info"
+      ],
+      "compile_gate": {
+        "allow_compile": true,
+        "objective_active": true,
+        "objective_consistent": true,
+        "quality_score": 1.0,
+        "min_quality_score": 0.55,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 1.0,
+        "repair_score": 1.0,
+        "tool_calls": 1,
+        "user_queries": 0,
+        "repair_actions": 0,
+        "expected_tool_calls": 1,
+        "expected_turns": 1
+      }
+    }
+  }
+}
