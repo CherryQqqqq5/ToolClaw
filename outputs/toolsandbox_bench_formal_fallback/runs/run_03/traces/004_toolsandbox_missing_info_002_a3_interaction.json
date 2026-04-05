@@ -1,0 +1,374 @@
+{
+  "run_id": "a3_interaction_toolsandbox_missing_info_002",
+  "workflow_id": "wf_toolsandbox_missing_info_002",
+  "task_id": "toolsandbox_missing_info_002",
+  "phase": "phase1_training_free",
+  "metadata": {
+    "model_name": "phase1_executor",
+    "mode": "toolclaw",
+    "start_time": "2026-04-05T01:33:13.757694+00:00",
+    "end_time": "2026-04-05T01:33:13.758420+00:00",
+    "benchmark": null,
+    "task_source": null,
+    "toolsandbox_result": {
+      "similarity": 1.0,
+      "milestone_mapping": [
+        0,
+        1,
+        2
+      ],
+      "matched_milestones": 3,
+      "turn_count": 3,
+      "tool_calls": 2,
+      "success": true,
+      "source": "toolclaw_proxy",
+      "proxy_evaluation": true
+    },
+    "toolsandbox_result_source": "toolclaw_proxy"
+  },
+  "state_snapshots": [
+    {
+      "snapshot_id": "snap_01_start",
+      "timestamp": "2026-04-05T01:33:13.757752+00:00",
+      "active_step_id": "step_01",
+      "completed_steps": [],
+      "pending_steps": [
+        "step_02"
+      ],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {}
+    },
+    {
+      "snapshot_id": "snap_02_start",
+      "timestamp": "2026-04-05T01:33:13.757890+00:00",
+      "active_step_id": "step_02",
+      "completed_steps": [
+        "step_01"
+      ],
+      "pending_steps": [],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "retrieved_info": "summary for: retrieve and write report",
+        "__budget_spent__": 0.02,
+        "__time_spent_ms__": 150.0
+      }
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-05T01:33:13.757714+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-05T01:33:13.757733+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": true,
+        "missing_assets": [
+          "step_02.target_path"
+        ],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_01",
+      "timestamp": "2026-04-05T01:33:13.757815+00:00",
+      "step_id": "step_01",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "low"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_01",
+      "timestamp": "2026-04-05T01:33:13.757828+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": {
+        "query": "retrieve and write report"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_01",
+      "timestamp": "2026-04-05T01:33:13.757841+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "summary for: retrieve and write report"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_checkpoint_step_01",
+      "timestamp": "2026-04-05T01:33:13.757872+00:00",
+      "step_id": "step_01",
+      "event_type": "checkpoint_created",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "checkpoint_id": "cp_step_01"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_02",
+      "timestamp": "2026-04-05T01:33:13.757944+00:00",
+      "step_id": "step_02",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "medium"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_02",
+      "timestamp": "2026-04-05T01:33:13.757956+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": {},
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_repair_triggered_step_02",
+      "timestamp": "2026-04-05T01:33:13.758349+00:00",
+      "step_id": "step_02",
+      "event_type": "repair_triggered",
+      "actor": "recovery_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "repair_id": "rep_err_step_02",
+        "run_id": "a3_interaction_toolsandbox_missing_info_002",
+        "workflow_id": "wf_toolsandbox_missing_info_002",
+        "triggered_error_ids": [
+          "err_step_02"
+        ],
+        "trigger_event_id": null,
+        "phase": "phase1_training_free",
+        "repair_type": "rebind_args",
+        "decision": {
+          "strategy": "direct_patch",
+          "rationale": "Binding failure is treated as an argument-mapping error and patched by rebinding inputs.",
+          "confidence": 0.8,
+          "metadata": {}
+        },
+        "actions": [
+          {
+            "action_id": "act_patch_err_step_02",
+            "action_type": "state_patch",
+            "target": "step_02.inputs.target_path",
+            "value_source": "state://auto_bound_value",
+            "value": "target_path",
+            "metadata": {
+              "category": "binding_failure",
+              "subtype": "tool_execution_error"
+            }
+          },
+          {
+            "action_id": "act_retry_err_step_02",
+            "action_type": "re_execute_step",
+            "target": "step_02",
+            "value_source": null,
+            "value": null,
+            "metadata": {}
+          }
+        ],
+        "interaction": {
+          "ask_user": false,
+          "question": null,
+          "expected_answer_type": null,
+          "user_response": null
+        },
+        "workflow_patch": {
+          "modified_steps": [
+            "step_02"
+          ],
+          "reordered_steps": [],
+          "inserted_steps": [],
+          "removed_steps": [],
+          "metadata": {}
+        },
+        "graph_patch": {
+          "inserted_edges": [],
+          "removed_edges": [],
+          "node_updates": {}
+        },
+        "policy_patch": {
+          "approval_pending": null,
+          "approved_actions": [],
+          "budget_delta": 0.0,
+          "metadata": {}
+        },
+        "asset_patch": {
+          "missing_assets_resolved": {},
+          "metadata": {}
+        },
+        "post_conditions": {
+          "expected_effects": [
+            "tool arguments become valid",
+            "the failed step can be re-executed"
+          ],
+          "stop_if": [
+            "same binding_failure repeats twice",
+            "hard constraint violated"
+          ]
+        },
+        "result": {
+          "status": "pending",
+          "success": null,
+          "followup_error_id": null,
+          "message": null,
+          "metadata": {}
+        },
+        "timestamp": "2026-04-05T01:33:13.758044+00:00",
+        "metadata": {
+          "mapped_from_error_category": "binding_failure",
+          "phase": "phase1_training_free"
+        }
+      },
+      "message": null,
+      "metadata": {
+        "failtax_label": "binding_failure",
+        "root_cause": "missing or invalid tool arguments"
+      }
+    },
+    {
+      "event_id": "evt_repair_applied_step_02",
+      "timestamp": "2026-04-05T01:33:13.758374+00:00",
+      "step_id": "step_02",
+      "event_type": "repair_applied",
+      "actor": "executor",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "repair_type": "rebind_args",
+        "result": {
+          "status": "success",
+          "payload": "wrote artifact to target_path"
+        }
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_checkpoint_step_02",
+      "timestamp": "2026-04-05T01:33:13.758399+00:00",
+      "step_id": "step_02",
+      "event_type": "checkpoint_created",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "checkpoint_id": "cp_step_02"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_success",
+      "timestamp": "2026-04-05T01:33:13.758411+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "reason": "success_criteria_satisfied"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 2,
+    "tool_calls": 2,
+    "user_queries": 0,
+    "repair_actions": 1,
+    "success": true,
+    "token_cost": null,
+    "latency_ms": null
+  }
+}
