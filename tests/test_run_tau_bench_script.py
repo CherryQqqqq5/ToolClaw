@@ -53,3 +53,29 @@ def test_run_tau_bench_script_generates_scoreboard(tmp_path: Path) -> None:
     assert experiment_manifest["experiment_metadata"]["runner_script"].endswith("scripts/run_tau_bench.py")
     assert experiment_manifest["comparison_path"].endswith("comparison.csv")
     assert len(experiment_manifest["archived_files"]) >= 1
+
+    check_completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/check_benchmark_consistency.py",
+            "--outdir",
+            str(outdir),
+            "--expected-systems",
+            "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+            "--expected-source",
+            str(source),
+            "--expected-config",
+            "configs/benchmark_tau.yaml",
+            "--expected-model-version",
+            "phase1_executor",
+            "--expected-num-runs",
+            "1",
+        ],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert check_completed.returncode == 0
+    assert "CONSISTENCY CHECK: PASSED" in check_completed.stdout

@@ -119,6 +119,11 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "state_dependency" in per_category_md
     assert "result_summary_coverage" in per_category_md
     assert "| a0_baseline | state_dependency | 1 | 1.000" in per_category_md
+    per_category_json = json.loads(per_category_json_path.read_text(encoding="utf-8"))
+    assert "a0_baseline" in per_category_json
+    assert "per_category" not in per_category_json["a0_baseline"]
+    assert "state_dependency" in per_category_json["a0_baseline"]
+    assert float(per_category_json["a0_baseline"]["state_dependency"]["success_rate"]) == 1.0
 
     report = report_path.read_text(encoding="utf-8")
     assert "ToolSandbox Benchmark Report" in report
@@ -141,6 +146,32 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     )
     assert trace_payload["metadata"]["toolsandbox_result"]["source"] == "toolclaw_proxy"
     assert trace_payload["metadata"]["toolsandbox_result_source"] == "toolclaw_proxy"
+
+    check_completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/check_benchmark_consistency.py",
+            "--outdir",
+            str(outdir),
+            "--expected-systems",
+            "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+            "--expected-source",
+            str(source_path),
+            "--expected-config",
+            "configs/benchmark_toolsandbox.yaml",
+            "--expected-model-version",
+            "phase1_executor",
+            "--expected-num-runs",
+            "1",
+        ],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert check_completed.returncode == 0
+    assert "CONSISTENCY CHECK: PASSED" in check_completed.stdout
 
 
 def test_run_toolsandbox_bench_script_writes_combined_comparison_across_runs(tmp_path: Path) -> None:
@@ -265,7 +296,7 @@ def test_run_toolsandbox_bench_summary_recomputes_from_scored_rows(tmp_path: Pat
     }
     category_json = json.loads((outdir / "per_category_summary.json").read_text(encoding="utf-8"))
     for system, system_stats in category_json.items():
-        for category, category_stats in system_stats["per_category"].items():
+        for category, category_stats in system_stats.items():
             expected = float(category_stats["result_summary_coverage"])
             key = (system, category)
             assert report_category_rows[key] == expected

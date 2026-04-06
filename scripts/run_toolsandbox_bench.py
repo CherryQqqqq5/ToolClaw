@@ -248,7 +248,11 @@ def _write_toolsandbox_artifacts(summary: Dict[str, Any], outdir: Path) -> None:
         group_key="per_category",
         metrics=TOOLSANDBOX_GROUP_METRICS,
     )
-    (outdir / "per_category_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    per_category_summary = {
+        system: dict(system_summary.get("per_category", {}))
+        for system, system_summary in summary.items()
+    }
+    (outdir / "per_category_summary.json").write_text(json.dumps(per_category_summary, indent=2), encoding="utf-8")
     focused_summary = _focused_slice_summary(summary)
     (outdir / "focused_slice_summary.json").write_text(json.dumps(focused_summary, indent=2), encoding="utf-8")
     _write_focused_slice_markdown(focused_summary, outdir / "focused_slice_summary.md")
