@@ -71,6 +71,11 @@ class RepairApplyResult:
     followup_error: Optional[ToolClawError] = None
 
 
+@dataclass
+class ExecutorConfig:
+    allow_repair: bool = True
+
+
 class SequentialExecutor:
     """Minimal sequential executor for phase-1 end-to-end traces."""
 
@@ -80,11 +85,13 @@ class SequentialExecutor:
         policy_engine: Optional[PolicyEngine] = None,
         failtax_classifier: Optional[FailTaxClassifier] = None,
         planner: Optional["HTGPPlanner"] = None,
+        config: Optional[ExecutorConfig] = None,
     ) -> None:
         self.recovery_engine = recovery_engine or RecoveryEngine()
         self.policy_engine = policy_engine or PolicyEngine()
         self.failtax_classifier = failtax_classifier or FailTaxClassifier()
         self.planner = planner
+        self.config = config or ExecutorConfig()
 
     def run(
         self,
@@ -289,6 +296,27 @@ class SequentialExecutor:
             tracker.mark_failed(step.step_id)
             failure_record = self.failtax_classifier.classify_failure(step_result.error, step=step, state_values=tracker.state_values)
             step_result.error.failtax_label = failure_record.failtax_label.value
+            if not self.config.allow_repair:
+                trace.add_event(
+                    event_id="evt_stop_failed",
+                    event_type=EventType.STOP,
+                    actor="executor",
+                    step_id=step.step_id,
+                    tool_id=step.tool_id,
+                    output={"status": "failed", "reason": "repair_disabled"},
+                    metadata={"failtax_label": failure_record.failtax_label.value, "root_cause": failure_record.root_cause},
+                )
+                trace.finalize(success=False, total_steps=len(workflow.execution_plan))
+                self._write_trace(trace, output_path)
+                return ExecutionOutcome(
+                    run_id=run_id,
+                    workflow=workflow,
+                    success=False,
+                    final_state=dict(tracker.state_values),
+                    trace_path=output_path,
+                    last_error_id=step_result.error.error_id,
+                    metadata={"stopped_reason": "repair_disabled"},
+                )
             backup_tool_id = backup_tool_map.get(step.tool_id or "")
             try:
                 repair = self.recovery_engine.plan_repair(step_result.error, backup_tool_id=backup_tool_id)

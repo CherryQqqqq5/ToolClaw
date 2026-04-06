@@ -22,6 +22,13 @@ class EvalRow:
     repair_triggered: int
     user_turns: int
     total_steps: int
+    token_cost: float
+    wall_clock_ms: int
+    observed_error_type: str
+    first_failure_recovered: bool
+    repair_extra_tool_calls: int
+    repair_extra_user_turns: int
+    repair_user_clarification: bool
     reuse_pass_index: int
     reused_artifact: bool
     second_run_improvement: float
@@ -46,6 +53,13 @@ def write_rows_csv(rows: Iterable[EvalRow], csv_path: Path) -> None:
                 "repair_triggered",
                 "user_turns",
                 "total_steps",
+                "token_cost",
+                "wall_clock_ms",
+                "observed_error_type",
+                "first_failure_recovered",
+                "repair_extra_tool_calls",
+                "repair_extra_user_turns",
+                "repair_user_clarification",
                 "reuse_pass_index",
                 "reused_artifact",
                 "second_run_improvement",
@@ -80,6 +94,13 @@ def summarize_by_failure_type(rows: List[EvalRow]) -> Dict[Tuple[str, str], Dict
     grouped: Dict[Tuple[str, str], List[EvalRow]] = {}
     for row in rows:
         grouped.setdefault((row.system, row.failure_type), []).append(row)
+    return {key: _aggregate_rows(group_rows) for key, group_rows in grouped.items()}
+
+
+def summarize_by_observed_error_type(rows: List[EvalRow]) -> Dict[Tuple[str, str], Dict[str, float]]:
+    grouped: Dict[Tuple[str, str], List[EvalRow]] = {}
+    for row in rows:
+        grouped.setdefault((row.system, row.observed_error_type), []).append(row)
     return {key: _aggregate_rows(group_rows) for key, group_rows in grouped.items()}
 
 
@@ -128,6 +149,7 @@ def write_report_md(
 ) -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
     failure_summary = summarize_by_failure_type(rows)
+    observed_error_summary = summarize_by_observed_error_type(rows)
     family_summary = summarize_by_task_family(rows)
     repeated_family_summary = summarize_repeated_families(rows)
 
@@ -136,13 +158,13 @@ def write_report_md(
         "",
         "## Aggregate Comparison",
         "",
-        "| system | tasks | success_rate | repair_success_rate | avg_tool_calls | avg_user_turns | avg_repair_actions | avg_total_steps | fail_stop_rate | reuse_usage_rate | mean_second_run_improvement |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| system | tasks | success_rate | repair_success_rate | avg_tool_calls | avg_user_turns | avg_repair_actions | avg_total_steps | avg_token_cost | avg_wall_clock_ms | fail_stop_rate | reuse_usage_rate | mean_second_run_improvement |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
 
     for system, stats in summary.items():
         lines.append(
-            f"| {system} | {int(stats['num_tasks'])} | {stats['success_rate']:.3f} | {stats['repair_success_rate']:.3f} | {stats['avg_tool_calls']:.2f} | {stats['avg_user_turns']:.2f} | {stats['avg_repair_actions']:.2f} | {stats['avg_total_steps']:.2f} | {stats['fail_stop_rate']:.3f} | {stats['reuse_usage_rate']:.3f} | {stats['mean_second_run_improvement']:.3f} |"
+            f"| {system} | {int(stats['num_tasks'])} | {stats['success_rate']:.3f} | {stats['repair_success_rate']:.3f} | {stats['avg_tool_calls']:.2f} | {stats['avg_user_turns']:.2f} | {stats['avg_repair_actions']:.2f} | {stats['avg_total_steps']:.2f} | {stats['avg_token_cost']:.3f} | {stats['avg_wall_clock_ms']:.1f} | {stats['fail_stop_rate']:.3f} | {stats['reuse_usage_rate']:.3f} | {stats['mean_second_run_improvement']:.3f} |"
         )
 
     a0 = summary.get("a0_baseline") or summary.get("baseline")
@@ -161,6 +183,8 @@ def write_report_md(
                 f"| success_rate | {a4['success_rate'] - a0['success_rate']:+.3f} |",
                 f"| avg_tool_calls | {a4['avg_tool_calls'] - a0['avg_tool_calls']:+.2f} |",
                 f"| avg_user_turns | {a4['avg_user_turns'] - a0['avg_user_turns']:+.2f} |",
+                f"| avg_token_cost | {a4['avg_token_cost'] - a0['avg_token_cost']:+.3f} |",
+                f"| avg_wall_clock_ms | {a4['avg_wall_clock_ms'] - a0['avg_wall_clock_ms']:+.1f} |",
                 f"| fail_stop_rate | {a4['fail_stop_rate'] - a0['fail_stop_rate']:+.3f} |",
                 f"| reuse_usage_rate | {a4['reuse_usage_rate'] - a0['reuse_usage_rate']:+.3f} |",
                 f"| mean_second_run_improvement | {a4['mean_second_run_improvement'] - a0['mean_second_run_improvement']:+.3f} |",
@@ -196,13 +220,13 @@ def write_report_md(
             "",
             "## Per-Task Results",
             "",
-            "| task_id | task_family | system | success | tool_calls | repair_actions | user_turns | stop_reason | failure_type | reused_artifact | second_run_improvement |",
-            "|---|---|---|---:|---:|---:|---:|---|---|---:|---:|",
+            "| task_id | task_family | system | success | tool_calls | repair_actions | user_turns | repair_extra_tool_calls | repair_extra_user_turns | stop_reason | failure_type | observed_error_type | reused_artifact | second_run_improvement |",
+            "|---|---|---|---:|---:|---:|---:|---:|---:|---|---|---|---:|---:|",
         ]
     )
     for row in rows:
         lines.append(
-            f"| {row.task_id} | {row.task_family} | {row.system} | {1.0 if row.success else 0.0:.0f} | {row.tool_calls} | {row.repair_actions} | {row.user_turns} | {row.stop_reason} | {row.failure_type} | {1.0 if row.reused_artifact else 0.0:.0f} | {row.second_run_improvement:.3f} |"
+            f"| {row.task_id} | {row.task_family} | {row.system} | {1.0 if row.success else 0.0:.0f} | {row.tool_calls} | {row.repair_actions} | {row.user_turns} | {row.repair_extra_tool_calls} | {row.repair_extra_user_turns} | {row.stop_reason} | {row.failure_type} | {row.observed_error_type} | {1.0 if row.reused_artifact else 0.0:.0f} | {row.second_run_improvement:.3f} |"
         )
 
     lines.extend(
@@ -231,6 +255,20 @@ def write_report_md(
     for (system, failure_type), stats in sorted(failure_summary.items()):
         lines.append(
             f"| {system} | {failure_type} | {int(stats['num_tasks'])} | {stats['success_rate']:.3f} | {stats['repair_success_rate']:.3f} | {stats['fail_stop_rate']:.3f} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Observed Error-Type Breakdown",
+            "",
+            "| system | observed_error_type | tasks | success_rate | repair_success_rate | first_failure_recovery_rate | clarification_rate |",
+            "|---|---|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for (system, observed_error_type), stats in sorted(observed_error_summary.items()):
+        lines.append(
+            f"| {system} | {observed_error_type} | {int(stats['num_tasks'])} | {stats['success_rate']:.3f} | {stats['repair_success_rate']:.3f} | {stats['first_failure_recovery_rate']:.3f} | {stats['repair_user_clarification_rate']:.3f} |"
         )
 
     lines.extend(
@@ -280,6 +318,20 @@ def write_report_md(
             ]
         )
 
+    lines.extend(
+        [
+            "",
+            "## Recovery And Cost",
+            "",
+            "| system | first_failure_recovery_rate | avg_repair_extra_tool_calls | avg_repair_extra_user_turns | clarification_rate | avg_token_cost | avg_wall_clock_ms |",
+            "|---|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for system, stats in summary.items():
+        lines.append(
+            f"| {system} | {stats['first_failure_recovery_rate']:.3f} | {stats['avg_repair_extra_tool_calls']:.2f} | {stats['avg_repair_extra_user_turns']:.2f} | {stats['repair_user_clarification_rate']:.3f} | {stats['avg_token_cost']:.3f} | {stats['avg_wall_clock_ms']:.1f} |"
+        )
+
     verdict = "inconclusive"
     if a0 and a4:
         if a4["success_rate"] > a0["success_rate"]:
@@ -318,6 +370,12 @@ def _aggregate_rows(rows: List[EvalRow]) -> Dict[str, float]:
         "avg_user_turns": mean(r.user_turns for r in rows),
         "avg_repair_actions": mean(r.repair_actions for r in rows),
         "avg_total_steps": mean(r.total_steps for r in rows),
+        "avg_token_cost": mean(r.token_cost for r in rows),
+        "avg_wall_clock_ms": mean(r.wall_clock_ms for r in rows),
+        "first_failure_recovery_rate": _first_failure_recovery_rate(rows),
+        "avg_repair_extra_tool_calls": mean(r.repair_extra_tool_calls for r in rows),
+        "avg_repair_extra_user_turns": mean(r.repair_extra_user_turns for r in rows),
+        "repair_user_clarification_rate": mean(1.0 if r.repair_user_clarification else 0.0 for r in rows),
         "fail_stop_rate": mean(0.0 if r.success else 1.0 for r in rows),
         "reuse_usage_rate": mean(1.0 if r.reused_artifact else 0.0 for r in rows),
         "mean_second_run_improvement": mean(r.second_run_improvement for r in rows),
@@ -329,6 +387,13 @@ def _repair_success_rate(rows: List[EvalRow]) -> float:
     if not repaired_rows:
         return 0.0
     return mean(1.0 if row.success else 0.0 for row in repaired_rows)
+
+
+def _first_failure_recovery_rate(rows: List[EvalRow]) -> float:
+    failure_rows = [row for row in rows if row.observed_error_type != "none"]
+    if not failure_rows:
+        return 0.0
+    return mean(1.0 if row.first_failure_recovered else 0.0 for row in failure_rows)
 
 
 def _repeat_family_key(task_id: str) -> str:

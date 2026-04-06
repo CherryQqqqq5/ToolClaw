@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean
 from typing import Any, Callable, Dict, List, Optional, Sequence
@@ -259,6 +260,8 @@ def finalize_outputs(
     comparison_filename: Optional[str] = "comparison.csv",
     latest_comparison_filename: Optional[str] = "latest_run_comparison.csv",
     extra_output_writers: Optional[Callable[[Dict[str, Any], Path], None]] = None,
+    experiment_metadata: Optional[Dict[str, Any]] = None,
+    archive_files: Optional[Sequence[Path]] = None,
 ) -> None:
     latest_run_outdir = outdir / "runs" / f"run_{num_runs:02d}"
     latest_comparison = latest_run_outdir / "comparison.csv"
@@ -295,6 +298,34 @@ def finalize_outputs(
         "per_system_summary_path": str(per_system_summary_path.resolve()),
     }
     (prepared_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    archive_dir = outdir / "archive"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    archived_files: List[str] = []
+    for candidate in archive_files or []:
+        path = Path(candidate)
+        if not path.exists() or not path.is_file():
+            continue
+        destination = archive_dir / path.name
+        shutil.copy2(path, destination)
+        archived_files.append(str(destination.resolve()))
+
+    experiment_manifest = {
+        "benchmark": benchmark_name,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": str(Path(source).resolve()),
+        "normalized_taskset": str(normalized_path.resolve()),
+        "mode": mode,
+        "systems": list(systems),
+        "num_runs": num_runs,
+        "scoreboard_path": str(scoreboard_path.resolve()),
+        "report_path": str((outdir / "report.md").resolve()) if (outdir / "report.md").exists() else None,
+        "comparison_path": str((outdir / comparison_filename).resolve()) if comparison_filename and (outdir / comparison_filename).exists() else None,
+        "per_system_summary_path": str(per_system_summary_path.resolve()),
+        "archived_files": archived_files,
+        "experiment_metadata": dict(experiment_metadata or {}),
+    }
+    (outdir / "experiment_manifest.json").write_text(json.dumps(experiment_manifest, indent=2), encoding="utf-8")
 
     if not keep_normalized_taskset:
         temp_copy = Path(tempfile.gettempdir()) / f"toolclaw_{benchmark_name}_{os.getpid()}.json"

@@ -66,6 +66,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=None, help="Limit number of samples")
     parser.add_argument("--smoke", action="store_true", help="Run a small smoke slice (min(limit, 10))")
     parser.add_argument("--num-runs", type=int, default=1, help="Repeat runs to estimate pass^k and consistency")
+    parser.add_argument("--seed", type=int, default=0, help="Recorded experiment seed for archive manifest")
+    parser.add_argument("--model-version", default="phase1_executor", help="Recorded model/runtime version for archive manifest")
+    parser.add_argument("--budget-note", default="default phase1 budget", help="Recorded budget note for archive manifest")
+    parser.add_argument("--config-file", default=str(ROOT_DIR / "configs" / "benchmark_tau.yaml"), help="Primary benchmark config file to archive")
+    parser.add_argument("--phase-config", default=str(ROOT_DIR / "configs" / "phase1.yaml"), help="Phase config file to archive")
     parser.add_argument("--keep-normalized-taskset", action="store_true", help="Keep the normalized taskset JSON file")
     return parser.parse_args()
 
@@ -135,6 +140,19 @@ def main() -> None:
         config=TAU_BENCH_CONFIG,
         keep_normalized_taskset=args.keep_normalized_taskset,
         run_entries=scoreboard.get("runs"),
+        experiment_metadata={
+            "seed": args.seed,
+            "model_version": args.model_version,
+            "budget_note": args.budget_note,
+            "runner_script": str(Path(__file__).resolve()),
+            "config_file": str(Path(args.config_file).resolve()),
+            "phase_config": str(Path(args.phase_config).resolve()),
+        },
+        archive_files=[
+            Path(__file__).resolve(),
+            Path(args.config_file),
+            Path(args.phase_config),
+        ],
     )
 
     print(f"prepared tau-bench taskset: {normalized_path}")

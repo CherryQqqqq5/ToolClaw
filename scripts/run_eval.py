@@ -27,7 +27,8 @@ from toolclaw.benchmarks.metrics import (
     write_rows_csv,
 )
 from toolclaw.compiler.swpc import SWPCCompiler, build_task_signature_candidates
-from toolclaw.execution.executor import SequentialExecutor
+from toolclaw.execution.executor import ExecutorConfig, SequentialExecutor
+from toolclaw.execution.recovery import RecoveryConfig, RecoveryEngine
 from toolclaw.interaction.irc import InteractionLoopConfig, InteractionShell
 from toolclaw.interaction.repair_updater import RepairUpdater
 from toolclaw.interaction.user_simulator import SimulatedPolicy
@@ -44,6 +45,8 @@ class SystemSpec:
     execution_mode: str
     compile_on_success: bool = False
     use_reuse: bool = False
+    allow_repair: bool = True
+    allow_fallback: bool = True
 
 
 SYSTEM_SPECS: Dict[str, SystemSpec] = {
@@ -63,6 +66,51 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         execution_mode="interaction",
         compile_on_success=True,
         use_reuse=True,
+    ),
+    "tc_full": SystemSpec(
+        system_id="tc_full",
+        workflow_mode="planner",
+        execution_mode="interaction",
+        compile_on_success=True,
+        use_reuse=True,
+        allow_repair=True,
+        allow_fallback=True,
+    ),
+    "tc_no_repair": SystemSpec(
+        system_id="tc_no_repair",
+        workflow_mode="planner",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=False,
+        allow_fallback=False,
+    ),
+    "tc_no_fallback": SystemSpec(
+        system_id="tc_no_fallback",
+        workflow_mode="planner",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=False,
+    ),
+    "tc_no_reuse": SystemSpec(
+        system_id="tc_no_reuse",
+        workflow_mode="planner",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+    ),
+    "tc_planner_only": SystemSpec(
+        system_id="tc_planner_only",
+        workflow_mode="planner",
+        execution_mode="executor",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
     ),
 }
 
@@ -237,11 +285,27 @@ def parse_args() -> argparse.Namespace:
 
 
 def build_runtime(asset_registry: Optional[AssetRegistry] = None) -> ToolClawRuntime:
+    return build_runtime_for_spec(
+        asset_registry=asset_registry,
+        spec=SYSTEM_SPECS["a4_reuse"],
+    )
+
+
+def build_runtime_for_spec(
+    *,
+    spec: SystemSpec,
+    asset_registry: Optional[AssetRegistry] = None,
+) -> ToolClawRuntime:
     registry = asset_registry or InMemoryAssetRegistry()
     planner = build_default_planner(asset_registry=registry)
     return ToolClawRuntime(
         planner=planner,
-        executor=SequentialExecutor(),
+        executor=SequentialExecutor(
+            recovery_engine=RecoveryEngine(
+                RecoveryConfig(enable_tool_fallback=spec.allow_fallback)
+            ),
+            config=ExecutorConfig(allow_repair=spec.allow_repair),
+        ),
         repair_updater=RepairUpdater(),
         compiler=SWPCCompiler(),
         asset_registry=registry,
@@ -420,6 +484,18 @@ def row_from_trace(
     stop_event = next((event for event in reversed(events) if event.get("event_type") == "stop"), None)
     stop_reason = stop_event.get("output", {}).get("reason", "unknown") if isinstance(stop_event, dict) else "unknown"
     repair_triggered = sum(1 for event in events if event.get("event_type") == "repair_triggered")
+    first_repair_index = next((idx for idx, event in enumerate(events) if event.get("event_type") == "repair_triggered"), None)
+    observed_error_type = derive_failure_type(task, scenario)
+    if first_repair_index is not None:
+        observed_error_type = str(events[first_repair_index].get("metadata", {}).get("failtax_label") or observed_error_type)
+    elif stop_reason == "repair_disabled":
+        observed_error_type = str(trace_payload.get("metadata", {}).get("scenario") or observed_error_type)
+    repair_extra_tool_calls = 0
+    repair_extra_user_turns = 0
+    if first_repair_index is not None:
+        trailing_events = events[first_repair_index + 1 :]
+        repair_extra_tool_calls = sum(1 for event in trailing_events if event.get("event_type") == "tool_call")
+        repair_extra_user_turns = sum(1 for event in trailing_events if event.get("event_type") == "user_query")
     return EvalRow(
         task_id=task_id,
         system=system,
@@ -432,6 +508,13 @@ def row_from_trace(
         repair_triggered=repair_triggered,
         user_turns=int(metrics.get("user_queries", 0)),
         total_steps=int(metrics.get("total_steps", 0)),
+        token_cost=float(metrics.get("token_cost", 0.0) or 0.0),
+        wall_clock_ms=int(metrics.get("latency_ms", 0) or 0),
+        observed_error_type=observed_error_type,
+        first_failure_recovered=bool(repair_triggered > 0 and metrics.get("success")),
+        repair_extra_tool_calls=repair_extra_tool_calls,
+        repair_extra_user_turns=repair_extra_user_turns,
+        repair_user_clarification=bool(repair_extra_user_turns > 0),
         reuse_pass_index=parse_reuse_pass_index(task_id, task),
         reused_artifact=reused_artifact,
         second_run_improvement=0.0,
@@ -505,6 +588,13 @@ def execute_system(
             repair_triggered=0,
             user_turns=0,
             total_steps=baseline_trace.metrics.total_steps,
+            token_cost=float(baseline_trace.metrics.token_cost or 0.0),
+            wall_clock_ms=int(baseline_trace.metrics.latency_ms or 0),
+            observed_error_type="none" if baseline_trace.metrics.success else failure_type,
+            first_failure_recovered=False,
+            repair_extra_tool_calls=0,
+            repair_extra_user_turns=0,
+            repair_user_clarification=False,
             reuse_pass_index=parse_reuse_pass_index(task_id, task),
             reused_artifact=False,
             second_run_improvement=0.0,
@@ -579,7 +669,7 @@ def main() -> None:
         asset_registry: Optional[AssetRegistry] = None
         if asset_registry_root is not None:
             asset_registry = FileAssetRegistry(str(asset_registry_root / spec.system_id))
-        runtimes[spec.system_id] = build_runtime(asset_registry=asset_registry)
+        runtimes[spec.system_id] = build_runtime_for_spec(spec=spec, asset_registry=asset_registry)
 
     tasks = json.loads(taskset_path.read_text(encoding="utf-8"))
     if not isinstance(tasks, list):

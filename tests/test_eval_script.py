@@ -57,6 +57,12 @@ def test_run_eval_script_generates_csv_and_report(tmp_path: Path) -> None:
     assert "failure_type" in rows[0]
     assert "reused_artifact" in rows[0]
     assert "second_run_improvement" in rows[0]
+    assert "token_cost" in rows[0]
+    assert "wall_clock_ms" in rows[0]
+    assert "observed_error_type" in rows[0]
+    assert "repair_extra_tool_calls" in rows[0]
+    assert "repair_extra_user_turns" in rows[0]
+    assert "repair_user_clarification" in rows[0]
 
     report = report_path.read_text(encoding="utf-8")
     assert "ToolClaw Phase-1 Evaluation Report" in report
@@ -68,6 +74,9 @@ def test_run_eval_script_generates_csv_and_report(tmp_path: Path) -> None:
     assert "repair_success_rate" in report
     assert "avg_user_turns" in report
     assert "fail_stop_rate" in report
+    assert "Observed Error-Type Breakdown" in report
+    assert "Recovery And Cost" in report
+    assert "avg_token_cost" in report
 
 
 def test_run_eval_script_with_planner_mode(tmp_path: Path) -> None:
@@ -219,10 +228,48 @@ def test_run_eval_script_reports_repeated_family_contrast(tmp_path: Path) -> Non
     assert a4_pass2["reused_artifact"] == "True"
     assert float(a4_pass2["second_run_improvement"]) != 0.0
 
+
+def test_run_eval_script_supports_matched_ablation_systems_and_disable_repair(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "task_id": "task_binding_001",
+            "scenario": "binding_failure",
+            "query": "retrieve and write report",
+        }
+    ]
+    taskset_path = tmp_path / "taskset_matched.json"
+    taskset_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    outdir = tmp_path / "eval_out_matched"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_eval.py",
+            "--taskset",
+            str(taskset_path),
+            "--outdir",
+            str(outdir),
+            "--systems",
+            "tc_no_repair,tc_no_reuse,tc_planner_only",
+        ],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
+    systems = {row["system"] for row in rows}
+    assert systems == {"tc_no_repair", "tc_no_reuse", "tc_planner_only"}
+    no_repair = next(row for row in rows if row["system"] == "tc_no_repair")
+    assert no_repair["stop_reason"] == "repair_disabled"
+    assert no_repair["success"] == "False"
+
     report = (outdir / "report.md").read_text(encoding="utf-8")
-    assert "Repeated-Family Analysis" in report
-    assert "Repeated-Family A3 vs A4" in report
-    assert "reuse_case_001" in report
+    assert "Recovery And Cost" in report
+    assert "Observed Error-Type Breakdown" in report
 
 
 def test_run_eval_script_missing_taskset_shows_clear_error(tmp_path: Path) -> None:

@@ -43,8 +43,13 @@ def test_run_tau_bench_script_generates_scoreboard(tmp_path: Path) -> None:
     assert completed.returncode == 0
     assert (outdir / "scoreboard.json").exists()
     assert (outdir / "per_system_summary.json").exists()
+    assert (outdir / "experiment_manifest.json").exists()
 
     scoreboard = json.loads((outdir / "scoreboard.json").read_text(encoding="utf-8"))
     assert scoreboard["benchmark"] == "tau_bench"
     assert scoreboard["num_samples"] == 1
     assert set(scoreboard["systems"]) == {"a0_baseline", "a1_recovery", "a2_planner", "a3_interaction", "a4_reuse"}
+    experiment_manifest = json.loads((outdir / "experiment_manifest.json").read_text(encoding="utf-8"))
+    assert experiment_manifest["experiment_metadata"]["runner_script"].endswith("scripts/run_tau_bench.py")
+    assert experiment_manifest["comparison_path"].endswith("comparison.csv")
+    assert len(experiment_manifest["archived_files"]) >= 1

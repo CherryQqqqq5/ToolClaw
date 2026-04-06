@@ -26,6 +26,7 @@ from toolclaw.schemas.repair import (
 class RecoveryConfig:
     ask_user_on_environment_failure_without_backup: bool = True
     default_binding_patch_source: str = "state://auto_bound_value"
+    enable_tool_fallback: bool = True
 
 
 class RecoveryEngine:
@@ -139,7 +140,7 @@ class RecoveryEngine:
         step_id = error.step_id or "unknown_step"
         failed_tool_id = error.evidence.tool_id
 
-        if backup_tool_id:
+        if backup_tool_id and self.config.enable_tool_fallback:
             return Repair(
                 repair_id=f"rep_{error.error_id}",
                 run_id=error.run_id,

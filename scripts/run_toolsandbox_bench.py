@@ -95,6 +95,13 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "raw_repair_actions": int(raw_row.get("repair_actions", 0) or 0),
         "raw_repair_triggered": int(raw_row.get("repair_triggered", 0) or 0),
         "raw_total_steps": int(raw_row.get("total_steps", 0) or 0),
+        "raw_token_cost": float(raw_row.get("token_cost", 0.0) or 0.0),
+        "raw_wall_clock_ms": int(raw_row.get("wall_clock_ms", 0) or 0),
+        "observed_error_type": str(raw_row.get("observed_error_type", raw_row.get("failure_type", "none"))),
+        "first_failure_recovered": _bool_from_value(raw_row.get("first_failure_recovered", "False")),
+        "repair_extra_tool_calls": int(raw_row.get("repair_extra_tool_calls", 0) or 0),
+        "repair_extra_user_turns": int(raw_row.get("repair_extra_user_turns", 0) or 0),
+        "repair_user_clarification": _bool_from_value(raw_row.get("repair_user_clarification", "False")),
         "reuse_pass_index": int(raw_row.get("reuse_pass_index", 0) or 0),
         "reused_artifact": _bool_from_value(raw_row.get("reused_artifact", "False")),
         "second_run_improvement": float(raw_row.get("second_run_improvement", 0.0) or 0.0),
@@ -219,6 +226,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional root for file-backed reusable assets. Each benchmark repetition uses a separate subdirectory under this root.",
     )
+    parser.add_argument("--seed", type=int, default=0, help="Recorded experiment seed for archive manifest")
+    parser.add_argument("--model-version", default="phase1_executor", help="Recorded model/runtime version for archive manifest")
+    parser.add_argument("--budget-note", default="default phase1 budget", help="Recorded budget note for archive manifest")
+    parser.add_argument("--config-file", default=str(ROOT_DIR / "configs" / "benchmark_toolsandbox.yaml"), help="Primary benchmark config file to archive")
+    parser.add_argument("--phase-config", default=str(ROOT_DIR / "configs" / "phase1.yaml"), help="Phase config file to archive")
     parser.add_argument(
         "--require-result-summary",
         action="store_true",
@@ -538,6 +550,21 @@ def main() -> None:
         comparison_filename=None,
         latest_comparison_filename=None,
         extra_output_writers=_write_toolsandbox_artifacts,
+        experiment_metadata={
+            "seed": args.seed,
+            "model_version": args.model_version,
+            "budget_note": args.budget_note,
+            "runner_script": str(Path(__file__).resolve()),
+            "config_file": str(Path(args.config_file).resolve()),
+            "phase_config": str(Path(args.phase_config).resolve()),
+            "official_run_dir": args.official_run_dir,
+            "official_data_root": str(Path(args.official_data_root).resolve()),
+        },
+        archive_files=[
+            Path(__file__).resolve(),
+            Path(args.config_file),
+            Path(args.phase_config),
+        ],
     )
     write_csv_rows(raw_run_rows, outdir / "comparison.raw.csv")
     write_csv_rows(scored_run_rows, outdir / "comparison.scored.csv")
