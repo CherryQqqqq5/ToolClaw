@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -11,6 +12,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 SRC_DIR = ROOT_DIR / "src"
+MATCHED_RUNNER = ROOT_DIR / "scripts" / "run_toolsandbox_bench.py"
 
 MATCHED_SYSTEMS = "tc_full,tc_no_repair,tc_no_fallback,tc_no_reuse,tc_planner_only"
 
@@ -36,7 +38,7 @@ def main() -> None:
     args = parse_args()
     cmd = [
         sys.executable,
-        str(ROOT_DIR / "scripts" / "run_toolsandbox_bench.py"),
+        str(MATCHED_RUNNER),
         "--source",
         args.source,
         "--outdir",
@@ -71,6 +73,15 @@ def main() -> None:
         env={**os.environ, "PYTHONPATH": str(SRC_DIR)},
         check=False,
     )
+    if completed.returncode == 0:
+        manifest_path = Path(args.outdir) / "experiment_manifest.json"
+        if manifest_path.exists():
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            metadata = dict(manifest.get("experiment_metadata", {}))
+            metadata["runner_script"] = str(Path(__file__).resolve())
+            metadata["delegated_runner_script"] = str(MATCHED_RUNNER.resolve())
+            manifest["experiment_metadata"] = metadata
+            manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     raise SystemExit(completed.returncode)
 
 

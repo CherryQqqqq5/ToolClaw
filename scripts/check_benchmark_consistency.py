@@ -171,6 +171,8 @@ def _check_category_summary(
 
 def _check_manifest(
     manifest: Dict[str, Any],
+    outdir: Path,
+    comparison_path: Path,
     expected_source: str | None,
     expected_config: str | None,
     expected_model_version: str | None,
@@ -179,6 +181,15 @@ def _check_manifest(
     errors: List[str],
 ) -> None:
     metadata = manifest.get("experiment_metadata", {})
+    manifest_comparison = manifest.get("comparison_path")
+    if comparison_path.exists() and not manifest_comparison:
+        errors.append("manifest comparison_path is null even though comparison output exists")
+    if manifest_comparison and _resolve_path(manifest_comparison) != _resolve_path(str(comparison_path)):
+        errors.append("manifest comparison_path does not match the benchmark comparison file")
+    for field_name in ("comparison_raw_path", "comparison_scored_path"):
+        field_value = manifest.get(field_name)
+        if field_value and not Path(field_value).exists():
+            errors.append(f"manifest {field_name} points to a missing file")
     if expected_source is not None and _resolve_path(manifest.get("source")) != _resolve_path(expected_source):
         errors.append("manifest source does not match expected CLI source")
     if expected_config is not None and _resolve_path(metadata.get("config_file")) != _resolve_path(expected_config):
@@ -219,6 +230,8 @@ def main() -> None:
     _check_category_summary(outdir, rows, errors)
     _check_manifest(
         manifest,
+        outdir,
+        comparison_path,
         args.expected_source,
         args.expected_config,
         args.expected_model_version,

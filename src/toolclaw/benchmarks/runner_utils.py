@@ -325,11 +325,35 @@ def finalize_outputs(
         "archived_files": archived_files,
         "experiment_metadata": dict(experiment_metadata or {}),
     }
-    (outdir / "experiment_manifest.json").write_text(json.dumps(experiment_manifest, indent=2), encoding="utf-8")
+    write_experiment_manifest(outdir, experiment_manifest)
 
     if not keep_normalized_taskset:
         temp_copy = Path(tempfile.gettempdir()) / f"toolclaw_{benchmark_name}_{os.getpid()}.json"
         temp_copy.write_text(normalized_path.read_text(encoding="utf-8"), encoding="utf-8")
+
+
+def write_experiment_manifest(outdir: Path, manifest: Dict[str, Any]) -> None:
+    (outdir / "experiment_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+
+def update_experiment_manifest(
+    outdir: Path,
+    *,
+    updates: Optional[Dict[str, Any]] = None,
+    metadata_updates: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    manifest_path = outdir / "experiment_manifest.json"
+    manifest: Dict[str, Any] = {}
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if updates:
+        manifest.update(updates)
+    if metadata_updates:
+        metadata = dict(manifest.get("experiment_metadata", {}))
+        metadata.update(metadata_updates)
+        manifest["experiment_metadata"] = metadata
+    write_experiment_manifest(outdir, manifest)
+    return manifest
 
 
 def _extract_stat(score_payload: Dict[str, Any], metric: AggregateMetric) -> float:

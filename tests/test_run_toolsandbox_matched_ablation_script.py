@@ -46,6 +46,7 @@ def test_run_toolsandbox_matched_ablation_script_generates_outputs(tmp_path: Pat
     assert (outdir / "scoreboard.json").exists()
     assert (outdir / "per_system_summary.json").exists()
     scoreboard = json.loads((outdir / "scoreboard.json").read_text(encoding="utf-8"))
+    experiment_manifest = json.loads((outdir / "experiment_manifest.json").read_text(encoding="utf-8"))
     assert set(scoreboard["systems"]) == {
         "tc_full",
         "tc_no_repair",
@@ -53,3 +54,8 @@ def test_run_toolsandbox_matched_ablation_script_generates_outputs(tmp_path: Pat
         "tc_no_reuse",
         "tc_planner_only",
     }
+    assert experiment_manifest["comparison_path"].endswith("comparison.scored.csv")
+    assert experiment_manifest["comparison_raw_path"].endswith("comparison.raw.csv")
+    assert experiment_manifest["comparison_scored_path"].endswith("comparison.scored.csv")
+    assert experiment_manifest["experiment_metadata"]["runner_script"].endswith("scripts/run_toolsandbox_matched_ablation.py")
+    assert experiment_manifest["experiment_metadata"]["delegated_runner_script"].endswith("scripts/run_toolsandbox_bench.py")

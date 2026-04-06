@@ -29,6 +29,7 @@ from toolclaw.benchmarks.runner_utils import (
     mean_or_zero,
     normalize_systems,
     score_to_payload,
+    update_experiment_manifest,
     write_csv_rows,
     write_group_markdown,
 )
@@ -575,6 +576,16 @@ def main() -> None:
     latest_run_index = args.num_runs
     write_csv_rows([row for row in raw_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.raw.csv")
     write_csv_rows([row for row in scored_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.scored.csv")
+    update_experiment_manifest(
+        outdir,
+        updates={
+            "comparison_path": str((outdir / "comparison.scored.csv").resolve()),
+            "comparison_raw_path": str((outdir / "comparison.raw.csv").resolve()),
+            "comparison_scored_path": str((outdir / "comparison.scored.csv").resolve()),
+            "latest_comparison_raw_path": str((outdir / "latest_run_comparison.raw.csv").resolve()),
+            "latest_comparison_scored_path": str((outdir / "latest_run_comparison.scored.csv").resolve()),
+        },
+    )
     for obsolete_name in ("comparison.csv", "latest_run_comparison.csv"):
         obsolete_path = outdir / obsolete_name
         if obsolete_path.exists():

@@ -89,6 +89,7 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     focused_slice_json_path = outdir / "focused_slice_summary.json"
     normalized_path = outdir / "prepared" / "toolsandbox.normalized.json"
     report_path = outdir / "report.md"
+    manifest_path = outdir / "experiment_manifest.json"
 
     assert scoreboard_path.exists()
     assert raw_comparison_path.exists()
@@ -100,6 +101,7 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert focused_slice_json_path.exists()
     assert normalized_path.exists()
     assert report_path.exists()
+    assert manifest_path.exists()
     assert not (outdir / "comparison.csv").exists()
 
     scoreboard = json.loads(scoreboard_path.read_text(encoding="utf-8"))
@@ -113,6 +115,11 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "per_category" in per_system["a0_baseline"]
     assert "state_dependency" in per_system["a0_baseline"]["per_category"]
     assert "used_result_summary" in per_system["a0_baseline"]
+    experiment_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert experiment_manifest["comparison_path"].endswith("comparison.scored.csv")
+    assert experiment_manifest["comparison_raw_path"].endswith("comparison.raw.csv")
+    assert experiment_manifest["comparison_scored_path"].endswith("comparison.scored.csv")
+    assert experiment_manifest["experiment_metadata"]["runner_script"].endswith("scripts/run_toolsandbox_bench.py")
 
     per_category_md = per_category_md_path.read_text(encoding="utf-8")
     assert "ToolSandbox Category Summary" in per_category_md
