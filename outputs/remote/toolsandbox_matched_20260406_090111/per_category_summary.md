@@ -1,0 +1,39 @@
+# ToolSandbox Category Summary
+
+| system | per_category | rows | success_rate | milestone_similarity | milestone_coverage | interaction_efficiency | tool_efficiency | turn_efficiency | hallucination_avoidance | state_dependency_score | result_summary_coverage | reference_summary_coverage |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| tc_full | canonicalization | 15 | 1.000 | 1.000 | 1.000 | 0.850 | 1.000 | 0.520 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_full | insufficient_information | 6 | 1.000 | 1.000 | 1.000 | 0.625 | 0.925 | 0.500 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_full | multiple_tool | 12 | 1.000 | 1.000 | 1.000 | 0.850 | 0.963 | 0.500 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_full | multiple_user_turn | 9 | 1.000 | 1.000 | 1.000 | 0.300 | 0.950 | 0.067 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_full | single_tool | 6 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.800 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_full | single_user_turn | 6 | 1.000 | 1.000 | 1.000 | 0.925 | 1.000 | 0.800 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_full | state_dependency | 12 | 1.000 | 1.000 | 1.000 | 0.812 | 1.000 | 0.450 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_repair | canonicalization | 15 | 0.800 | 0.900 | 0.900 | 0.880 | 1.000 | 0.560 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_repair | insufficient_information | 6 | 0.000 | 0.333 | 0.333 | 0.000 | 1.000 | 0.900 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_repair | multiple_tool | 12 | 0.750 | 0.833 | 0.833 | 0.750 | 1.000 | 0.700 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_repair | multiple_user_turn | 9 | 0.333 | 0.611 | 0.611 | 0.217 | 1.000 | 0.400 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_repair | single_tool | 6 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.800 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_repair | single_user_turn | 6 | 0.500 | 0.667 | 0.667 | 0.500 | 1.000 | 0.800 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_repair | state_dependency | 12 | 1.000 | 1.000 | 1.000 | 0.812 | 1.000 | 0.450 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_fallback | canonicalization | 15 | 1.000 | 1.000 | 1.000 | 0.880 | 1.000 | 0.560 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_fallback | insufficient_information | 6 | 1.000 | 1.000 | 1.000 | 0.625 | 0.925 | 0.500 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_fallback | multiple_tool | 12 | 1.000 | 1.000 | 1.000 | 0.850 | 0.963 | 0.500 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_fallback | multiple_user_turn | 9 | 1.000 | 1.000 | 1.000 | 0.350 | 0.950 | 0.133 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_fallback | single_tool | 6 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.800 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_fallback | single_user_turn | 6 | 1.000 | 1.000 | 1.000 | 0.925 | 1.000 | 0.800 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_fallback | state_dependency | 12 | 1.000 | 1.000 | 1.000 | 0.812 | 1.000 | 0.450 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_reuse | canonicalization | 15 | 1.000 | 1.000 | 1.000 | 0.880 | 1.000 | 0.560 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_reuse | insufficient_information | 6 | 1.000 | 1.000 | 1.000 | 0.625 | 0.925 | 0.500 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_reuse | multiple_tool | 12 | 1.000 | 1.000 | 1.000 | 0.850 | 0.963 | 0.500 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_reuse | multiple_user_turn | 9 | 1.000 | 1.000 | 1.000 | 0.350 | 0.950 | 0.133 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_reuse | single_tool | 6 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.800 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_reuse | single_user_turn | 6 | 1.000 | 1.000 | 1.000 | 0.925 | 1.000 | 0.800 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_no_reuse | state_dependency | 12 | 1.000 | 1.000 | 1.000 | 0.812 | 1.000 | 0.450 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_planner_only | canonicalization | 15 | 0.800 | 0.800 | 0.800 | 0.800 | 1.000 | 0.720 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_planner_only | insufficient_information | 6 | 0.500 | 0.667 | 0.667 | 0.425 | 1.000 | 0.900 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_planner_only | multiple_tool | 12 | 0.750 | 0.833 | 0.833 | 0.750 | 1.000 | 0.700 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_planner_only | multiple_user_turn | 9 | 0.000 | 0.111 | 0.111 | 0.000 | 1.000 | 1.000 | 1.000 | 0.667 | 1.000 | 0.000 |
+| tc_planner_only | single_tool | 6 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.800 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_planner_only | single_user_turn | 6 | 1.000 | 1.000 | 1.000 | 0.925 | 1.000 | 0.800 | 1.000 | 1.000 | 1.000 | 0.000 |
+| tc_planner_only | state_dependency | 12 | 0.750 | 0.750 | 0.750 | 0.750 | 1.000 | 0.700 | 1.000 | 0.750 | 1.000 | 0.000 |
