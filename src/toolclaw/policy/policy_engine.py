@@ -79,6 +79,18 @@ class PolicyEngine:
                 policy_events=[{"type": "time_limit", "required_latency_ms": cost.latency_ms}],
             )
 
+        discrete_budget_violation = self._discrete_budget_violation(workflow=workflow, state_values=state_values)
+        if discrete_budget_violation is not None:
+            return PolicyDecision(
+                allow=False,
+                abort=True,
+                reason=discrete_budget_violation,
+                risk=risk,
+                cost=cost,
+                budget=budget,
+                policy_events=[{"type": "budget", "reason": discrete_budget_violation}],
+            )
+
         if not budget.allow:
             return PolicyDecision(
                 allow=False,
@@ -122,13 +134,41 @@ class PolicyEngine:
         cost = self.budget_guard.estimate_tool_cost(step)
         spent = self.budget_guard.consume_budget(float(state_values.get("__budget_spent__", 0.0)), cost)
         time_spent_ms = float(state_values.get("__time_spent_ms__", 0.0)) + float(cost.latency_ms)
+        tool_calls = int(state_values.get("__tool_calls__", 0))
+        constraints = workflow.task.constraints
+        remaining_budgets = {
+            "tool_calls": (constraints.max_tool_calls - tool_calls) if constraints.max_tool_calls is not None else None,
+            "user_turns": (
+                constraints.max_user_turns - int(state_values.get("__user_turns__", 0))
+            )
+            if constraints.max_user_turns is not None
+            else None,
+            "repair_attempts": (
+                constraints.max_repair_attempts - int(state_values.get("__repair_attempts__", 0))
+            )
+            if constraints.max_repair_attempts is not None
+            else None,
+            "recovery_budget": (
+                float(constraints.max_recovery_budget) - float(state_values.get("__recovery_budget_spent__", 0.0))
+            )
+            if constraints.max_recovery_budget is not None
+            else None,
+        }
         return PolicyDecision(
             allow=True,
             create_checkpoint=step.checkpoint,
             reason="post_step_update",
             cost=cost,
-            state_patch={"__budget_spent__": spent, "__time_spent_ms__": time_spent_ms},
-            policy_events=[{"type": "budget_update", "spent": spent}, {"type": "time_update", "spent_ms": time_spent_ms}],
+            state_patch={
+                "__budget_spent__": spent,
+                "__time_spent_ms__": time_spent_ms,
+                "__remaining_budgets__": remaining_budgets,
+            },
+            policy_events=[
+                {"type": "budget_update", "spent": spent},
+                {"type": "time_update", "spent_ms": time_spent_ms},
+                {"type": "remaining_budgets", "remaining": remaining_budgets},
+            ],
         )
 
     def apply_policy_patch(self, state_values: Dict[str, Any], patch: Dict[str, Any]) -> None:
@@ -177,3 +217,17 @@ class PolicyEngine:
             return False
         spent_ms = float(state_values.get("__time_spent_ms__", 0.0))
         return spent_ms + float(cost.latency_ms) > float(limit)
+
+    @staticmethod
+    def _discrete_budget_violation(
+        workflow: Workflow,
+        state_values: Dict[str, Any],
+    ) -> Optional[str]:
+        constraints = workflow.task.constraints
+        if constraints.max_tool_calls is not None and int(state_values.get("__tool_calls__", 0)) >= int(constraints.max_tool_calls):
+            return "max_tool_calls_exceeded"
+        if constraints.max_repair_attempts is not None and int(state_values.get("__repair_attempts__", 0)) > int(constraints.max_repair_attempts):
+            return "max_repair_attempts_exceeded"
+        if constraints.max_recovery_budget is not None and float(state_values.get("__recovery_budget_spent__", 0.0)) > float(constraints.max_recovery_budget):
+            return "max_recovery_budget_exceeded"
+        return None

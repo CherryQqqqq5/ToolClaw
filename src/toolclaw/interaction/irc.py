@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 
 from toolclaw.execution.executor import ExecutionOutcome
 from toolclaw.interaction.query_policy import QueryPolicy
-from toolclaw.interaction.repair_updater import RepairUpdater
+from toolclaw.interaction.repair_updater import AnswerPatchCompiler, RepairUpdater
 from toolclaw.interaction.uncertainty_detector import UncertaintyDetector
 from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
 from toolclaw.main import ToolClawRuntime
@@ -36,6 +36,11 @@ class InteractionShell:
     ) -> None:
         self.runtime = runtime
         self.repair_updater = repair_updater or runtime.repair_updater
+        self.answer_patch_compiler = (
+            self.repair_updater
+            if isinstance(self.repair_updater, AnswerPatchCompiler)
+            else AnswerPatchCompiler()
+        )
         self.config = config or InteractionLoopConfig()
         self.simulator = UserSimulator(self.config.simulator_policy)
         self.uncertainty_detector = uncertainty_detector or UncertaintyDetector()
@@ -65,12 +70,27 @@ class InteractionShell:
                 output_path=output_path,
                 backup_tool_map=backup_tool_map,
                 compile_on_success=compile_on_success,
-        )
+            )
         combined_trace = self._load_trace(output_path)
+        combined_trace.setdefault("metadata", {})
+        combined_trace["metadata"].setdefault(
+            "interaction_modules",
+            ["uncertainty_detector", "query_policy", "answer_patch_compiler"],
+        )
+        interaction_stats = {
+            "asked": 0,
+            "necessary": 0,
+            "asked_and_necessary": 0,
+            "unnecessary": 0,
+            "patch_attempts": 0,
+            "patch_successes": 0,
+            "post_answer_retry_count": 0,
+        }
         turns = 0
         failure_counts: Dict[str, int] = {}
+        max_turns = self._max_turns(outcome)
 
-        while outcome.blocked and outcome.pending_interaction and turns < self.config.max_turns:
+        while outcome.blocked and outcome.pending_interaction and turns < max_turns:
             turns += 1
             repair = outcome.pending_interaction.repair
             failure_signature = self._failure_signature(outcome)
@@ -82,7 +102,13 @@ class InteractionShell:
                 state_values=outcome.final_state,
             )
             query_plan = self.query_policy.decide_query(report)
-            query = self.repair_updater.build_query(
+            necessary_question = self._question_is_necessary(report)
+            interaction_stats["necessary"] += 1 if necessary_question else 0
+            if query_plan.ask:
+                interaction_stats["asked"] += 1
+                interaction_stats["asked_and_necessary"] += 1 if necessary_question else 0
+                interaction_stats["unnecessary"] += 0 if necessary_question else 1
+            query = self.answer_patch_compiler.build_query(
                 workflow=outcome.workflow,
                 repair=repair,
                 state_values=outcome.final_state,
@@ -93,6 +119,11 @@ class InteractionShell:
                 query.allowed_response_schema = query_plan.response_schema
                 query.metadata["uncertainty"] = report.primary_label
                 query.metadata["patch_targets"] = dict(query_plan.patch_targets)
+                query.metadata["query_policy"] = {
+                    "question_type": query_plan.question_type,
+                    "target_scope": query_plan.target_scope,
+                    "urgency": query_plan.urgency,
+                }
             self._escalate_query(
                 query=query,
                 outcome=outcome,
@@ -128,7 +159,9 @@ class InteractionShell:
             else:
                 reply = self.simulator.reply(query)
             self._append_interaction_events(combined_trace, query=query, reply=reply, turn_index=turns)
-            if not self.repair_updater.validate_reply(query, reply):
+            self._increment_recovery_budget(combined_trace, outcome, turns)
+            if not self.answer_patch_compiler.validate_reply(query, reply):
+                self._finalize_interaction_metrics(combined_trace, interaction_stats)
                 self._finalize_combined_trace(
                     combined_trace,
                     output_path=output_path,
@@ -147,6 +180,33 @@ class InteractionShell:
                     metadata={"stopped_reason": "invalid_user_reply"},
                 )
 
+            interaction_stats["patch_attempts"] += 1
+            resumed_state = dict(outcome.final_state)
+            resumed_state["__user_turns__"] = turns
+            resumed_state["__recovery_budget_spent__"] = float(resumed_state.get("__recovery_budget_spent__", 0.0)) + 1.0
+            budget_violation = self._interaction_budget_violation(outcome, resumed_state, turns)
+            if budget_violation is not None:
+                combined_trace.setdefault("metrics", {})["budget_violation"] = True
+                combined_trace["metrics"]["budget_violation_reason"] = budget_violation
+                self._finalize_interaction_metrics(combined_trace, interaction_stats)
+                self._finalize_combined_trace(
+                    combined_trace,
+                    output_path=output_path,
+                    success=False,
+                    stop_reason=budget_violation,
+                )
+                return ExecutionOutcome(
+                    run_id=outcome.run_id,
+                    workflow=outcome.workflow,
+                    success=False,
+                    blocked=False,
+                    pending_interaction=None,
+                    final_state=resumed_state,
+                    trace_path=outcome.trace_path,
+                    last_error_id=outcome.last_error_id,
+                    metadata={"stopped_reason": budget_violation},
+                )
+
             outcome = self.runtime.resume_task(
                 workflow=outcome.workflow,
                 repair=repair,
@@ -154,18 +214,30 @@ class InteractionShell:
                 run_id=run_id,
                 output_path=output_path,
                 backup_tool_map=backup_tool_map,
-                state_values=outcome.final_state,
+                state_values=resumed_state,
                 compile_on_success=compile_on_success,
             )
+            next_signature = self._failure_signature(outcome)
+            if outcome.success or not outcome.blocked or next_signature != failure_signature:
+                interaction_stats["patch_successes"] += 1
+            else:
+                interaction_stats["post_answer_retry_count"] += 1
             combined_trace = self._merge_trace_payloads(combined_trace, self._load_trace(output_path))
+            self._finalize_interaction_metrics(combined_trace, interaction_stats)
             self._write_trace(output_path, combined_trace)
 
         if outcome.blocked:
+            stop_reason = "interaction_turn_limit"
+            if outcome.workflow.task.constraints.max_user_turns is not None and turns >= int(outcome.workflow.task.constraints.max_user_turns):
+                stop_reason = "max_user_turns_exceeded"
+                combined_trace.setdefault("metrics", {})["budget_violation"] = True
+                combined_trace["metrics"]["budget_violation_reason"] = stop_reason
+            self._finalize_interaction_metrics(combined_trace, interaction_stats)
             self._finalize_combined_trace(
                 combined_trace,
                 output_path=output_path,
                 success=False,
-                stop_reason="interaction_turn_limit",
+                stop_reason=stop_reason,
             )
             return ExecutionOutcome(
                 run_id=outcome.run_id,
@@ -176,9 +248,10 @@ class InteractionShell:
                 final_state=outcome.final_state,
                 trace_path=outcome.trace_path,
                 last_error_id=outcome.last_error_id,
-                metadata={"stopped_reason": "interaction_turn_limit"},
+                metadata={"stopped_reason": stop_reason},
             )
 
+        self._finalize_interaction_metrics(combined_trace, interaction_stats)
         self._write_trace(output_path, combined_trace)
         return outcome
 
@@ -390,3 +463,56 @@ class InteractionShell:
         metrics = trace_payload.setdefault("metrics", {})
         metrics["success"] = success
         self._write_trace(output_path, trace_payload)
+
+    @staticmethod
+    def _question_is_necessary(report: UncertaintyReport) -> bool:
+        return report.primary_label in {
+            "policy_approval",
+            "missing_asset",
+            "constraint_conflict",
+            "branch_disambiguation",
+            "tool_mismatch",
+            "environment_unavailable",
+        }
+
+    def _max_turns(self, outcome: ExecutionOutcome) -> int:
+        limit = self.config.max_turns
+        workflow_limit = outcome.workflow.task.constraints.max_user_turns
+        if workflow_limit is not None:
+            limit = min(limit, int(workflow_limit))
+        return max(limit, 0)
+
+    @staticmethod
+    def _increment_recovery_budget(trace_payload: Dict[str, Any], outcome: ExecutionOutcome, turns: int) -> None:
+        metrics = trace_payload.setdefault("metrics", {})
+        budget_used = float(metrics.get("recovery_budget_used", 0.0) or 0.0)
+        metrics["recovery_budget_used"] = max(budget_used, float(outcome.final_state.get("__recovery_budget_spent__", 0.0)) + 1.0)
+        metrics["user_queries"] = max(int(metrics.get("user_queries", 0)), turns)
+
+    @staticmethod
+    def _interaction_budget_violation(
+        outcome: ExecutionOutcome,
+        resumed_state: Dict[str, Any],
+        turns: int,
+    ) -> Optional[str]:
+        constraints = outcome.workflow.task.constraints
+        if constraints.max_user_turns is not None and turns > int(constraints.max_user_turns):
+            return "max_user_turns_exceeded"
+        if constraints.max_recovery_budget is not None and float(resumed_state.get("__recovery_budget_spent__", 0.0)) > float(constraints.max_recovery_budget):
+            return "max_recovery_budget_exceeded"
+        return None
+
+    @staticmethod
+    def _finalize_interaction_metrics(trace_payload: Dict[str, Any], interaction_stats: Dict[str, int]) -> None:
+        metrics = trace_payload.setdefault("metrics", {})
+        asked = int(interaction_stats.get("asked", 0))
+        necessary = int(interaction_stats.get("necessary", 0))
+        asked_and_necessary = int(interaction_stats.get("asked_and_necessary", 0))
+        unnecessary = int(interaction_stats.get("unnecessary", 0))
+        patch_attempts = int(interaction_stats.get("patch_attempts", 0))
+        patch_successes = int(interaction_stats.get("patch_successes", 0))
+        metrics["clarification_precision"] = (asked_and_necessary / asked) if asked else 0.0
+        metrics["clarification_recall"] = (asked_and_necessary / necessary) if necessary else 0.0
+        metrics["unnecessary_question_rate"] = (unnecessary / asked) if asked else 0.0
+        metrics["patch_success_rate"] = (patch_successes / patch_attempts) if patch_attempts else 0.0
+        metrics["post_answer_retry_count"] = int(interaction_stats.get("post_answer_retry_count", 0))

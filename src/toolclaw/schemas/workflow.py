@@ -38,6 +38,10 @@ class TaskConstraints:
     risk_level: RiskLevel = RiskLevel.MEDIUM
     requires_user_approval: bool = False
     forbidden_actions: List[str] = field(default_factory=list)
+    max_tool_calls: Optional[int] = None
+    max_user_turns: Optional[int] = None
+    max_repair_attempts: Optional[int] = None
+    max_recovery_budget: Optional[float] = None
 
 
 @dataclass

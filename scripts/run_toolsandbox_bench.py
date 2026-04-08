@@ -70,6 +70,14 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "scenario": raw_row.get("scenario", "toolsandbox"),
         "task_family": raw_row.get("task_family", ""),
         "failure_type": raw_row.get("failure_type", ""),
+        "primary_failtax": raw_row.get("primary_failtax", "recovery"),
+        "failtaxes": raw_row.get("failtaxes", "[]"),
+        "failure_step": raw_row.get("failure_step", ""),
+        "expected_recovery_path": raw_row.get("expected_recovery_path", ""),
+        "gold_tool": raw_row.get("gold_tool", ""),
+        "chosen_tool": raw_row.get("chosen_tool", ""),
+        "state_slots": raw_row.get("state_slots", "[]"),
+        "dependency_edges": raw_row.get("dependency_edges", "[]"),
         "success": bool(score_payload.get("success")),
         "raw_success": _bool_from_value(raw_row.get("success", "False")),
         "stop_reason": raw_row.get("stop_reason", "unknown"),
@@ -103,9 +111,17 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "repair_extra_tool_calls": int(raw_row.get("repair_extra_tool_calls", 0) or 0),
         "repair_extra_user_turns": int(raw_row.get("repair_extra_user_turns", 0) or 0),
         "repair_user_clarification": _bool_from_value(raw_row.get("repair_user_clarification", "False")),
+        "clarification_precision": float(raw_row.get("clarification_precision", 0.0) or 0.0),
+        "clarification_recall": float(raw_row.get("clarification_recall", 0.0) or 0.0),
+        "unnecessary_question_rate": float(raw_row.get("unnecessary_question_rate", 0.0) or 0.0),
+        "patch_success_rate": float(raw_row.get("patch_success_rate", 0.0) or 0.0),
+        "post_answer_retry_count": int(raw_row.get("post_answer_retry_count", 0) or 0),
         "reuse_pass_index": int(raw_row.get("reuse_pass_index", 0) or 0),
         "reused_artifact": _bool_from_value(raw_row.get("reused_artifact", "False")),
         "second_run_improvement": float(raw_row.get("second_run_improvement", 0.0) or 0.0),
+        "budget_violation": _bool_from_value(raw_row.get("budget_violation", "False")),
+        "budget_violation_reason": str(raw_row.get("budget_violation_reason", "")),
+        "recovery_budget_used": float(raw_row.get("recovery_budget_used", 0.0) or 0.0),
     }
 
 
@@ -254,6 +270,11 @@ def _write_toolsandbox_artifacts(summary: Dict[str, Any], outdir: Path) -> None:
         for system, system_summary in summary.items()
     }
     (outdir / "per_category_summary.json").write_text(json.dumps(per_category_summary, indent=2), encoding="utf-8")
+    per_failtax_summary = {
+        system: dict(system_summary.get("per_failtax", {}))
+        for system, system_summary in summary.items()
+    }
+    (outdir / "per_failtax_summary.json").write_text(json.dumps(per_failtax_summary, indent=2), encoding="utf-8")
     focused_summary = _focused_slice_summary(summary)
     (outdir / "focused_slice_summary.json").write_text(json.dumps(focused_summary, indent=2), encoding="utf-8")
     _write_focused_slice_markdown(focused_summary, outdir / "focused_slice_summary.md")
@@ -356,17 +377,33 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
         f"- raw_comparison: `{outdir / 'comparison.raw.csv'}`",
         f"- scored_comparison: `{outdir / 'comparison.scored.csv'}`",
         f"- focused_slice_summary: `{outdir / 'focused_slice_summary.md'}`",
+        f"- failtax_summary: `{outdir / 'per_failtax_summary.json'}`",
         "",
         "## Aggregate",
         "",
-        "| system | mean_success_rate | pass@k | consistency | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage | reference_summary_coverage |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| system | mean_success_rate | pass@k | consistency | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | budget_violation_rate | result_summary_coverage | reference_summary_coverage |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     per_system = scoreboard["per_system_summary"]
     for system, stats in per_system.items():
         lines.append(
-            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('pass_at_k', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} | {float(stats.get('reference_result_summary_available', 0.0)):.3f} |"
+            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('pass_at_k', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('budget_violation_rate', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} | {float(stats.get('reference_result_summary_available', 0.0)):.3f} |"
         )
+
+    lines.extend(
+        [
+            "",
+            "## FailTax Breakdown",
+            "",
+            "| system | primary_failtax | rows | success_rate | pass@k | consistency |",
+            "|---|---|---:|---:|---:|---:|",
+        ]
+    )
+    for system, stats in per_system.items():
+        for failtax, failtax_stats in sorted(stats.get("per_failtax", {}).items()):
+            lines.append(
+                f"| {system} | {failtax} | {int(failtax_stats.get('num_rows', 0))} | {float(failtax_stats.get('success_rate', 0.0)):.3f} | {float(failtax_stats.get('pass_at_k', 0.0)):.3f} | {float(failtax_stats.get('consistency', 0.0)):.3f} |"
+            )
 
     lines.extend(
         [
@@ -389,12 +426,14 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
             "## Interpretation",
             "",
             "- All aggregate and category tables in this report are computed from `comparison.scored.csv`, not from raw `run_eval.py` rows.",
+            "- FailTax is the default slicing axis for phase-2 style failure studies; category tables remain useful but secondary.",
             "- `comparison.raw.csv` preserves the original execution outputs from `run_eval.py` for audit and debugging.",
             "- `result_summary_coverage` shows how much of the benchmark has a current ToolClaw-run ToolSandbox summary attached to the trace. This should be 1.0 for normal runs.",
             "- `reference_summary_coverage` shows how much of the benchmark also carries imported external ToolSandbox summaries for offline comparison or dataset freezing.",
             "- These scores come from ToolClaw proxy evaluation over ToolSandbox-style tasks unless you are reading outputs from the official ToolSandbox CLI directly.",
             "- `state_dependency_score` is only meaningful on `state_dependency` slices; interpret it through the category table rather than overall averages.",
             "- `turn_efficiency` and `tool_efficiency` are control metrics, not success substitutes.",
+            "- `budget_violation_rate` and `recovery_budget_used` are the budget-side controls for phase-2 evaluation.",
         ]
     )
     (outdir / "report.md").write_text("\n".join(lines), encoding="utf-8")

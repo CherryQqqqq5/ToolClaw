@@ -159,6 +159,8 @@ def _aggregate_eval_rows(rows: Sequence[Dict[str, Any]]) -> Dict[str, float]:
             "avg_user_turns": 0.0,
             "avg_repair_actions": 0.0,
             "avg_repair_triggered": 0.0,
+            "avg_token_cost": 0.0,
+            "avg_wall_clock_ms": 0.0,
             "tool_efficiency": 0.0,
             "turn_efficiency": 0.0,
             "reuse_usage_rate": 0.0,
@@ -170,6 +172,8 @@ def _aggregate_eval_rows(rows: Sequence[Dict[str, Any]]) -> Dict[str, float]:
         "avg_user_turns": mean(float(row["user_turns"]) for row in rows),
         "avg_repair_actions": mean(float(row["repair_actions"]) for row in rows),
         "avg_repair_triggered": mean(float(row["repair_triggered"]) for row in rows),
+        "avg_token_cost": mean(float(row.get("token_cost", 0.0)) for row in rows),
+        "avg_wall_clock_ms": mean(float(row.get("wall_clock_ms", 0.0)) for row in rows),
         "tool_efficiency": mean(float(row["tool_efficiency"]) for row in rows),
         "turn_efficiency": mean(float(row["turn_efficiency"]) for row in rows),
         "reuse_usage_rate": mean(1.0 if row.get("reused_artifact") == "True" else 0.0 for row in rows),
@@ -183,6 +187,8 @@ def _delta(right: Dict[str, float], left: Dict[str, float]) -> Dict[str, float]:
         "avg_user_turns",
         "avg_repair_actions",
         "avg_repair_triggered",
+        "avg_token_cost",
+        "avg_wall_clock_ms",
         "tool_efficiency",
         "turn_efficiency",
         "reuse_usage_rate",
@@ -200,12 +206,12 @@ def _write_report(summary: Dict[str, Any], out_path: Path) -> None:
         "",
         "## Eval Aggregate",
         "",
-        "| system | rows | success_rate | avg_tool_calls | avg_user_turns | avg_repair_actions | avg_repair_triggered | tool_efficiency | turn_efficiency | reuse_usage_rate |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| system | rows | success_rate | avg_tool_calls | avg_user_turns | avg_repair_actions | avg_repair_triggered | avg_token_cost | avg_wall_clock_ms | tool_efficiency | turn_efficiency | reuse_usage_rate |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for system, stats in sorted(summary["eval_per_system"].items()):
         lines.append(
-            f"| {system} | {int(stats['num_rows'])} | {stats['success_rate']:.3f} | {stats['avg_tool_calls']:.2f} | {stats['avg_user_turns']:.2f} | {stats['avg_repair_actions']:.2f} | {stats['avg_repair_triggered']:.2f} | {stats['tool_efficiency']:.3f} | {stats['turn_efficiency']:.3f} | {stats['reuse_usage_rate']:.3f} |"
+            f"| {system} | {int(stats['num_rows'])} | {stats['success_rate']:.3f} | {stats['avg_tool_calls']:.2f} | {stats['avg_user_turns']:.2f} | {stats['avg_repair_actions']:.2f} | {stats['avg_repair_triggered']:.2f} | {stats['avg_token_cost']:.3f} | {stats['avg_wall_clock_ms']:.1f} | {stats['tool_efficiency']:.3f} | {stats['turn_efficiency']:.3f} | {stats['reuse_usage_rate']:.3f} |"
         )
 
     if summary.get("a4_vs_a3_delta"):
@@ -225,6 +231,8 @@ def _write_report(summary: Dict[str, Any], out_path: Path) -> None:
             "avg_user_turns",
             "avg_repair_actions",
             "avg_repair_triggered",
+            "avg_token_cost",
+            "avg_wall_clock_ms",
             "tool_efficiency",
             "turn_efficiency",
             "reuse_usage_rate",

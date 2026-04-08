@@ -15,6 +15,7 @@ from pathlib import Path
 from statistics import mean
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
+from toolclaw.benchmarks.task_annotations import file_sha256, payload_sha256, sample_id_checksum
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 SRC_DIR = ROOT_DIR / "src"
@@ -125,8 +126,17 @@ def aggregate_records(
             signatures = [config.signature_builder(record["score"], record["row"]) for record in sample_records]
             consistency = 1.0 if len(signatures) <= 1 else max(signatures.count(sig) for sig in set(signatures)) / len(signatures)
             sample = sample_by_id.get(sample_id)
+            primary_failtax = next(
+                (
+                    str(record["row"].get("primary_failtax"))
+                    for record in sample_records
+                    if str(record["row"].get("primary_failtax") or "").strip()
+                ),
+                "recovery",
+            )
             sample_stats: Dict[str, Any] = {
                 "scenario": sample.scenario if sample is not None else "unknown",
+                "primary_failtax": primary_failtax,
                 "num_runs": len(sample_records),
                 "success_rate": mean_or_zero(successes),
                 "pass_at_k": 1.0 if any(successes) else 0.0,
@@ -151,6 +161,7 @@ def aggregate_records(
             "pass_at_k": mean_or_zero([item["pass_at_k"] for item in per_sample.values()]),
             "consistency": mean_or_zero([item["consistency"] for item in per_sample.values()]),
             "per_sample": per_sample,
+            "per_failtax": _group_sample_summary(per_sample, "primary_failtax"),
         }
         for metric in config.aggregate_metrics:
             system_stats[metric.key] = mean_or_zero([float(item.get(metric.key, 0.0)) for item in per_sample.values()])
@@ -243,6 +254,22 @@ def write_combined_run_rows(run_entries: Sequence[Dict[str, Any]], out_path: Pat
     write_csv_rows(rows, out_path)
 
 
+def _group_sample_summary(per_sample: Dict[str, Dict[str, Any]], key: str) -> Dict[str, Dict[str, float]]:
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    for sample_stats in per_sample.values():
+        group_name = str(sample_stats.get(key) or "unknown")
+        grouped.setdefault(group_name, []).append(sample_stats)
+    summary: Dict[str, Dict[str, float]] = {}
+    for group_name, items in grouped.items():
+        summary[group_name] = {
+            "num_rows": float(len(items)),
+            "success_rate": mean_or_zero([float(item.get("success_rate", 0.0)) for item in items]),
+            "pass_at_k": mean_or_zero([float(item.get("pass_at_k", 0.0)) for item in items]),
+            "consistency": mean_or_zero([float(item.get("consistency", 0.0)) for item in items]),
+        }
+    return summary
+
+
 def finalize_outputs(
     *,
     outdir: Path,
@@ -286,14 +313,31 @@ def finalize_outputs(
     if extra_output_writers is not None:
         extra_output_writers(scoreboard["per_system_summary"], outdir)
 
+    sample_ids = sorted({str(entry.get("task_id", "")) for entry in scoreboard.get("runs", []) if entry.get("task_id")})
+    archive_hashes = {
+        str(Path(candidate).resolve()): file_sha256(Path(candidate))
+        for candidate in archive_files or []
+        if Path(candidate).exists() and Path(candidate).is_file()
+    }
+    config_hash = payload_sha256({key: value for key, value in archive_hashes.items() if value is not None}) if archive_hashes else None
+    git_commit = _git_commit()
+    source_hash = file_sha256(Path(source)) if Path(source).exists() else None
+    normalized_hash = file_sha256(normalized_path)
+    sample_checksum = sample_id_checksum(sample_ids)
+
     manifest = {
         "benchmark": benchmark_name,
         "source": str(Path(source).resolve()),
+        "source_sha256": source_hash,
         "normalized_taskset": str(normalized_path.resolve()),
+        "normalized_taskset_sha256": normalized_hash,
         "sample_count": scoreboard["num_samples"],
+        "sample_id_checksum": sample_checksum,
         "mode": mode,
         "systems": list(systems),
         "num_runs": num_runs,
+        "git_commit": git_commit,
+        "config_sha256": config_hash,
         "scoreboard_path": str(scoreboard_path.resolve()),
         "per_system_summary_path": str(per_system_summary_path.resolve()),
     }
@@ -314,15 +358,21 @@ def finalize_outputs(
         "benchmark": benchmark_name,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "source": str(Path(source).resolve()),
+        "source_sha256": source_hash,
         "normalized_taskset": str(normalized_path.resolve()),
+        "normalized_taskset_sha256": normalized_hash,
         "mode": mode,
         "systems": list(systems),
         "num_runs": num_runs,
+        "sample_id_checksum": sample_checksum,
+        "git_commit": git_commit,
+        "config_sha256": config_hash,
         "scoreboard_path": str(scoreboard_path.resolve()),
         "report_path": str((outdir / "report.md").resolve()) if (outdir / "report.md").exists() else None,
         "comparison_path": str((outdir / comparison_filename).resolve()) if comparison_filename and (outdir / comparison_filename).exists() else None,
         "per_system_summary_path": str(per_system_summary_path.resolve()),
         "archived_files": archived_files,
+        "archive_hashes": archive_hashes,
         "experiment_metadata": dict(experiment_metadata or {}),
     }
     write_experiment_manifest(outdir, experiment_manifest)
@@ -375,3 +425,17 @@ def _summary_metric_value(summary_payload: Dict[str, Any], metric: AggregateMetr
         return float(value)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _git_commit() -> Optional[str]:
+    completed = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT_DIR,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        return None
+    commit = completed.stdout.strip()
+    return commit or None

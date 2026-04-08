@@ -46,6 +46,11 @@ class RunMetadata:
     end_time: Optional[str] = None
     benchmark: Optional[str] = None
     task_source: Optional[str] = None
+    task_annotations: Dict[str, Any] = field(default_factory=dict)
+    budget_limits: Dict[str, Any] = field(default_factory=dict)
+    budget_usage: Dict[str, Any] = field(default_factory=dict)
+    interaction_modules: List[str] = field(default_factory=list)
+    run_manifest: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -116,6 +121,14 @@ class TraceMetrics:
     success: Optional[bool] = None
     token_cost: Optional[float] = None
     latency_ms: Optional[int] = None
+    clarification_precision: float = 0.0
+    clarification_recall: float = 0.0
+    unnecessary_question_rate: float = 0.0
+    patch_success_rate: float = 0.0
+    post_answer_retry_count: int = 0
+    recovery_budget_used: float = 0.0
+    budget_violation: bool = False
+    budget_violation_reason: Optional[str] = None
 
 
 @dataclass

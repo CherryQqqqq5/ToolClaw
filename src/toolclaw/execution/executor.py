@@ -121,6 +121,15 @@ class SequentialExecutor:
         trace.metrics.tool_calls = trace_dict["metrics"]["tool_calls"]
         trace.metrics.repair_actions = trace_dict["metrics"]["repair_actions"]
         trace.metrics.total_steps = trace_dict["metrics"]["total_steps"]
+        trace.metrics.user_queries = trace_dict["metrics"].get("user_queries", 0)
+        trace.metrics.clarification_precision = trace_dict["metrics"].get("clarification_precision", 0.0)
+        trace.metrics.clarification_recall = trace_dict["metrics"].get("clarification_recall", 0.0)
+        trace.metrics.unnecessary_question_rate = trace_dict["metrics"].get("unnecessary_question_rate", 0.0)
+        trace.metrics.patch_success_rate = trace_dict["metrics"].get("patch_success_rate", 0.0)
+        trace.metrics.post_answer_retry_count = trace_dict["metrics"].get("post_answer_retry_count", 0)
+        trace.metrics.recovery_budget_used = trace_dict["metrics"].get("recovery_budget_used", 0.0)
+        trace.metrics.budget_violation = trace_dict["metrics"].get("budget_violation", False)
+        trace.metrics.budget_violation_reason = trace_dict["metrics"].get("budget_violation_reason")
         trace.events = []
         for event in trace_dict["events"]:
             trace.add_event(
@@ -138,6 +147,15 @@ class SequentialExecutor:
         trace.metrics.tool_calls = trace_dict["metrics"]["tool_calls"]
         trace.metrics.repair_actions = trace_dict["metrics"]["repair_actions"]
         trace.metrics.total_steps = trace_dict["metrics"]["total_steps"]
+        trace.metrics.user_queries = trace_dict["metrics"].get("user_queries", 0)
+        trace.metrics.clarification_precision = trace_dict["metrics"].get("clarification_precision", 0.0)
+        trace.metrics.clarification_recall = trace_dict["metrics"].get("clarification_recall", 0.0)
+        trace.metrics.unnecessary_question_rate = trace_dict["metrics"].get("unnecessary_question_rate", 0.0)
+        trace.metrics.patch_success_rate = trace_dict["metrics"].get("patch_success_rate", 0.0)
+        trace.metrics.post_answer_retry_count = trace_dict["metrics"].get("post_answer_retry_count", 0)
+        trace.metrics.recovery_budget_used = trace_dict["metrics"].get("recovery_budget_used", 0.0)
+        trace.metrics.budget_violation = trace_dict["metrics"].get("budget_violation", False)
+        trace.metrics.budget_violation_reason = trace_dict["metrics"].get("budget_violation_reason")
         return trace
 
     def run_until_blocked(
@@ -159,6 +177,19 @@ class SequentialExecutor:
             task_id=workflow.task.task_id,
             metadata=RunMetadata(model_name="phase1_executor", mode=RunMode.TOOLCLAW),
         )
+        trace.metadata.task_annotations = self._task_annotations(workflow)
+        trace.metadata.budget_limits = self._budget_limits(workflow)
+        trace.metadata.interaction_modules = [
+            "uncertainty_detector",
+            "query_policy",
+            "answer_patch_compiler",
+        ]
+        tracker.state_values.setdefault("__tool_calls__", 0)
+        tracker.state_values.setdefault("__user_turns__", 0)
+        tracker.state_values.setdefault("__repair_attempts__", 0)
+        tracker.state_values.setdefault("__recovery_budget_spent__", 0.0)
+        tracker.state_values.setdefault("__remaining_budgets__", self._remaining_budgets(workflow, tracker.state_values))
+        self._update_trace_budget_usage(trace, tracker.state_values)
 
         trace.add_event(
             event_id="evt_000",
@@ -260,7 +291,10 @@ class SequentialExecutor:
                     step_id=step.step_id,
                     output={"status": "failed", "reason": policy_decision.reason},
                 )
+                if "exceeded" in policy_decision.reason:
+                    self._mark_budget_violation(trace, policy_decision.reason)
                 trace.finalize(success=False, total_steps=len(workflow.execution_plan))
+                self._update_trace_budget_usage(trace, tracker.state_values)
                 self._write_trace(trace, output_path)
                 return ExecutionOutcome(
                     run_id=run_id,
@@ -272,11 +306,15 @@ class SequentialExecutor:
                 )
 
             step_result = self._execute_step(step=step, trace=trace)
+            tracker.state_values["__tool_calls__"] = trace.metrics.tool_calls
+            self._update_trace_budget_usage(trace, tracker.state_values)
             if step_result.ok:
                 tracker.mark_completed(step.step_id)
                 tracker.state_values[step.expected_output or step.step_id] = step_result.output.get("payload")
                 after_decision = self.policy_engine.evaluate_after_step(step, workflow, tracker.state_values)
                 tracker.state_values.update(after_decision.state_patch)
+                tracker.state_values["__remaining_budgets__"] = self._remaining_budgets(workflow, tracker.state_values)
+                self._update_trace_budget_usage(trace, tracker.state_values)
                 if step.checkpoint:
                     checkpoint_id = self._checkpoint_id_for_step(step.step_id)
                     tracker.save_checkpoint(checkpoint_id)
@@ -307,6 +345,7 @@ class SequentialExecutor:
                     metadata={"failtax_label": failure_record.failtax_label.value, "root_cause": failure_record.root_cause},
                 )
                 trace.finalize(success=False, total_steps=len(workflow.execution_plan))
+                self._update_trace_budget_usage(trace, tracker.state_values)
                 self._write_trace(trace, output_path)
                 return ExecutionOutcome(
                     run_id=run_id,
@@ -358,6 +397,33 @@ class SequentialExecutor:
                 output=repair.to_dict(),
                 metadata={"failtax_label": failure_record.failtax_label.value, "root_cause": failure_record.root_cause},
             )
+            tracker.state_values["__repair_attempts__"] = int(tracker.state_values.get("__repair_attempts__", 0)) + 1
+            tracker.state_values["__recovery_budget_spent__"] = float(tracker.state_values.get("__recovery_budget_spent__", 0.0)) + 1.0
+            tracker.state_values["__remaining_budgets__"] = self._remaining_budgets(workflow, tracker.state_values)
+            self._update_trace_budget_usage(trace, tracker.state_values)
+            repair_budget_violation = self._repair_budget_violation(workflow, tracker.state_values)
+            if repair_budget_violation is not None:
+                trace.add_event(
+                    event_id="evt_stop_budget_violation",
+                    event_type=EventType.STOP,
+                    actor="executor",
+                    step_id=step.step_id,
+                    tool_id=step.tool_id,
+                    output={"status": "failed", "reason": repair_budget_violation},
+                    metadata={"failtax_label": failure_record.failtax_label.value, "root_cause": failure_record.root_cause},
+                )
+                self._mark_budget_violation(trace, repair_budget_violation)
+                trace.finalize(success=False, total_steps=len(workflow.execution_plan))
+                self._write_trace(trace, output_path)
+                return ExecutionOutcome(
+                    run_id=run_id,
+                    workflow=workflow,
+                    success=False,
+                    final_state=dict(tracker.state_values),
+                    trace_path=output_path,
+                    last_error_id=step_result.error.error_id,
+                    metadata={"stopped_reason": repair_budget_violation},
+                )
 
             repair_result = self._apply_repair(
                 workflow=workflow,
@@ -374,6 +440,7 @@ class SequentialExecutor:
                     output={"status": "blocked", "reason": "awaiting_user_interaction"},
                 )
                 trace.finalize(success=False, total_steps=len(workflow.execution_plan))
+                self._update_trace_budget_usage(trace, tracker.state_values)
                 self._write_trace(trace, output_path)
                 return ExecutionOutcome(
                     run_id=run_id,
@@ -404,6 +471,7 @@ class SequentialExecutor:
                     output={"status": "failed", "reason": repair_result.message or "step_execution_failed"},
                 )
                 trace.finalize(success=False, total_steps=len(workflow.execution_plan))
+                self._update_trace_budget_usage(trace, tracker.state_values)
                 self._write_trace(trace, output_path)
                 return ExecutionOutcome(
                     run_id=run_id,
@@ -416,6 +484,9 @@ class SequentialExecutor:
 
             tracker.mark_completed(step.step_id)
             tracker.state_values.update(repair_result.state_patch)
+            tracker.state_values["__tool_calls__"] = trace.metrics.tool_calls
+            tracker.state_values["__remaining_budgets__"] = self._remaining_budgets(workflow, tracker.state_values)
+            self._update_trace_budget_usage(trace, tracker.state_values)
             if step.checkpoint:
                 checkpoint_id = self._checkpoint_id_for_step(step.step_id)
                 tracker.save_checkpoint(checkpoint_id)
@@ -435,6 +506,7 @@ class SequentialExecutor:
             output={"status": "success", "reason": "success_criteria_satisfied"},
         )
         trace.finalize(success=True, total_steps=len(workflow.execution_plan))
+        self._update_trace_budget_usage(trace, tracker.state_values)
         self._write_trace(trace, output_path)
         return ExecutionOutcome(
             run_id=run_id,
@@ -488,6 +560,7 @@ class SequentialExecutor:
         )
 
     def _execute_step(self, step: WorkflowStep, trace: Trace) -> StepExecutionResult:
+        trace.metadata.task_annotations["chosen_tool"] = step.tool_id
         trace.add_event(
             event_id=f"evt_call_{step.step_id}",
             event_type=EventType.TOOL_CALL,
@@ -567,6 +640,16 @@ class SequentialExecutor:
             return RepairApplyResult(applied=False, message="no tool available for re-execution")
 
         step.inputs = patched_inputs
+        trace.metadata.task_annotations["chosen_tool"] = selected_tool
+        trace.add_event(
+            event_id=f"evt_repair_call_{step.step_id}",
+            event_type=EventType.TOOL_CALL,
+            actor="executor",
+            step_id=step.step_id,
+            tool_id=selected_tool,
+            tool_args=dict(step.inputs),
+            metadata={"origin": "repair_retry", "repair_type": repair.repair_type.value},
+        )
         try:
             retry_result = run_mock_tool(selected_tool, dict(step.inputs))
         except ToolExecutionError as exc:
@@ -587,6 +670,15 @@ class SequentialExecutor:
                 failtax_label="recovery_failure",
             )
             return RepairApplyResult(applied=False, message=str(exc), followup_error=error)
+        trace.add_event(
+            event_id=f"evt_repair_result_{step.step_id}",
+            event_type=EventType.TOOL_RESULT,
+            actor="environment",
+            step_id=step.step_id,
+            tool_id=selected_tool,
+            output=retry_result,
+            metadata={"origin": "repair_retry", "repair_type": repair.repair_type.value},
+        )
         trace.add_event(
             event_id=f"evt_repair_applied_{step.step_id}",
             event_type=EventType.REPAIR_APPLIED,
@@ -769,6 +861,75 @@ class SequentialExecutor:
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(trace.to_dict(), indent=2), encoding="utf-8")
+
+    @staticmethod
+    def _task_annotations(workflow: Workflow) -> Dict[str, Any]:
+        keys = (
+            "primary_failtax",
+            "failtaxes",
+            "failure_step",
+            "expected_recovery_path",
+            "gold_tool",
+            "chosen_tool",
+            "state_slots",
+            "dependency_edges",
+        )
+        return {key: workflow.metadata.get(key) for key in keys if workflow.metadata.get(key) is not None}
+
+    @staticmethod
+    def _budget_limits(workflow: Workflow) -> Dict[str, Any]:
+        constraints = workflow.task.constraints
+        return {
+            "max_tool_calls": constraints.max_tool_calls,
+            "max_user_turns": constraints.max_user_turns,
+            "max_repair_attempts": constraints.max_repair_attempts,
+            "max_recovery_budget": constraints.max_recovery_budget,
+            "budget_limit": constraints.budget_limit,
+            "time_limit": constraints.time_limit,
+        }
+
+    @classmethod
+    def _remaining_budgets(cls, workflow: Workflow, state_values: Dict[str, Any]) -> Dict[str, Any]:
+        limits = cls._budget_limits(workflow)
+        return {
+            "tool_calls": (limits["max_tool_calls"] - int(state_values.get("__tool_calls__", 0)))
+            if limits["max_tool_calls"] is not None
+            else None,
+            "user_turns": (limits["max_user_turns"] - int(state_values.get("__user_turns__", 0)))
+            if limits["max_user_turns"] is not None
+            else None,
+            "repair_attempts": (limits["max_repair_attempts"] - int(state_values.get("__repair_attempts__", 0)))
+            if limits["max_repair_attempts"] is not None
+            else None,
+            "recovery_budget": (float(limits["max_recovery_budget"]) - float(state_values.get("__recovery_budget_spent__", 0.0)))
+            if limits["max_recovery_budget"] is not None
+            else None,
+        }
+
+    @staticmethod
+    def _mark_budget_violation(trace: Trace, reason: str) -> None:
+        trace.metrics.budget_violation = True
+        trace.metrics.budget_violation_reason = reason
+
+    @staticmethod
+    def _update_trace_budget_usage(trace: Trace, state_values: Dict[str, Any]) -> None:
+        trace.metadata.budget_usage = {
+            "tool_calls": int(state_values.get("__tool_calls__", trace.metrics.tool_calls)),
+            "user_turns": int(state_values.get("__user_turns__", trace.metrics.user_queries)),
+            "repair_attempts": int(state_values.get("__repair_attempts__", 0)),
+            "recovery_budget_used": float(state_values.get("__recovery_budget_spent__", 0.0)),
+            "remaining_budgets": dict(state_values.get("__remaining_budgets__", {})),
+        }
+        trace.metrics.recovery_budget_used = float(state_values.get("__recovery_budget_spent__", 0.0))
+
+    @staticmethod
+    def _repair_budget_violation(workflow: Workflow, state_values: Dict[str, Any]) -> Optional[str]:
+        constraints = workflow.task.constraints
+        if constraints.max_repair_attempts is not None and int(state_values.get("__repair_attempts__", 0)) > int(constraints.max_repair_attempts):
+            return "max_repair_attempts_exceeded"
+        if constraints.max_recovery_budget is not None and float(state_values.get("__recovery_budget_spent__", 0.0)) > float(constraints.max_recovery_budget):
+            return "max_recovery_budget_exceeded"
+        return None
 
 
 from toolclaw.interaction.repair_updater import ResumePatch  # noqa: E402

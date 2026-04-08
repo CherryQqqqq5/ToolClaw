@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Protocol
 
+from toolclaw.benchmarks.task_annotations import annotate_task_payload
 from toolclaw.planner.htgp import PlanningRequest
 from toolclaw.schemas.workflow import TaskConstraints, TaskSpec, ToolSpec, Workflow, WorkflowContext
 
@@ -127,7 +128,7 @@ class TauBenchAdapter:
             task["constraints"] = dict(sample.raw_payload["constraints"])
         if "metadata" in sample.raw_payload:
             task["metadata"] = dict(sample.raw_payload["metadata"])
-        return task
+        return annotate_task_payload(task)
 
     def score_trace(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> BenchmarkTraceScore:
         success = bool(trace_payload.get("metrics", {}).get("success"))
@@ -252,6 +253,14 @@ class TauBenchAdapter:
             task_constraints.requires_user_approval = bool(raw_constraints["requires_user_approval"])
         if raw_constraints.get("forbidden_actions"):
             task_constraints.forbidden_actions = list(raw_constraints["forbidden_actions"])
+        if raw_constraints.get("max_tool_calls") is not None:
+            task_constraints.max_tool_calls = int(raw_constraints["max_tool_calls"])
+        if raw_constraints.get("max_user_turns") is not None:
+            task_constraints.max_user_turns = int(raw_constraints["max_user_turns"])
+        if raw_constraints.get("max_repair_attempts") is not None:
+            task_constraints.max_repair_attempts = int(raw_constraints["max_repair_attempts"])
+        if raw_constraints.get("max_recovery_budget") is not None:
+            task_constraints.max_recovery_budget = float(raw_constraints["max_recovery_budget"])
         risk_level = raw_constraints.get("risk_level")
         if risk_level in {"low", "medium", "high"}:
             task_constraints.risk_level = task_constraints.risk_level.__class__(risk_level)
@@ -365,7 +374,7 @@ class Tau2BenchAdapter:
             task["candidate_tools"] = list(sample.raw_payload["candidate_tools"])
         if "constraints" in sample.raw_payload:
             task["constraints"] = dict(sample.raw_payload["constraints"])
-        return task
+        return annotate_task_payload(task)
 
     def score_trace(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> BenchmarkTraceScore:
         trace_metrics = trace_payload.get("metrics", {})
@@ -481,6 +490,14 @@ class Tau2BenchAdapter:
             task_constraints.requires_user_approval = bool(raw_constraints["requires_user_approval"])
         if raw_constraints.get("forbidden_actions"):
             task_constraints.forbidden_actions = list(raw_constraints["forbidden_actions"])
+        if raw_constraints.get("max_tool_calls") is not None:
+            task_constraints.max_tool_calls = int(raw_constraints["max_tool_calls"])
+        if raw_constraints.get("max_user_turns") is not None:
+            task_constraints.max_user_turns = int(raw_constraints["max_user_turns"])
+        if raw_constraints.get("max_repair_attempts") is not None:
+            task_constraints.max_repair_attempts = int(raw_constraints["max_repair_attempts"])
+        if raw_constraints.get("max_recovery_budget") is not None:
+            task_constraints.max_recovery_budget = float(raw_constraints["max_recovery_budget"])
         risk_level = raw_constraints.get("risk_level")
         if risk_level in {"low", "medium", "high"}:
             task_constraints.risk_level = task_constraints.risk_level.__class__(risk_level)
@@ -675,7 +692,7 @@ class ToolSandboxAdapter:
             task["constraints"] = dict(sample.raw_payload["constraints"])
         if "simulated_policy" in sample.raw_payload:
             task["simulated_policy"] = dict(sample.raw_payload["simulated_policy"])
-        return task
+        return annotate_task_payload(task)
 
     def score_trace(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> BenchmarkTraceScore:
         trace_metrics = trace_payload.get("metrics", {})
@@ -901,6 +918,14 @@ class ToolSandboxAdapter:
             task_constraints.requires_user_approval = bool(raw_constraints["requires_user_approval"])
         if raw_constraints.get("forbidden_actions"):
             task_constraints.forbidden_actions = list(raw_constraints["forbidden_actions"])
+        if raw_constraints.get("max_tool_calls") is not None:
+            task_constraints.max_tool_calls = int(raw_constraints["max_tool_calls"])
+        if raw_constraints.get("max_user_turns") is not None:
+            task_constraints.max_user_turns = int(raw_constraints["max_user_turns"])
+        if raw_constraints.get("max_repair_attempts") is not None:
+            task_constraints.max_repair_attempts = int(raw_constraints["max_repair_attempts"])
+        if raw_constraints.get("max_recovery_budget") is not None:
+            task_constraints.max_recovery_budget = float(raw_constraints["max_recovery_budget"])
         risk_level = raw_constraints.get("risk_level")
         if risk_level in {"low", "medium", "high"}:
             task_constraints.risk_level = task_constraints.risk_level.__class__(risk_level)

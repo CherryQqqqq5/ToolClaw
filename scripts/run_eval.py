@@ -26,6 +26,12 @@ from toolclaw.benchmarks.metrics import (
     write_report_md,
     write_rows_csv,
 )
+from toolclaw.benchmarks.task_annotations import (
+    annotate_task,
+    annotate_task_payload,
+    derive_primary_failtax,
+    map_failtax_bucket,
+)
 from toolclaw.compiler.swpc import SWPCCompiler, build_task_signature_candidates
 from toolclaw.execution.executor import ExecutorConfig, SequentialExecutor
 from toolclaw.execution.recovery import RecoveryConfig, RecoveryEngine
@@ -123,6 +129,7 @@ SYSTEM_ALIASES: Dict[str, str] = {
 
 
 def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workflow:
+    task = annotate_task_payload(task)
     if mode == "planner":
         planner = build_default_planner()
         demo = Workflow.demo()
@@ -163,6 +170,10 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
             time_limit=float(raw_constraints["time_limit"]) if raw_constraints.get("time_limit") is not None else None,
             requires_user_approval=bool(raw_constraints.get("requires_user_approval", False)),
             forbidden_actions=list(raw_constraints.get("forbidden_actions", [])) if raw_constraints.get("forbidden_actions") else [],
+            max_tool_calls=int(raw_constraints["max_tool_calls"]) if raw_constraints.get("max_tool_calls") is not None else None,
+            max_user_turns=int(raw_constraints["max_user_turns"]) if raw_constraints.get("max_user_turns") is not None else None,
+            max_repair_attempts=int(raw_constraints["max_repair_attempts"]) if raw_constraints.get("max_repair_attempts") is not None else None,
+            max_recovery_budget=float(raw_constraints["max_recovery_budget"]) if raw_constraints.get("max_recovery_budget") is not None else None,
         )
         risk_level = raw_constraints.get("risk_level")
         if risk_level in {"low", "medium", "high"}:
@@ -189,6 +200,7 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
 
     if isinstance(raw_metadata, dict):
         workflow.metadata.update(raw_metadata)
+    workflow.metadata.update(annotate_task(task))
     workflow.metadata["task_family"] = derive_task_family(task, scenario=str(task.get("scenario", "success")), task_id=workflow.task.task_id)
     workflow.metadata["failure_type"] = derive_failure_type(task, scenario=str(task.get("scenario", "success")))
     workflow.metadata["scenario"] = str(task.get("scenario", "success"))
@@ -357,6 +369,13 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
     request.hints.user_style["ideal_tool_calls"] = workflow.metadata.get("ideal_tool_calls")
     request.hints.user_style["ideal_turn_count"] = workflow.metadata.get("ideal_turn_count")
     request.hints.user_style["milestones"] = list(workflow.metadata.get("milestones", []))
+    request.hints.user_style["primary_failtax"] = workflow.metadata.get("primary_failtax")
+    request.hints.user_style["failtaxes"] = list(workflow.metadata.get("failtaxes", []))
+    request.hints.user_style["failure_step"] = workflow.metadata.get("failure_step")
+    request.hints.user_style["expected_recovery_path"] = workflow.metadata.get("expected_recovery_path")
+    request.hints.user_style["gold_tool"] = workflow.metadata.get("gold_tool")
+    request.hints.user_style["state_slots"] = list(workflow.metadata.get("state_slots", []))
+    request.hints.user_style["dependency_edges"] = list(workflow.metadata.get("dependency_edges", []))
     if not allow_reuse:
         request.hints.reusable_asset_ids = []
     return request
@@ -478,9 +497,13 @@ def row_from_trace(
     reused_artifact: bool,
 ) -> EvalRow:
     task_id = canonical_task_id(task)
+    task = annotate_task_payload(task)
     trace_payload = json.loads(trace_path.read_text(encoding="utf-8"))
     events = trace_payload.get("events", [])
     metrics = trace_payload.get("metrics", {})
+    metadata = trace_payload.get("metadata", {})
+    task_annotations = dict(metadata.get("task_annotations", {}))
+    chosen_tool = str(task_annotations.get("chosen_tool") or "") or _chosen_tool_from_trace(events, task_annotations.get("failure_step"))
     stop_event = next((event for event in reversed(events) if event.get("event_type") == "stop"), None)
     stop_reason = stop_event.get("output", {}).get("reason", "unknown") if isinstance(stop_event, dict) else "unknown"
     repair_triggered = sum(1 for event in events if event.get("event_type") == "repair_triggered")
@@ -496,12 +519,22 @@ def row_from_trace(
         trailing_events = events[first_repair_index + 1 :]
         repair_extra_tool_calls = sum(1 for event in trailing_events if event.get("event_type") == "tool_call")
         repair_extra_user_turns = sum(1 for event in trailing_events if event.get("event_type") == "user_query")
+    observed_failtaxes = _observed_failtaxes(events, task_annotations)
+    primary_failtax = str(task_annotations.get("primary_failtax") or derive_primary_failtax(task))
     return EvalRow(
         task_id=task_id,
         system=system,
         scenario=scenario,
         task_family=derive_task_family(task, scenario, task_id),
         failure_type=derive_failure_type(task, scenario),
+        primary_failtax=map_failtax_bucket(primary_failtax),
+        failtaxes=json.dumps(observed_failtaxes, ensure_ascii=True),
+        failure_step=str(task_annotations.get("failure_step") or "step_02"),
+        expected_recovery_path=str(task_annotations.get("expected_recovery_path") or ""),
+        gold_tool=str(task_annotations.get("gold_tool") or "") or None,
+        chosen_tool=chosen_tool or None,
+        state_slots=json.dumps(list(task_annotations.get("state_slots", [])), ensure_ascii=True),
+        dependency_edges=json.dumps(list(task_annotations.get("dependency_edges", [])), ensure_ascii=True),
         success=bool(metrics.get("success")),
         tool_calls=int(metrics.get("tool_calls", 0)),
         repair_actions=int(metrics.get("repair_actions", 0)),
@@ -515,9 +548,17 @@ def row_from_trace(
         repair_extra_tool_calls=repair_extra_tool_calls,
         repair_extra_user_turns=repair_extra_user_turns,
         repair_user_clarification=bool(repair_extra_user_turns > 0),
+        clarification_precision=float(metrics.get("clarification_precision", 0.0) or 0.0),
+        clarification_recall=float(metrics.get("clarification_recall", 0.0) or 0.0),
+        unnecessary_question_rate=float(metrics.get("unnecessary_question_rate", 0.0) or 0.0),
+        patch_success_rate=float(metrics.get("patch_success_rate", 0.0) or 0.0),
+        post_answer_retry_count=int(metrics.get("post_answer_retry_count", 0) or 0),
         reuse_pass_index=parse_reuse_pass_index(task_id, task),
         reused_artifact=reused_artifact,
         second_run_improvement=0.0,
+        budget_violation=bool(metrics.get("budget_violation", False)),
+        budget_violation_reason=str(metrics.get("budget_violation_reason") or ""),
+        recovery_budget_used=float(metrics.get("recovery_budget_used", 0.0) or 0.0),
         stop_reason=str(stop_reason),
         trace_path=str(trace_path),
     )
@@ -526,6 +567,46 @@ def row_from_trace(
 def second_run_quality(row: EvalRow) -> float:
     fail_stop = 0.0 if row.success else 1.0
     return (100.0 if row.success else 0.0) - (20.0 * fail_stop) - float(row.tool_calls) - float(row.user_turns) - (0.5 * row.repair_actions)
+
+
+def _chosen_tool_from_trace(events: List[Dict[str, Any]], failure_step: Any) -> str:
+    failure_step_id = str(failure_step or "")
+    for event in reversed(events):
+        if event.get("event_type") != "tool_call":
+            continue
+        if failure_step_id and event.get("step_id") not in {failure_step_id, None, ""}:
+            continue
+        tool_id = event.get("tool_id")
+        if tool_id:
+            return str(tool_id)
+    for event in reversed(events):
+        if event.get("event_type") != "tool_call":
+            continue
+        tool_id = event.get("tool_id")
+        if tool_id:
+            return str(tool_id)
+    return ""
+
+
+def _observed_failtaxes(events: List[Dict[str, Any]], task_annotations: Dict[str, Any]) -> List[str]:
+    observed = []
+    for event in events:
+        metadata = event.get("metadata", {})
+        if not isinstance(metadata, dict):
+            continue
+        label = metadata.get("failtax_label")
+        if label:
+            observed.append(map_failtax_bucket(str(label)))
+    if not observed:
+        observed = list(task_annotations.get("failtaxes", []))
+    if not observed:
+        observed = [task_annotations.get("primary_failtax") or "recovery"]
+    deduped: List[str] = []
+    for label in observed:
+        mapped = map_failtax_bucket(str(label))
+        if mapped not in deduped:
+            deduped.append(mapped)
+    return deduped
 
 
 def annotate_second_run_improvement(rows: List[EvalRow]) -> None:
@@ -553,6 +634,7 @@ def execute_system(
     runtime: Optional[ToolClawRuntime],
 ) -> EvalRow:
     task_id = canonical_task_id(task)
+    task = annotate_task_payload(task)
     scenario = str(task.get("scenario", "success"))
     trace_path = traces_dir / f"{task_index:03d}_{task_id}_{spec.system_id}.json"
     backup_tool_map = task.get("backup_tool_map", {})
@@ -582,6 +664,14 @@ def execute_system(
             scenario=scenario,
             task_family=task_family,
             failure_type=failure_type,
+            primary_failtax=derive_primary_failtax(task),
+            failtaxes=json.dumps(task.get("failtaxes", [derive_primary_failtax(task)]), ensure_ascii=True),
+            failure_step=str(task.get("failure_step") or "step_02"),
+            expected_recovery_path=str(task.get("expected_recovery_path") or ""),
+            gold_tool=str(task.get("gold_tool") or "") or None,
+            chosen_tool=None,
+            state_slots=json.dumps(list(task.get("state_slots", [])), ensure_ascii=True),
+            dependency_edges=json.dumps(list(task.get("dependency_edges", [])), ensure_ascii=True),
             success=bool(baseline_trace.metrics.success),
             tool_calls=baseline_trace.metrics.tool_calls,
             repair_actions=baseline_trace.metrics.repair_actions,
@@ -595,9 +685,17 @@ def execute_system(
             repair_extra_tool_calls=0,
             repair_extra_user_turns=0,
             repair_user_clarification=False,
+            clarification_precision=float(baseline_trace.metrics.clarification_precision),
+            clarification_recall=float(baseline_trace.metrics.clarification_recall),
+            unnecessary_question_rate=float(baseline_trace.metrics.unnecessary_question_rate),
+            patch_success_rate=float(baseline_trace.metrics.patch_success_rate),
+            post_answer_retry_count=int(baseline_trace.metrics.post_answer_retry_count),
             reuse_pass_index=parse_reuse_pass_index(task_id, task),
             reused_artifact=False,
             second_run_improvement=0.0,
+            budget_violation=bool(baseline_trace.metrics.budget_violation),
+            budget_violation_reason=str(baseline_trace.metrics.budget_violation_reason or ""),
+            recovery_budget_used=float(baseline_trace.metrics.recovery_budget_used),
             stop_reason=baseline_stop,
             trace_path=str(trace_path),
         )
@@ -674,6 +772,7 @@ def main() -> None:
     tasks = json.loads(taskset_path.read_text(encoding="utf-8"))
     if not isinstance(tasks, list):
         raise ValueError("taskset JSON must be a list of task objects")
+    tasks = [annotate_task_payload(task) for task in tasks]
 
     for idx, task in enumerate(tasks, start=1):
         for spec in system_specs:

@@ -75,12 +75,18 @@ def summarize_pass(rows: List[Dict[str, str]]) -> Dict[str, float]:
     success_rate = mean(1.0 if row["success"] == "True" else 0.0 for row in rows) if rows else 0.0
     avg_tool_calls = mean(float(row["tool_calls"]) for row in rows) if rows else 0.0
     avg_user_turns = mean(float(row["user_turns"]) for row in rows) if rows else 0.0
+    avg_repair_actions = mean(float(row["repair_actions"]) for row in rows) if rows else 0.0
+    avg_token_cost = mean(float(row.get("token_cost", 0.0)) for row in rows) if rows else 0.0
+    avg_wall_clock_ms = mean(float(row.get("wall_clock_ms", 0.0)) for row in rows) if rows else 0.0
     fail_stop_rate = mean(0.0 if row["success"] == "True" else 1.0 for row in rows) if rows else 0.0
     return {
         "num_rows": float(len(rows)),
         "success_rate": success_rate,
         "avg_tool_calls": avg_tool_calls,
         "avg_user_turns": avg_user_turns,
+        "avg_repair_actions": avg_repair_actions,
+        "avg_token_cost": avg_token_cost,
+        "avg_wall_clock_ms": avg_wall_clock_ms,
         "fail_stop_rate": fail_stop_rate,
     }
 
@@ -89,14 +95,14 @@ def write_report(summary: Dict[str, Any], out_path: Path) -> None:
     lines = [
         "# ToolClaw Reuse Experiment",
         "",
-        "| system | pass | rows | success_rate | avg_tool_calls | avg_user_turns | fail_stop_rate |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "| system | pass | rows | success_rate | avg_tool_calls | avg_user_turns | avg_repair_actions | avg_token_cost | avg_wall_clock_ms | fail_stop_rate |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for system, system_summary in summary["per_system"].items():
         for pass_index in (1, 2):
             stats = system_summary[f"pass_{pass_index}"]
             lines.append(
-                f"| {system} | {pass_index} | {int(stats['num_rows'])} | {stats['success_rate']:.3f} | {stats['avg_tool_calls']:.2f} | {stats['avg_user_turns']:.2f} | {stats['fail_stop_rate']:.3f} |"
+                f"| {system} | {pass_index} | {int(stats['num_rows'])} | {stats['success_rate']:.3f} | {stats['avg_tool_calls']:.2f} | {stats['avg_user_turns']:.2f} | {stats['avg_repair_actions']:.2f} | {stats['avg_token_cost']:.3f} | {stats['avg_wall_clock_ms']:.1f} | {stats['fail_stop_rate']:.3f} |"
             )
 
     lines.extend(
@@ -104,14 +110,14 @@ def write_report(summary: Dict[str, Any], out_path: Path) -> None:
             "",
             "## Second-Run Delta",
             "",
-            "| system | success_rate | avg_tool_calls | avg_user_turns | fail_stop_rate |",
-            "|---|---:|---:|---:|---:|",
+            "| system | success_rate | avg_tool_calls | avg_user_turns | avg_repair_actions | avg_token_cost | avg_wall_clock_ms | fail_stop_rate |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for system, system_summary in summary["per_system"].items():
         delta = system_summary["second_run_delta"]
         lines.append(
-            f"| {system} | {delta['success_rate']:+.3f} | {delta['avg_tool_calls']:+.2f} | {delta['avg_user_turns']:+.2f} | {delta['fail_stop_rate']:+.3f} |"
+            f"| {system} | {delta['success_rate']:+.3f} | {delta['avg_tool_calls']:+.2f} | {delta['avg_user_turns']:+.2f} | {delta['avg_repair_actions']:+.2f} | {delta['avg_token_cost']:+.3f} | {delta['avg_wall_clock_ms']:+.1f} | {delta['fail_stop_rate']:+.3f} |"
         )
 
     lines.extend(
@@ -119,14 +125,14 @@ def write_report(summary: Dict[str, Any], out_path: Path) -> None:
             "",
             "## Per-Family First-vs-Second-Run",
             "",
-            "| system | repeat_family | pass_1_success | pass_2_success | pass_2_reused_artifact | second_run_improvement |",
-            "|---|---|---:|---:|---:|---:|",
+            "| system | repeat_family | pass_1_success | pass_2_success | pass_2_reused_artifact | second_run_improvement | second_run_success_delta | second_run_repair_count_delta | second_run_tool_calls_delta | second_run_user_turns_delta |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for system, family_rows in sorted(summary["per_family"].items()):
         for repeat_family, stats in sorted(family_rows.items()):
             lines.append(
-                f"| {system} | {repeat_family} | {stats['pass_1_success']:.3f} | {stats['pass_2_success']:.3f} | {stats['pass_2_reused_artifact']:.3f} | {stats['second_run_improvement']:.3f} |"
+                f"| {system} | {repeat_family} | {stats['pass_1_success']:.3f} | {stats['pass_2_success']:.3f} | {stats['pass_2_reused_artifact']:.3f} | {stats['second_run_improvement']:.3f} | {stats['second_run_success_delta']:+.3f} | {stats['second_run_repair_count_delta']:+.2f} | {stats['second_run_tool_calls_delta']:+.2f} | {stats['second_run_user_turns_delta']:+.2f} |"
             )
 
     out_path.write_text("\n".join(lines), encoding="utf-8")
@@ -183,6 +189,9 @@ def main() -> None:
                 "success_rate": pass_2["success_rate"] - pass_1["success_rate"],
                 "avg_tool_calls": pass_2["avg_tool_calls"] - pass_1["avg_tool_calls"],
                 "avg_user_turns": pass_2["avg_user_turns"] - pass_1["avg_user_turns"],
+                "avg_repair_actions": pass_2["avg_repair_actions"] - pass_1["avg_repair_actions"],
+                "avg_token_cost": pass_2["avg_token_cost"] - pass_1["avg_token_cost"],
+                "avg_wall_clock_ms": pass_2["avg_wall_clock_ms"] - pass_1["avg_wall_clock_ms"],
                 "fail_stop_rate": pass_2["fail_stop_rate"] - pass_1["fail_stop_rate"],
             },
         }
@@ -198,6 +207,12 @@ def main() -> None:
                 "pass_2_success": 1.0 if family_pass_2["success"] == "True" else 0.0,
                 "pass_2_reused_artifact": 1.0 if family_pass_2.get("reused_artifact") == "True" else 0.0,
                 "second_run_improvement": float(family_pass_2.get("second_run_improvement", 0.0)),
+                "second_run_success_delta": (1.0 if family_pass_2["success"] == "True" else 0.0) - (1.0 if family_pass_1["success"] == "True" else 0.0),
+                "second_run_repair_count_delta": float(family_pass_2.get("repair_actions", 0.0)) - float(family_pass_1.get("repair_actions", 0.0)),
+                "second_run_tool_calls_delta": float(family_pass_2.get("tool_calls", 0.0)) - float(family_pass_1.get("tool_calls", 0.0)),
+                "second_run_user_turns_delta": float(family_pass_2.get("user_turns", 0.0)) - float(family_pass_1.get("user_turns", 0.0)),
+                "second_run_token_cost_delta": float(family_pass_2.get("token_cost", 0.0)) - float(family_pass_1.get("token_cost", 0.0)),
+                "second_run_wall_clock_ms_delta": float(family_pass_2.get("wall_clock_ms", 0.0)) - float(family_pass_1.get("wall_clock_ms", 0.0)),
             }
         per_family[system] = family_summary
 

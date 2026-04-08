@@ -478,6 +478,7 @@ class HTGPPlanner:
             benchmark_hints,
             completed_step_count=0,
         )
+        benchmark_hints["budget_targets"] = self._budget_targets(request)
         diagnostics.benchmark_hints_used = sorted(benchmark_hints["used_keys"])
         candidates = self.capability_selector.select(request.task, request.context, request.hints)
         bypass_applied = self._should_bypass(request, benchmark_hints)
@@ -581,7 +582,9 @@ class HTGPPlanner:
                     "milestones": list(benchmark_hints.get("milestones", [])),
                     "branch_options": list(benchmark_hints.get("branch_options", [])),
                     "overplanning_objective": dict(benchmark_hints.get("overplanning_objective", {})),
+                    "budget_targets": dict(benchmark_hints.get("budget_targets", {})),
                 },
+                "budget_targets": dict(benchmark_hints.get("budget_targets", {})),
                 "reusable_context": {
                     "resolved_asset_ids": list(request.hints.reusable_asset_ids),
                     "profile_loaded": bool(resolved_reusable_asset_ids),
@@ -709,6 +712,16 @@ class HTGPPlanner:
             "milestones": milestones,
             "branch_options": branch_options,
             "used_keys": used_keys,
+        }
+
+    @staticmethod
+    def _budget_targets(request: PlanningRequest) -> Dict[str, Any]:
+        constraints = request.task.constraints
+        return {
+            "max_tool_calls": constraints.max_tool_calls,
+            "max_user_turns": constraints.max_user_turns,
+            "max_repair_attempts": constraints.max_repair_attempts,
+            "max_recovery_budget": constraints.max_recovery_budget,
         }
 
     @staticmethod

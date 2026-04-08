@@ -251,3 +251,7 @@ class RepairUpdater:
                 return action.target.split(".")[0]
 
         return workflow.execution_plan[-1].step_id if workflow.execution_plan else "step_01"
+
+
+class AnswerPatchCompiler(RepairUpdater):
+    """Explicit alias for the reply-to-patch compiler used in interaction evaluation."""
