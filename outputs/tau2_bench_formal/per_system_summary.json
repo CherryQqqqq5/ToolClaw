@@ -1,19 +1,22 @@
 {
   "a0_baseline": {
     "num_samples": 8,
-    "num_runs": 1,
+    "num_runs": 3,
     "mean_success_rate": 0.375,
     "pass_at_k": 0.375,
     "consistency": 1.0,
     "per_sample": {
       "tau2_approval_gate_001": {
         "scenario": "approval_required",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 0.0,
@@ -25,12 +28,15 @@
       },
       "tau2_binding_auto_001": {
         "scenario": "binding_failure",
-        "num_runs": 1,
+        "primary_failtax": "selection",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "step_failed:step_02:missing required field: target_path",
+          "step_failed:step_02:missing required field: target_path",
           "step_failed:step_02:missing required field: target_path"
         ],
         "interactive_correction": 0.0,
@@ -42,12 +48,15 @@
       },
       "tau2_binding_plus_approval_001": {
         "scenario": "binding_failure",
-        "num_runs": 1,
+        "primary_failtax": "selection",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "step_failed:step_02:missing required field: target_path",
+          "step_failed:step_02:missing required field: target_path",
           "step_failed:step_02:missing required field: target_path"
         ],
         "interactive_correction": 0.0,
@@ -59,12 +68,15 @@
       },
       "tau2_dual_control_001": {
         "scenario": "dual_control",
-        "num_runs": 1,
+        "primary_failtax": "ordering",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 0.0,
@@ -76,12 +88,15 @@
       },
       "tau2_env_ask_user_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "step_failed:step_02:environment unavailable for write operation",
+          "step_failed:step_02:environment unavailable for write operation",
           "step_failed:step_02:environment unavailable for write operation"
         ],
         "interactive_correction": 0.0,
@@ -93,12 +108,15 @@
       },
       "tau2_env_backup_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "step_failed:step_02:environment unavailable for write operation",
+          "step_failed:step_02:environment unavailable for write operation",
           "step_failed:step_02:environment unavailable for write operation"
         ],
         "interactive_correction": 0.0,
@@ -110,12 +128,15 @@
       },
       "tau2_interaction_failure_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "step_failed:step_02:environment unavailable for write operation",
+          "step_failed:step_02:environment unavailable for write operation",
           "step_failed:step_02:environment unavailable for write operation"
         ],
         "interactive_correction": 0.0,
@@ -127,12 +148,15 @@
       },
       "tau2_policy_abort_001": {
         "scenario": "policy_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 0.0,
@@ -141,6 +165,26 @@
         "repair_efficiency": 1.0,
         "approval_following": 0.0,
         "tool_efficiency": 0.9
+      }
+    },
+    "per_failtax": {
+      "recovery": {
+        "num_rows": 5.0,
+        "success_rate": 0.4,
+        "pass_at_k": 0.4,
+        "consistency": 1.0
+      },
+      "selection": {
+        "num_rows": 2.0,
+        "success_rate": 0.0,
+        "pass_at_k": 0.0,
+        "consistency": 1.0
+      },
+      "ordering": {
+        "num_rows": 1.0,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0
       }
     },
     "interactive_correction": 0.0,
@@ -152,19 +196,22 @@
   },
   "a1_recovery": {
     "num_samples": 8,
-    "num_runs": 1,
+    "num_runs": 3,
     "mean_success_rate": 0.25,
     "pass_at_k": 0.25,
     "consistency": 1.0,
     "per_sample": {
       "tau2_approval_gate_001": {
         "scenario": "approval_required",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "awaiting_user_interaction",
+          "awaiting_user_interaction",
           "awaiting_user_interaction"
         ],
         "interactive_correction": 0.0,
@@ -176,12 +223,15 @@
       },
       "tau2_binding_auto_001": {
         "scenario": "binding_failure",
-        "num_runs": 1,
+        "primary_failtax": "selection",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 0.0,
@@ -189,16 +239,19 @@
         "repair_salvage": 1.0,
         "repair_efficiency": 1.0,
         "approval_following": 1.0,
-        "tool_efficiency": 0.9
+        "tool_efficiency": 0.8
       },
       "tau2_binding_plus_approval_001": {
         "scenario": "binding_failure",
-        "num_runs": 1,
+        "primary_failtax": "selection",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "awaiting_user_interaction",
+          "awaiting_user_interaction",
           "awaiting_user_interaction"
         ],
         "interactive_correction": 0.0,
@@ -210,12 +263,15 @@
       },
       "tau2_dual_control_001": {
         "scenario": "dual_control",
-        "num_runs": 1,
+        "primary_failtax": "ordering",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "awaiting_user_interaction",
+          "awaiting_user_interaction",
           "awaiting_user_interaction"
         ],
         "interactive_correction": 0.0,
@@ -227,12 +283,15 @@
       },
       "tau2_env_ask_user_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "awaiting_user_interaction",
+          "awaiting_user_interaction",
           "awaiting_user_interaction"
         ],
         "interactive_correction": 0.0,
@@ -244,12 +303,15 @@
       },
       "tau2_env_backup_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 0.0,
@@ -257,16 +319,19 @@
         "repair_salvage": 1.0,
         "repair_efficiency": 1.0,
         "approval_following": 1.0,
-        "tool_efficiency": 0.9
+        "tool_efficiency": 0.8
       },
       "tau2_interaction_failure_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "awaiting_user_interaction",
+          "awaiting_user_interaction",
           "awaiting_user_interaction"
         ],
         "interactive_correction": 0.0,
@@ -278,12 +343,15 @@
       },
       "tau2_policy_abort_001": {
         "scenario": "policy_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "awaiting_user_interaction",
+          "awaiting_user_interaction",
           "awaiting_user_interaction"
         ],
         "interactive_correction": 0.0,
@@ -294,28 +362,51 @@
         "tool_efficiency": 1.0
       }
     },
+    "per_failtax": {
+      "recovery": {
+        "num_rows": 5.0,
+        "success_rate": 0.2,
+        "pass_at_k": 0.2,
+        "consistency": 1.0
+      },
+      "selection": {
+        "num_rows": 2.0,
+        "success_rate": 0.5,
+        "pass_at_k": 0.5,
+        "consistency": 1.0
+      },
+      "ordering": {
+        "num_rows": 1.0,
+        "success_rate": 0.0,
+        "pass_at_k": 0.0,
+        "consistency": 1.0
+      }
+    },
     "interactive_correction": 0.0,
     "interaction_efficiency": 0.25,
     "repair_salvage": 1.0,
     "repair_efficiency": 1.0,
     "approval_following": 0.75,
-    "tool_efficiency": 0.95
+    "tool_efficiency": 0.925
   },
   "a2_planner": {
     "num_samples": 8,
-    "num_runs": 1,
+    "num_runs": 3,
     "mean_success_rate": 0.25,
     "pass_at_k": 0.25,
     "consistency": 1.0,
     "per_sample": {
       "tau2_approval_gate_001": {
         "scenario": "approval_required",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "awaiting_user_interaction",
+          "awaiting_user_interaction",
           "awaiting_user_interaction"
         ],
         "interactive_correction": 0.0,
@@ -327,12 +418,15 @@
       },
       "tau2_binding_auto_001": {
         "scenario": "binding_failure",
-        "num_runs": 1,
+        "primary_failtax": "selection",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 0.0,
@@ -340,16 +434,19 @@
         "repair_salvage": 1.0,
         "repair_efficiency": 1.0,
         "approval_following": 1.0,
-        "tool_efficiency": 0.9
+        "tool_efficiency": 0.8
       },
       "tau2_binding_plus_approval_001": {
         "scenario": "binding_failure",
-        "num_runs": 1,
+        "primary_failtax": "selection",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "awaiting_user_interaction",
+          "awaiting_user_interaction",
           "awaiting_user_interaction"
         ],
         "interactive_correction": 0.0,
@@ -361,12 +458,15 @@
       },
       "tau2_dual_control_001": {
         "scenario": "dual_control",
-        "num_runs": 1,
+        "primary_failtax": "ordering",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "awaiting_user_interaction",
+          "awaiting_user_interaction",
           "awaiting_user_interaction"
         ],
         "interactive_correction": 0.0,
@@ -378,12 +478,15 @@
       },
       "tau2_env_ask_user_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "awaiting_user_interaction",
+          "awaiting_user_interaction",
           "awaiting_user_interaction"
         ],
         "interactive_correction": 0.0,
@@ -395,12 +498,15 @@
       },
       "tau2_env_backup_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 0.0,
@@ -408,16 +514,19 @@
         "repair_salvage": 1.0,
         "repair_efficiency": 1.0,
         "approval_following": 1.0,
-        "tool_efficiency": 0.9
+        "tool_efficiency": 0.8
       },
       "tau2_interaction_failure_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "awaiting_user_interaction",
+          "awaiting_user_interaction",
           "awaiting_user_interaction"
         ],
         "interactive_correction": 0.0,
@@ -429,12 +538,15 @@
       },
       "tau2_policy_abort_001": {
         "scenario": "policy_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "awaiting_user_interaction",
+          "awaiting_user_interaction",
           "awaiting_user_interaction"
         ],
         "interactive_correction": 0.0,
@@ -443,6 +555,26 @@
         "repair_efficiency": 1.0,
         "approval_following": 0.5,
         "tool_efficiency": 1.0
+      }
+    },
+    "per_failtax": {
+      "recovery": {
+        "num_rows": 5.0,
+        "success_rate": 0.2,
+        "pass_at_k": 0.2,
+        "consistency": 1.0
+      },
+      "selection": {
+        "num_rows": 2.0,
+        "success_rate": 0.5,
+        "pass_at_k": 0.5,
+        "consistency": 1.0
+      },
+      "ordering": {
+        "num_rows": 1.0,
+        "success_rate": 0.0,
+        "pass_at_k": 0.0,
+        "consistency": 1.0
       }
     },
     "interactive_correction": 0.0,
@@ -450,23 +582,26 @@
     "repair_salvage": 1.0,
     "repair_efficiency": 1.0,
     "approval_following": 0.75,
-    "tool_efficiency": 0.95
+    "tool_efficiency": 0.925
   },
   "a3_interaction": {
     "num_samples": 8,
-    "num_runs": 1,
-    "mean_success_rate": 0.625,
-    "pass_at_k": 0.625,
+    "num_runs": 3,
+    "mean_success_rate": 0.875,
+    "pass_at_k": 0.875,
     "consistency": 1.0,
     "per_sample": {
       "tau2_approval_gate_001": {
         "scenario": "approval_required",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 4.0,
@@ -478,12 +613,15 @@
       },
       "tau2_binding_auto_001": {
         "scenario": "binding_failure",
-        "num_runs": 1,
+        "primary_failtax": "selection",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 0.0,
@@ -491,16 +629,19 @@
         "repair_salvage": 1.0,
         "repair_efficiency": 1.0,
         "approval_following": 1.0,
-        "tool_efficiency": 0.9
+        "tool_efficiency": 0.8
       },
       "tau2_binding_plus_approval_001": {
         "scenario": "binding_failure",
-        "num_runs": 1,
+        "primary_failtax": "selection",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 4.0,
@@ -508,16 +649,19 @@
         "repair_salvage": 1.0,
         "repair_efficiency": 1.0,
         "approval_following": 0.0,
-        "tool_efficiency": 0.9
+        "tool_efficiency": 0.8
       },
       "tau2_dual_control_001": {
         "scenario": "dual_control",
-        "num_runs": 1,
+        "primary_failtax": "ordering",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 4.0,
@@ -529,29 +673,35 @@
       },
       "tau2_env_ask_user_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
-        "success_rate": 0.0,
-        "pass_at_k": 0.0,
-        "consistency": 1.0,
-        "distinct_outcomes": 1,
-        "stop_reasons": [
-          "interaction_turn_limit"
-        ],
-        "interactive_correction": 6.0,
-        "interaction_efficiency": 0.6,
-        "repair_salvage": 1.0,
-        "repair_efficiency": 1.0,
-        "approval_following": 1.0,
-        "tool_efficiency": 0.6
-      },
-      "tau2_env_backup_001": {
-        "scenario": "environment_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
+        ],
+        "interactive_correction": 2.0,
+        "interaction_efficiency": 1.0,
+        "repair_salvage": 1.0,
+        "repair_efficiency": 1.0,
+        "approval_following": 1.0,
+        "tool_efficiency": 0.8
+      },
+      "tau2_env_backup_001": {
+        "scenario": "environment_failure",
+        "primary_failtax": "recovery",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 0.0,
@@ -559,33 +709,39 @@
         "repair_salvage": 1.0,
         "repair_efficiency": 1.0,
         "approval_following": 1.0,
-        "tool_efficiency": 0.9
+        "tool_efficiency": 0.8
       },
       "tau2_interaction_failure_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
-        "success_rate": 0.0,
-        "pass_at_k": 0.0,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
-          "invalid_user_reply"
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
         ],
         "interactive_correction": 2.0,
         "interaction_efficiency": 1.0,
         "repair_salvage": 1.0,
         "repair_efficiency": 1.0,
         "approval_following": 1.0,
-        "tool_efficiency": 0.9
+        "tool_efficiency": 0.8
       },
       "tau2_policy_abort_001": {
         "scenario": "policy_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "invalid_user_reply",
+          "invalid_user_reply",
           "invalid_user_reply"
         ],
         "interactive_correction": 2.0,
@@ -596,28 +752,51 @@
         "tool_efficiency": 1.0
       }
     },
-    "interactive_correction": 2.75,
-    "interaction_efficiency": 0.875,
+    "per_failtax": {
+      "recovery": {
+        "num_rows": 5.0,
+        "success_rate": 0.8,
+        "pass_at_k": 0.8,
+        "consistency": 1.0
+      },
+      "selection": {
+        "num_rows": 2.0,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0
+      },
+      "ordering": {
+        "num_rows": 1.0,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0
+      }
+    },
+    "interactive_correction": 2.25,
+    "interaction_efficiency": 0.925,
     "repair_salvage": 1.0,
     "repair_efficiency": 1.0,
     "approval_following": 0.5625,
-    "tool_efficiency": 0.875
+    "tool_efficiency": 0.8500000000000001
   },
   "a4_reuse": {
     "num_samples": 8,
-    "num_runs": 1,
-    "mean_success_rate": 0.625,
-    "pass_at_k": 0.625,
+    "num_runs": 3,
+    "mean_success_rate": 0.875,
+    "pass_at_k": 0.875,
     "consistency": 1.0,
     "per_sample": {
       "tau2_approval_gate_001": {
         "scenario": "approval_required",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 4.0,
@@ -629,12 +808,15 @@
       },
       "tau2_binding_auto_001": {
         "scenario": "binding_failure",
-        "num_runs": 1,
+        "primary_failtax": "selection",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 0.0,
@@ -642,16 +824,19 @@
         "repair_salvage": 1.0,
         "repair_efficiency": 1.0,
         "approval_following": 1.0,
-        "tool_efficiency": 0.9
+        "tool_efficiency": 0.8
       },
       "tau2_binding_plus_approval_001": {
         "scenario": "binding_failure",
-        "num_runs": 1,
+        "primary_failtax": "selection",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 4.0,
@@ -663,12 +848,15 @@
       },
       "tau2_dual_control_001": {
         "scenario": "dual_control",
-        "num_runs": 1,
+        "primary_failtax": "ordering",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 4.0,
@@ -680,29 +868,35 @@
       },
       "tau2_env_ask_user_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
-        "success_rate": 0.0,
-        "pass_at_k": 0.0,
-        "consistency": 1.0,
-        "distinct_outcomes": 1,
-        "stop_reasons": [
-          "interaction_turn_limit"
-        ],
-        "interactive_correction": 6.0,
-        "interaction_efficiency": 0.6,
-        "repair_salvage": 1.0,
-        "repair_efficiency": 1.0,
-        "approval_following": 1.0,
-        "tool_efficiency": 0.6
-      },
-      "tau2_env_backup_001": {
-        "scenario": "environment_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
+        ],
+        "interactive_correction": 2.0,
+        "interaction_efficiency": 1.0,
+        "repair_salvage": 1.0,
+        "repair_efficiency": 1.0,
+        "approval_following": 1.0,
+        "tool_efficiency": 0.8
+      },
+      "tau2_env_backup_001": {
+        "scenario": "environment_failure",
+        "primary_failtax": "recovery",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "interactive_correction": 0.0,
@@ -710,33 +904,39 @@
         "repair_salvage": 1.0,
         "repair_efficiency": 1.0,
         "approval_following": 1.0,
-        "tool_efficiency": 0.9
+        "tool_efficiency": 0.8
       },
       "tau2_interaction_failure_001": {
         "scenario": "environment_failure",
-        "num_runs": 1,
-        "success_rate": 0.0,
-        "pass_at_k": 0.0,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
-          "invalid_user_reply"
+          "success_criteria_satisfied",
+          "success_criteria_satisfied",
+          "success_criteria_satisfied"
         ],
         "interactive_correction": 2.0,
         "interaction_efficiency": 1.0,
         "repair_salvage": 1.0,
         "repair_efficiency": 1.0,
         "approval_following": 1.0,
-        "tool_efficiency": 0.9
+        "tool_efficiency": 0.8
       },
       "tau2_policy_abort_001": {
         "scenario": "policy_failure",
-        "num_runs": 1,
+        "primary_failtax": "recovery",
+        "num_runs": 3,
         "success_rate": 0.0,
         "pass_at_k": 0.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
+          "invalid_user_reply",
+          "invalid_user_reply",
           "invalid_user_reply"
         ],
         "interactive_correction": 2.0,
@@ -747,11 +947,31 @@
         "tool_efficiency": 1.0
       }
     },
-    "interactive_correction": 2.75,
-    "interaction_efficiency": 0.875,
+    "per_failtax": {
+      "recovery": {
+        "num_rows": 5.0,
+        "success_rate": 0.8,
+        "pass_at_k": 0.8,
+        "consistency": 1.0
+      },
+      "selection": {
+        "num_rows": 2.0,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0
+      },
+      "ordering": {
+        "num_rows": 1.0,
+        "success_rate": 1.0,
+        "pass_at_k": 1.0,
+        "consistency": 1.0
+      }
+    },
+    "interactive_correction": 2.25,
+    "interaction_efficiency": 0.925,
     "repair_salvage": 1.0,
     "repair_efficiency": 1.0,
     "approval_following": 0.5625,
-    "tool_efficiency": 0.875
+    "tool_efficiency": 0.8625
   }
 }

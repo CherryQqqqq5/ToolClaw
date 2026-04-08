@@ -6,16 +6,21 @@
   "metadata": {
     "model_name": "baseline_executor",
     "mode": "baseline",
-    "start_time": "2026-04-03T14:53:35.791071+00:00",
-    "end_time": "2026-04-03T14:53:35.791196+00:00",
+    "start_time": "2026-04-08T13:56:55.281185+00:00",
+    "end_time": "2026-04-08T13:56:55.281253+00:00",
     "benchmark": null,
-    "task_source": null
+    "task_source": null,
+    "task_annotations": {},
+    "budget_limits": {},
+    "budget_usage": {},
+    "interaction_modules": [],
+    "run_manifest": {}
   },
   "state_snapshots": [],
   "events": [
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-03T14:53:35.791164+00:00",
+      "timestamp": "2026-04-08T13:56:55.281210+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "baseline_executor",
@@ -30,7 +35,7 @@
     },
     {
       "event_id": "evt_call_step_01",
-      "timestamp": "2026-04-03T14:53:35.791171+00:00",
+      "timestamp": "2026-04-08T13:56:55.281219+00:00",
       "step_id": "step_01",
       "event_type": "tool_call",
       "actor": "baseline_executor",
@@ -45,7 +50,7 @@
     },
     {
       "event_id": "evt_result_step_01",
-      "timestamp": "2026-04-03T14:53:35.791179+00:00",
+      "timestamp": "2026-04-08T13:56:55.281228+00:00",
       "step_id": "step_01",
       "event_type": "tool_result",
       "actor": "environment",
@@ -61,7 +66,7 @@
     },
     {
       "event_id": "evt_call_step_02",
-      "timestamp": "2026-04-03T14:53:35.791183+00:00",
+      "timestamp": "2026-04-08T13:56:55.281234+00:00",
       "step_id": "step_02",
       "event_type": "tool_call",
       "actor": "baseline_executor",
@@ -74,7 +79,7 @@
     },
     {
       "event_id": "evt_stop_failed_step_02",
-      "timestamp": "2026-04-03T14:53:35.791192+00:00",
+      "timestamp": "2026-04-08T13:56:55.281247+00:00",
       "step_id": "step_02",
       "event_type": "stop",
       "actor": "baseline_executor",
@@ -96,6 +101,14 @@
     "repair_actions": 0,
     "success": false,
     "token_cost": null,
-    "latency_ms": null
+    "latency_ms": null,
+    "clarification_precision": 0.0,
+    "clarification_recall": 0.0,
+    "unnecessary_question_rate": 0.0,
+    "patch_success_rate": 0.0,
+    "post_answer_retry_count": 0,
+    "recovery_budget_used": 0.0,
+    "budget_violation": false,
+    "budget_violation_reason": null
   }
 }

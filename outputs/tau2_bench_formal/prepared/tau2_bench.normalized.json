@@ -8,11 +8,47 @@
       "benchmark": "tau2_bench",
       "requires_interaction": true,
       "expected_user_turns": 0,
-      "expected_repairs": 1
+      "expected_repairs": 1,
+      "primary_failtax": "selection",
+      "failtaxes": [
+        "selection"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "clarify_then_patch_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path"
+      ],
+      "dependency_edges": [
+        {
+          "source": "step_01",
+          "target": "step_02",
+          "type": "state"
+        }
+      ]
     },
     "candidate_tools": [
       "search_tool",
       "write_tool"
+    ],
+    "primary_failtax": "selection",
+    "failtaxes": [
+      "selection"
+    ],
+    "failure_step": "step_02",
+    "expected_recovery_path": "clarify_then_patch_then_retry",
+    "gold_tool": "write_tool",
+    "state_slots": [
+      "query",
+      "target_path"
+    ],
+    "dependency_edges": [
+      {
+        "source": "step_01",
+        "target": "step_02",
+        "type": "state"
+      }
     ]
   },
   {
@@ -24,7 +60,25 @@
       "benchmark": "tau2_bench",
       "requires_interaction": true,
       "expected_user_turns": 0,
-      "expected_repairs": 1
+      "expected_repairs": 1,
+      "primary_failtax": "recovery",
+      "failtaxes": [
+        "recovery"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "clarify_or_switch_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path"
+      ],
+      "dependency_edges": [
+        {
+          "source": "step_01",
+          "target": "step_02",
+          "type": "state"
+        }
+      ]
     },
     "backup_tool_map": {
       "write_tool": "backup_write_tool"
@@ -33,6 +87,24 @@
       "search_tool",
       "write_tool",
       "backup_write_tool"
+    ],
+    "primary_failtax": "recovery",
+    "failtaxes": [
+      "recovery"
+    ],
+    "failure_step": "step_02",
+    "expected_recovery_path": "clarify_or_switch_then_retry",
+    "gold_tool": "write_tool",
+    "state_slots": [
+      "query",
+      "target_path"
+    ],
+    "dependency_edges": [
+      {
+        "source": "step_01",
+        "target": "step_02",
+        "type": "state"
+      }
     ]
   },
   {
@@ -44,7 +116,25 @@
       "benchmark": "tau2_bench",
       "requires_interaction": true,
       "expected_user_turns": 1,
-      "expected_repairs": 1
+      "expected_repairs": 1,
+      "primary_failtax": "recovery",
+      "failtaxes": [
+        "recovery"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "clarify_or_switch_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path"
+      ],
+      "dependency_edges": [
+        {
+          "source": "step_01",
+          "target": "step_02",
+          "type": "state"
+        }
+      ]
     },
     "simulated_policy": {
       "mode": "cooperative",
@@ -56,6 +146,24 @@
       "search_tool",
       "write_tool",
       "backup_write_tool"
+    ],
+    "primary_failtax": "recovery",
+    "failtaxes": [
+      "recovery"
+    ],
+    "failure_step": "step_02",
+    "expected_recovery_path": "clarify_or_switch_then_retry",
+    "gold_tool": "write_tool",
+    "state_slots": [
+      "query",
+      "target_path"
+    ],
+    "dependency_edges": [
+      {
+        "source": "step_01",
+        "target": "step_02",
+        "type": "state"
+      }
     ]
   },
   {
@@ -67,7 +175,26 @@
       "benchmark": "tau2_bench",
       "requires_interaction": true,
       "expected_user_turns": 1,
-      "expected_repairs": 1
+      "expected_repairs": 1,
+      "primary_failtax": "recovery",
+      "failtaxes": [
+        "recovery"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "ask_approval_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path",
+        "approved"
+      ],
+      "dependency_edges": [
+        {
+          "source": "step_01",
+          "target": "step_02",
+          "type": "state"
+        }
+      ]
     },
     "simulated_policy": {
       "mode": "cooperative"
@@ -79,7 +206,26 @@
     "constraints": {
       "requires_user_approval": true,
       "risk_level": "high"
-    }
+    },
+    "primary_failtax": "recovery",
+    "failtaxes": [
+      "recovery"
+    ],
+    "failure_step": "step_02",
+    "expected_recovery_path": "ask_approval_then_retry",
+    "gold_tool": "write_tool",
+    "state_slots": [
+      "query",
+      "target_path",
+      "approved"
+    ],
+    "dependency_edges": [
+      {
+        "source": "step_01",
+        "target": "step_02",
+        "type": "state"
+      }
+    ]
   },
   {
     "task_id": "tau2_binding_plus_approval_001",
@@ -90,7 +236,25 @@
       "benchmark": "tau2_bench",
       "requires_interaction": true,
       "expected_user_turns": 1,
-      "expected_repairs": 1
+      "expected_repairs": 1,
+      "primary_failtax": "selection",
+      "failtaxes": [
+        "selection"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "clarify_then_patch_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path"
+      ],
+      "dependency_edges": [
+        {
+          "source": "step_01",
+          "target": "step_02",
+          "type": "state"
+        }
+      ]
     },
     "simulated_policy": {
       "mode": "cooperative"
@@ -102,7 +266,25 @@
     "constraints": {
       "requires_user_approval": true,
       "risk_level": "high"
-    }
+    },
+    "primary_failtax": "selection",
+    "failtaxes": [
+      "selection"
+    ],
+    "failure_step": "step_02",
+    "expected_recovery_path": "clarify_then_patch_then_retry",
+    "gold_tool": "write_tool",
+    "state_slots": [
+      "query",
+      "target_path"
+    ],
+    "dependency_edges": [
+      {
+        "source": "step_01",
+        "target": "step_02",
+        "type": "state"
+      }
+    ]
   },
   {
     "task_id": "tau2_dual_control_001",
@@ -113,7 +295,25 @@
       "benchmark": "tau2_bench",
       "requires_interaction": true,
       "expected_user_turns": 1,
-      "expected_repairs": 1
+      "expected_repairs": 1,
+      "primary_failtax": "ordering",
+      "failtaxes": [
+        "ordering"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "ask_approval_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path"
+      ],
+      "dependency_edges": [
+        {
+          "source": "step_01",
+          "target": "step_02",
+          "type": "state"
+        }
+      ]
     },
     "simulated_policy": {
       "mode": "cooperative"
@@ -129,7 +329,25 @@
     "constraints": {
       "requires_user_approval": true,
       "risk_level": "high"
-    }
+    },
+    "primary_failtax": "ordering",
+    "failtaxes": [
+      "ordering"
+    ],
+    "failure_step": "step_02",
+    "expected_recovery_path": "ask_approval_then_retry",
+    "gold_tool": "write_tool",
+    "state_slots": [
+      "query",
+      "target_path"
+    ],
+    "dependency_edges": [
+      {
+        "source": "step_01",
+        "target": "step_02",
+        "type": "state"
+      }
+    ]
   },
   {
     "task_id": "tau2_interaction_failure_001",
@@ -140,7 +358,25 @@
       "benchmark": "tau2_bench",
       "requires_interaction": true,
       "expected_user_turns": 1,
-      "expected_repairs": 1
+      "expected_repairs": 1,
+      "primary_failtax": "recovery",
+      "failtaxes": [
+        "recovery"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "clarify_or_switch_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path"
+      ],
+      "dependency_edges": [
+        {
+          "source": "step_01",
+          "target": "step_02",
+          "type": "state"
+        }
+      ]
     },
     "simulated_policy": {
       "mode": "strict"
@@ -148,6 +384,24 @@
     "candidate_tools": [
       "search_tool",
       "write_tool"
+    ],
+    "primary_failtax": "recovery",
+    "failtaxes": [
+      "recovery"
+    ],
+    "failure_step": "step_02",
+    "expected_recovery_path": "clarify_or_switch_then_retry",
+    "gold_tool": "write_tool",
+    "state_slots": [
+      "query",
+      "target_path"
+    ],
+    "dependency_edges": [
+      {
+        "source": "step_01",
+        "target": "step_02",
+        "type": "state"
+      }
     ]
   },
   {
@@ -159,7 +413,26 @@
       "benchmark": "tau2_bench",
       "requires_interaction": true,
       "expected_user_turns": 1,
-      "expected_repairs": 1
+      "expected_repairs": 1,
+      "primary_failtax": "recovery",
+      "failtaxes": [
+        "recovery"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "ask_approval_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path",
+        "approved"
+      ],
+      "dependency_edges": [
+        {
+          "source": "step_01",
+          "target": "step_02",
+          "type": "state"
+        }
+      ]
     },
     "simulated_policy": {
       "mode": "abortive"
@@ -171,6 +444,25 @@
     "constraints": {
       "requires_user_approval": true,
       "risk_level": "high"
-    }
+    },
+    "primary_failtax": "recovery",
+    "failtaxes": [
+      "recovery"
+    ],
+    "failure_step": "step_02",
+    "expected_recovery_path": "ask_approval_then_retry",
+    "gold_tool": "write_tool",
+    "state_slots": [
+      "query",
+      "target_path",
+      "approved"
+    ],
+    "dependency_edges": [
+      {
+        "source": "step_01",
+        "target": "step_02",
+        "type": "state"
+      }
+    ]
   }
 ]

@@ -1,8 +1,11 @@
 {
   "benchmark": "tau2_bench",
-  "source": "/Users/cherry/Documents/ToolClaw/data/tau2_bench.formal.json",
-  "normalized_taskset": "/Users/cherry/Documents/ToolClaw/outputs/tau2_bench_formal/prepared/tau2_bench.normalized.json",
+  "source": "/cephfs/qiuyn/ToolClaw/data/tau2_bench.formal.json",
+  "source_sha256": "cbeb31e9647ef8e9e452e437c739f154ba2f6933131ddac1b054a398b5def393",
+  "normalized_taskset": "/cephfs/qiuyn/ToolClaw/outputs/tau2_bench_formal/prepared/tau2_bench.normalized.json",
+  "normalized_taskset_sha256": "c7188c0623232804c81ad33607fd591a3c00cbe5175d839a78bd7ecc23b45e2e",
   "sample_count": 8,
+  "sample_id_checksum": "37d5e389322068940981e42d8a1cde980ae9d0be242f30c2afb9fddf6e9d4acb",
   "mode": "planner",
   "systems": [
     "a0_baseline",
@@ -11,7 +14,9 @@
     "a3_interaction",
     "a4_reuse"
   ],
-  "num_runs": 1,
-  "scoreboard_path": "/Users/cherry/Documents/ToolClaw/outputs/tau2_bench_formal/scoreboard.json",
-  "per_system_summary_path": "/Users/cherry/Documents/ToolClaw/outputs/tau2_bench_formal/per_system_summary.json"
+  "num_runs": 3,
+  "git_commit": "3e27f9b206a39f6e7e9c671671948ec20b17d1fc",
+  "config_sha256": null,
+  "scoreboard_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_bench_formal/scoreboard.json",
+  "per_system_summary_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_bench_formal/per_system_summary.json"
 }
