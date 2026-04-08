@@ -1,0 +1,38 @@
+{
+  "benchmark": "toolsandbox",
+  "generated_at": "2026-04-08T11:42:10.328919+00:00",
+  "source": "/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.official.json",
+  "normalized_taskset": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_full_official/prepared/toolsandbox.normalized.json",
+  "mode": "planner",
+  "systems": [
+    "a0_baseline",
+    "a1_recovery",
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_runs": 1,
+  "scoreboard_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_full_official/scoreboard.json",
+  "report_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_full_official/report.md",
+  "comparison_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_full_official/comparison.scored.csv",
+  "per_system_summary_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_full_official/per_system_summary.json",
+  "archived_files": [
+    "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_full_official/archive/run_toolsandbox_bench.py",
+    "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_full_official/archive/benchmark_toolsandbox.yaml",
+    "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_full_official/archive/phase1.yaml"
+  ],
+  "experiment_metadata": {
+    "seed": 0,
+    "model_version": "phase1_executor",
+    "budget_note": "default phase1 budget",
+    "runner_script": "/cephfs/qiuyn/ToolClaw/scripts/run_toolsandbox_bench.py",
+    "config_file": "/cephfs/qiuyn/ToolClaw/configs/benchmark_toolsandbox.yaml",
+    "phase_config": "/cephfs/qiuyn/ToolClaw/configs/phase1.yaml",
+    "official_run_dir": null,
+    "official_data_root": "/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/data"
+  },
+  "comparison_raw_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_full_official/comparison.raw.csv",
+  "comparison_scored_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_full_official/comparison.scored.csv",
+  "latest_comparison_raw_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_full_official/latest_run_comparison.raw.csv",
+  "latest_comparison_scored_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_full_official/latest_run_comparison.scored.csv"
+}
