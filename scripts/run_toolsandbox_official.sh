@@ -101,11 +101,11 @@ if [[ ! -d "$TOOLSANDBOX_DIR" ]]; then
   exit 1
 fi
 
-patch_toolsandbox_openai_roles() {
+patch_toolsandbox_roles() {
   if [[ "$PATCH_ROLES" != "1" ]]; then
     return 0
   fi
-  "$PYTHON_EXEC" "$ROOT_DIR/scripts/patch_toolsandbox_openai_roles.py" --root "$TOOLSANDBOX_DIR"
+  "$PYTHON_EXEC" "$ROOT_DIR/scripts/patch_toolsandbox_openai_roles.py" --root "$TOOLSANDBOX_DIR" >/dev/null
 }
 
 resolve_python_bin() {
@@ -219,8 +219,6 @@ PYTHON_EXEC="$(resolve_python_bin)"
 RUN_PYTHON=""
 ENV_LABEL=""
 
-patch_toolsandbox_openai_roles
-
 if [[ "$USE_ACTIVE_ENV" == "1" ]]; then
   RUN_PYTHON="$PYTHON_EXEC"
   ENV_LABEL="${CONDA_PREFIX:-active_python_env}"
@@ -239,6 +237,7 @@ else
 fi
 
 ensure_runtime_compat "$RUN_PYTHON"
+patch_toolsandbox_roles
 
 if [[ "$INSTALL_ONLY" -eq 1 ]]; then
   echo "ToolSandbox environment is ready:"

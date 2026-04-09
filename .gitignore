@@ -3,3 +3,15 @@ __pycache__/
 .pytest_cache/
 .venv/
 
+# Local editor / env state
+.vscode/
+
+# Evaluation artifacts
+outputs/
+
+# Vendored ToolSandbox runtime artifacts
+data/external/ToolSandbox/data/
+data/external/ToolSandbox/.venv/
+
+# Official ToolSandbox run outputs sometimes land under the repo-level data/ root
+data/agent_*/
