@@ -1,14 +1,14 @@
 # ToolSandbox Benchmark Report
 
 - source: `/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.official.json`
-- normalized_taskset: `/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_formal_smoke/prepared/toolsandbox.normalized.json`
+- normalized_taskset: `/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_smoke/prepared/toolsandbox.normalized.json`
 - samples: `1`
 - runs: `1`
 - systems: `a0_baseline, a1_recovery, a2_planner, a3_interaction, a4_reuse`
-- raw_comparison: `outputs/toolsandbox_formal_smoke/comparison.raw.csv`
-- scored_comparison: `outputs/toolsandbox_formal_smoke/comparison.scored.csv`
-- focused_slice_summary: `outputs/toolsandbox_formal_smoke/focused_slice_summary.md`
-- failtax_summary: `outputs/toolsandbox_formal_smoke/per_failtax_summary.json`
+- raw_comparison: `outputs/toolsandbox_smoke/comparison.raw.csv`
+- scored_comparison: `outputs/toolsandbox_smoke/comparison.scored.csv`
+- focused_slice_summary: `outputs/toolsandbox_smoke/focused_slice_summary.md`
+- failtax_summary: `outputs/toolsandbox_smoke/per_failtax_summary.json`
 
 ## Aggregate
 

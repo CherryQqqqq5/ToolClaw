@@ -139,4 +139,4 @@
 - Interpret A4 reuse gains primarily through second_run_* deltas, not usage-rate alone.
 - Use primary_failtax and task_family tables to keep benchmark slicing aligned with experimental claims.
 
-_ Results generated from commit e8902fd7cc71504c1652c763bfc932d7d1a46acd. _
+_ Results generated from commit 8c6fe292ae9198781784f0393453cad0755ce9cd. _

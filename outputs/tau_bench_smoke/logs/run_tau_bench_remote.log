@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/run_tau_bench.py", line 165, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/run_tau_bench.py", line 86, in main
+    samples = adapter.load_samples(args.source)
+  File "/cephfs/qiuyn/ToolClaw/src/toolclaw/benchmarks/adapters.py", line 72, in load_samples
+    raise FileNotFoundError(f"tau-bench source not found: {path}")
+FileNotFoundError: tau-bench source not found: data/tau_bench.sample.json
