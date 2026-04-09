@@ -13,13 +13,16 @@ PIP_MAX_RETRIES="${TOOLSANDBOX_PIP_MAX_RETRIES:-3}"
 PIP_RETRY_DELAY_SECONDS="${TOOLSANDBOX_PIP_RETRY_DELAY_SECONDS:-3}"
 INSTALL_TARGET="${TOOLSANDBOX_INSTALL_TARGET:-.}"
 HTTPX_COMPAT_SPEC="${TOOLSANDBOX_HTTPX_COMPAT_SPEC:-httpx<0.28}"
+PATCH_ROLES="${TOOLSANDBOX_PATCH_OPENAI_ROLES:-1}"
 
 # Benchmark proxy routing defaults (OpenAI-compatible):
 #   TOOLCLAW_BENCHMARK_PROXY_PROVIDER=novacode|openrouter|custom|direct
 #   TOOLCLAW_BENCHMARK_PROXY_BASE_URL=<custom url>
+#   TOOLCLAW_BENCHMARK_PROXY_FORCE=1 (override explicit OPENAI_BASE_URL / OPENAI_API_BASE)
 # Explicit OPENAI_BASE_URL / OPENAI_API_BASE values still take precedence.
 PROXY_PROVIDER="${TOOLCLAW_BENCHMARK_PROXY_PROVIDER:-novacode}"
 PROXY_PROVIDER="$(printf '%s' "$PROXY_PROVIDER" | tr '[:upper:]' '[:lower:]')"
+PROXY_FORCE="${TOOLCLAW_BENCHMARK_PROXY_FORCE:-0}"
 case "$PROXY_PROVIDER" in
   nova|novacode)
     DEFAULT_PROXY_BASE_URL="${TOOLCLAW_BENCHMARK_NOVACODE_BASE_URL:-https://ai.novacode.top/v1}"
@@ -35,7 +38,10 @@ case "$PROXY_PROVIDER" in
     ;;
 esac
 
-if [[ -z "${OPENAI_BASE_URL:-}" && -z "${OPENAI_API_BASE:-}" && -n "$DEFAULT_PROXY_BASE_URL" ]]; then
+if [[ "$PROXY_FORCE" == "1" && -n "$DEFAULT_PROXY_BASE_URL" ]]; then
+  export OPENAI_BASE_URL="$DEFAULT_PROXY_BASE_URL"
+  export OPENAI_API_BASE="$DEFAULT_PROXY_BASE_URL"
+elif [[ -z "${OPENAI_BASE_URL:-}" && -z "${OPENAI_API_BASE:-}" && -n "$DEFAULT_PROXY_BASE_URL" ]]; then
   export OPENAI_BASE_URL="$DEFAULT_PROXY_BASE_URL"
   export OPENAI_API_BASE="$DEFAULT_PROXY_BASE_URL"
 fi
@@ -94,6 +100,13 @@ if [[ ! -d "$TOOLSANDBOX_DIR" ]]; then
   echo "expected clone location: data/external/ToolSandbox" >&2
   exit 1
 fi
+
+patch_toolsandbox_openai_roles() {
+  if [[ "$PATCH_ROLES" != "1" ]]; then
+    return 0
+  fi
+  "$PYTHON_EXEC" "$ROOT_DIR/scripts/patch_toolsandbox_openai_roles.py" --root "$TOOLSANDBOX_DIR"
+}
 
 resolve_python_bin() {
   if command -v "$PYTHON_BIN" >/dev/null 2>&1; then
@@ -205,6 +218,8 @@ ensure_runtime_compat() {
 PYTHON_EXEC="$(resolve_python_bin)"
 RUN_PYTHON=""
 ENV_LABEL=""
+
+patch_toolsandbox_openai_roles
 
 if [[ "$USE_ACTIVE_ENV" == "1" ]]; then
   RUN_PYTHON="$PYTHON_EXEC"

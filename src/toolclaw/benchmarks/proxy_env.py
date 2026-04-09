@@ -38,6 +38,7 @@ def benchmark_proxy_env(base_env: Mapping[str, str] | None = None) -> dict[str, 
 
     env = dict(os.environ if base_env is None else base_env)
     provider = _normalized_provider(env.get("TOOLCLAW_BENCHMARK_PROXY_PROVIDER"))
+    force_proxy = str(env.get("TOOLCLAW_BENCHMARK_PROXY_FORCE", "")).strip().lower() in {"1", "true", "yes", "on"}
 
     if provider == "direct":
         env["TOOLCLAW_BENCHMARK_PROXY_ACTIVE"] = "direct"
@@ -53,7 +54,10 @@ def benchmark_proxy_env(base_env: Mapping[str, str] | None = None) -> dict[str, 
     openai_base_url = env.get("OPENAI_BASE_URL", "").strip()
     openai_api_base = env.get("OPENAI_API_BASE", "").strip()
 
-    if openai_base_url and not openai_api_base:
+    if force_proxy and chosen_base_url:
+        env["OPENAI_BASE_URL"] = chosen_base_url
+        env["OPENAI_API_BASE"] = chosen_base_url
+    elif openai_base_url and not openai_api_base:
         env["OPENAI_API_BASE"] = openai_base_url
     elif openai_api_base and not openai_base_url:
         env["OPENAI_BASE_URL"] = openai_api_base
