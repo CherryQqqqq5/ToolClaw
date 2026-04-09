@@ -4,7 +4,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOOLSANDBOX_DIR="${TOOLSANDBOX_DIR:-$ROOT_DIR/data/external/ToolSandbox}"
-VENV_DIR="${TOOLSANDBOX_VENV_DIR:-$TOOLSANDBOX_DIR/.venv}"
+LOCAL_IO_ROOT="${TOOLCLAW_LOCAL_IO_ROOT:-/tmp/toolclaw_toolsandbox}"
+mkdir -p "$LOCAL_IO_ROOT"
+VENV_DIR="${TOOLSANDBOX_VENV_DIR:-$LOCAL_IO_ROOT/.venv}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 INSTALL_ONLY=0
 USE_ACTIVE_ENV="${TOOLSANDBOX_USE_ACTIVE_ENV:-0}"
@@ -14,6 +16,12 @@ PIP_RETRY_DELAY_SECONDS="${TOOLSANDBOX_PIP_RETRY_DELAY_SECONDS:-3}"
 INSTALL_TARGET="${TOOLSANDBOX_INSTALL_TARGET:-.}"
 HTTPX_COMPAT_SPEC="${TOOLSANDBOX_HTTPX_COMPAT_SPEC:-httpx<0.28}"
 PATCH_ROLES="${TOOLSANDBOX_PATCH_OPENAI_ROLES:-1}"
+export TMPDIR="${TMPDIR:-$LOCAL_IO_ROOT/tmp}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$LOCAL_IO_ROOT/.cache}"
+export HF_HOME="${HF_HOME:-$LOCAL_IO_ROOT/hf}"
+export PIP_CACHE_DIR="${PIP_CACHE_DIR:-$XDG_CACHE_HOME/pip}"
+export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
+mkdir -p "$TMPDIR" "$XDG_CACHE_HOME" "$HF_HOME" "$PIP_CACHE_DIR"
 
 # Benchmark proxy routing defaults (OpenAI-compatible):
 #   TOOLCLAW_BENCHMARK_PROXY_PROVIDER=novacode|openrouter|custom|direct
@@ -60,9 +68,10 @@ Examples:
   OPENAI_API_KEY=... scripts/run_toolsandbox_official.sh --agent GPT_4_o_2024_05_13 --user GPT_4_o_2024_05_13 --scenarios wifi_off
 
 Notes:
-  - By default the first run creates .venv under the official ToolSandbox repo and installs dependencies.
+  - By default the first run creates the ToolSandbox venv under TOOLCLAW_LOCAL_IO_ROOT (default: /tmp/toolclaw_toolsandbox).
   - Default installs runtime dependencies only. Set TOOLSANDBOX_INSTALL_TARGET='.[dev]' to include upstream dev extras.
   - The wrapper auto-pins a compatible httpx version for the vendored OpenAI client when needed.
+  - The wrapper also defaults TMPDIR/XDG_CACHE_HOME/HF_HOME/PIP_CACHE_DIR to local scratch paths to avoid slow shared filesystems.
   - --use-active-env installs into the currently active Python/conda environment instead of creating a venv.
   - If python -m venv fails, the script falls back to python -m virtualenv when possible.
   - API keys still need to be provided via environment variables as required by the selected agent/user roles.
@@ -106,6 +115,48 @@ patch_toolsandbox_roles() {
     return 0
   fi
   "$PYTHON_EXEC" "$ROOT_DIR/scripts/patch_toolsandbox_openai_roles.py" --root "$TOOLSANDBOX_DIR" >/dev/null
+}
+
+contains_placeholder() {
+  case "$1" in
+    *"你的真实_"*|*"YOUR_"*|*"your_"*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+validate_env() {
+  if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+    echo "OPENAI_API_KEY is required" >&2
+    exit 2
+  fi
+  if contains_placeholder "${OPENAI_API_KEY:-}"; then
+    echo "OPENAI_API_KEY is still a placeholder" >&2
+    exit 2
+  fi
+  if contains_placeholder "${RAPID_API_KEY:-}"; then
+    echo "RAPID_API_KEY is still a placeholder" >&2
+    exit 2
+  fi
+  if [[ -n "${RAPID_API_KEY:-}" && "${RAPID_API_KEY:-}" == sk-or-v1-* ]]; then
+    echo "RAPID_API_KEY must be a real RapidAPI key, not an OpenRouter key" >&2
+    exit 2
+  fi
+
+  case "$PROXY_PROVIDER" in
+    nova|novacode)
+      if [[ "${OPENAI_API_KEY:-}" == sk-or-v1-* ]]; then
+        echo "novacode provider selected, but OPENAI_API_KEY looks like an OpenRouter key" >&2
+        exit 2
+      fi
+      ;;
+    openrouter|router)
+      export TOOLSANDBOX_OPENAI_MODEL="${TOOLSANDBOX_OPENAI_MODEL:-openai/gpt-5.4}"
+      ;;
+  esac
 }
 
 resolve_python_bin() {
@@ -254,5 +305,7 @@ fi
 if [[ ${#ARGS[@]} -eq 0 ]]; then
   ARGS=(--test_mode)
 fi
+
+validate_env
 
 exec "$RUN_PYTHON" -c 'import sys; from tool_sandbox.cli import main; sys.argv = ["tool_sandbox", *sys.argv[1:]]; main()' "${ARGS[@]}"
