@@ -1,0 +1,48 @@
+{
+  "asset_id": "ws_wf_send_message_with_contact_content_cellular_off_multiple_user_turn",
+  "asset_type": "WorkflowSnippet",
+  "task_signature": "phase1::family=t3_must_interact::caps=cap_retrieve+cap_write::fail=state_dependency::goal=send_message_with_contact_content_cellular_off_multiple_user_turn",
+  "payload": {
+    "snippet_id": "ws_wf_send_message_with_contact_content_cellular_off_multiple_user_turn",
+    "task_signature": "phase1::family=t3_must_interact::caps=cap_retrieve+cap_write::fail=state_dependency::goal=send_message_with_contact_content_cellular_off_multiple_user_turn",
+    "capability_skeleton": [
+      "cap_retrieve",
+      "cap_write"
+    ],
+    "recommended_bindings": {
+      "cap_retrieve": "search_tool",
+      "cap_write": "write_tool"
+    },
+    "recommended_inputs": {
+      "cap_retrieve": {
+        "query": "send_message_with_contact_content_cellular_off_multiple_user_turn"
+      },
+      "cap_write": {
+        "target_path": "outputs/toolsandbox/reports/send_message_with_contact_content_cellular_off_multiple_user_turn.txt"
+      }
+    },
+    "version": 1,
+    "applicability_conditions": [
+      "phase1_training_free"
+    ],
+    "quality_score": 1.0,
+    "metadata": {
+      "final_success": true,
+      "compile_gate": {
+        "allow_compile": true,
+        "objective_active": false,
+        "objective_consistent": true,
+        "quality_score": 1.0,
+        "min_quality_score": 0.35,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 1.0,
+        "repair_score": 1.0,
+        "tool_calls": 2,
+        "user_queries": 0,
+        "repair_actions": 0,
+        "expected_tool_calls": 2,
+        "expected_turns": 30
+      }
+    }
+  }
+}

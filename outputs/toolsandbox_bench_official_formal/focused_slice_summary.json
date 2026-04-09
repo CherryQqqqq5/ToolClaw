@@ -1,0 +1,122 @@
+{
+  "focus_categories": [
+    "insufficient_information",
+    "multiple_user_turn",
+    "single_tool"
+  ],
+  "per_system": {
+    "a0_baseline": {
+      "multiple_user_turn": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 1.0,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 1.0
+      }
+    },
+    "a1_recovery": {
+      "multiple_user_turn": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 1.0,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 1.0
+      }
+    },
+    "a2_planner": {
+      "multiple_user_turn": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 1.0,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 1.0
+      }
+    },
+    "a3_interaction": {
+      "multiple_user_turn": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 1.0,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 1.0
+      }
+    },
+    "a4_reuse": {
+      "multiple_user_turn": {
+        "num_rows": 3.0,
+        "success_rate": 1.0,
+        "milestone_similarity": 1.0,
+        "milestone_coverage": 1.0,
+        "interaction_efficiency": 1.0,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 1.0,
+        "hallucination_avoidance": 1.0,
+        "state_dependency_score": 1.0,
+        "result_summary_coverage": 1.0,
+        "reference_summary_coverage": 1.0
+      }
+    }
+  },
+  "deltas": {
+    "a3_interaction_minus_a0_baseline": {
+      "multiple_user_turn": {
+        "success_rate": 0.0,
+        "milestone_similarity": 0.0,
+        "interaction_efficiency": 0.0,
+        "tool_efficiency": 0.0,
+        "turn_efficiency": 0.0
+      }
+    },
+    "a3_interaction_minus_a1_recovery": {
+      "multiple_user_turn": {
+        "success_rate": 0.0,
+        "milestone_similarity": 0.0,
+        "interaction_efficiency": 0.0,
+        "tool_efficiency": 0.0,
+        "turn_efficiency": 0.0
+      }
+    },
+    "a3_interaction_minus_a2_planner": {
+      "multiple_user_turn": {
+        "success_rate": 0.0,
+        "milestone_similarity": 0.0,
+        "interaction_efficiency": 0.0,
+        "tool_efficiency": 0.0,
+        "turn_efficiency": 0.0
+      }
+    },
+    "a4_reuse_minus_a3_interaction": {
+      "multiple_user_turn": {
+        "success_rate": 0.0,
+        "milestone_similarity": 0.0,
+        "interaction_efficiency": 0.0,
+        "tool_efficiency": 0.0,
+        "turn_efficiency": 0.0
+      }
+    }
+  }
+}

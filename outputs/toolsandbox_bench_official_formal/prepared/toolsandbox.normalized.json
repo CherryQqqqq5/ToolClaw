@@ -1,583 +1,112 @@
 [
   {
-    "task_id": "toolsandbox_state_dep_001",
+    "task_id": "send_message_with_contact_content_cellular_off_multiple_user_turn",
     "scenario": "state_dependency",
-    "query": "retrieve and write report",
-    "target_path": "outputs/toolsandbox/reports/toolsandbox_state_dep_001.txt",
-    "messages": [
-      {
-        "sender": "user",
-        "recipient": "agent",
-        "content": "Retrieve the latest account summary and save a report."
-      }
-    ],
-    "milestones": [
-      "retrieve data",
-      "write artifact"
-    ],
-    "tool_allow_list": [
-      "search_tool",
-      "write_tool"
-    ],
-    "ideal_turn_count": 2,
-    "ideal_tool_calls": 2,
-    "reference_result_summary": {},
+    "query": "send_message_with_contact_content_cellular_off_multiple_user_turn",
+    "target_path": "outputs/toolsandbox/reports/send_message_with_contact_content_cellular_off_multiple_user_turn.txt",
+    "messages": [],
+    "milestones": [],
+    "branch_options": [],
+    "tool_allow_list": [],
+    "ideal_turn_count": 30,
+    "ideal_tool_calls": null,
+    "reference_result_summary": {
+      "name": "send_message_with_contact_content_cellular_off_multiple_user_turn",
+      "categories": [
+        "STATE_DEPENDENCY",
+        "MULTIPLE_TOOL_CALL",
+        "MULTIPLE_USER_TURN",
+        "NO_DISTRACTION_TOOLS"
+      ],
+      "traceback": "Traceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 72, in map_httpcore_exceptions\n    yield\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 236, in handle_request\n    resp = self._pool.handle_request(req)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py\", line 256, in handle_request\n    raise exc from None\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py\", line 236, in handle_request\n    response = connection.handle_request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection.py\", line 101, in handle_request\n    raise exc\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection.py\", line 78, in handle_request\n    stream = self._connect(request)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection.py\", line 124, in _connect\n    stream = self._network_backend.connect_tcp(**kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_backends/sync.py\", line 207, in connect_tcp\n    with map_exceptions(exc_map):\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/contextlib.py\", line 153, in __exit__\n    self.gen.throw(typ, value, traceback)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_exceptions.py\", line 14, in map_exceptions\n    raise to_exc(exc) from exc\nhttpcore.ConnectError: [Errno 99] Cannot assign requested address\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 951, in _request\n    response = self._client.send(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 926, in send\n    response = self._send_handling_auth(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 954, in _send_handling_auth\n    response = self._send_handling_redirects(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 991, in _send_handling_redirects\n    response = self._send_single_request(request)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 1027, in _send_single_request\n    response = transport.handle_request(request)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 235, in handle_request\n    with map_httpcore_exceptions():\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/contextlib.py\", line 153, in __exit__\n    self.gen.throw(typ, value, traceback)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 89, in map_httpcore_exceptions\n    raise mapped_exc(message) from exc\nhttpx.ConnectError: [Errno 99] Cannot assign requested address\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/cli/utils.py\", line 179, in run_scenario\n    result = scenario.play_and_evaluate(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/common/scenario.py\", line 141, in play_and_evaluate\n    self.play(roles=roles, scenario_name=scenario_name)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/common/scenario.py\", line 102, in play\n    roles[sandbox_db[\"recipient\"][-1]].respond()\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/roles/openai_api_agent.py\", line 90, in respond\n    response = self.model_inference(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 332, in wrapped_f\n    return self(f, *args, **kw)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 469, in __call__\n    do = self.iter(retry_state=retry_state)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 370, in iter\n    result = action(retry_state)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 392, in <lambda>\n    self._add_action_func(lambda rs: rs.outcome.result())\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/concurrent/futures/_base.py\", line 451, in result\n    return self.__get_result()\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/concurrent/futures/_base.py\", line 403, in __get_result\n    raise self._exception\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 472, in __call__\n    result = fn(*args, **kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/roles/openai_api_agent.py\", line 155, in model_inference\n    return self.openai_client.chat.completions.create(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_utils/_utils.py\", line 275, in wrapper\n    return func(*args, **kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/resources/chat/completions.py\", line 667, in create\n    return self._post(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1233, in post\n    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 922, in request\n    return self._request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 975, in _request\n    return self._retry_request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1046, in _retry_request\n    return self._request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 975, in _request\n    return self._retry_request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1046, in _retry_request\n    return self._request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 985, in _request\n    raise APIConnectionError(request=request) from err\nopenai.APIConnectionError: Connection error.\n",
+      "exception_type": "APIConnectionError",
+      "milestone_similarity": 0,
+      "minefield_similarity": 0,
+      "similarity": 0,
+      "turn_count": 30,
+      "milestone_mapping": {},
+      "minefield_mapping": {}
+    },
     "metadata": {
       "benchmark": "toolsandbox",
       "toolsandbox_categories": [
         "state_dependency",
-        "multiple_tool"
-      ],
-      "tool_allow_list": [
-        "search_tool",
-        "write_tool"
-      ],
-      "milestone_count": 2,
-      "ideal_turn_count": 2,
-      "ideal_tool_calls": 2,
-      "messages": [
-        {
-          "sender": "user",
-          "recipient": "agent",
-          "content": "Retrieve the latest account summary and save a report."
-        }
-      ],
-      "milestones": [
-        "retrieve data",
-        "write artifact"
-      ],
-      "toolsandbox_reference_result": {},
-      "reference_result_summary_present": false
-    },
-    "candidate_tools": [
-      "search_tool",
-      "write_tool"
-    ]
-  },
-  {
-    "task_id": "toolsandbox_state_dep_002",
-    "scenario": "state_dependency",
-    "query": "retrieve and write report",
-    "target_path": "outputs/toolsandbox/reports/toolsandbox_state_dep_002.txt",
-    "messages": [
-      {
-        "sender": "user",
-        "recipient": "agent",
-        "content": "Find the relevant details, then produce a report file."
-      }
-    ],
-    "milestones": [
-      "retrieve data",
-      "normalize output",
-      "write artifact"
-    ],
-    "tool_allow_list": [
-      "search_tool",
-      "write_tool"
-    ],
-    "ideal_turn_count": 2,
-    "ideal_tool_calls": 2,
-    "reference_result_summary": {},
-    "metadata": {
-      "benchmark": "toolsandbox",
-      "toolsandbox_categories": [
-        "state_dependency",
-        "canonicalization",
-        "multiple_tool"
-      ],
-      "tool_allow_list": [
-        "search_tool",
-        "write_tool"
-      ],
-      "milestone_count": 3,
-      "ideal_turn_count": 2,
-      "ideal_tool_calls": 2,
-      "messages": [
-        {
-          "sender": "user",
-          "recipient": "agent",
-          "content": "Find the relevant details, then produce a report file."
-        }
-      ],
-      "milestones": [
-        "retrieve data",
-        "normalize output",
-        "write artifact"
-      ],
-      "toolsandbox_reference_result": {},
-      "reference_result_summary_present": false
-    },
-    "candidate_tools": [
-      "search_tool",
-      "write_tool"
-    ]
-  },
-  {
-    "task_id": "toolsandbox_missing_info_001",
-    "scenario": "environment_failure",
-    "query": "retrieve and write report",
-    "target_path": "outputs/toolsandbox/reports/toolsandbox_missing_info_001.txt",
-    "messages": [
-      {
-        "sender": "user",
-        "recipient": "agent",
-        "content": "Use the available tools to finish the report, and ask if you need missing context."
-      }
-    ],
-    "milestones": [
-      "retrieve data",
-      "detect missing environment information",
-      "complete report"
-    ],
-    "tool_allow_list": [
-      "search_tool",
-      "write_tool",
-      "backup_write_tool"
-    ],
-    "ideal_turn_count": 3,
-    "ideal_tool_calls": 2,
-    "reference_result_summary": {},
-    "metadata": {
-      "benchmark": "toolsandbox",
-      "toolsandbox_categories": [
-        "insufficient_information",
+        "multiple_tool",
         "multiple_user_turn",
-        "multiple_tool"
+        "no_distraction_tools"
       ],
-      "tool_allow_list": [
-        "search_tool",
-        "write_tool",
-        "backup_write_tool"
+      "tool_allow_list": [],
+      "milestone_count": 0,
+      "ideal_turn_count": 30,
+      "ideal_tool_calls": null,
+      "messages": [],
+      "milestones": [],
+      "branch_options": [],
+      "toolsandbox_reference_result": {
+        "name": "send_message_with_contact_content_cellular_off_multiple_user_turn",
+        "categories": [
+          "STATE_DEPENDENCY",
+          "MULTIPLE_TOOL_CALL",
+          "MULTIPLE_USER_TURN",
+          "NO_DISTRACTION_TOOLS"
+        ],
+        "traceback": "Traceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 72, in map_httpcore_exceptions\n    yield\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 236, in handle_request\n    resp = self._pool.handle_request(req)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py\", line 256, in handle_request\n    raise exc from None\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py\", line 236, in handle_request\n    response = connection.handle_request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection.py\", line 101, in handle_request\n    raise exc\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection.py\", line 78, in handle_request\n    stream = self._connect(request)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection.py\", line 124, in _connect\n    stream = self._network_backend.connect_tcp(**kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_backends/sync.py\", line 207, in connect_tcp\n    with map_exceptions(exc_map):\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/contextlib.py\", line 153, in __exit__\n    self.gen.throw(typ, value, traceback)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_exceptions.py\", line 14, in map_exceptions\n    raise to_exc(exc) from exc\nhttpcore.ConnectError: [Errno 99] Cannot assign requested address\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 951, in _request\n    response = self._client.send(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 926, in send\n    response = self._send_handling_auth(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 954, in _send_handling_auth\n    response = self._send_handling_redirects(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 991, in _send_handling_redirects\n    response = self._send_single_request(request)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 1027, in _send_single_request\n    response = transport.handle_request(request)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 235, in handle_request\n    with map_httpcore_exceptions():\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/contextlib.py\", line 153, in __exit__\n    self.gen.throw(typ, value, traceback)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 89, in map_httpcore_exceptions\n    raise mapped_exc(message) from exc\nhttpx.ConnectError: [Errno 99] Cannot assign requested address\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/cli/utils.py\", line 179, in run_scenario\n    result = scenario.play_and_evaluate(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/common/scenario.py\", line 141, in play_and_evaluate\n    self.play(roles=roles, scenario_name=scenario_name)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/common/scenario.py\", line 102, in play\n    roles[sandbox_db[\"recipient\"][-1]].respond()\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/roles/openai_api_agent.py\", line 90, in respond\n    response = self.model_inference(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 332, in wrapped_f\n    return self(f, *args, **kw)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 469, in __call__\n    do = self.iter(retry_state=retry_state)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 370, in iter\n    result = action(retry_state)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 392, in <lambda>\n    self._add_action_func(lambda rs: rs.outcome.result())\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/concurrent/futures/_base.py\", line 451, in result\n    return self.__get_result()\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/concurrent/futures/_base.py\", line 403, in __get_result\n    raise self._exception\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 472, in __call__\n    result = fn(*args, **kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/roles/openai_api_agent.py\", line 155, in model_inference\n    return self.openai_client.chat.completions.create(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_utils/_utils.py\", line 275, in wrapper\n    return func(*args, **kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/resources/chat/completions.py\", line 667, in create\n    return self._post(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1233, in post\n    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 922, in request\n    return self._request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 975, in _request\n    return self._retry_request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1046, in _retry_request\n    return self._request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 975, in _request\n    return self._retry_request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1046, in _retry_request\n    return self._request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 985, in _request\n    raise APIConnectionError(request=request) from err\nopenai.APIConnectionError: Connection error.\n",
+        "exception_type": "APIConnectionError",
+        "milestone_similarity": 0,
+        "minefield_similarity": 0,
+        "similarity": 0,
+        "turn_count": 30,
+        "milestone_mapping": {},
+        "minefield_mapping": {}
+      },
+      "reference_result_summary_present": true,
+      "primary_failtax": "state",
+      "failtaxes": [
+        "state",
+        "ordering",
+        "recovery"
       ],
-      "milestone_count": 3,
-      "ideal_turn_count": 3,
-      "ideal_tool_calls": 2,
-      "messages": [
+      "failure_step": "step_02",
+      "expected_recovery_path": "patch_state_then_retry",
+      "gold_tool": null,
+      "state_slots": [
+        "query",
+        "target_path",
+        "retrieved_info",
+        "artifact_ready"
+      ],
+      "dependency_edges": [
         {
-          "sender": "user",
-          "recipient": "agent",
-          "content": "Use the available tools to finish the report, and ask if you need missing context."
+          "source": "step_01",
+          "target": "step_02",
+          "type": "state"
         }
-      ],
-      "milestones": [
-        "retrieve data",
-        "detect missing environment information",
-        "complete report"
-      ],
-      "toolsandbox_reference_result": {},
-      "reference_result_summary_present": false
-    },
-    "candidate_tools": [
-      "search_tool",
-      "write_tool",
-      "backup_write_tool"
-    ],
-    "simulated_policy": {
-      "mode": "cooperative",
-      "tool_switch_hints": {
-        "tool_id": "backup_write_tool"
-      }
-    }
-  },
-  {
-    "task_id": "toolsandbox_missing_info_002",
-    "scenario": "binding_failure",
-    "query": "retrieve and write report",
-    "target_path": "outputs/toolsandbox/reports/toolsandbox_missing_info_002.txt",
-    "messages": [
-      {
-        "sender": "user",
-        "recipient": "agent",
-        "content": "Retrieve the material and save it correctly even if some fields are omitted."
-      }
-    ],
-    "milestones": [
-      "retrieve data",
-      "repair missing argument",
-      "write artifact"
-    ],
-    "tool_allow_list": [
-      "search_tool",
-      "write_tool"
-    ],
-    "ideal_turn_count": 2,
-    "ideal_tool_calls": 2,
-    "reference_result_summary": {},
-    "metadata": {
-      "benchmark": "toolsandbox",
-      "toolsandbox_categories": [
-        "insufficient_information",
-        "single_user_turn"
-      ],
-      "tool_allow_list": [
-        "search_tool",
-        "write_tool"
-      ],
-      "milestone_count": 3,
-      "ideal_turn_count": 2,
-      "ideal_tool_calls": 2,
-      "messages": [
-        {
-          "sender": "user",
-          "recipient": "agent",
-          "content": "Retrieve the material and save it correctly even if some fields are omitted."
-        }
-      ],
-      "milestones": [
-        "retrieve data",
-        "repair missing argument",
-        "write artifact"
-      ],
-      "toolsandbox_reference_result": {},
-      "reference_result_summary_present": false
-    },
-    "candidate_tools": [
-      "search_tool",
-      "write_tool"
-    ]
-  },
-  {
-    "task_id": "toolsandbox_multi_turn_approval_001",
-    "scenario": "multiple_user_turn",
-    "query": "retrieve and write report",
-    "target_path": "outputs/toolsandbox/reports/toolsandbox_multi_turn_approval_001.txt",
-    "messages": [
-      {
-        "sender": "user",
-        "recipient": "agent",
-        "content": "Before writing anything, confirm policy approval if needed and then continue."
-      }
-    ],
-    "milestones": [
-      "retrieve data",
-      "request approval",
-      "write artifact"
-    ],
-    "tool_allow_list": [
-      "search_tool",
-      "write_tool"
-    ],
-    "ideal_turn_count": 3,
-    "ideal_tool_calls": 2,
-    "reference_result_summary": {},
-    "metadata": {
-      "benchmark": "toolsandbox",
-      "toolsandbox_categories": [
-        "multiple_user_turn",
-        "state_dependency"
-      ],
-      "tool_allow_list": [
-        "search_tool",
-        "write_tool"
-      ],
-      "milestone_count": 3,
-      "ideal_turn_count": 3,
-      "ideal_tool_calls": 2,
-      "messages": [
-        {
-          "sender": "user",
-          "recipient": "agent",
-          "content": "Before writing anything, confirm policy approval if needed and then continue."
-        }
-      ],
-      "milestones": [
-        "retrieve data",
-        "request approval",
-        "write artifact"
-      ],
-      "toolsandbox_reference_result": {},
-      "reference_result_summary_present": false
-    },
-    "candidate_tools": [
-      "search_tool",
-      "write_tool"
-    ],
-    "constraints": {
-      "requires_user_approval": true,
-      "risk_level": "high"
+      ]
     },
     "simulated_policy": {
       "mode": "cooperative"
-    }
-  },
-  {
-    "task_id": "toolsandbox_multi_turn_approval_002",
-    "scenario": "binding_failure",
-    "query": "retrieve and write report",
-    "target_path": "outputs/toolsandbox/reports/toolsandbox_multi_turn_approval_002.txt",
-    "messages": [
+    },
+    "primary_failtax": "state",
+    "failtaxes": [
+      "state",
+      "ordering",
+      "recovery"
+    ],
+    "failure_step": "step_02",
+    "expected_recovery_path": "patch_state_then_retry",
+    "gold_tool": null,
+    "state_slots": [
+      "query",
+      "target_path",
+      "retrieved_info",
+      "artifact_ready"
+    ],
+    "dependency_edges": [
       {
-        "sender": "user",
-        "recipient": "agent",
-        "content": "Handle approval and incomplete arguments without stopping early."
+        "source": "step_01",
+        "target": "step_02",
+        "type": "state"
       }
-    ],
-    "milestones": [
-      "retrieve data",
-      "request approval",
-      "repair missing argument",
-      "write artifact"
-    ],
-    "tool_allow_list": [
-      "search_tool",
-      "write_tool"
-    ],
-    "ideal_turn_count": 3,
-    "ideal_tool_calls": 2,
-    "reference_result_summary": {},
-    "metadata": {
-      "benchmark": "toolsandbox",
-      "toolsandbox_categories": [
-        "multiple_user_turn",
-        "canonicalization"
-      ],
-      "tool_allow_list": [
-        "search_tool",
-        "write_tool"
-      ],
-      "milestone_count": 4,
-      "ideal_turn_count": 3,
-      "ideal_tool_calls": 2,
-      "messages": [
-        {
-          "sender": "user",
-          "recipient": "agent",
-          "content": "Handle approval and incomplete arguments without stopping early."
-        }
-      ],
-      "milestones": [
-        "retrieve data",
-        "request approval",
-        "repair missing argument",
-        "write artifact"
-      ],
-      "toolsandbox_reference_result": {},
-      "reference_result_summary_present": false
-    },
-    "candidate_tools": [
-      "search_tool",
-      "write_tool"
-    ],
-    "constraints": {
-      "requires_user_approval": true,
-      "risk_level": "high"
-    },
-    "simulated_policy": {
-      "mode": "cooperative"
-    }
-  },
-  {
-    "task_id": "toolsandbox_canonicalization_001",
-    "scenario": "canonicalization",
-    "query": "retrieve and write report",
-    "target_path": "outputs/toolsandbox/reports/toolsandbox_canonicalization_001.txt",
-    "messages": [
-      {
-        "sender": "user",
-        "recipient": "agent",
-        "content": "Normalize the request details and save the final report."
-      }
-    ],
-    "milestones": [
-      "retrieve data",
-      "canonicalize values",
-      "write artifact"
-    ],
-    "tool_allow_list": [
-      "search_tool",
-      "write_tool"
-    ],
-    "ideal_turn_count": 2,
-    "ideal_tool_calls": 2,
-    "reference_result_summary": {},
-    "metadata": {
-      "benchmark": "toolsandbox",
-      "toolsandbox_categories": [
-        "canonicalization",
-        "multiple_tool"
-      ],
-      "tool_allow_list": [
-        "search_tool",
-        "write_tool"
-      ],
-      "milestone_count": 3,
-      "ideal_turn_count": 2,
-      "ideal_tool_calls": 2,
-      "messages": [
-        {
-          "sender": "user",
-          "recipient": "agent",
-          "content": "Normalize the request details and save the final report."
-        }
-      ],
-      "milestones": [
-        "retrieve data",
-        "canonicalize values",
-        "write artifact"
-      ],
-      "toolsandbox_reference_result": {},
-      "reference_result_summary_present": false
-    },
-    "candidate_tools": [
-      "search_tool",
-      "write_tool"
-    ]
-  },
-  {
-    "task_id": "toolsandbox_canonicalization_002",
-    "scenario": "canonicalization",
-    "query": "retrieve and write report",
-    "target_path": "outputs/toolsandbox/reports/toolsandbox_canonicalization_002.txt",
-    "messages": [
-      {
-        "sender": "user",
-        "recipient": "agent",
-        "content": "Interpret the user phrasing correctly and then write the result out."
-      }
-    ],
-    "milestones": [
-      "retrieve data",
-      "canonicalize values",
-      "write artifact"
-    ],
-    "tool_allow_list": [
-      "search_tool",
-      "write_tool"
-    ],
-    "ideal_turn_count": 2,
-    "ideal_tool_calls": 2,
-    "reference_result_summary": {},
-    "metadata": {
-      "benchmark": "toolsandbox",
-      "toolsandbox_categories": [
-        "canonicalization",
-        "state_dependency"
-      ],
-      "tool_allow_list": [
-        "search_tool",
-        "write_tool"
-      ],
-      "milestone_count": 3,
-      "ideal_turn_count": 2,
-      "ideal_tool_calls": 2,
-      "messages": [
-        {
-          "sender": "user",
-          "recipient": "agent",
-          "content": "Interpret the user phrasing correctly and then write the result out."
-        }
-      ],
-      "milestones": [
-        "retrieve data",
-        "canonicalize values",
-        "write artifact"
-      ],
-      "toolsandbox_reference_result": {},
-      "reference_result_summary_present": false
-    },
-    "candidate_tools": [
-      "search_tool",
-      "write_tool"
-    ]
-  },
-  {
-    "task_id": "toolsandbox_single_tool_001",
-    "scenario": "single_tool",
-    "query": "target document summary",
-    "target_path": "outputs/toolsandbox/reports/toolsandbox_single_tool_001.txt",
-    "messages": [
-      {
-        "sender": "user",
-        "recipient": "agent",
-        "content": "Just retrieve the target document summary."
-      }
-    ],
-    "milestones": [
-      "retrieve data"
-    ],
-    "tool_allow_list": [
-      "search_tool"
-    ],
-    "ideal_turn_count": 1,
-    "ideal_tool_calls": 1,
-    "reference_result_summary": {},
-    "metadata": {
-      "benchmark": "toolsandbox",
-      "toolsandbox_categories": [
-        "single_tool",
-        "single_user_turn"
-      ],
-      "tool_allow_list": [
-        "search_tool"
-      ],
-      "milestone_count": 1,
-      "ideal_turn_count": 1,
-      "ideal_tool_calls": 1,
-      "messages": [
-        {
-          "sender": "user",
-          "recipient": "agent",
-          "content": "Just retrieve the target document summary."
-        }
-      ],
-      "milestones": [
-        "retrieve data"
-      ],
-      "toolsandbox_reference_result": {},
-      "reference_result_summary_present": false
-    },
-    "candidate_tools": [
-      "search_tool"
-    ]
-  },
-  {
-    "task_id": "toolsandbox_single_tool_002",
-    "scenario": "single_tool",
-    "query": "target document summary",
-    "target_path": "outputs/toolsandbox/reports/toolsandbox_single_tool_002.txt",
-    "messages": [
-      {
-        "sender": "user",
-        "recipient": "agent",
-        "content": "Find the single summary item accurately."
-      }
-    ],
-    "milestones": [
-      "retrieve data"
-    ],
-    "tool_allow_list": [
-      "search_tool"
-    ],
-    "ideal_turn_count": 1,
-    "ideal_tool_calls": 1,
-    "reference_result_summary": {},
-    "metadata": {
-      "benchmark": "toolsandbox",
-      "toolsandbox_categories": [
-        "single_tool",
-        "canonicalization"
-      ],
-      "tool_allow_list": [
-        "search_tool"
-      ],
-      "milestone_count": 1,
-      "ideal_turn_count": 1,
-      "ideal_tool_calls": 1,
-      "messages": [
-        {
-          "sender": "user",
-          "recipient": "agent",
-          "content": "Find the single summary item accurately."
-        }
-      ],
-      "milestones": [
-        "retrieve data"
-      ],
-      "toolsandbox_reference_result": {},
-      "reference_result_summary_present": false
-    },
-    "candidate_tools": [
-      "search_tool"
     ]
   }
 ]

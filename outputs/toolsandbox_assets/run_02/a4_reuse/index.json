@@ -1,0 +1,23 @@
+{
+  "assets": {
+    "ws_wf_send_message_with_contact_content_cellular_off_multiple_user_turn": {
+      "path": "ws_wf_send_message_with_contact_content_cellular_off_multiple_user_turn.json",
+      "task_signature": "phase1::family=t3_must_interact::caps=cap_retrieve+cap_write::fail=state_dependency::goal=send_message_with_contact_content_cellular_off_multiple_user_turn"
+    },
+    "sh_wf_send_message_with_contact_content_cellular_off_multiple_user_turn": {
+      "path": "sh_wf_send_message_with_contact_content_cellular_off_multiple_user_turn.json",
+      "task_signature": "phase1::family=t3_must_interact::caps=cap_retrieve+cap_write::fail=state_dependency::goal=send_message_with_contact_content_cellular_off_multiple_user_turn"
+    },
+    "ps_wf_send_message_with_contact_content_cellular_off_multiple_user_turn": {
+      "path": "ps_wf_send_message_with_contact_content_cellular_off_multiple_user_turn.json",
+      "task_signature": "phase1::family=t3_must_interact::caps=cap_retrieve+cap_write::fail=state_dependency::goal=send_message_with_contact_content_cellular_off_multiple_user_turn"
+    }
+  },
+  "task_index": {
+    "phase1::family=t3_must_interact::caps=cap_retrieve+cap_write::fail=state_dependency::goal=send_message_with_contact_content_cellular_off_multiple_user_turn": [
+      "ws_wf_send_message_with_contact_content_cellular_off_multiple_user_turn",
+      "sh_wf_send_message_with_contact_content_cellular_off_multiple_user_turn",
+      "ps_wf_send_message_with_contact_content_cellular_off_multiple_user_turn"
+    ]
+  }
+}
