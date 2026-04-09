@@ -12,6 +12,7 @@ FORCE_REINSTALL="${TOOLSANDBOX_FORCE_REINSTALL:-0}"
 PIP_MAX_RETRIES="${TOOLSANDBOX_PIP_MAX_RETRIES:-3}"
 PIP_RETRY_DELAY_SECONDS="${TOOLSANDBOX_PIP_RETRY_DELAY_SECONDS:-3}"
 INSTALL_TARGET="${TOOLSANDBOX_INSTALL_TARGET:-.}"
+HTTPX_COMPAT_SPEC="${TOOLSANDBOX_HTTPX_COMPAT_SPEC:-httpx<0.28}"
 
 usage() {
   cat >&2 <<'EOF'
@@ -29,6 +30,7 @@ Examples:
 Notes:
   - By default the first run creates .venv under the official ToolSandbox repo and installs dependencies.
   - Default installs runtime dependencies only. Set TOOLSANDBOX_INSTALL_TARGET='.[dev]' to include upstream dev extras.
+  - The wrapper auto-pins a compatible httpx version for the vendored OpenAI client when needed.
   - --use-active-env installs into the currently active Python/conda environment instead of creating a venv.
   - If python -m venv fails, the script falls back to python -m virtualenv when possible.
   - API keys still need to be provided via environment variables as required by the selected agent/user roles.
@@ -98,6 +100,7 @@ install_into_python() {
     cd "$TOOLSANDBOX_DIR"
     pip_install_with_retry "$python_exec" install -e "$INSTALL_TARGET"
   )
+  ensure_runtime_compat "$python_exec"
 }
 
 pip_install_with_retry() {
@@ -137,6 +140,42 @@ create_venv() {
   "$python_exec" -m virtualenv "$VENV_DIR"
 }
 
+httpx_compatible() {
+  local python_exec="$1"
+  "$python_exec" - <<'PY' >/dev/null 2>&1
+import importlib.metadata as metadata
+import sys
+
+def version_tuple(raw: str) -> tuple[int, ...]:
+    parts = []
+    for token in raw.split("."):
+        digits = "".join(ch for ch in token if ch.isdigit())
+        if not digits:
+            break
+        parts.append(int(digits))
+    return tuple(parts)
+
+try:
+    openai_version = metadata.version("openai")
+    httpx_version = metadata.version("httpx")
+except metadata.PackageNotFoundError:
+    sys.exit(0)
+
+if version_tuple(openai_version) < (1, 18) and version_tuple(httpx_version) >= (0, 28):
+    sys.exit(1)
+sys.exit(0)
+PY
+}
+
+ensure_runtime_compat() {
+  local python_exec="$1"
+  if httpx_compatible "$python_exec"; then
+    return 0
+  fi
+  echo "detected incompatible openai/httpx combination; installing $HTTPX_COMPAT_SPEC"
+  pip_install_with_retry "$python_exec" install "$HTTPX_COMPAT_SPEC"
+}
+
 PYTHON_EXEC="$(resolve_python_bin)"
 RUN_PYTHON=""
 ENV_LABEL=""
@@ -157,6 +196,8 @@ else
     install_into_python "$RUN_PYTHON"
   fi
 fi
+
+ensure_runtime_compat "$RUN_PYTHON"
 
 if [[ "$INSTALL_ONLY" -eq 1 ]]; then
   echo "ToolSandbox environment is ready:"
