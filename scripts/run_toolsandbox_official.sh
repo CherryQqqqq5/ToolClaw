@@ -6,7 +6,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOOLSANDBOX_DIR="${TOOLSANDBOX_DIR:-$ROOT_DIR/data/external/ToolSandbox}"
 LOCAL_IO_ROOT="${TOOLCLAW_LOCAL_IO_ROOT:-/tmp/toolclaw_toolsandbox}"
 mkdir -p "$LOCAL_IO_ROOT"
-VENV_DIR="${TOOLSANDBOX_VENV_DIR:-$LOCAL_IO_ROOT/.venv}"
+SHARED_VENV_DIR="${TOOLCLAW_SHARED_VENV_DIR:-/tmp/toolclaw_toolsandbox_shared/.venv}"
+VENV_DIR="${TOOLSANDBOX_VENV_DIR:-$SHARED_VENV_DIR}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 INSTALL_ONLY=0
 USE_ACTIVE_ENV="${TOOLSANDBOX_USE_ACTIVE_ENV:-0}"
@@ -16,12 +17,19 @@ PIP_RETRY_DELAY_SECONDS="${TOOLSANDBOX_PIP_RETRY_DELAY_SECONDS:-3}"
 INSTALL_TARGET="${TOOLSANDBOX_INSTALL_TARGET:-.}"
 HTTPX_COMPAT_SPEC="${TOOLSANDBOX_HTTPX_COMPAT_SPEC:-httpx<0.28}"
 PATCH_ROLES="${TOOLSANDBOX_PATCH_OPENAI_ROLES:-1}"
+TOOLSANDBOX_CONSTRAINTS_FILE="${TOOLSANDBOX_CONSTRAINTS_FILE:-$ROOT_DIR/constraints/toolsandbox-runtime.txt}"
+TOOLSANDBOX_USE_CONSTRAINTS="${TOOLSANDBOX_USE_CONSTRAINTS:-1}"
+export TOOLSANDBOX_PREFLIGHT_PATH="${TOOLSANDBOX_PREFLIGHT_PATH:-$LOCAL_IO_ROOT/preflight.json}"
 export TMPDIR="${TMPDIR:-$LOCAL_IO_ROOT/tmp}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$LOCAL_IO_ROOT/.cache}"
 export HF_HOME="${HF_HOME:-$LOCAL_IO_ROOT/hf}"
 export PIP_CACHE_DIR="${PIP_CACHE_DIR:-$XDG_CACHE_HOME/pip}"
 export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
-mkdir -p "$TMPDIR" "$XDG_CACHE_HOME" "$HF_HOME" "$PIP_CACHE_DIR"
+mkdir -p "$TMPDIR" "$XDG_CACHE_HOME" "$HF_HOME" "$PIP_CACHE_DIR" "$(dirname "$TOOLSANDBOX_PREFLIGHT_PATH")"
+PIP_CONSTRAINT_ARGS=()
+if [[ "$TOOLSANDBOX_USE_CONSTRAINTS" == "1" && -f "$TOOLSANDBOX_CONSTRAINTS_FILE" ]]; then
+  PIP_CONSTRAINT_ARGS=(-c "$TOOLSANDBOX_CONSTRAINTS_FILE")
+fi
 
 # Benchmark proxy routing defaults (OpenAI-compatible):
 #   TOOLCLAW_BENCHMARK_PROXY_PROVIDER=novacode|openrouter|custom|direct
@@ -68,8 +76,9 @@ Examples:
   OPENAI_API_KEY=... scripts/run_toolsandbox_official.sh --agent GPT_4_o_2024_05_13 --user GPT_4_o_2024_05_13 --scenarios wifi_off
 
 Notes:
-  - By default the first run creates the ToolSandbox venv under TOOLCLAW_LOCAL_IO_ROOT (default: /tmp/toolclaw_toolsandbox).
+  - By default the wrapper reuses a shared ToolSandbox venv under TOOLCLAW_SHARED_VENV_DIR (default: /tmp/toolclaw_toolsandbox_shared/.venv).
   - Default installs runtime dependencies only. Set TOOLSANDBOX_INSTALL_TARGET='.[dev]' to include upstream dev extras.
+  - If present, constraints/toolsandbox-runtime.txt is applied during pip installs to reduce dependency backtracking.
   - The wrapper auto-pins a compatible httpx version for the vendored OpenAI client when needed.
   - The wrapper also defaults TMPDIR/XDG_CACHE_HOME/HF_HOME/PIP_CACHE_DIR to local scratch paths to avoid slow shared filesystems.
   - --use-active-env installs into the currently active Python/conda environment instead of creating a venv.
@@ -161,17 +170,73 @@ validate_env() {
 
 preflight_model_probe() {
   "$RUN_PYTHON" - <<'PY'
+import json
 import os
+import sys
+from pathlib import Path
 from openai import OpenAI
 
 api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_API_BASE")
 model = os.environ.get("TOOLSANDBOX_OPENAI_MODEL", "gpt-5.4")
+provider = os.environ.get("TOOLCLAW_BENCHMARK_PROXY_PROVIDER", "")
+manifest_path = os.environ.get("TOOLSANDBOX_PREFLIGHT_PATH", "").strip()
 
 if not api_key:
     raise SystemExit("OPENAI_API_KEY is missing")
 
 client = OpenAI(api_key=api_key, base_url=base_url)
+manifest = {
+    "provider": provider,
+    "base_url": base_url,
+    "model": model,
+    "status": "pending",
+    "exit_code": 0,
+    "basic_chat": {"status": "pending"},
+    "tool_calling": {"status": "pending"},
+}
+
+
+def write_manifest() -> None:
+    if not manifest_path:
+        return
+    path = Path(manifest_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def classify_error(exc: Exception) -> tuple[str, int]:
+    message = str(exc)
+    lowered = message.lower()
+    if "unsupported_country_region_territory" in lowered or "region" in lowered:
+        return "region_error", 12
+    if "invalid api key" in lowered or "incorrect api key" in lowered or "authentication" in lowered or "401" in lowered:
+        return "auth_error", 11
+    if "tool" in lowered and ("not supported" in lowered or "unsupported" in lowered or "function calling" in lowered):
+        return "tool_calling_unsupported", 14
+    if "model" in lowered and ("not found" in lowered or "does not exist" in lowered or "unknown" in lowered):
+        return "model_name_error", 13
+    if "permission" in lowered or "403" in lowered or "forbidden" in lowered:
+        return "permission_error", 15
+    return "provider_error", 16
+
+
+def fail(stage: str, exc: Exception) -> "NoReturn":
+    error_type, exit_code = classify_error(exc)
+    manifest["status"] = "failed"
+    manifest["exit_code"] = exit_code
+    manifest[stage] = {
+        "status": "failed",
+        "error_type": error_type,
+        "message": str(exc),
+    }
+    write_manifest()
+    print(
+        f"[preflight] {stage} failed for {model}: type={error_type} exit_code={exit_code} error={exc}",
+        file=sys.stderr,
+    )
+    raise SystemExit(exit_code)
+
 
 try:
     client.chat.completions.create(
@@ -180,9 +245,37 @@ try:
         max_tokens=1,
         temperature=0,
     )
-    print(f"[preflight] model ok: {model}")
-except Exception as e:
-    raise SystemExit(f"[preflight] model probe failed for {model}: {e}")
+    manifest["basic_chat"] = {"status": "ok"}
+except Exception as exc:
+    fail("basic_chat", exc)
+
+try:
+    client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": "reply with tool support"}],
+        tools=[
+            {
+                "type": "function",
+                "function": {
+                    "name": "ping",
+                    "description": "Return pong.",
+                    "parameters": {"type": "object", "properties": {}},
+                },
+            }
+        ],
+        tool_choice="auto",
+        max_tokens=1,
+        temperature=0,
+    )
+    manifest["tool_calling"] = {"status": "ok"}
+except Exception as exc:
+    fail("tool_calling", exc)
+
+manifest["status"] = "ok"
+write_manifest()
+print(f"[preflight] model ok: {model}")
+if manifest_path:
+    print(f"[preflight] manifest: {manifest_path}")
 PY
 }
 
@@ -212,6 +305,9 @@ install_into_python() {
   local python_exec="$1"
   echo "installing official ToolSandbox dependencies using: $python_exec"
   echo "install target: -e $INSTALL_TARGET"
+  if [[ ${#PIP_CONSTRAINT_ARGS[@]} -gt 0 ]]; then
+    echo "using constraints file: $TOOLSANDBOX_CONSTRAINTS_FILE"
+  fi
   pip_install_with_retry "$python_exec" install --upgrade pip
   (
     cd "$TOOLSANDBOX_DIR"
@@ -223,8 +319,13 @@ install_into_python() {
 pip_install_with_retry() {
   local python_exec="$1"
   shift
+  local pip_args=("$@")
   local attempt=1
   local exit_code=0
+
+  if [[ ${pip_args[0]:-} == "install" && ${#PIP_CONSTRAINT_ARGS[@]} -gt 0 ]]; then
+    pip_args=("install" "${PIP_CONSTRAINT_ARGS[@]}" "${pip_args[@]:1}")
+  fi
 
   while (( attempt <= PIP_MAX_RETRIES )); do
     if (( attempt > 1 )); then
@@ -233,7 +334,7 @@ pip_install_with_retry() {
       sleep "$wait_seconds"
     fi
 
-    if "$python_exec" -m pip --retries 10 --timeout 120 "$@"; then
+    if "$python_exec" -m pip --retries 10 --timeout 120 "${pip_args[@]}"; then
       return 0
     fi
 

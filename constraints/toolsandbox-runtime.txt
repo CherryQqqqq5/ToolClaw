@@ -1,0 +1,5 @@
+# Reduce pip resolver backtracking for the vendored ToolSandbox runtime.
+# openai==1.17.0 is already required upstream; pin it here so wrapper installs
+# converge immediately, and pair it with the httpx version already known to work.
+openai==1.17.0
+httpx==0.27.2
