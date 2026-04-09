@@ -1,0 +1,180 @@
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+Storing outputs to 'outputs/toolsandbox_official_novacode_gpt54/agent_gpt-5.4_user_gpt-5.4_04_09_2026_21_33_24'.
+Number of test cases per category: {
+    "ALL_CATEGORIES": 1032,
+    "MULTIPLE_TOOL_CALL": 656,
+    "SINGLE_USER_TURN": 584,
+    "CANONICALIZATION": 472,
+    "MULTIPLE_USER_TURN": 224,
+    "INSUFFICIENT_INFORMATION": 224,
+    "STATE_DEPENDENCY": 192,
+    "SINGLE_TOOL_CALL": 152,
+    "NO_DISTRACTION_TOOLS": 129,
+    "THREE_DISTRACTION_TOOLS": 129,
+    "TEN_DISTRACTION_TOOLS": 129,
+    "ALL_TOOLS_AVAILABLE": 129,
+    "TOOL_DESCRIPTION_SCRAMBLED": 129,
+    "ARG_TYPE_SCRAMBLED": 129,
+    "ARG_DESCRIPTION_SCRAMBLED": 129,
+    "TOOL_NAME_SCRAMBLED": 129
+}
+Number of test cases per necessary tool name: {
+    "end_conversation": 1032,
+    "get_current_timestamp": 344,
+    "timestamp_to_datetime_info": 264,
+    "search_contacts": 200,
+    "datetime_info_to_timestamp": 184,
+    "search_location_around_lat_lon": 160,
+    "set_wifi_status": 160,
+    "get_wifi_status": 144,
+    "modify_reminder": 144,
+    "search_reminder": 144,
+    "add_reminder": 136,
+    "set_low_battery_mode_status": 136,
+    "get_low_battery_mode_status": 120,
+    "search_messages": 104,
+    "search_weather_around_lat_lon": 96,
+    "shift_timestamp": 96,
+    "modify_contact": 88,
+    "set_location_service_status": 80,
+    "remove_contact": 72,
+    "get_cellular_service_status": 72,
+    "set_cellular_service_status": 72,
+    "search_holiday": 72,
+    "get_location_service_status": 64,
+    "timestamp_diff": 64,
+    "unit_conversion": 64,
+    "send_message_with_phone_number": 56,
+    "search_lat_lon": 56,
+    "get_current_location": 48,
+    "calculate_lat_lon_distance": 48,
+    "search_stock": 24,
+    "remove_reminder": 24,
+    "convert_currency": 16,
+    "add_contact": 8,
+    "seconds_to_hours_minutes_seconds": 0
+}
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/google/api_core/_python_version_support.py:263: FutureWarning: You are using a Python version (3.10.20) which Google will stop supporting in new releases of google.cloud.resourcemanager_v3 once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.cloud.resourcemanager_v3 past that date.
+  warnings.warn(message, FutureWarning)
+find_temperature_f_with_location_insufficient_information:   0%|          | 0/30 [00:00<?, ?it/s]find_temperature_f_with_location_insufficient_information_3_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]modify_contact_with_message_recency_insufficient_information_alt_3_distraction_tools_tool_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]search_name_with_relationship_3_distraction_tools_tool_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]find_temperature_f_with_location_insufficient_information_3_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+find_temperature_f_with_location_insufficient_information:   0%|          | 0/30 [00:00<?, ?it/s]
+modify_contact_with_message_recency_insufficient_information_alt_3_distraction_tools_tool_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+search_name_with_relationship_3_distraction_tools_tool_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+turn_on_location_low_battery_mode_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]modify_reminder_with_recency_latest_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]turn_on_location_low_battery_mode_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+modify_reminder_with_recency_latest_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+add_reminder_content_and_week_delta_and_time_multiple_user_turn_alt_3_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]add_reminder_content_and_week_delta_and_time_multiple_user_turn_alt_3_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+send_message_with_contact_content_cellular_off_insufficient_information_3_distraction_tools_tool_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]find_days_till_holiday_multiple_user_turn_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]search_reminder_with_recency_yesterday_3_distraction_tools_tool_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]send_message_with_contact_content_cellular_off_insufficient_information_3_distraction_tools_tool_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+find_distance_with_location_name_multiple_user_turn_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]find_temperature_f_with_location_and_time_diff_multiple_user_turn:   0%|          | 0/30 [00:00<?, ?it/s]search_reminder_with_recency_yesterday_insufficient_information_implicit_3_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]convert_currency_canonicalize_3_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]search_reminder_with_recency_yesterday_3_distraction_tools_tool_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+find_days_till_holiday_multiple_user_turn_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+find_temperature_f_with_location_and_time_diff_multiple_user_turn:   0%|          | 0/30 [00:00<?, ?it/s]
+find_distance_with_location_name_multiple_user_turn_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+convert_currency_canonicalize_3_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+search_reminder_with_recency_yesterday_insufficient_information_implicit_3_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+remove_contact_by_phone_ambiguous_3_distraction_tools_arg_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]turn_on_cellular_low_battery_mode_implicit_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]update_contact_relationship_with_relationship_alt_3_distraction_tools_tool_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]remove_contact_by_phone_ambiguous_3_distraction_tools_arg_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+update_contact_relationship_with_relationship_alt_3_distraction_tools_tool_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+turn_on_cellular_low_battery_mode_implicit_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+modify_reminder_with_recency_latest_alt_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]modify_reminder_with_recency_latest_alt_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+remove_reminder_with_recency_latest_alt_3_distraction_tools_tool_name_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]remove_reminder_with_recency_latest_alt_3_distraction_tools_tool_name_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+convert_currency_canonicalize_3_distraction_tools_arg_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]convert_currency_canonicalize_3_distraction_tools_arg_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+find_temperature_f_with_location_wifi_off_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]search_phone_number_with_name_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]remove_contact_by_phone_no_remove_contact_insufficient_information_alt_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]remove_contact_with_id_all_tools:   0%|          | 0/30 [00:00<?, ?it/s]remove_contact_by_phone_no_remove_contact_insufficient_information_alt_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+find_temperature_f_with_location_wifi_off_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+search_phone_number_with_name_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+remove_contact_by_phone_ambiguous_all_tools:   0%|          | 0/30 [00:00<?, ?it/s]send_message_with_phone_number_and_content_all_tools:   0%|          | 0/30 [00:00<?, ?it/s]remove_contact_with_id_all_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+find_temperature_f_with_location_insufficient_information_3_distraction_tools_arg_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]find_distance_with_location_name_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]search_message_with_recency_latest_alt_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]find_temperature_f_with_location_insufficient_information_3_distraction_tools_arg_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+find_distance_with_location_name_insufficient_information_3_distraction_tools_arg_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]send_message_with_phone_number_and_content_all_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+remove_contact_by_phone_ambiguous_all_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+find_distance_with_location_name_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+search_message_with_recency_latest_alt_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+find_distance_with_location_name_insufficient_information_3_distraction_tools_arg_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+find_days_till_holiday_insufficient_information_alt_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]find_days_till_holiday_insufficient_information_alt_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+find_days_till_holiday_alt_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]find_days_till_holiday_alt_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+search_reminder_with_recency_yesterday_3_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]search_reminder_with_recency_yesterday_3_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+find_distance_with_location_name_insufficient_information_alt_3_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]turn_on_cellular_low_battery_mode_3_distraction_tools_tool_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]find_distance_with_location_name_insufficient_information_alt_3_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+add_reminder_content_and_weekday_delta_and_time_multiple_user_turn_3_distraction_tools_arg_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]turn_on_cellular_low_battery_mode_3_distraction_tools_tool_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+find_temperature_f_with_location_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]remove_reminder_with_recency_latest_insufficient_information_3_distraction_tools_tool_name_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]modify_contact_with_message_recency_multiple_user_turn_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]turn_on_wifi_low_battery_mode_3_distraction_tools_tool_name_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]find_temperature_f_with_location_10_distraction_tools:   0%|          | 0/30 [00:00<?, ?it/s]
+modify_contact_with_message_recency_multiple_user_turn_3_distraction_tools_arg_type_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+add_reminder_content_and_weekday_delta_and_time_multiple_user_turn_3_distraction_tools_arg_description_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+remove_reminder_with_recency_latest_insufficient_information_3_distraction_tools_tool_name_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
+turn_on_wifi_low_battery_mode_3_distraction_tools_tool_name_scrambled:   0%|          | 0/30 [00:00<?, ?it/s]
