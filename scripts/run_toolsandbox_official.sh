@@ -137,7 +137,7 @@ validate_env() {
     echo "OPENAI_API_KEY is still a placeholder" >&2
     exit 2
   fi
-  if contains_placeholder "${RAPID_API_KEY:-}"; then
+  if [[ -n "${RAPID_API_KEY:-}" ]] && contains_placeholder "${RAPID_API_KEY:-}"; then
     echo "RAPID_API_KEY is still a placeholder" >&2
     exit 2
   fi
@@ -307,5 +307,6 @@ if [[ ${#ARGS[@]} -eq 0 ]]; then
 fi
 
 validate_env
+echo "[ToolSandbox] provider=${PROXY_PROVIDER} base_url=${OPENAI_BASE_URL:-${OPENAI_API_BASE:-<unset>}} model=${TOOLSANDBOX_OPENAI_MODEL:-<default>}"
 
 exec "$RUN_PYTHON" -c 'import sys; from tool_sandbox.cli import main; sys.argv = ["tool_sandbox", *sys.argv[1:]]; main()' "${ARGS[@]}"
