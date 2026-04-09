@@ -48,6 +48,13 @@ class UncertaintyDetector:
             state_values=state_values,
             missing_input_keys=missing_input_keys,
         )
+        for source in (repair.metadata.get("missing_assets", []),):
+            if not isinstance(source, list):
+                continue
+            for item in source:
+                asset = str(item)
+                if asset and asset not in missing_assets:
+                    missing_assets.append(asset)
         failed_tool_id = str(repair.metadata.get("failed_tool_id") or (step.tool_id if step else "") or "")
         backup_tool_id = str(repair.metadata.get("backup_tool_id") or "")
         available_tool_ids = [tool.tool_id for tool in workflow.context.candidate_tools]
@@ -60,6 +67,10 @@ class UncertaintyDetector:
             for item in state_values.get("__stale_state_slots__", [])
             if str(item)
         ]
+        for item in repair.metadata.get("stale_assets", []):
+            asset = str(item)
+            if asset and asset not in stale_assets:
+                stale_assets.append(asset)
 
         if repair.repair_type == RepairType.REQUEST_APPROVAL:
             return UncertaintyReport(
@@ -94,7 +105,7 @@ class UncertaintyDetector:
                 )
             if error_category == "state_failure" and stale_assets:
                 return UncertaintyReport(
-                    primary_label="missing_asset",
+                    primary_label="stale_state",
                     confidence=0.86,
                     information_gaps=[
                         InformationGap(gap_type="stale_state", target=asset, rationale="blocked step needs refreshed state before retry")
@@ -103,6 +114,7 @@ class UncertaintyDetector:
                     metadata={
                         "state_keys": sorted(state_values.keys()),
                         "step_id": step_id,
+                        "stale_assets": stale_assets,
                         "missing_assets": stale_assets,
                         "failed_tool_id": failed_tool_id or None,
                         "backup_tool_id": backup_tool_id or None,

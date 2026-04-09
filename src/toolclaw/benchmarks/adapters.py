@@ -363,6 +363,8 @@ class Tau2BenchAdapter:
         request.hints.user_style["gold_recovery_class"] = str(
             sample.raw_payload.get("gold_recovery_class") or sample.metadata.get("gold_recovery_class") or ""
         )
+        raw_override_inputs = sample.raw_payload.get("reuse_override_inputs", {})
+        request.hints.user_style["reuse_override_inputs"] = dict(raw_override_inputs) if isinstance(raw_override_inputs, dict) else {}
         return request
 
     def to_eval_task(self, sample: BenchmarkSample) -> Dict[str, Any]:
@@ -405,6 +407,10 @@ class Tau2BenchAdapter:
             task["constraints"] = dict(sample.raw_payload["constraints"])
         if "state_failure_mode" in sample.raw_payload:
             task["state_failure_mode"] = sample.raw_payload["state_failure_mode"]
+        if "wrong_target_path" in sample.raw_payload:
+            task["wrong_target_path"] = sample.raw_payload["wrong_target_path"]
+        if "reuse_override_inputs" in sample.raw_payload:
+            task["reuse_override_inputs"] = dict(sample.raw_payload["reuse_override_inputs"])
         return annotate_task_payload(task)
 
     def score_trace(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> BenchmarkTraceScore:
@@ -507,6 +513,8 @@ class Tau2BenchAdapter:
         metadata["state_slots"] = list(raw.get("state_slots", metadata.get("state_slots", []))) if isinstance(raw.get("state_slots", metadata.get("state_slots", [])), list) else []
         metadata["budget_profile"] = dict(raw.get("budget_profile", metadata.get("budget_profile", {}))) if isinstance(raw.get("budget_profile", metadata.get("budget_profile", {})), dict) else {}
         metadata["gold_recovery_class"] = raw.get("gold_recovery_class") or metadata.get("gold_recovery_class")
+        raw_override_inputs = raw.get("reuse_override_inputs", metadata.get("reuse_override_inputs", {}))
+        metadata["reuse_override_inputs"] = dict(raw_override_inputs) if isinstance(raw_override_inputs, dict) else {}
         return BenchmarkSample(sample_id=sample_id, raw_payload=raw, scenario=scenario, metadata=metadata)
 
     @staticmethod

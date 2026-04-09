@@ -189,7 +189,6 @@ class InteractionShell:
             interaction_stats["patch_attempts"] += 1
             resumed_state = dict(outcome.final_state)
             resumed_state["__user_turns__"] = turns
-            resumed_state["__recovery_budget_spent__"] = float(resumed_state.get("__recovery_budget_spent__", 0.0)) + 1.0
             budget_violation = self._interaction_budget_violation(outcome, resumed_state, turns)
             if budget_violation is not None:
                 combined_trace.setdefault("metrics", {})["budget_violation"] = True
@@ -495,6 +494,7 @@ class InteractionShell:
         return report.primary_label in {
             "policy_approval",
             "missing_asset",
+            "stale_state",
             "constraint_conflict",
             "branch_disambiguation",
             "tool_mismatch",
@@ -512,7 +512,7 @@ class InteractionShell:
     def _increment_recovery_budget(trace_payload: Dict[str, Any], outcome: ExecutionOutcome, turns: int) -> None:
         metrics = trace_payload.setdefault("metrics", {})
         budget_used = float(metrics.get("recovery_budget_used", 0.0) or 0.0)
-        metrics["recovery_budget_used"] = max(budget_used, float(outcome.final_state.get("__recovery_budget_spent__", 0.0)) + 1.0)
+        metrics["recovery_budget_used"] = max(budget_used, float(outcome.final_state.get("__recovery_budget_spent__", 0.0)))
         metrics["user_queries"] = max(int(metrics.get("user_queries", 0)), turns)
 
     @staticmethod

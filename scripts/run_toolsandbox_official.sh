@@ -9,6 +9,8 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
 INSTALL_ONLY=0
 USE_ACTIVE_ENV="${TOOLSANDBOX_USE_ACTIVE_ENV:-0}"
 FORCE_REINSTALL="${TOOLSANDBOX_FORCE_REINSTALL:-0}"
+PIP_MAX_RETRIES="${TOOLSANDBOX_PIP_MAX_RETRIES:-3}"
+PIP_RETRY_DELAY_SECONDS="${TOOLSANDBOX_PIP_RETRY_DELAY_SECONDS:-3}"
 
 usage() {
   cat >&2 <<'EOF'
@@ -88,11 +90,36 @@ PY
 install_into_python() {
   local python_exec="$1"
   echo "installing official ToolSandbox dependencies using: $python_exec"
-  "$python_exec" -m pip install --upgrade pip
+  pip_install_with_retry "$python_exec" install --upgrade pip
   (
     cd "$TOOLSANDBOX_DIR"
-    "$python_exec" -m pip install -e '.[dev]'
+    pip_install_with_retry "$python_exec" install -e '.[dev]'
   )
+}
+
+pip_install_with_retry() {
+  local python_exec="$1"
+  shift
+  local attempt=1
+  local exit_code=0
+
+  while (( attempt <= PIP_MAX_RETRIES )); do
+    if (( attempt > 1 )); then
+      local wait_seconds=$(( PIP_RETRY_DELAY_SECONDS * (attempt - 1) ))
+      echo "pip install retry ${attempt}/${PIP_MAX_RETRIES} in ${wait_seconds}s..." >&2
+      sleep "$wait_seconds"
+    fi
+
+    if "$python_exec" -m pip --retries 10 --timeout 120 "$@"; then
+      return 0
+    fi
+
+    exit_code=$?
+    echo "pip command failed on attempt ${attempt}/${PIP_MAX_RETRIES} (exit=${exit_code})." >&2
+    attempt=$((attempt + 1))
+  done
+
+  return "$exit_code"
 }
 
 create_venv() {
@@ -102,8 +129,8 @@ create_venv() {
     return 0
   fi
   echo "python -m venv failed; attempting virtualenv fallback" >&2
-  "$python_exec" -m pip install --upgrade pip
-  "$python_exec" -m pip install virtualenv
+  pip_install_with_retry "$python_exec" install --upgrade pip
+  pip_install_with_retry "$python_exec" install virtualenv
   "$python_exec" -m virtualenv "$VENV_DIR"
 }
 

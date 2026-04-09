@@ -61,6 +61,8 @@ class RepairUpdater:
             branch_options = [str(item) for item in step.metadata.get("branch_options", []) if str(item)]
         if not branch_options and isinstance(repair.metadata.get("branch_options"), list):
             branch_options = [str(item) for item in repair.metadata.get("branch_options", []) if str(item)]
+        stale_assets = [str(item) for item in repair.metadata.get("stale_assets", []) if str(item)]
+        missing_assets = [str(item) for item in repair.metadata.get("missing_assets", []) if str(item)]
         return InteractionRequest(
             interaction_id=f"int_{repair.repair_id}",
             question=self._default_question(repair=repair, step_id=step_id, missing_input_keys=missing_input_keys),
@@ -72,6 +74,7 @@ class RepairUpdater:
                 "failed_tool_id": failed_tool_id,
                 "missing_input_keys": missing_input_keys,
                 "missing_assets": list(state_values.get("__missing_assets__", [])),
+                "stale_assets": stale_assets,
                 "branch_options": branch_options,
             },
             allowed_response_schema={
@@ -94,6 +97,8 @@ class RepairUpdater:
                 "backup_tool_id": repair.metadata.get("backup_tool_id"),
                 "mapped_from_error_category": repair.metadata.get("mapped_from_error_category"),
                 "branch_options": branch_options,
+                "missing_assets": missing_assets,
+                "stale_assets": stale_assets,
                 "patch_targets": self._default_patch_targets(repair=repair, missing_input_keys=missing_input_keys),
                 "primary_failtax": workflow.metadata.get("primary_failtax"),
                 "budget_profile": dict(workflow.metadata.get("budget_profile", {}))
@@ -121,6 +126,8 @@ class RepairUpdater:
         elif "approved" in reply.payload:
             policy_updates["approved"] = bool(reply.payload["approved"])
         if self._should_clear_environment_failure(repair=repair, payload=reply.payload):
+            state_updates["force_environment_failure"] = False
+        elif repair.metadata.get("mapped_from_error_category") == "state_failure" and state_updates:
             state_updates["force_environment_failure"] = False
         if repair.metadata.get("mapped_from_error_category") == "state_failure" and state_updates:
             stale_slots = [str(item) for item in state_values.get("__stale_state_slots__", []) if str(item)]
@@ -187,6 +194,15 @@ class RepairUpdater:
                 f"Step {step_id} hit an environment failure. "
                 "Provide an alternate tool, fallback execution path, or confirm that the current failure flag can be cleared."
             )
+        if repair.metadata.get("mapped_from_error_category") == "state_failure":
+            stale_assets = [str(item) for item in repair.metadata.get("stale_assets", []) if str(item)]
+            missing_assets = [str(item) for item in repair.metadata.get("missing_assets", []) if str(item)]
+            target_assets = stale_assets or missing_assets
+            if target_assets:
+                return (
+                    f"Step {step_id} is blocked by state inconsistency. "
+                    f"Provide a fresh value for {', '.join(target_assets)} so execution can retry safely."
+                )
         return "Please provide missing data"
 
     @staticmethod
@@ -254,6 +270,17 @@ class RepairUpdater:
             patch_targets.setdefault("tool_id", "binding.primary_tool")
             patch_targets.setdefault("fallback_execution_path", "step.inputs.target_path")
             patch_targets.setdefault("clear_failure_flag", "state.force_environment_failure")
+        if repair.metadata.get("mapped_from_error_category") == "state_failure":
+            for key in [str(item) for item in repair.metadata.get("missing_assets", []) if str(item)]:
+                if key == "target_path":
+                    patch_targets.setdefault(key, "step.inputs.target_path")
+                else:
+                    patch_targets.setdefault(key, f"state.{key}")
+            for key in [str(item) for item in repair.metadata.get("stale_assets", []) if str(item)]:
+                if key == "target_path":
+                    patch_targets.setdefault(key, "step.inputs.target_path")
+                else:
+                    patch_targets.setdefault(key, f"state.{key}")
         if repair.repair_type.value == "reroute_branch" or repair.metadata.get("branch_options"):
             patch_targets.setdefault("branch_choice", "state.selected_branch")
         if repair.repair_type.value == "request_approval":

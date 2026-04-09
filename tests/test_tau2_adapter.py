@@ -45,6 +45,8 @@ def test_tau2_adapter_preserves_phase2_fields() -> None:
             "gold_recovery_class": "patch_state_then_retry",
             "budget_profile": {"max_user_turns": 1, "max_repair_attempts": 1, "max_tool_calls": 3},
             "constraints": {"max_user_turns": 1, "max_repair_attempts": 1, "max_tool_calls": 3},
+            "reuse_override_inputs": {"cap_write": ["target_path"]},
+            "wrong_target_path": "outputs/wrong.txt",
         },
     )
 
@@ -55,6 +57,8 @@ def test_tau2_adapter_preserves_phase2_fields() -> None:
     assert eval_task["state_slots"] == ["retrieved_info"]
     assert eval_task["expected_recovery_path"] == "patch_state_then_retry"
     assert eval_task["budget_profile"]["max_user_turns"] == 1
+    assert eval_task["reuse_override_inputs"] == {"cap_write": ["target_path"]}
+    assert eval_task["wrong_target_path"] == "outputs/wrong.txt"
 
 
 def test_tau2_adapter_build_request_uses_interaction_hints() -> None:

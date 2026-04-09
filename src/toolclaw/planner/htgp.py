@@ -589,6 +589,7 @@ class HTGPPlanner:
                     "resolved_asset_ids": list(request.hints.reusable_asset_ids),
                     "profile_loaded": bool(resolved_reusable_asset_ids),
                 },
+                "reuse_override_inputs": deepcopy(request.hints.user_style.get("reuse_override_inputs", {})),
             },
         )
         self._apply_request_overrides(workflow, request.workflow_overrides)
@@ -1111,19 +1112,26 @@ class HTGPPlanner:
         recommended_inputs = reusable_profile.get("recommended_inputs", {})
         if not isinstance(recommended_inputs, dict):
             return
+        raw_overrides = workflow.metadata.get("reuse_override_inputs", {})
+        override_map = raw_overrides if isinstance(raw_overrides, dict) else {}
 
         graph_nodes = {node.node_id: node for node in workflow.workflow_graph.nodes}
         for step in workflow.execution_plan:
             suggested_inputs = recommended_inputs.get(step.capability_id)
             if not isinstance(suggested_inputs, dict):
                 continue
+            override_keys = {
+                str(item)
+                for item in override_map.get(step.capability_id, override_map.get("*", []))
+                if str(item)
+            }
             for key, value in suggested_inputs.items():
-                if key not in step.inputs:
+                if key not in step.inputs or key in override_keys:
                     step.inputs[key] = value
             node = graph_nodes.get(step.step_id)
             if node is not None:
                 for key, value in suggested_inputs.items():
-                    if key not in node.inputs:
+                    if key not in node.inputs or key in override_keys:
                         node.inputs[key] = value
 
     @staticmethod

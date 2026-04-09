@@ -208,6 +208,8 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
     workflow.metadata["scenario"] = str(task.get("scenario", "success"))
     if isinstance(task.get("budget_profile"), dict):
         workflow.metadata["budget_profile"] = dict(task.get("budget_profile", {}))
+    if isinstance(task.get("reuse_override_inputs"), dict):
+        workflow.metadata["reuse_override_inputs"] = dict(task.get("reuse_override_inputs", {}))
     if task.get("messages") is not None:
         workflow.metadata["messages"] = list(task.get("messages", []))
     if task.get("milestones") is not None:
@@ -259,23 +261,33 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         state_mode = str(workflow.metadata.get("state_failure_mode") or task.get("state_failure_mode") or "state_slot_mismatch")
         workflow.execution_plan[1].metadata.setdefault("required_state_slots", [])
         workflow.execution_plan[1].metadata.setdefault("state_bindings", {})
-        if state_mode in {"state_slot_mismatch", "wrong_write_target"}:
+        workflow.execution_plan[1].metadata.setdefault("inject_missing_state_slots_once", [])
+        workflow.execution_plan[1].metadata.setdefault("inject_stale_state_slots_once", [])
+        if state_mode == "state_slot_mismatch":
             workflow.execution_plan[1].metadata["required_state_slots"] = ["retrieved_summary"]
             workflow.execution_plan[1].metadata["state_bindings"] = {"retrieved_info": "retrieved_summary"}
             workflow.metadata["resume_state_drop_slots"] = []
             workflow.metadata["resume_state_stale_slots"] = []
+        elif state_mode == "wrong_write_target":
+            correct_target = str(task.get("target_path") or workflow.execution_plan[1].inputs.get("target_path") or "outputs/reports/planned_report.txt")
+            wrong_target = str(task.get("wrong_target_path") or f"{Path(correct_target).with_suffix('')}.wrong.txt")
+            workflow.execution_plan[1].inputs["target_path"] = wrong_target
+            workflow.execution_plan[1].inputs["expected_target_path"] = correct_target
+            workflow.metadata["resume_state_drop_slots"] = []
+            workflow.metadata["resume_state_stale_slots"] = []
+            workflow.metadata["reuse_override_inputs"] = dict(task.get("reuse_override_inputs", {"cap_write": ["target_path"]}))
         elif state_mode in {"resume_state_loss", "checkpoint_resume"}:
-            workflow.execution_plan[1].inputs["force_environment_failure"] = True
             workflow.execution_plan[1].metadata["required_state_slots"] = ["retrieved_info"]
             workflow.execution_plan[1].metadata["state_bindings"] = {"retrieved_info": "retrieved_info"}
+            workflow.execution_plan[1].metadata["inject_missing_state_slots_once"] = ["retrieved_info"]
             workflow.metadata["resume_state_drop_slots"] = ["retrieved_info"]
             workflow.metadata["resume_state_stale_slots"] = []
         elif state_mode in {"stale_state_after_repair", "state_stale_slot", "recovery_not_committed"}:
-            workflow.execution_plan[1].inputs["force_environment_failure"] = True
             workflow.execution_plan[1].metadata["required_state_slots"] = ["retrieved_info"]
             workflow.execution_plan[1].metadata["state_bindings"] = {"retrieved_info": "retrieved_info"}
+            workflow.execution_plan[1].metadata["inject_stale_state_slots_once"] = ["retrieved_info"]
             workflow.metadata["resume_state_drop_slots"] = []
-            workflow.metadata["resume_state_stale_slots"] = ["retrieved_info"]
+            workflow.metadata["resume_state_stale_slots"] = ["retrieved_info"] if state_mode == "recovery_not_committed" else []
         workflow.metadata["state_failure_mode"] = state_mode
 
     return workflow
@@ -402,6 +414,7 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
     request.hints.user_style["gold_tool"] = workflow.metadata.get("gold_tool")
     request.hints.user_style["state_slots"] = list(workflow.metadata.get("state_slots", []))
     request.hints.user_style["dependency_edges"] = list(workflow.metadata.get("dependency_edges", []))
+    request.hints.user_style["reuse_override_inputs"] = dict(workflow.metadata.get("reuse_override_inputs", {}))
     if not allow_reuse:
         request.hints.reusable_asset_ids = []
     return request
@@ -576,6 +589,8 @@ def row_from_trace(
         repair_extra_user_turns = sum(1 for event in trailing_events if event.get("event_type") == "user_query")
     observed_failtaxes = _observed_failtaxes(events, task_annotations)
     primary_failtax = str(task_annotations.get("primary_failtax") or derive_primary_failtax(task))
+    if map_failtax_bucket(primary_failtax) == "state" and "state" in observed_failtaxes:
+        observed_error_type = "state_failure"
     stop_reason = str(stop_reason)
     safe_abort = stop_reason == "safe_abort_success"
     policy_compliance_success = False

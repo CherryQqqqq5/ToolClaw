@@ -37,6 +37,7 @@ class QueryPolicy:
             )
         missing_input_keys = [str(item) for item in report.metadata.get("missing_input_keys", []) if str(item)]
         missing_assets = [str(item) for item in report.metadata.get("missing_assets", []) if str(item)]
+        stale_assets = [str(item) for item in report.metadata.get("stale_assets", []) if str(item)]
         error_category = str(report.metadata.get("error_category") or "unknown")
         backup_tool_id = str(report.metadata.get("backup_tool_id") or "")
         alternative_tool_ids = [
@@ -88,6 +89,22 @@ class QueryPolicy:
                     patch_targets={primary_asset: f"state.{primary_asset}"},
                     urgency="high",
                 )
+        if report.primary_label == "stale_state":
+            primary_asset = stale_assets[0] if stale_assets else (missing_assets[0] if missing_assets else "state_slot")
+            return QueryPlan(
+                ask=True,
+                question_type="stale_state_patch",
+                question_text=f"Provide a fresh value for `{primary_asset}` so the stale state can be refreshed before retry.",
+                response_schema={
+                    "type": "object",
+                    "properties": {primary_asset: {"type": "string"}},
+                    "required": [primary_asset],
+                    "additionalProperties": False,
+                },
+                patch_targets={primary_asset: f"state.{primary_asset}"},
+                target_scope="state",
+                urgency="high",
+            )
         if report.primary_label == "constraint_conflict":
             return QueryPlan(
                 ask=True,

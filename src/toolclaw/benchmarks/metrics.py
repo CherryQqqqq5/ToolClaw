@@ -443,9 +443,9 @@ def write_report_md(
         )
         reuse_triggered = a4["reuse_usage_rate"] > 0.0
         second_run_gain = a4["mean_second_run_improvement"] > a3["mean_second_run_improvement"]
-        if success_delta > 0.0 or second_run_gain:
+        if success_delta > 0.0:
             verdict = "reuse_capability_gain"
-        elif reuse_triggered and efficiency_gain:
+        elif reuse_triggered and (efficiency_gain or second_run_gain):
             verdict = "reuse_efficiency_gain"
         elif reuse_triggered:
             verdict = "reuse_triggered_only"

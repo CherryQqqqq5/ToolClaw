@@ -23,6 +23,9 @@ def _write_tool(args: Dict[str, Any]) -> Dict[str, Any]:
     target_path = args.get("target_path")
     if not target_path:
         raise ToolExecutionError("missing required field: target_path")
+    expected_target_path = args.get("expected_target_path")
+    if expected_target_path and target_path != expected_target_path:
+        raise ToolExecutionError(f"write target mismatch: expected target_path={expected_target_path}")
     if args.get("force_environment_failure"):
         raise ToolExecutionError("environment unavailable for write operation")
     return {
@@ -35,6 +38,9 @@ def _backup_write_tool(args: Dict[str, Any]) -> Dict[str, Any]:
     target_path = args.get("target_path")
     if not target_path:
         raise ToolExecutionError("missing required field: target_path")
+    expected_target_path = args.get("expected_target_path")
+    if expected_target_path and target_path != expected_target_path:
+        raise ToolExecutionError(f"write target mismatch: expected target_path={expected_target_path}")
     return {
         "status": "success",
         "payload": f"backup write success at {target_path}",

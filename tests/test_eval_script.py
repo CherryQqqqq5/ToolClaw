@@ -229,6 +229,8 @@ def test_run_eval_script_reports_repeated_family_contrast(tmp_path: Path) -> Non
     a4_pass2 = next(row for row in rows if row["system"] == "a4_reuse" and row["task_id"].endswith("__pass2"))
     assert a4_pass2["reused_artifact"] == "True"
     assert float(a4_pass2["second_run_improvement"]) != 0.0
+    report = (outdir / "report.md").read_text(encoding="utf-8")
+    assert "Verdict: **reuse_efficiency_gain**." in report
 
 
 def test_run_eval_script_supports_state_failure_slice(tmp_path: Path) -> None:
@@ -261,6 +263,82 @@ def test_run_eval_script_supports_state_failure_slice(tmp_path: Path) -> None:
     rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
     assert rows[0]["primary_failtax"] == "state"
     assert rows[0]["failure_type"] == "state_failure"
+
+
+def test_run_eval_script_recovers_stale_state_without_budget_double_count(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "task_id": "state_stale_001",
+            "scenario": "state_failure",
+            "query": "retrieve and write report",
+            "state_failure_mode": "state_stale_slot",
+            "constraints": {
+                "max_tool_calls": 3,
+                "max_user_turns": 1,
+                "max_repair_attempts": 1,
+                "max_recovery_budget": 1.0,
+            },
+            "simulated_policy": {
+                "mode": "cooperative",
+                "missing_arg_values": {"retrieved_info": "refreshed summary for: retrieve and write report"},
+            },
+        }
+    ]
+    taskset_path = tmp_path / "taskset_state_stale.json"
+    taskset_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    outdir = tmp_path / "eval_out_state_stale"
+    completed = subprocess.run(
+        [sys.executable, "scripts/run_eval.py", "--taskset", str(taskset_path), "--outdir", str(outdir), "--systems", "a3_interaction"],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
+    row = rows[0]
+    assert row["success"] == "True"
+    assert row["observed_error_type"] == "state_failure"
+    assert row["stop_reason"] != "max_recovery_budget_exceeded"
+
+
+def test_run_eval_script_wrong_write_target_fails_baseline(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "task_id": "state_wrong_target_001",
+            "scenario": "state_failure",
+            "query": "retrieve and write report",
+            "target_path": "outputs/reports/state_wrong_target_001.txt",
+            "wrong_target_path": "outputs/reports/state_wrong_target_001.shadow.txt",
+            "state_failure_mode": "wrong_write_target",
+            "reuse_override_inputs": {"cap_write": ["target_path"]},
+            "simulated_policy": {
+                "mode": "cooperative",
+                "missing_arg_values": {"target_path": "outputs/reports/state_wrong_target_001.txt"},
+            },
+        }
+    ]
+    taskset_path = tmp_path / "taskset_wrong_target.json"
+    taskset_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    outdir = tmp_path / "eval_out_wrong_target"
+    completed = subprocess.run(
+        [sys.executable, "scripts/run_eval.py", "--taskset", str(taskset_path), "--outdir", str(outdir), "--systems", "a0_baseline"],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
+    row = rows[0]
+    assert row["success"] == "False"
+    assert row["observed_error_type"] == "state_failure"
 
 
 def test_run_eval_script_supports_matched_ablation_systems_and_disable_repair(tmp_path: Path) -> None:

@@ -820,6 +820,7 @@ class SequentialExecutor:
         trace: Trace,
         state_values: Dict[str, Any],
     ) -> Optional[StepExecutionResult]:
+        self._inject_step_state_failures(step=step, state_values=state_values)
         required_slots = [str(item) for item in step.metadata.get("required_state_slots", []) if str(item)]
         stale_slots = [str(item) for item in state_values.get("__stale_state_slots__", []) if str(item)]
         missing_slots = [slot for slot in required_slots if slot not in state_values or state_values.get(slot) in {None, ""}]
@@ -873,8 +874,37 @@ class SequentialExecutor:
         return StepExecutionResult(ok=False, step_id=step.step_id, tool_id=step.tool_id, error=error)
 
     @staticmethod
+    def _inject_step_state_failures(
+        *,
+        step: WorkflowStep,
+        state_values: Dict[str, Any],
+    ) -> None:
+        injected = set(str(item) for item in state_values.get("__state_faults_injected__", []) if str(item))
+
+        missing_slots = [str(item) for item in step.metadata.get("inject_missing_state_slots_once", []) if str(item)]
+        missing_key = f"{step.step_id}:missing"
+        if missing_slots and missing_key not in injected:
+            for slot in missing_slots:
+                state_values.pop(slot, None)
+                state_values.setdefault("__missing_assets__", [])
+                if slot not in state_values["__missing_assets__"]:
+                    state_values["__missing_assets__"].append(slot)
+            injected.add(missing_key)
+
+        stale_slots = [str(item) for item in step.metadata.get("inject_stale_state_slots_once", []) if str(item)]
+        stale_key = f"{step.step_id}:stale"
+        if stale_slots and stale_key not in injected:
+            existing_stale = set(str(item) for item in state_values.get("__stale_state_slots__", []) if str(item))
+            existing_stale.update(stale_slots)
+            state_values["__stale_state_slots__"] = sorted(existing_stale)
+            injected.add(stale_key)
+
+        if injected:
+            state_values["__state_faults_injected__"] = sorted(injected)
+
+    @staticmethod
     def _apply_resume_state_overrides(workflow: Workflow, state_values: Dict[str, Any], resumed: bool) -> None:
-        if not resumed or state_values.get("__resume_state_override_applied__"):
+        if not resumed or workflow.metadata.get("__resume_state_override_applied__"):
             return
         drop_slots = [str(item) for item in workflow.metadata.get("resume_state_drop_slots", []) if str(item)]
         for slot in drop_slots:
@@ -883,7 +913,7 @@ class SequentialExecutor:
         stale_slots.update(str(item) for item in workflow.metadata.get("resume_state_stale_slots", []) if str(item))
         if stale_slots:
             state_values["__stale_state_slots__"] = sorted(stale_slots)
-        state_values["__resume_state_override_applied__"] = True
+        workflow.metadata["__resume_state_override_applied__"] = True
 
     @staticmethod
     def _clear_state_slot_flags(state_values: Dict[str, Any], slots: list[str]) -> None:
@@ -906,6 +936,8 @@ class SequentialExecutor:
         message = str(exc)
         if "missing required field" in message:
             category = ErrorCategory.BINDING_FAILURE
+        elif "write target mismatch" in message or "stale state" in message or "state slot" in message:
+            category = ErrorCategory.STATE_FAILURE
         elif "permission" in message:
             category = ErrorCategory.PERMISSION_FAILURE
         elif "order" in message or "dependency" in message:
@@ -933,13 +965,13 @@ class SequentialExecutor:
             state_context=StateContext(
                 active_capability=step.capability_id,
                 active_step_id=step.step_id,
-                missing_assets=["target_path"] if "target_path" in message else [],
+                missing_assets=["target_path"] if ("target_path" in message or "write target mismatch" in message) else [],
                 state_values={},
                 policy_flags={"approval_pending": False},
             ),
             recoverability=Recoverability(
                 recoverable=True,
-                requires_user_input=(category == ErrorCategory.ENVIRONMENT_FAILURE),
+                requires_user_input=(category in {ErrorCategory.ENVIRONMENT_FAILURE, ErrorCategory.STATE_FAILURE}),
                 requires_tool_switch=(category == ErrorCategory.ENVIRONMENT_FAILURE),
                 requires_rollback=False,
                 requires_approval=False,
