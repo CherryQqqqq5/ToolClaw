@@ -154,9 +154,36 @@ validate_env() {
       fi
       ;;
     openrouter|router)
-      export TOOLSANDBOX_OPENAI_MODEL="${TOOLSANDBOX_OPENAI_MODEL:-openai/gpt-5.4}"
+      export TOOLSANDBOX_OPENAI_MODEL="${TOOLSANDBOX_OPENAI_MODEL:-openai/gpt-4.1}"
       ;;
   esac
+}
+
+preflight_model_probe() {
+  "$RUN_PYTHON" - <<'PY'
+import os
+from openai import OpenAI
+
+api_key = os.environ.get("OPENAI_API_KEY")
+base_url = os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_API_BASE")
+model = os.environ.get("TOOLSANDBOX_OPENAI_MODEL", "gpt-5.4")
+
+if not api_key:
+    raise SystemExit("OPENAI_API_KEY is missing")
+
+client = OpenAI(api_key=api_key, base_url=base_url)
+
+try:
+    client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": "ping"}],
+        max_tokens=1,
+        temperature=0,
+    )
+    print(f"[preflight] model ok: {model}")
+except Exception as e:
+    raise SystemExit(f"[preflight] model probe failed for {model}: {e}")
+PY
 }
 
 resolve_python_bin() {
@@ -308,5 +335,6 @@ fi
 
 validate_env
 echo "[ToolSandbox] provider=${PROXY_PROVIDER} base_url=${OPENAI_BASE_URL:-${OPENAI_API_BASE:-<unset>}} model=${TOOLSANDBOX_OPENAI_MODEL:-<default>}"
+preflight_model_probe
 
 exec "$RUN_PYTHON" -c 'import sys; from tool_sandbox.cli import main; sys.argv = ["tool_sandbox", *sys.argv[1:]]; main()' "${ARGS[@]}"
