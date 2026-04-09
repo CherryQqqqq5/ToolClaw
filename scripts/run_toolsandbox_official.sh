@@ -14,6 +14,32 @@ PIP_RETRY_DELAY_SECONDS="${TOOLSANDBOX_PIP_RETRY_DELAY_SECONDS:-3}"
 INSTALL_TARGET="${TOOLSANDBOX_INSTALL_TARGET:-.}"
 HTTPX_COMPAT_SPEC="${TOOLSANDBOX_HTTPX_COMPAT_SPEC:-httpx<0.28}"
 
+# Benchmark proxy routing defaults (OpenAI-compatible):
+#   TOOLCLAW_BENCHMARK_PROXY_PROVIDER=novacode|openrouter|custom|direct
+#   TOOLCLAW_BENCHMARK_PROXY_BASE_URL=<custom url>
+# Explicit OPENAI_BASE_URL / OPENAI_API_BASE values still take precedence.
+PROXY_PROVIDER="${TOOLCLAW_BENCHMARK_PROXY_PROVIDER:-novacode}"
+PROXY_PROVIDER="$(printf '%s' "$PROXY_PROVIDER" | tr '[:upper:]' '[:lower:]')"
+case "$PROXY_PROVIDER" in
+  nova|novacode)
+    DEFAULT_PROXY_BASE_URL="${TOOLCLAW_BENCHMARK_NOVACODE_BASE_URL:-https://ai.novacode.top/v1}"
+    ;;
+  openrouter|router)
+    DEFAULT_PROXY_BASE_URL="${TOOLCLAW_BENCHMARK_OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}"
+    ;;
+  direct|openai)
+    DEFAULT_PROXY_BASE_URL=""
+    ;;
+  custom|*)
+    DEFAULT_PROXY_BASE_URL="${TOOLCLAW_BENCHMARK_PROXY_BASE_URL:-}"
+    ;;
+esac
+
+if [[ -z "${OPENAI_BASE_URL:-}" && -z "${OPENAI_API_BASE:-}" && -n "$DEFAULT_PROXY_BASE_URL" ]]; then
+  export OPENAI_BASE_URL="$DEFAULT_PROXY_BASE_URL"
+  export OPENAI_API_BASE="$DEFAULT_PROXY_BASE_URL"
+fi
+
 usage() {
   cat >&2 <<'EOF'
 usage: scripts/run_toolsandbox_official.sh [--install-only] [--use-active-env] [--force-reinstall] [official-tool-sandbox-args...]
