@@ -345,27 +345,56 @@ class Tau2BenchAdapter:
             candidate_tools=self._build_candidate_tools(sample.raw_payload),
         )
         request = PlanningRequest(task=task, context=context, policy=demo.policy)
+        raw_budget_profile = sample.raw_payload.get("budget_profile", sample.metadata.get("budget_profile", {}))
+        budget_profile = dict(raw_budget_profile) if isinstance(raw_budget_profile, dict) else {}
         request.hints.user_style["benchmark"] = self.benchmark_name
         request.hints.user_style["scenario"] = sample.scenario
         request.hints.user_style["requires_interaction"] = self._expected_interaction(sample)
         request.hints.user_style["simulated_policy_mode"] = str(
             sample.raw_payload.get("simulated_policy", {}).get("mode", "cooperative")
         )
+        request.hints.user_style["primary_failtax"] = str(sample.raw_payload.get("primary_failtax") or sample.metadata.get("primary_failtax") or "recovery")
+        raw_failtaxes = sample.raw_payload.get("failtaxes", sample.metadata.get("failtaxes", []))
+        request.hints.user_style["failtaxes"] = list(raw_failtaxes) if isinstance(raw_failtaxes, list) else []
+        request.hints.user_style["task_family"] = str(sample.raw_payload.get("task_family") or sample.metadata.get("task_family") or "t0_general")
+        raw_state_slots = sample.raw_payload.get("state_slots", sample.metadata.get("state_slots", []))
+        request.hints.user_style["state_slots"] = list(raw_state_slots) if isinstance(raw_state_slots, list) else []
+        request.hints.user_style["budget_profile"] = budget_profile
+        request.hints.user_style["gold_recovery_class"] = str(
+            sample.raw_payload.get("gold_recovery_class") or sample.metadata.get("gold_recovery_class") or ""
+        )
         return request
 
     def to_eval_task(self, sample: BenchmarkSample) -> Dict[str, Any]:
+        raw_metadata = dict(sample.raw_payload.get("metadata", {})) if isinstance(sample.raw_payload.get("metadata"), dict) else {}
+        raw_budget_profile = sample.raw_payload.get("budget_profile", raw_metadata.get("budget_profile", {}))
+        budget_profile = dict(raw_budget_profile) if isinstance(raw_budget_profile, dict) else {}
         task: Dict[str, Any] = {
             "task_id": sample.sample_id,
             "scenario": sample.scenario,
             "query": self._extract_query(sample.raw_payload),
             "target_path": sample.raw_payload.get("target_path") or f"{self.default_target_dir}/{sample.sample_id}.txt",
+            "primary_failtax": sample.raw_payload.get("primary_failtax"),
+            "failtaxes": list(sample.raw_payload.get("failtaxes", [])) if isinstance(sample.raw_payload.get("failtaxes"), list) else [],
+            "task_family": sample.raw_payload.get("task_family"),
+            "state_slots": list(sample.raw_payload.get("state_slots", [])) if isinstance(sample.raw_payload.get("state_slots"), list) else [],
+            "dependency_edges": list(sample.raw_payload.get("dependency_edges", [])) if isinstance(sample.raw_payload.get("dependency_edges"), list) else [],
+            "expected_recovery_path": sample.raw_payload.get("gold_recovery_class"),
+            "budget_profile": budget_profile,
             "metadata": {
                 "benchmark": self.benchmark_name,
                 "requires_interaction": self._expected_interaction(sample),
                 "expected_user_turns": sample.raw_payload.get("expected_user_turns"),
                 "expected_repairs": sample.raw_payload.get("expected_repairs"),
+                "budget_profile": budget_profile,
+                "gold_recovery_class": sample.raw_payload.get("gold_recovery_class"),
+                **raw_metadata,
             },
         }
+        if sample.raw_payload.get("reuse_family_id") is not None:
+            task["reuse_family_id"] = sample.raw_payload.get("reuse_family_id")
+        if sample.raw_payload.get("reuse_pass_index") is not None:
+            task["reuse_pass_index"] = sample.raw_payload.get("reuse_pass_index")
         if "simulated_policy" in sample.raw_payload:
             task["simulated_policy"] = dict(sample.raw_payload["simulated_policy"])
         if "backup_tool_map" in sample.raw_payload:
@@ -374,6 +403,8 @@ class Tau2BenchAdapter:
             task["candidate_tools"] = list(sample.raw_payload["candidate_tools"])
         if "constraints" in sample.raw_payload:
             task["constraints"] = dict(sample.raw_payload["constraints"])
+        if "state_failure_mode" in sample.raw_payload:
+            task["state_failure_mode"] = sample.raw_payload["state_failure_mode"]
         return annotate_task_payload(task)
 
     def score_trace(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> BenchmarkTraceScore:
@@ -424,6 +455,9 @@ class Tau2BenchAdapter:
         repair_efficiency = self._efficiency_score(observed=max(repairs, 1), expected=max(expected_repairs, 1), step_penalty=0.25)
         if repairs == 0 and expected_repairs == 0:
             repair_efficiency = 1.0
+        policy_stop = stop_reason in {"safe_abort_success", "policy_compliant_stop"}
+        policy_relevant = sample.scenario in {"approval_required", "policy_failure", "dual_control"}
+        state_relevant = str(sample.raw_payload.get("primary_failtax") or "").lower() == "state" or sample.scenario == "state_failure"
 
         return BenchmarkTraceScore(
             benchmark=self.benchmark_name,
@@ -436,6 +470,9 @@ class Tau2BenchAdapter:
                 "repair_efficiency": repair_efficiency,
                 "approval_following": approval_following,
                 "tool_efficiency": max(0.0, 1.0 - 0.1 * max(tool_calls - 1, 0)),
+                "safe_abort_rate": 1.0 if stop_reason == "safe_abort_success" else 0.0,
+                "policy_compliance_success_rate": 1.0 if policy_relevant and (policy_stop or success) else 0.0,
+                "state_repair_success_rate": 1.0 if state_relevant and success and repairs > 0 else 0.0,
             },
             diagnostics={
                 "scenario": sample.scenario,
@@ -464,6 +501,12 @@ class Tau2BenchAdapter:
         metadata = dict(raw.get("metadata", {}))
         metadata["expected_user_turns"] = raw.get("expected_user_turns")
         metadata["expected_repairs"] = raw.get("expected_repairs")
+        metadata["primary_failtax"] = raw.get("primary_failtax") or metadata.get("primary_failtax")
+        metadata["failtaxes"] = list(raw.get("failtaxes", metadata.get("failtaxes", []))) if isinstance(raw.get("failtaxes", metadata.get("failtaxes", [])), list) else []
+        metadata["task_family"] = raw.get("task_family") or metadata.get("task_family")
+        metadata["state_slots"] = list(raw.get("state_slots", metadata.get("state_slots", []))) if isinstance(raw.get("state_slots", metadata.get("state_slots", [])), list) else []
+        metadata["budget_profile"] = dict(raw.get("budget_profile", metadata.get("budget_profile", {}))) if isinstance(raw.get("budget_profile", metadata.get("budget_profile", {})), dict) else {}
+        metadata["gold_recovery_class"] = raw.get("gold_recovery_class") or metadata.get("gold_recovery_class")
         return BenchmarkSample(sample_id=sample_id, raw_payload=raw, scenario=scenario, metadata=metadata)
 
     @staticmethod
@@ -538,6 +581,7 @@ class Tau2BenchAdapter:
             "policy_failure",
             "dual_control",
             "binding_failure",
+            "state_failure",
         } or "simulated_policy" in sample.raw_payload
 
     @staticmethod
@@ -559,7 +603,7 @@ class Tau2BenchAdapter:
             except (TypeError, ValueError):
                 pass
         scenario = str(sample.scenario).lower()
-        return 1 if scenario in {"binding_failure", "environment_failure", "interaction_failure", "policy_failure"} else 0
+        return 1 if scenario in {"binding_failure", "environment_failure", "interaction_failure", "policy_failure", "state_failure"} else 0
 
     @staticmethod
     def _efficiency_score(observed: int, expected: int, step_penalty: float) -> float:

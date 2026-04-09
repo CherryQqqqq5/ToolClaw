@@ -171,6 +171,7 @@ class SequentialExecutor:
         tracker = StateTracker()
         if initial_state:
             tracker.state_values.update(initial_state)
+        self._apply_resume_state_overrides(workflow, tracker.state_values, resumed=bool(initial_state))
         trace = Trace(
             run_id=run_id,
             workflow_id=workflow.workflow_id,
@@ -178,6 +179,9 @@ class SequentialExecutor:
             metadata=RunMetadata(model_name="phase1_executor", mode=RunMode.TOOLCLAW),
         )
         trace.metadata.task_annotations = self._task_annotations(workflow)
+        trace.metadata.primary_failtax = workflow.metadata.get("primary_failtax")
+        trace.metadata.failtaxes = list(workflow.metadata.get("failtaxes", []))
+        trace.metadata.budget_profile = dict(workflow.metadata.get("budget_profile", {}))
         trace.metadata.budget_limits = self._budget_limits(workflow)
         trace.metadata.interaction_modules = [
             "uncertainty_detector",
@@ -305,12 +309,14 @@ class SequentialExecutor:
                     last_error_id=f"err_policy_{step.step_id}",
                 )
 
-            step_result = self._execute_step(step=step, trace=trace)
+            state_error = self._check_state_failure(step=step, trace=trace, state_values=tracker.state_values)
+            step_result = state_error or self._execute_step(step=step, trace=trace, state_values=tracker.state_values)
             tracker.state_values["__tool_calls__"] = trace.metrics.tool_calls
             self._update_trace_budget_usage(trace, tracker.state_values)
             if step_result.ok:
                 tracker.mark_completed(step.step_id)
                 tracker.state_values[step.expected_output or step.step_id] = step_result.output.get("payload")
+                self._clear_state_slot_flags(tracker.state_values, [step.expected_output or step.step_id])
                 after_decision = self.policy_engine.evaluate_after_step(step, workflow, tracker.state_values)
                 tracker.state_values.update(after_decision.state_patch)
                 tracker.state_values["__remaining_budgets__"] = self._remaining_budgets(workflow, tracker.state_values)
@@ -527,6 +533,7 @@ class SequentialExecutor:
         workflow = resume_patch.workflow
         initial_state = dict(resume_patch.base_state)
         initial_state.update(resume_patch.state_updates)
+        self._clear_state_slot_flags(initial_state, list(resume_patch.state_updates.keys()))
         approved_steps = set(initial_state.get("__approved_steps__", []))
         approved_steps.update(initial_state.get("__approved_steps__", []))
         if resume_patch.policy_updates.get("approved"):
@@ -559,19 +566,20 @@ class SequentialExecutor:
             initial_state=initial_state,
         )
 
-    def _execute_step(self, step: WorkflowStep, trace: Trace) -> StepExecutionResult:
+    def _execute_step(self, step: WorkflowStep, trace: Trace, state_values: Dict[str, Any]) -> StepExecutionResult:
         trace.metadata.task_annotations["chosen_tool"] = step.tool_id
+        tool_args = self._materialize_tool_args(step=step, state_values=state_values)
         trace.add_event(
             event_id=f"evt_call_{step.step_id}",
             event_type=EventType.TOOL_CALL,
             actor="executor",
             step_id=step.step_id,
             tool_id=step.tool_id,
-            tool_args=step.inputs,
+            tool_args=tool_args,
         )
 
         try:
-            result = run_mock_tool(step.tool_id or "", dict(step.inputs))
+            result = run_mock_tool(step.tool_id or "", dict(tool_args))
             trace.add_event(
                 event_id=f"evt_result_{step.step_id}",
                 event_type=EventType.TOOL_RESULT,
@@ -794,6 +802,100 @@ class SequentialExecutor:
             if step.step_id == step_id:
                 return idx
         return 0
+
+    @staticmethod
+    def _materialize_tool_args(step: WorkflowStep, state_values: Dict[str, Any]) -> Dict[str, Any]:
+        tool_args = dict(step.inputs)
+        state_bindings = step.metadata.get("state_bindings", {})
+        if isinstance(state_bindings, dict):
+            for input_key, state_key in state_bindings.items():
+                if state_key in state_values:
+                    tool_args[str(input_key)] = state_values[state_key]
+        return tool_args
+
+    def _check_state_failure(
+        self,
+        *,
+        step: WorkflowStep,
+        trace: Trace,
+        state_values: Dict[str, Any],
+    ) -> Optional[StepExecutionResult]:
+        required_slots = [str(item) for item in step.metadata.get("required_state_slots", []) if str(item)]
+        stale_slots = [str(item) for item in state_values.get("__stale_state_slots__", []) if str(item)]
+        missing_slots = [slot for slot in required_slots if slot not in state_values or state_values.get(slot) in {None, ""}]
+        stale_required = [slot for slot in required_slots if slot in stale_slots]
+        if not missing_slots and not stale_required:
+            return None
+        for slot in missing_slots:
+            if slot not in stale_slots:
+                state_values.setdefault("__missing_assets__", [])
+                if slot not in state_values["__missing_assets__"]:
+                    state_values["__missing_assets__"].append(slot)
+        subtype = "stale_state" if stale_required else "missing_state_slot"
+        symptoms = []
+        if missing_slots:
+            symptoms.append(f"missing required state slot(s): {', '.join(missing_slots)}")
+        if stale_required:
+            symptoms.append(f"stale state slot(s): {', '.join(stale_required)}")
+        error = ToolClawError(
+            error_id=f"err_state_{step.step_id}",
+            run_id=trace.run_id,
+            workflow_id=trace.workflow_id,
+            step_id=step.step_id,
+            category=ErrorCategory.STATE_FAILURE,
+            subtype=subtype,
+            severity=ErrorSeverity.MEDIUM,
+            stage=ErrorStage.EXECUTION,
+            symptoms=symptoms,
+            evidence=ErrorEvidence(
+                tool_id=step.tool_id,
+                raw_message="; ".join(symptoms),
+                inputs=self._materialize_tool_args(step=step, state_values=state_values),
+                metadata={"required_state_slots": required_slots},
+            ),
+            root_cause_hypothesis=["required state was missing or stale before tool execution"],
+            state_context=StateContext(
+                active_capability=step.capability_id,
+                active_step_id=step.step_id,
+                missing_assets=missing_slots or stale_required,
+                state_values=dict(state_values),
+                policy_flags={"approval_pending": False},
+            ),
+            recoverability=Recoverability(
+                recoverable=True,
+                requires_user_input=True,
+                requires_tool_switch=False,
+                requires_rollback=False,
+                requires_approval=False,
+            ),
+            failtax_label="state_failure",
+        )
+        return StepExecutionResult(ok=False, step_id=step.step_id, tool_id=step.tool_id, error=error)
+
+    @staticmethod
+    def _apply_resume_state_overrides(workflow: Workflow, state_values: Dict[str, Any], resumed: bool) -> None:
+        if not resumed or state_values.get("__resume_state_override_applied__"):
+            return
+        drop_slots = [str(item) for item in workflow.metadata.get("resume_state_drop_slots", []) if str(item)]
+        for slot in drop_slots:
+            state_values.pop(slot, None)
+        stale_slots = set(str(item) for item in state_values.get("__stale_state_slots__", []) if str(item))
+        stale_slots.update(str(item) for item in workflow.metadata.get("resume_state_stale_slots", []) if str(item))
+        if stale_slots:
+            state_values["__stale_state_slots__"] = sorted(stale_slots)
+        state_values["__resume_state_override_applied__"] = True
+
+    @staticmethod
+    def _clear_state_slot_flags(state_values: Dict[str, Any], slots: list[str]) -> None:
+        if not slots:
+            return
+        stale = [str(item) for item in state_values.get("__stale_state_slots__", []) if str(item)]
+        missing = [str(item) for item in state_values.get("__missing_assets__", []) if str(item)]
+        slot_set = {str(slot) for slot in slots if str(slot)}
+        if stale:
+            state_values["__stale_state_slots__"] = [slot for slot in stale if slot not in slot_set]
+        if missing:
+            state_values["__missing_assets__"] = [slot for slot in missing if slot not in slot_set]
 
     def _build_error(
         self,

@@ -25,6 +25,7 @@ class UserReply:
     payload: Dict[str, Any]
     raw_text: Optional[str] = None
     accepted: bool = True
+    status: str = "accept"
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -94,6 +95,10 @@ class RepairUpdater:
                 "mapped_from_error_category": repair.metadata.get("mapped_from_error_category"),
                 "branch_options": branch_options,
                 "patch_targets": self._default_patch_targets(repair=repair, missing_input_keys=missing_input_keys),
+                "primary_failtax": workflow.metadata.get("primary_failtax"),
+                "budget_profile": dict(workflow.metadata.get("budget_profile", {}))
+                if isinstance(workflow.metadata.get("budget_profile"), dict)
+                else workflow.metadata.get("budget_profile"),
             },
         )
 
@@ -117,6 +122,12 @@ class RepairUpdater:
             policy_updates["approved"] = bool(reply.payload["approved"])
         if self._should_clear_environment_failure(repair=repair, payload=reply.payload):
             state_updates["force_environment_failure"] = False
+        if repair.metadata.get("mapped_from_error_category") == "state_failure" and state_updates:
+            stale_slots = [str(item) for item in state_values.get("__stale_state_slots__", []) if str(item)]
+            refreshed_slots = {str(key) for key in state_updates.keys() if str(key)}
+            if stale_slots:
+                remaining = [slot for slot in stale_slots if slot not in refreshed_slots]
+                state_updates["__stale_state_slots__"] = remaining
         resume_step_id = self._resolve_repair_step_id(workflow=workflow, repair=repair)
         return ResumePatch(
             workflow=workflow,
@@ -135,6 +146,12 @@ class RepairUpdater:
                 "accepted": reply.accepted,
                 "repair_type": repair.repair_type.value,
                 "escalation_level": int(reply.metadata.get("escalation_level", 0)),
+                "answer_patch": {
+                    "patched_slots": sorted(str(key) for key in state_updates.keys()),
+                    "patched_constraints": dict(policy_updates),
+                    "patch_confidence": 1.0 if state_updates or policy_updates or binding_patch else 0.0,
+                    "compiler_status": "compiled" if state_updates or policy_updates or binding_patch else "noop",
+                },
             },
         )
 
@@ -145,7 +162,9 @@ class RepairUpdater:
     ) -> bool:
         if request.interaction_id != reply.interaction_id:
             return False
-        if not reply.accepted:
+        if reply.status in {"deny", "abstain"}:
+            return True
+        if reply.status == "malformed":
             return False
         return isinstance(reply.payload, dict)
 

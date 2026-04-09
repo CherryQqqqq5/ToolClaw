@@ -1,4 +1,4 @@
-"""Synthetic user policies used in Phase-1 to emulate feedback during blocked runs."""
+"""Simulator-backed reply provider for benchmark and offline interaction runs."""
 
 from __future__ import annotations
 
@@ -6,11 +6,12 @@ from dataclasses import dataclass, field
 from typing import Any, Dict
 
 from toolclaw.interaction.repair_updater import InteractionRequest, UserReply
+from toolclaw.interaction.reply_provider import ReplyProvider
 
 
 @dataclass
 class SimulatedPolicy:
-    mode: str = "cooperative"  # cooperative | strict | abortive
+    mode: str = "cooperative"  # cooperative | strict | abortive | abstain | malformed
     missing_arg_values: Dict[str, Any] = field(default_factory=dict)
     backup_tool_preferences: Dict[str, str] = field(default_factory=dict)
     approval_responses: Dict[str, bool] = field(default_factory=dict)
@@ -18,7 +19,7 @@ class SimulatedPolicy:
     tool_switch_hints: Dict[str, str] = field(default_factory=dict)
 
 
-class UserSimulator:
+class UserSimulator(ReplyProvider):
     def __init__(self, policy: SimulatedPolicy) -> None:
         self.policy = policy
 
@@ -28,7 +29,24 @@ class UserSimulator:
                 interaction_id=request.interaction_id,
                 payload={"abort": True},
                 accepted=False,
+                status="deny",
                 raw_text="Abort task.",
+            )
+        if self.policy.mode == "abstain":
+            return UserReply(
+                interaction_id=request.interaction_id,
+                payload={"abstain": True},
+                accepted=False,
+                status="abstain",
+                raw_text="No preference.",
+            )
+        if self.policy.mode == "malformed":
+            return UserReply(
+                interaction_id=request.interaction_id,
+                payload={"raw_text": "???"},
+                accepted=False,
+                status="malformed",
+                raw_text="???",
             )
 
         payload: Dict[str, Any] = {}
@@ -43,15 +61,18 @@ class UserSimulator:
             payload["approved"] = self.policy.approval_responses.get(request.interaction_id, True)
 
         if self.policy.mode == "strict" and not payload:
-            payload = {"abort": True}
+            payload = {"abstain": True}
             accepted = False
+            status = "abstain"
         else:
             accepted = True
+            status = "accept"
 
         return UserReply(
             interaction_id=request.interaction_id,
             payload=payload,
             accepted=accepted,
+            status=status,
             raw_text="auto-reply",
             metadata={
                 "patch_targets": dict(request.metadata.get("patch_targets", {})),

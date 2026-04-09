@@ -55,6 +55,11 @@ class UncertaintyDetector:
             tool_id for tool_id in available_tool_ids if tool_id and tool_id != failed_tool_id
         ]
         branch_options = self._collect_branch_options(step=step, repair=repair)
+        stale_assets = [
+            str(item)
+            for item in state_values.get("__stale_state_slots__", [])
+            if str(item)
+        ]
 
         if repair.repair_type == RepairType.REQUEST_APPROVAL:
             return UncertaintyReport(
@@ -82,6 +87,23 @@ class UncertaintyDetector:
                         "step_id": step_id,
                         "missing_input_keys": missing_input_keys,
                         "missing_assets": missing_assets,
+                        "failed_tool_id": failed_tool_id or None,
+                        "backup_tool_id": backup_tool_id or None,
+                        "error_category": error_category,
+                    },
+                )
+            if error_category == "state_failure" and stale_assets:
+                return UncertaintyReport(
+                    primary_label="missing_asset",
+                    confidence=0.86,
+                    information_gaps=[
+                        InformationGap(gap_type="stale_state", target=asset, rationale="blocked step needs refreshed state before retry")
+                        for asset in stale_assets
+                    ],
+                    metadata={
+                        "state_keys": sorted(state_values.keys()),
+                        "step_id": step_id,
+                        "missing_assets": stale_assets,
                         "failed_tool_id": failed_tool_id or None,
                         "backup_tool_id": backup_tool_id or None,
                         "error_category": error_category,

@@ -1,19 +1,18 @@
-# ToolClaw (Phase-1)
+# ToolClaw
 
 ToolClaw is a **training-free workflow intelligence layer** for tool-calling agents.
 
-In this repository, Phase-1 focuses on validating whether explicit workflow control (planning → binding → execution → recovery → interaction → reuse) improves robustness over a baseline first-failure-stop executor.
+This repository now tracks two milestones:
+- `Phase-1 completed`: baseline vs recovery/planning/interaction/reuse scaffolding is implemented and reproducible.
+- `Phase-2 in progress`: failure-taxonomy coverage, budget-aware policy, interaction efficiency, and second-run reuse are the active evaluation targets.
 
 ---
 
 
-## Phase-1 Scope
+## Status
 
-- ✅ Training-free prototype (no fine-tuning / RL / parameter updates)
-- ✅ Unified schemas for workflow / trace / error / repair
-- ✅ Baseline vs ToolClaw-lite evaluation harness
-- ✅ Structured recovery and blocked-interaction resume loop
-- ✅ SWPC-style artifact compilation + registry feedback
+- ✅ Phase-1 completed: training-free prototype, core schemas, baseline/toolclaw harness, blocked-interaction resume loop, artifact compilation
+- 🚧 Phase-2 in progress: FailTax-first benchmark slicing, state-failure coverage, modular interaction backends, budget sweeps, second-run reuse evaluation
 
 ---
 
@@ -49,7 +48,7 @@ ToolClaw/
 1. **Planner** builds workflow from task/context (`HTGPPlanner.plan`).
 2. **Executor** runs sequentially (`run_until_blocked`) and writes trace.
 3. If recovery asks user, execution returns `blocked=True` with pending interaction.
-4. **Interaction shell** builds query, gets reply (simulated in phase-1), resumes execution.
+4. **Interaction shell** builds query, gets reply from a configured backend (simulator / human / LLM), and resumes execution.
 5. On success, **SWPC compiler** extracts reusable snippets and writes them to registry.
 
 ### Baseline path
@@ -66,7 +65,7 @@ ToolClaw/
 pytest -q
 ```
 
-### 2) Run one phase-1 evaluation
+### 2) Run one evaluation
 
 ```bash
 scripts/run_phase1.sh data/eval_tasks.sample.json outputs/phase1 planner
@@ -145,15 +144,10 @@ Python schema implementations are under `src/toolclaw/schemas/`.
 
 ## Current Status / Limits
 
-This repo currently validates a **phase-1 reduced claim**:
+Current emphasis:
 
-> Structured recovery + workflow control improves robustness over baseline on controlled tasksets.
-
-Still evolving areas:
-- richer dynamic capability construction
-- deeper policy execution semantics
-- stronger interaction reply-to-patch compilation
-- broader benchmark coverage beyond current mock/tooling scope
+- `Phase-1`: completed reduced claim on controlled tasksets
+- `Phase-2`: expanding to selection / ordering / state / recovery coverage, stronger reply-to-patch compilation, budget-aware planning, and real interaction backends
 
 ---
 

@@ -119,7 +119,8 @@ def test_user_reject_reply_causes_safe_stop(tmp_path: Path) -> None:
     request = updater.build_query(workflow, blocked.pending_interaction.repair, blocked.final_state)
     reject_reply = UserSimulator(SimulatedPolicy(mode="abortive")).reply(request)
 
-    assert updater.validate_reply(request, reject_reply) is False
+    assert reject_reply.status == "deny"
+    assert updater.validate_reply(request, reject_reply) is True
 
 
 def test_query_policy_uses_one_shot_target_path_patch_schema() -> None:
@@ -182,3 +183,33 @@ def test_interaction_shell_aborts_after_repeated_same_failure_signature(tmp_path
 
     assert outcome.success is False
     assert outcome.metadata["stopped_reason"] == "repeat_failure_abort"
+
+
+def test_interaction_shell_treats_abortive_reply_as_safe_abort_success(tmp_path: Path) -> None:
+    registry = InMemoryAssetRegistry()
+    runtime = ToolClawRuntime(
+        planner=build_default_planner(asset_registry=registry),
+        executor=SequentialExecutor(),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=registry,
+    )
+    shell = InteractionShell(
+        runtime=runtime,
+        config=InteractionLoopConfig(
+            max_turns=2,
+            simulator_policy=SimulatedPolicy(mode="abortive"),
+        ),
+    )
+
+    demo = Workflow.demo()
+    demo.task.constraints.requires_user_approval = True
+    request = PlanningRequest(task=demo.task, context=demo.context, policy=demo.policy)
+    outcome = shell.run(
+        request=request,
+        run_id="run_safe_abort_001",
+        output_path=str(tmp_path / "safe_abort_trace.json"),
+    )
+
+    assert outcome.success is True
+    assert outcome.metadata["stopped_reason"] == "safe_abort_success"

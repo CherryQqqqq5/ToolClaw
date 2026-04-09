@@ -30,6 +30,33 @@ def test_tau2_adapter_loads_samples_and_builds_eval_task(tmp_path) -> None:
     assert eval_task["simulated_policy"]["mode"] == "cooperative"
 
 
+def test_tau2_adapter_preserves_phase2_fields() -> None:
+    adapter = Tau2BenchAdapter()
+    sample = BenchmarkSample(
+        sample_id="tau2_state_001",
+        scenario="state_failure",
+        raw_payload={
+            "query": "retrieve and write report",
+            "primary_failtax": "state",
+            "failtaxes": ["state", "recovery"],
+            "task_family": "t1_static_recovery",
+            "state_slots": ["retrieved_info"],
+            "dependency_edges": [{"source": "step_01", "target": "step_02", "type": "state"}],
+            "gold_recovery_class": "patch_state_then_retry",
+            "budget_profile": {"max_user_turns": 1, "max_repair_attempts": 1, "max_tool_calls": 3},
+            "constraints": {"max_user_turns": 1, "max_repair_attempts": 1, "max_tool_calls": 3},
+        },
+    )
+
+    eval_task = adapter.to_eval_task(sample)
+
+    assert eval_task["primary_failtax"] == "state"
+    assert eval_task["task_family"] == "t1_static_recovery"
+    assert eval_task["state_slots"] == ["retrieved_info"]
+    assert eval_task["expected_recovery_path"] == "patch_state_then_retry"
+    assert eval_task["budget_profile"]["max_user_turns"] == 1
+
+
 def test_tau2_adapter_build_request_uses_interaction_hints() -> None:
     adapter = Tau2BenchAdapter()
     sample = BenchmarkSample(
@@ -48,6 +75,7 @@ def test_tau2_adapter_build_request_uses_interaction_hints() -> None:
     assert request.hints.user_style["benchmark"] == "tau2_bench"
     assert request.hints.user_style["requires_interaction"] is True
     assert request.hints.user_style["scenario"] == "environment_failure"
+    assert request.hints.user_style["primary_failtax"] == "recovery"
 
 
 def test_tau2_adapter_scores_interaction_and_repair_metrics() -> None:

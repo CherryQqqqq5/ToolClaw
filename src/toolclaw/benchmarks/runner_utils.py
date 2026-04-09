@@ -376,6 +376,13 @@ def finalize_outputs(
         "experiment_metadata": dict(experiment_metadata or {}),
     }
     write_experiment_manifest(outdir, experiment_manifest)
+    footer = (
+        f"Results generated from commit {git_commit}."
+        if git_commit
+        else "Results generated from a workspace without a resolved git commit."
+    )
+    for report_candidate in (outdir / "report.md", outdir / "latest_run_report.md"):
+        _append_report_footer(report_candidate, footer)
 
     if not keep_normalized_taskset:
         temp_copy = Path(tempfile.gettempdir()) / f"toolclaw_{benchmark_name}_{os.getpid()}.json"
@@ -404,6 +411,16 @@ def update_experiment_manifest(
         manifest["experiment_metadata"] = metadata
     write_experiment_manifest(outdir, manifest)
     return manifest
+
+
+def _append_report_footer(report_path: Path, footer: str) -> None:
+    if not report_path.exists():
+        return
+    body = report_path.read_text(encoding="utf-8")
+    footer_line = f"_ {footer} _"
+    if footer_line in body:
+        return
+    report_path.write_text(body.rstrip() + f"\n\n{footer_line}\n", encoding="utf-8")
 
 
 def _extract_stat(score_payload: Dict[str, Any], metric: AggregateMetric) -> float:

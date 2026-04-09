@@ -19,7 +19,7 @@ properties:
   task_id: { type: string }
   phase:
     type: string
-    enum: [phase1_training_free]
+    enum: [phase1_training_free, phase2_workflow_intelligence]
 
   metadata:
     type: object
@@ -32,6 +32,14 @@ properties:
       end_time: { type: [string, 'null'], format: date-time }
       benchmark: { type: [string, 'null'] }
       task_source: { type: [string, 'null'] }
+      primary_failtax: { type: [string, 'null'] }
+      failtaxes: { type: array, items: { type: string } }
+      budget_profile: { type: object }
+      task_annotations: { type: object }
+      budget_limits: { type: object }
+      budget_usage: { type: object }
+      interaction_modules: { type: array, items: { type: string } }
+      run_manifest: { type: object }
 
   state_snapshots:
     type: array
@@ -81,7 +89,21 @@ properties:
         tool_args: { type: [object, 'null'] }
         output: { type: [object, 'null'] }
         message: { type: [string, 'null'] }
-        metadata: { type: object }
+        metadata:
+          type: object
+          properties:
+            interaction_id: { type: [string, 'null'] }
+            uncertainty_cause: { type: [string, 'null'] }
+            query_policy_decision: { type: [object, 'null'] }
+            reply_class: { type: [string, 'null'] }
+            policy_outcome: { type: [string, 'null'] }
+            answer_patch: { type: [object, 'null'] }
+            patch_targets: { type: [object, 'null'] }
+            patch_success: { type: [boolean, 'null'] }
+            state_slot_delta: { type: [object, 'null'] }
+            primary_failtax: { type: [string, 'null'] }
+            budget_profile: { type: [object, 'null'] }
+          additionalProperties: true
 
   metrics:
     type: object
@@ -94,3 +116,14 @@ properties:
       success: { type: [boolean, 'null'] }
       token_cost: { type: [number, 'null'] }
       latency_ms: { type: [integer, 'null'] }
+      clarification_precision: { type: number }
+      clarification_recall: { type: number }
+      unnecessary_question_rate: { type: number }
+      patch_success_rate: { type: number }
+      post_answer_retry_count: { type: integer }
+      recovery_budget_used: { type: number }
+      budget_violation: { type: boolean }
+      budget_violation_reason: { type: [string, 'null'] }
+      safe_abort: { type: boolean }
+      policy_compliance_success: { type: boolean }
+      state_repair_success: { type: boolean }

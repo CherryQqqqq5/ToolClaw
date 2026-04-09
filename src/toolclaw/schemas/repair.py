@@ -14,6 +14,7 @@ def utc_now_iso() -> str:
 
 class Phase(str, Enum):
     PHASE1_TRAINING_FREE = "phase1_training_free"
+    PHASE2_WORKFLOW_INTELLIGENCE = "phase2_workflow_intelligence"
 
 
 class RepairType(str, Enum):
@@ -63,6 +64,15 @@ class RepairActionType(str, Enum):
 
 
 @dataclass
+class AnswerPatch:
+    patched_slots: List[str] = field(default_factory=list)
+    patched_constraints: Dict[str, Any] = field(default_factory=dict)
+    patch_confidence: float = 0.0
+    compiler_status: str = "pending"
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class RepairDecision:
     strategy: RepairStrategy
     rationale: str
@@ -86,6 +96,7 @@ class RepairInteraction:
     question: Optional[str] = None
     expected_answer_type: Optional[str] = None
     user_response: Optional[Any] = None
+    answer_patch: AnswerPatch = field(default_factory=AnswerPatch)
 
 
 @dataclass
@@ -140,7 +151,7 @@ class Repair:
     workflow_id: str
     triggered_error_ids: List[str] = field(default_factory=list)
     trigger_event_id: Optional[str] = None
-    phase: Phase = Phase.PHASE1_TRAINING_FREE
+    phase: Phase = Phase.PHASE2_WORKFLOW_INTELLIGENCE
     repair_type: RepairType = RepairType.REBIND_ARGS
     decision: RepairDecision = field(
         default_factory=lambda: RepairDecision(

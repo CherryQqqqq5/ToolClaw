@@ -1,8 +1,9 @@
-"""Entry point for Phase-1 A0-A4 evaluation over normalized tasksets."""
+"""Entry point for ToolClaw evaluation over normalized tasksets."""
 
 from __future__ import annotations
 
 import argparse
+import subprocess
 import json
 import re
 import sys
@@ -36,6 +37,7 @@ from toolclaw.compiler.swpc import SWPCCompiler, build_task_signature_candidates
 from toolclaw.execution.executor import ExecutorConfig, SequentialExecutor
 from toolclaw.execution.recovery import RecoveryConfig, RecoveryEngine
 from toolclaw.interaction.irc import InteractionLoopConfig, InteractionShell
+from toolclaw.interaction.reply_provider import HumanReplyProvider, LLMReplyProvider
 from toolclaw.interaction.repair_updater import RepairUpdater
 from toolclaw.interaction.user_simulator import SimulatedPolicy
 from toolclaw.main import ToolClawRuntime
@@ -204,6 +206,8 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
     workflow.metadata["task_family"] = derive_task_family(task, scenario=str(task.get("scenario", "success")), task_id=workflow.task.task_id)
     workflow.metadata["failure_type"] = derive_failure_type(task, scenario=str(task.get("scenario", "success")))
     workflow.metadata["scenario"] = str(task.get("scenario", "success"))
+    if isinstance(task.get("budget_profile"), dict):
+        workflow.metadata["budget_profile"] = dict(task.get("budget_profile", {}))
     if task.get("messages") is not None:
         workflow.metadata["messages"] = list(task.get("messages", []))
     if task.get("milestones") is not None:
@@ -251,6 +255,28 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         workflow.execution_plan[1].inputs.pop("target_path", None)
     elif scenario == "environment_failure" and len(workflow.execution_plan) > 1:
         workflow.execution_plan[1].inputs["force_environment_failure"] = True
+    elif scenario == "state_failure" and len(workflow.execution_plan) > 1:
+        state_mode = str(workflow.metadata.get("state_failure_mode") or task.get("state_failure_mode") or "state_slot_mismatch")
+        workflow.execution_plan[1].metadata.setdefault("required_state_slots", [])
+        workflow.execution_plan[1].metadata.setdefault("state_bindings", {})
+        if state_mode in {"state_slot_mismatch", "wrong_write_target"}:
+            workflow.execution_plan[1].metadata["required_state_slots"] = ["retrieved_summary"]
+            workflow.execution_plan[1].metadata["state_bindings"] = {"retrieved_info": "retrieved_summary"}
+            workflow.metadata["resume_state_drop_slots"] = []
+            workflow.metadata["resume_state_stale_slots"] = []
+        elif state_mode in {"resume_state_loss", "checkpoint_resume"}:
+            workflow.execution_plan[1].inputs["force_environment_failure"] = True
+            workflow.execution_plan[1].metadata["required_state_slots"] = ["retrieved_info"]
+            workflow.execution_plan[1].metadata["state_bindings"] = {"retrieved_info": "retrieved_info"}
+            workflow.metadata["resume_state_drop_slots"] = ["retrieved_info"]
+            workflow.metadata["resume_state_stale_slots"] = []
+        elif state_mode in {"stale_state_after_repair", "state_stale_slot", "recovery_not_committed"}:
+            workflow.execution_plan[1].inputs["force_environment_failure"] = True
+            workflow.execution_plan[1].metadata["required_state_slots"] = ["retrieved_info"]
+            workflow.execution_plan[1].metadata["state_bindings"] = {"retrieved_info": "retrieved_info"}
+            workflow.metadata["resume_state_drop_slots"] = []
+            workflow.metadata["resume_state_stale_slots"] = ["retrieved_info"]
+        workflow.metadata["state_failure_mode"] = state_mode
 
     return workflow
 
@@ -383,6 +409,17 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
 
 def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any]) -> InteractionShell:
     policy_cfg = task.get("simulated_policy", {})
+    raw_backend_cfg = task.get("interaction_backend", {})
+    backend_cfg = dict(raw_backend_cfg) if isinstance(raw_backend_cfg, dict) else {}
+    backend = str((backend_cfg.get("type") if backend_cfg else raw_backend_cfg) or task.get("interaction_backend_type") or "simulator")
+    reply_provider = None
+    if backend == "human":
+        reply_provider = HumanReplyProvider(prompt_prefix=str(backend_cfg.get("prompt_prefix", "toolclaw")))
+    elif backend == "llm":
+        def _llm_completion(_: Any) -> Dict[str, Any]:
+            raise NotImplementedError("Configure an LLM completion callback before using interaction_backend.type=llm")
+
+        reply_provider = LLMReplyProvider(completion_fn=_llm_completion, provider_name=str(backend_cfg.get("provider_name", "llm")))
     return InteractionShell(
         runtime=runtime,
         config=InteractionLoopConfig(
@@ -390,8 +427,12 @@ def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any]) -> InteractionSh
                 mode=policy_cfg.get("mode", "cooperative"),
                 missing_arg_values=policy_cfg.get("missing_arg_values", {}),
                 backup_tool_preferences=policy_cfg.get("backup_tool_preferences", {}),
+                approval_responses=policy_cfg.get("approval_responses", {}),
+                constraint_overrides=policy_cfg.get("constraint_overrides", {}),
+                tool_switch_hints=policy_cfg.get("tool_switch_hints", {}),
             )
         ),
+        reply_provider=reply_provider,
     )
 
 
@@ -445,6 +486,20 @@ def repeat_family_key_from_task_id(task_id: str) -> str:
     return task_id
 
 
+def current_git_commit() -> str | None:
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT_DIR,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return completed.stdout.strip() or None
+
+
 def derive_task_family(task: Dict[str, Any], scenario: str, task_id: str) -> str:
     metadata = task.get("metadata", {})
     raw_family = task.get("task_family")
@@ -465,7 +520,7 @@ def derive_task_family(task: Dict[str, Any], scenario: str, task_id: str) -> str
     pass_index = parse_reuse_pass_index(task_id, task)
     if pass_index > 0 or (isinstance(metadata, dict) and metadata.get("reuse_family_id")):
         return "t4_repeated_reusable"
-    if scenario in {"binding_failure", "environment_failure", "permission_failure", "missing_asset", "policy_failure"}:
+    if scenario in {"binding_failure", "environment_failure", "permission_failure", "missing_asset", "policy_failure", "state_failure"}:
         return "t1_static_recovery"
     if scenario in {"multiple_user_turn", "approval_required", "insufficient_information"}:
         return "t3_must_interact"
@@ -521,6 +576,12 @@ def row_from_trace(
         repair_extra_user_turns = sum(1 for event in trailing_events if event.get("event_type") == "user_query")
     observed_failtaxes = _observed_failtaxes(events, task_annotations)
     primary_failtax = str(task_annotations.get("primary_failtax") or derive_primary_failtax(task))
+    stop_reason = str(stop_reason)
+    safe_abort = stop_reason == "safe_abort_success"
+    policy_compliance_success = False
+    if derive_failure_type(task, scenario) in {"approval_required", "policy_failure", "dual_control"}:
+        policy_compliance_success = safe_abort or stop_reason == "policy_compliant_stop" or bool(metrics.get("success"))
+    state_repair_success = map_failtax_bucket(primary_failtax) == "state" and repair_triggered > 0 and bool(metrics.get("success"))
     return EvalRow(
         task_id=task_id,
         system=system,
@@ -553,6 +614,9 @@ def row_from_trace(
         unnecessary_question_rate=float(metrics.get("unnecessary_question_rate", 0.0) or 0.0),
         patch_success_rate=float(metrics.get("patch_success_rate", 0.0) or 0.0),
         post_answer_retry_count=int(metrics.get("post_answer_retry_count", 0) or 0),
+        safe_abort=safe_abort,
+        policy_compliance_success=policy_compliance_success,
+        state_repair_success=state_repair_success,
         reuse_pass_index=parse_reuse_pass_index(task_id, task),
         reused_artifact=reused_artifact,
         second_run_improvement=0.0,
@@ -690,6 +754,9 @@ def execute_system(
             unnecessary_question_rate=float(baseline_trace.metrics.unnecessary_question_rate),
             patch_success_rate=float(baseline_trace.metrics.patch_success_rate),
             post_answer_retry_count=int(baseline_trace.metrics.post_answer_retry_count),
+            safe_abort=False,
+            policy_compliance_success=False,
+            state_repair_success=False,
             reuse_pass_index=parse_reuse_pass_index(task_id, task),
             reused_artifact=False,
             second_run_improvement=0.0,
@@ -788,6 +855,7 @@ def main() -> None:
 
     csv_path = outdir / "comparison.csv"
     report_path = outdir / "report.md"
+    git_commit = current_git_commit()
     annotate_second_run_improvement(rows)
     write_rows_csv(rows, csv_path)
     write_report_md(
@@ -795,6 +863,11 @@ def main() -> None:
         summary=summarize(rows),
         scenario_summary=summarize_by_scenario(rows),
         report_path=report_path,
+        report_footer=(
+            f"Results generated from commit {git_commit}."
+            if git_commit
+            else "Results generated from a workspace without a resolved git commit."
+        ),
     )
 
     print(f"wrote: {csv_path}")

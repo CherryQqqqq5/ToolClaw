@@ -23,7 +23,7 @@ properties:
   workflow_id: { type: string }
   triggered_error_ids: { type: array, items: { type: string } }
   trigger_event_id: { type: [string, 'null'] }
-  phase: { type: string, enum: [phase1_training_free] }
+  phase: { type: string, enum: [phase1_training_free, phase2_workflow_intelligence] }
 
   repair_type:
     type: string
@@ -74,6 +74,15 @@ properties:
       question: { type: [string, 'null'] }
       expected_answer_type: { type: [string, 'null'] }
       user_response: {}
+      answer_patch:
+        type: object
+        additionalProperties: false
+        properties:
+          patched_slots: { type: array, items: { type: string } }
+          patched_constraints: { type: object }
+          patch_confidence: { type: number }
+          compiler_status: { type: string }
+          metadata: { type: object }
 
   workflow_patch:
     type: object

@@ -46,6 +46,9 @@ class RunMetadata:
     end_time: Optional[str] = None
     benchmark: Optional[str] = None
     task_source: Optional[str] = None
+    primary_failtax: Optional[str] = None
+    failtaxes: List[str] = field(default_factory=list)
+    budget_profile: Dict[str, Any] = field(default_factory=dict)
     task_annotations: Dict[str, Any] = field(default_factory=dict)
     budget_limits: Dict[str, Any] = field(default_factory=dict)
     budget_usage: Dict[str, Any] = field(default_factory=dict)
@@ -129,6 +132,9 @@ class TraceMetrics:
     recovery_budget_used: float = 0.0
     budget_violation: bool = False
     budget_violation_reason: Optional[str] = None
+    safe_abort: bool = False
+    policy_compliance_success: bool = False
+    state_repair_success: bool = False
 
 
 @dataclass
@@ -136,7 +142,7 @@ class Trace:
     run_id: str
     workflow_id: str
     task_id: str
-    phase: str = "phase1_training_free"
+    phase: str = "phase2_workflow_intelligence"
     metadata: RunMetadata = field(
         default_factory=lambda: RunMetadata(
             model_name="frozen_base_model",

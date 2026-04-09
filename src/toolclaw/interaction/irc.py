@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional
 from toolclaw.execution.executor import ExecutionOutcome
 from toolclaw.interaction.query_policy import QueryPolicy
 from toolclaw.interaction.repair_updater import AnswerPatchCompiler, RepairUpdater
+from toolclaw.interaction.reply_provider import ReplyProvider
 from toolclaw.interaction.uncertainty_detector import UncertaintyDetector
 from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
 from toolclaw.main import ToolClawRuntime
@@ -24,7 +25,7 @@ class InteractionLoopConfig:
 
 
 class InteractionShell:
-    """Drive blocked execution until completion/abort for phase-1 evaluation."""
+    """Drive blocked execution until completion or policy-compliant termination."""
 
     def __init__(
         self,
@@ -33,6 +34,7 @@ class InteractionShell:
         config: Optional[InteractionLoopConfig] = None,
         uncertainty_detector: Optional[UncertaintyDetector] = None,
         query_policy: Optional[QueryPolicy] = None,
+        reply_provider: Optional[ReplyProvider] = None,
     ) -> None:
         self.runtime = runtime
         self.repair_updater = repair_updater or runtime.repair_updater
@@ -42,7 +44,7 @@ class InteractionShell:
             else AnswerPatchCompiler()
         )
         self.config = config or InteractionLoopConfig()
-        self.simulator = UserSimulator(self.config.simulator_policy)
+        self.reply_provider = reply_provider or UserSimulator(self.config.simulator_policy)
         self.uncertainty_detector = uncertainty_detector or UncertaintyDetector()
         self.query_policy = query_policy or QueryPolicy()
 
@@ -157,9 +159,13 @@ class InteractionShell:
                     metadata={"stopped_reason": "repeat_failure_abort"},
                 )
             else:
-                reply = self.simulator.reply(query)
+                reply = self.reply_provider.reply(query)
             self._append_interaction_events(combined_trace, query=query, reply=reply, turn_index=turns)
             self._increment_recovery_budget(combined_trace, outcome, turns)
+            handled_stop = self._handled_non_accept_reply(combined_trace, output_path, outcome, reply)
+            if handled_stop is not None:
+                self._finalize_interaction_metrics(combined_trace, interaction_stats)
+                return handled_stop
             if not self.answer_patch_compiler.validate_reply(query, reply):
                 self._finalize_interaction_metrics(combined_trace, interaction_stats)
                 self._finalize_combined_trace(
@@ -298,9 +304,17 @@ class InteractionShell:
                     "context_summary": dict(query.context_summary),
                     "allowed_response_schema": dict(query.allowed_response_schema),
                     "query_metadata": dict(query.metadata),
+                    "uncertainty_cause": query.metadata.get("uncertainty"),
+                    "query_policy_decision": dict(query.metadata.get("query_policy", {})),
+                    "patch_targets": dict(query.metadata.get("patch_targets", {})),
+                    "primary_failtax": query.metadata.get("primary_failtax"),
+                    "budget_profile": dict(query.metadata.get("budget_profile", {}))
+                    if isinstance(query.metadata.get("budget_profile"), dict)
+                    else query.metadata.get("budget_profile"),
                 },
             }
         )
+        reply_status = str(getattr(reply, "status", "accept"))
         events.append(
             {
                 "event_id": f"evt_user_reply_{turn_index:02d}",
@@ -316,6 +330,18 @@ class InteractionShell:
                 "metadata": {
                     "interaction_id": reply.interaction_id,
                     "accepted": bool(reply.accepted),
+                    "status": reply_status,
+                    "reply_class": reply_status,
+                    "policy_outcome": (
+                        "safe_abort_success"
+                        if reply_status == "deny"
+                        else "policy_compliant_stop"
+                        if reply_status == "abstain"
+                        else "invalid_user_reply"
+                        if reply_status == "malformed"
+                        else "continue"
+                    ),
+                    "patch_targets": dict(reply.metadata.get("patch_targets", {})),
                     "reply_metadata": dict(reply.metadata),
                 },
             }
@@ -500,6 +526,55 @@ class InteractionShell:
             return "max_user_turns_exceeded"
         if constraints.max_recovery_budget is not None and float(resumed_state.get("__recovery_budget_spent__", 0.0)) > float(constraints.max_recovery_budget):
             return "max_recovery_budget_exceeded"
+        return None
+
+    def _handled_non_accept_reply(
+        self,
+        trace_payload: Dict[str, Any],
+        output_path: str,
+        outcome: ExecutionOutcome,
+        reply: Any,
+    ) -> Optional[ExecutionOutcome]:
+        status = str(getattr(reply, "status", "accept") or "accept")
+        if status == "deny":
+            trace_payload.setdefault("metrics", {})["safe_abort"] = True
+            trace_payload["metrics"]["policy_compliance_success"] = True
+            self._finalize_combined_trace(
+                trace_payload,
+                output_path=output_path,
+                success=True,
+                stop_reason="safe_abort_success",
+            )
+            return ExecutionOutcome(
+                run_id=outcome.run_id,
+                workflow=outcome.workflow,
+                success=True,
+                blocked=False,
+                pending_interaction=None,
+                final_state=outcome.final_state,
+                trace_path=outcome.trace_path,
+                last_error_id=outcome.last_error_id,
+                metadata={"stopped_reason": "safe_abort_success"},
+            )
+        if status == "abstain":
+            trace_payload.setdefault("metrics", {})["policy_compliance_success"] = True
+            self._finalize_combined_trace(
+                trace_payload,
+                output_path=output_path,
+                success=False,
+                stop_reason="policy_compliant_stop",
+            )
+            return ExecutionOutcome(
+                run_id=outcome.run_id,
+                workflow=outcome.workflow,
+                success=False,
+                blocked=False,
+                pending_interaction=None,
+                final_state=outcome.final_state,
+                trace_path=outcome.trace_path,
+                last_error_id=outcome.last_error_id,
+                metadata={"stopped_reason": "policy_compliant_stop"},
+            )
         return None
 
     @staticmethod

@@ -55,9 +55,11 @@ class RecoveryEngine:
                 error=error,
                 backup_tool_id=backup_tool_id,
             )
+        if error.category == ErrorCategory.STATE_FAILURE:
+            return self._repair_state_failure(error)
         if error.category == ErrorCategory.POLICY_FAILURE:
             return self._repair_policy_failure(error)
-        if error.category in {ErrorCategory.ORDERING_FAILURE, ErrorCategory.STATE_FAILURE, ErrorCategory.PERMISSION_FAILURE, ErrorCategory.RECOVERY_FAILURE}:
+        if error.category in {ErrorCategory.ORDERING_FAILURE, ErrorCategory.PERMISSION_FAILURE, ErrorCategory.RECOVERY_FAILURE}:
             return self._repair_replan_or_rollback(error)
 
         raise NotImplementedError(
@@ -294,6 +296,56 @@ class RecoveryEngine:
             result=RepairResult(status=RepairStatus.PENDING, success=None),
             metadata={"mapped_from_error_category": error.category.value, "phase": "phase1_training_free"},
         )
+
+    def _repair_state_failure(self, error: ToolClawError) -> Repair:
+        step_id = error.step_id or "unknown_step"
+        missing_assets = list(error.state_context.missing_assets)
+        stale_assets = [
+            str(item)
+            for item in error.state_context.state_values.get("__stale_state_slots__", [])
+            if str(item)
+        ]
+        primary_slot = missing_assets[0] if missing_assets else (stale_assets[0] if stale_assets else "state_slot")
+        if missing_assets or stale_assets:
+            return Repair(
+                repair_id=f"rep_{error.error_id}",
+                run_id=error.run_id,
+                workflow_id=error.workflow_id,
+                triggered_error_ids=[error.error_id],
+                repair_type=RepairType.ASK_USER,
+                decision=RepairDecision(
+                    strategy=RepairStrategy.USER_IN_THE_LOOP,
+                    rationale="State failure requires either restoring a missing slot or refreshing stale state before retry.",
+                    confidence=0.82,
+                ),
+                actions=[
+                    RepairAction(
+                        action_id=f"act_state_ask_{error.error_id}",
+                        action_type=RepairActionType.ASK_USER,
+                        target=step_id,
+                        metadata={"state_slot": primary_slot},
+                    )
+                ],
+                interaction=RepairInteraction(
+                    ask_user=True,
+                    question=f"Provide a fresh value for `{primary_slot}` so step {step_id} can resume safely.",
+                    expected_answer_type="state_patch",
+                    user_response=None,
+                ),
+                workflow_patch=WorkflowPatch(modified_steps=[step_id] if error.step_id else []),
+                post_conditions=RepairPostConditions(
+                    expected_effects=["missing or stale state is patched", "the blocked step can be retried"],
+                    stop_if=["state remains missing after patch", "patched state is still stale"],
+                ),
+                result=RepairResult(status=RepairStatus.PENDING, success=None),
+                metadata={
+                    "mapped_from_error_category": error.category.value,
+                    "missing_assets": missing_assets,
+                    "stale_assets": stale_assets,
+                    "phase": "phase1_training_free",
+                },
+            )
+        return self._repair_replan_or_rollback(error)
 
     def _repair_replan_or_rollback(self, error: ToolClawError) -> Repair:
         step_id = error.step_id or "unknown_step"

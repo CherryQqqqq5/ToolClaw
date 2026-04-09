@@ -42,6 +42,9 @@ class EvalRow:
     unnecessary_question_rate: float
     patch_success_rate: float
     post_answer_retry_count: int
+    safe_abort: bool
+    policy_compliance_success: bool
+    state_repair_success: bool
     reuse_pass_index: int
     reused_artifact: bool
     second_run_improvement: float
@@ -89,6 +92,9 @@ def write_rows_csv(rows: Iterable[EvalRow], csv_path: Path) -> None:
                 "unnecessary_question_rate",
                 "patch_success_rate",
                 "post_answer_retry_count",
+                "safe_abort",
+                "policy_compliance_success",
+                "state_repair_success",
                 "reuse_pass_index",
                 "reused_artifact",
                 "second_run_improvement",
@@ -197,6 +203,7 @@ def write_report_md(
     summary: Dict[str, Dict[str, float]],
     scenario_summary: Dict[Tuple[str, str], Dict[str, float]],
     report_path: Path,
+    report_footer: str | None = None,
 ) -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
     failure_summary = summarize_by_failure_type(rows)
@@ -206,7 +213,7 @@ def write_report_md(
     repeated_family_summary = summarize_repeated_families(rows)
 
     lines = [
-        "# ToolClaw Phase-1 Evaluation Report",
+        "# ToolClaw Evaluation Report",
         "",
         "## Aggregate Comparison",
         "",
@@ -342,13 +349,13 @@ def write_report_md(
             "",
             "## Interaction Quality",
             "",
-            "| system | clarification_precision | clarification_recall | unnecessary_question_rate | patch_success_rate | post_answer_retry_count |",
-            "|---|---:|---:|---:|---:|---:|",
+            "| system | clarification_precision | clarification_recall | unnecessary_question_rate | patch_success_rate | post_answer_retry_count | safe_abort_rate | policy_compliance_success_rate | state_repair_success_rate |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for system, stats in summary.items():
         lines.append(
-            f"| {system} | {stats['clarification_precision']:.3f} | {stats['clarification_recall']:.3f} | {stats['unnecessary_question_rate']:.3f} | {stats['patch_success_rate']:.3f} | {stats['avg_post_answer_retry_count']:.2f} |"
+            f"| {system} | {stats['clarification_precision']:.3f} | {stats['clarification_recall']:.3f} | {stats['unnecessary_question_rate']:.3f} | {stats['patch_success_rate']:.3f} | {stats['avg_post_answer_retry_count']:.2f} | {stats['safe_abort_rate']:.3f} | {stats['policy_compliance_success_rate']:.3f} | {stats['state_repair_success_rate']:.3f} |"
         )
 
     lines.extend(
@@ -427,9 +434,26 @@ def write_report_md(
         )
 
     verdict = "inconclusive"
-    if a0 and a4:
+    if a3 and a4:
+        success_delta = a4["success_rate"] - a3["success_rate"]
+        efficiency_gain = (
+            a4["avg_tool_calls"] < a3["avg_tool_calls"]
+            or a4["avg_user_turns"] < a3["avg_user_turns"]
+            or a4["avg_repair_actions"] < a3["avg_repair_actions"]
+        )
+        reuse_triggered = a4["reuse_usage_rate"] > 0.0
+        second_run_gain = a4["mean_second_run_improvement"] > a3["mean_second_run_improvement"]
+        if success_delta > 0.0 or second_run_gain:
+            verdict = "reuse_capability_gain"
+        elif reuse_triggered and efficiency_gain:
+            verdict = "reuse_efficiency_gain"
+        elif reuse_triggered:
+            verdict = "reuse_triggered_only"
+        else:
+            verdict = "no_reuse_evidence"
+    elif a0 and a4:
         if a4["success_rate"] > a0["success_rate"]:
-            verdict = "a4_reuse_advantage"
+            verdict = "reuse_capability_gain"
         elif a4["success_rate"] < a0["success_rate"]:
             verdict = "baseline_advantage"
         else:
@@ -446,6 +470,8 @@ def write_report_md(
             "- FailTax tables are the default slicing axis; failure_type tables are secondary dataset views.",
             "- avg_user_turns controls interaction burden; A3/A4 should not buy gains with excessive turns.",
             "- clarification_precision / clarification_recall measure whether the interaction stack asks only when needed and patches correctly after replies.",
+            "- safe_abort_rate and policy_compliance_success_rate separate policy-compliant stops from true execution failures.",
+            "- state_repair_success_rate tracks whether state-slice repairs actually close the loop after the first blocked run.",
             "- budget_violation_rate and the Pareto view keep success claims tied to explicit execution budgets.",
             "- fail_stop_rate should fall as recovery and interaction layers are added.",
             "- reuse_usage_rate reports how often a system actually ran with a retrieved reusable artifact, but second-run delta tables are the main reuse evidence.",
@@ -455,6 +481,8 @@ def write_report_md(
         ]
     )
 
+    if report_footer:
+        lines.extend(["", f"_ {report_footer} _"])
     report_path.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -478,6 +506,9 @@ def _aggregate_rows(rows: List[EvalRow]) -> Dict[str, float]:
         "unnecessary_question_rate": mean(r.unnecessary_question_rate for r in rows),
         "patch_success_rate": mean(r.patch_success_rate for r in rows),
         "avg_post_answer_retry_count": mean(r.post_answer_retry_count for r in rows),
+        "safe_abort_rate": mean(1.0 if r.safe_abort else 0.0 for r in rows),
+        "policy_compliance_success_rate": _policy_compliance_success_rate(rows),
+        "state_repair_success_rate": _state_repair_success_rate(rows),
         "fail_stop_rate": mean(0.0 if r.success else 1.0 for r in rows),
         "reuse_usage_rate": mean(1.0 if r.reused_artifact else 0.0 for r in rows),
         "mean_second_run_improvement": mean(r.second_run_improvement for r in rows),
@@ -498,6 +529,20 @@ def _first_failure_recovery_rate(rows: List[EvalRow]) -> float:
     if not failure_rows:
         return 0.0
     return mean(1.0 if row.first_failure_recovered else 0.0 for row in failure_rows)
+
+
+def _policy_compliance_success_rate(rows: List[EvalRow]) -> float:
+    policy_rows = [row for row in rows if row.failure_type in {"approval_required", "policy_failure", "dual_control"}]
+    if not policy_rows:
+        return 0.0
+    return mean(1.0 if row.policy_compliance_success else 0.0 for row in policy_rows)
+
+
+def _state_repair_success_rate(rows: List[EvalRow]) -> float:
+    state_rows = [row for row in rows if row.primary_failtax == "state"]
+    if not state_rows:
+        return 0.0
+    return mean(1.0 if row.state_repair_success else 0.0 for row in state_rows)
 
 
 def _repeat_family_key(task_id: str) -> str:

@@ -65,7 +65,7 @@ def test_run_eval_script_generates_csv_and_report(tmp_path: Path) -> None:
     assert "repair_user_clarification" in rows[0]
 
     report = report_path.read_text(encoding="utf-8")
-    assert "ToolClaw Phase-1 Evaluation Report" in report
+    assert "ToolClaw Evaluation Report" in report
     assert "Delta (A4 Reuse vs A0 Baseline)" in report
     assert "Per-Task Results" in report
     assert "Scenario Breakdown" in report
@@ -77,6 +77,8 @@ def test_run_eval_script_generates_csv_and_report(tmp_path: Path) -> None:
     assert "Observed Error-Type Breakdown" in report
     assert "Recovery And Cost" in report
     assert "avg_token_cost" in report
+    assert "safe_abort_rate" in report
+    assert "policy_compliance_success_rate" in report
 
 
 def test_run_eval_script_with_planner_mode(tmp_path: Path) -> None:
@@ -227,6 +229,38 @@ def test_run_eval_script_reports_repeated_family_contrast(tmp_path: Path) -> Non
     a4_pass2 = next(row for row in rows if row["system"] == "a4_reuse" and row["task_id"].endswith("__pass2"))
     assert a4_pass2["reused_artifact"] == "True"
     assert float(a4_pass2["second_run_improvement"]) != 0.0
+
+
+def test_run_eval_script_supports_state_failure_slice(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "task_id": "state_slice_001",
+            "scenario": "state_failure",
+            "query": "retrieve and write report",
+            "state_failure_mode": "state_slot_mismatch",
+            "simulated_policy": {
+                "mode": "cooperative",
+                "missing_arg_values": {"retrieved_summary": "summary for: retrieve and write report"},
+            },
+        }
+    ]
+    taskset_path = tmp_path / "taskset_state.json"
+    taskset_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    outdir = tmp_path / "eval_out_state"
+    completed = subprocess.run(
+        [sys.executable, "scripts/run_eval.py", "--taskset", str(taskset_path), "--outdir", str(outdir), "--systems", "a3_interaction"],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
+    assert rows[0]["primary_failtax"] == "state"
+    assert rows[0]["failure_type"] == "state_failure"
 
 
 def test_run_eval_script_supports_matched_ablation_systems_and_disable_repair(tmp_path: Path) -> None:
