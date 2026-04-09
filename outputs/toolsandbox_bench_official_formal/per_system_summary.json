@@ -1,7 +1,7 @@
 {
   "a0_baseline": {
     "num_samples": 1,
-    "num_runs": 3,
+    "num_runs": 1,
     "mean_success_rate": 1.0,
     "pass_at_k": 1.0,
     "consistency": 1.0,
@@ -9,14 +9,12 @@
       "send_message_with_contact_content_cellular_off_multiple_user_turn": {
         "scenario": "state_dependency",
         "primary_failtax": "state",
-        "num_runs": 3,
+        "num_runs": 1,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
-          "success_criteria_satisfied",
-          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "milestone_similarity": 1.0,
@@ -55,7 +53,7 @@
     "reference_result_summary_available": 1.0,
     "per_category": {
       "state_dependency": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -68,7 +66,7 @@
         "reference_summary_coverage": 1.0
       },
       "multiple_tool": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -81,7 +79,7 @@
         "reference_summary_coverage": 1.0
       },
       "multiple_user_turn": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -94,7 +92,7 @@
         "reference_summary_coverage": 1.0
       },
       "no_distraction_tools": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -110,7 +108,7 @@
   },
   "a1_recovery": {
     "num_samples": 1,
-    "num_runs": 3,
+    "num_runs": 1,
     "mean_success_rate": 1.0,
     "pass_at_k": 1.0,
     "consistency": 1.0,
@@ -118,14 +116,12 @@
       "send_message_with_contact_content_cellular_off_multiple_user_turn": {
         "scenario": "state_dependency",
         "primary_failtax": "state",
-        "num_runs": 3,
+        "num_runs": 1,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
-          "success_criteria_satisfied",
-          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "milestone_similarity": 1.0,
@@ -164,7 +160,7 @@
     "reference_result_summary_available": 1.0,
     "per_category": {
       "state_dependency": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -177,7 +173,7 @@
         "reference_summary_coverage": 1.0
       },
       "multiple_tool": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -190,7 +186,7 @@
         "reference_summary_coverage": 1.0
       },
       "multiple_user_turn": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -203,7 +199,7 @@
         "reference_summary_coverage": 1.0
       },
       "no_distraction_tools": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -219,7 +215,7 @@
   },
   "a2_planner": {
     "num_samples": 1,
-    "num_runs": 3,
+    "num_runs": 1,
     "mean_success_rate": 1.0,
     "pass_at_k": 1.0,
     "consistency": 1.0,
@@ -227,14 +223,12 @@
       "send_message_with_contact_content_cellular_off_multiple_user_turn": {
         "scenario": "state_dependency",
         "primary_failtax": "state",
-        "num_runs": 3,
+        "num_runs": 1,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
-          "success_criteria_satisfied",
-          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "milestone_similarity": 1.0,
@@ -273,7 +267,7 @@
     "reference_result_summary_available": 1.0,
     "per_category": {
       "state_dependency": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -286,7 +280,7 @@
         "reference_summary_coverage": 1.0
       },
       "multiple_tool": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -299,7 +293,7 @@
         "reference_summary_coverage": 1.0
       },
       "multiple_user_turn": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -312,7 +306,7 @@
         "reference_summary_coverage": 1.0
       },
       "no_distraction_tools": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -328,7 +322,7 @@
   },
   "a3_interaction": {
     "num_samples": 1,
-    "num_runs": 3,
+    "num_runs": 1,
     "mean_success_rate": 1.0,
     "pass_at_k": 1.0,
     "consistency": 1.0,
@@ -336,14 +330,12 @@
       "send_message_with_contact_content_cellular_off_multiple_user_turn": {
         "scenario": "state_dependency",
         "primary_failtax": "state",
-        "num_runs": 3,
+        "num_runs": 1,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
-          "success_criteria_satisfied",
-          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "milestone_similarity": 1.0,
@@ -382,7 +374,7 @@
     "reference_result_summary_available": 1.0,
     "per_category": {
       "state_dependency": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -395,7 +387,7 @@
         "reference_summary_coverage": 1.0
       },
       "multiple_tool": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -408,7 +400,7 @@
         "reference_summary_coverage": 1.0
       },
       "multiple_user_turn": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -421,7 +413,7 @@
         "reference_summary_coverage": 1.0
       },
       "no_distraction_tools": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -437,7 +429,7 @@
   },
   "a4_reuse": {
     "num_samples": 1,
-    "num_runs": 3,
+    "num_runs": 1,
     "mean_success_rate": 1.0,
     "pass_at_k": 1.0,
     "consistency": 1.0,
@@ -445,14 +437,12 @@
       "send_message_with_contact_content_cellular_off_multiple_user_turn": {
         "scenario": "state_dependency",
         "primary_failtax": "state",
-        "num_runs": 3,
+        "num_runs": 1,
         "success_rate": 1.0,
         "pass_at_k": 1.0,
         "consistency": 1.0,
         "distinct_outcomes": 1,
         "stop_reasons": [
-          "success_criteria_satisfied",
-          "success_criteria_satisfied",
           "success_criteria_satisfied"
         ],
         "milestone_similarity": 1.0,
@@ -491,7 +481,7 @@
     "reference_result_summary_available": 1.0,
     "per_category": {
       "state_dependency": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -504,7 +494,7 @@
         "reference_summary_coverage": 1.0
       },
       "multiple_tool": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -517,7 +507,7 @@
         "reference_summary_coverage": 1.0
       },
       "multiple_user_turn": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,
@@ -530,7 +520,7 @@
         "reference_summary_coverage": 1.0
       },
       "no_distraction_tools": {
-        "num_rows": 3.0,
+        "num_rows": 1.0,
         "success_rate": 1.0,
         "milestone_similarity": 1.0,
         "milestone_coverage": 1.0,

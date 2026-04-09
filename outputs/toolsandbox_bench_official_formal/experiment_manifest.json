@@ -1,6 +1,6 @@
 {
   "benchmark": "toolsandbox",
-  "generated_at": "2026-04-09T07:58:13.496116+00:00",
+  "generated_at": "2026-04-09T10:02:05.857121+00:00",
   "source": "/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.official.json",
   "source_sha256": "c57259b71765059bdeeb00864d7e3566a0957c5b48188ee3dbefcec989b42e0d",
   "normalized_taskset": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_bench_official_formal/prepared/toolsandbox.normalized.json",
@@ -13,9 +13,9 @@
     "a3_interaction",
     "a4_reuse"
   ],
-  "num_runs": 3,
+  "num_runs": 1,
   "sample_id_checksum": "0415a871d129097ae3cd5ae2968b9e8f4bba0c1666d9007d9c3e8be943633419",
-  "git_commit": "95ca1b7805ac3d7d859726610d21f09d88f729ed",
+  "git_commit": "1c65a73dd4fa9d0eae83e1d33484c6b0b5621fab",
   "config_sha256": "bf33f209f45060930bd8abf3d430aad2dc19d7eab8eabe94ef328b5a062332df",
   "scoreboard_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_bench_official_formal/scoreboard.json",
   "report_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_bench_official_formal/report.md",

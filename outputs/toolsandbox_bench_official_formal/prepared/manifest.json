@@ -14,8 +14,8 @@
     "a3_interaction",
     "a4_reuse"
   ],
-  "num_runs": 3,
-  "git_commit": "95ca1b7805ac3d7d859726610d21f09d88f729ed",
+  "num_runs": 1,
+  "git_commit": "1c65a73dd4fa9d0eae83e1d33484c6b0b5621fab",
   "config_sha256": "bf33f209f45060930bd8abf3d430aad2dc19d7eab8eabe94ef328b5a062332df",
   "scoreboard_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_bench_official_formal/scoreboard.json",
   "per_system_summary_path": "/cephfs/qiuyn/ToolClaw/outputs/toolsandbox_bench_official_formal/per_system_summary.json"
