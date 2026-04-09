@@ -156,3 +156,5 @@ def test_run_toolsandbox_formal_script_full_benchmark_requires_official_run(tmp_
 
     assert completed.returncode != 0
     assert "fallback is disabled" in completed.stderr
+    assert "no ToolSandbox result_summary.json found under" in completed.stderr
+    assert "run_toolsandbox_official.sh" in completed.stderr

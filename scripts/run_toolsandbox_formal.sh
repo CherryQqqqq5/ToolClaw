@@ -147,6 +147,20 @@ build_dataset() {
   PYTHONPATH="$ROOT_DIR/src${PYTHONPATH:+:$PYTHONPATH}" "${cmd[@]}"
 }
 
+official_result_summary_exists() {
+  local root="$1"
+  [[ -d "$root" ]] || return 1
+  find "$root" -name "result_summary.json" -print -quit | grep -q .
+}
+
+print_official_run_hint() {
+  echo "to run a full benchmark you must first generate an official ToolSandbox run export with result_summary.json" >&2
+  echo "expected root: $OFFICIAL_DATA_ROOT" >&2
+  echo "example:" >&2
+  echo "  OPENAI_API_KEY=<your_key> bash scripts/run_toolsandbox_official.sh --agent GPT_4_o_2024_05_13 --user GPT_4_o_2024_05_13" >&2
+  echo "then rerun this command with --official-data-root pointing to the directory containing that run" >&2
+}
+
 seed_dataset_from_fallback() {
   if [[ ! -f "$FALLBACK_DATASET_PATH" ]]; then
     return 1
@@ -164,12 +178,20 @@ ensure_dataset() {
     return 0
   fi
 
+  if [[ "$REQUIRE_OFFICIAL_RUN" == "1" && "$OFFICIAL_RUN_DIR" == "latest" ]] && ! official_result_summary_exists "$OFFICIAL_DATA_ROOT"; then
+    echo "failed to prepare ToolSandbox formal dataset from official run and fallback is disabled" >&2
+    echo "no ToolSandbox result_summary.json found under: $OFFICIAL_DATA_ROOT" >&2
+    print_official_run_hint
+    return 1
+  fi
+
   if build_dataset; then
     return 0
   fi
 
   if [[ "$REQUIRE_OFFICIAL_RUN" == "1" ]]; then
     echo "failed to prepare ToolSandbox formal dataset from official run and fallback is disabled" >&2
+    print_official_run_hint
     return 1
   fi
 

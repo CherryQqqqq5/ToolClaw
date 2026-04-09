@@ -15,6 +15,40 @@ if [[ -z "$SOURCE" ]]; then
   exit 1
 fi
 
+resolve_source_path() {
+  local requested="$1"
+  local normalized="$requested"
+  if [[ "$requested" != /* ]]; then
+    local from_cwd="$PWD/$requested"
+    local from_root="$ROOT_DIR/$requested"
+    if [[ -f "$from_cwd" ]]; then
+      normalized="$from_cwd"
+    elif [[ -f "$from_root" ]]; then
+      normalized="$from_root"
+    fi
+  fi
+  if [[ -f "$normalized" ]]; then
+    printf '%s\n' "$normalized"
+    return 0
+  fi
+
+  # Backward-compatible alias for an older documented sample path.
+  if [[ "$requested" == "data/tau_bench.sample.json" && -f "$ROOT_DIR/data/tau_bench/tau_bench.aligned.jsonl" ]]; then
+    printf '%s\n' "$ROOT_DIR/data/tau_bench/tau_bench.aligned.jsonl"
+    return 0
+  fi
+  return 1
+}
+
+if ! RESOLVED_SOURCE="$(resolve_source_path "$SOURCE")"; then
+  echo "tau-bench source not found: $SOURCE" >&2
+  echo "checked: $SOURCE, $PWD/$SOURCE, $ROOT_DIR/$SOURCE" >&2
+  if [[ -f "$ROOT_DIR/data/tau_bench/tau_bench.aligned.jsonl" ]]; then
+    echo "hint: try source path data/tau_bench/tau_bench.aligned.jsonl" >&2
+  fi
+  exit 1
+fi
+
 mkdir -p "$OUTDIR/logs" "$OUTDIR/prepared"
 
 PYTHON_BIN="${PYTHON_BIN:-python3}"
@@ -33,7 +67,7 @@ fi
 
 set -x
 "$PYTHON_BIN" "$ROOT_DIR/scripts/run_tau_bench.py" \
-  --source "$SOURCE" \
+  --source "$RESOLVED_SOURCE" \
   --outdir "$OUTDIR" \
   --mode "$MODE" \
   --systems "$SYSTEMS" \
