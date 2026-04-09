@@ -311,4 +311,10 @@ The first run automatically creates:
 
 - `data/external/ToolSandbox/.venv`
 
-and installs the official package in editable mode.
+and installs the official package in editable mode with runtime dependencies only.
+
+If you also need the vendored upstream development extras, set:
+
+```bash
+TOOLSANDBOX_INSTALL_TARGET='.[dev]' scripts/run_toolsandbox_official.sh --install-only
+```

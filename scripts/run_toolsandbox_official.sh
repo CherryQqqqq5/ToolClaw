@@ -11,6 +11,7 @@ USE_ACTIVE_ENV="${TOOLSANDBOX_USE_ACTIVE_ENV:-0}"
 FORCE_REINSTALL="${TOOLSANDBOX_FORCE_REINSTALL:-0}"
 PIP_MAX_RETRIES="${TOOLSANDBOX_PIP_MAX_RETRIES:-3}"
 PIP_RETRY_DELAY_SECONDS="${TOOLSANDBOX_PIP_RETRY_DELAY_SECONDS:-3}"
+INSTALL_TARGET="${TOOLSANDBOX_INSTALL_TARGET:-.}"
 
 usage() {
   cat >&2 <<'EOF'
@@ -27,6 +28,7 @@ Examples:
 
 Notes:
   - By default the first run creates .venv under the official ToolSandbox repo and installs dependencies.
+  - Default installs runtime dependencies only. Set TOOLSANDBOX_INSTALL_TARGET='.[dev]' to include upstream dev extras.
   - --use-active-env installs into the currently active Python/conda environment instead of creating a venv.
   - If python -m venv fails, the script falls back to python -m virtualenv when possible.
   - API keys still need to be provided via environment variables as required by the selected agent/user roles.
@@ -90,10 +92,11 @@ PY
 install_into_python() {
   local python_exec="$1"
   echo "installing official ToolSandbox dependencies using: $python_exec"
+  echo "install target: -e $INSTALL_TARGET"
   pip_install_with_retry "$python_exec" install --upgrade pip
   (
     cd "$TOOLSANDBOX_DIR"
-    pip_install_with_retry "$python_exec" install -e '.[dev]'
+    pip_install_with_retry "$python_exec" install -e "$INSTALL_TARGET"
   )
 }
 
@@ -171,4 +174,4 @@ if [[ ${#ARGS[@]} -eq 0 ]]; then
   ARGS=(--test_mode)
 fi
 
-exec "$RUN_PYTHON" -m tool_sandbox.cli "${ARGS[@]}"
+exec "$RUN_PYTHON" -c 'import sys; from tool_sandbox.cli import main; sys.argv = ["tool_sandbox", *sys.argv[1:]]; main()' "${ARGS[@]}"
