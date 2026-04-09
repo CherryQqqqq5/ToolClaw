@@ -13,6 +13,7 @@ PIP_MAX_RETRIES="${TOOLSANDBOX_PIP_MAX_RETRIES:-3}"
 PIP_RETRY_DELAY_SECONDS="${TOOLSANDBOX_PIP_RETRY_DELAY_SECONDS:-3}"
 INSTALL_TARGET="${TOOLSANDBOX_INSTALL_TARGET:-.}"
 HTTPX_COMPAT_SPEC="${TOOLSANDBOX_HTTPX_COMPAT_SPEC:-httpx<0.28}"
+PATCH_ROLES="${TOOLSANDBOX_PATCH_OPENAI_ROLES:-1}"
 
 # Benchmark proxy routing defaults (OpenAI-compatible):
 #   TOOLCLAW_BENCHMARK_PROXY_PROVIDER=novacode|openrouter|custom|direct
@@ -99,6 +100,13 @@ if [[ ! -d "$TOOLSANDBOX_DIR" ]]; then
   echo "expected clone location: data/external/ToolSandbox" >&2
   exit 1
 fi
+
+patch_toolsandbox_openai_roles() {
+  if [[ "$PATCH_ROLES" != "1" ]]; then
+    return 0
+  fi
+  "$PYTHON_EXEC" "$ROOT_DIR/scripts/patch_toolsandbox_openai_roles.py" --root "$TOOLSANDBOX_DIR"
+}
 
 resolve_python_bin() {
   if command -v "$PYTHON_BIN" >/dev/null 2>&1; then
@@ -210,6 +218,8 @@ ensure_runtime_compat() {
 PYTHON_EXEC="$(resolve_python_bin)"
 RUN_PYTHON=""
 ENV_LABEL=""
+
+patch_toolsandbox_openai_roles
 
 if [[ "$USE_ACTIVE_ENV" == "1" ]]; then
   RUN_PYTHON="$PYTHON_EXEC"
