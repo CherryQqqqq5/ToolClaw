@@ -1,0 +1,162 @@
+{
+  "assets": {
+    "ws_wf_tau2_binding_auto_001__pass1": {
+      "path": "ws_wf_tau2_binding_auto_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=binding_failure::goal=retrieve_and_write_report"
+    },
+    "sh_wf_tau2_binding_auto_001__pass1": {
+      "path": "sh_wf_tau2_binding_auto_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=binding_failure::goal=retrieve_and_write_report"
+    },
+    "ps_wf_tau2_binding_auto_001__pass1": {
+      "path": "ps_wf_tau2_binding_auto_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=binding_failure::goal=retrieve_and_write_report"
+    },
+    "ws_wf_tau2_binding_auto_001__pass2": {
+      "path": "ws_wf_tau2_binding_auto_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=binding_failure::goal=retrieve_and_write_report"
+    },
+    "sh_wf_tau2_binding_auto_001__pass2": {
+      "path": "sh_wf_tau2_binding_auto_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=binding_failure::goal=retrieve_and_write_report"
+    },
+    "ps_wf_tau2_binding_auto_001__pass2": {
+      "path": "ps_wf_tau2_binding_auto_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=binding_failure::goal=retrieve_and_write_report"
+    },
+    "ws_wf_tau2_env_backup_001__pass1": {
+      "path": "ws_wf_tau2_env_backup_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report"
+    },
+    "sh_wf_tau2_env_backup_001__pass1": {
+      "path": "sh_wf_tau2_env_backup_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report"
+    },
+    "ps_wf_tau2_env_backup_001__pass1": {
+      "path": "ps_wf_tau2_env_backup_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report"
+    },
+    "ws_wf_tau2_env_backup_001__pass2": {
+      "path": "ws_wf_tau2_env_backup_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report"
+    },
+    "sh_wf_tau2_env_backup_001__pass2": {
+      "path": "sh_wf_tau2_env_backup_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report"
+    },
+    "ps_wf_tau2_env_backup_001__pass2": {
+      "path": "ps_wf_tau2_env_backup_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report"
+    },
+    "ws_wf_tau2_state_checkpoint_resume_001__pass1": {
+      "path": "ws_wf_tau2_state_checkpoint_resume_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "sh_wf_tau2_state_checkpoint_resume_001__pass1": {
+      "path": "sh_wf_tau2_state_checkpoint_resume_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "ps_wf_tau2_state_checkpoint_resume_001__pass1": {
+      "path": "ps_wf_tau2_state_checkpoint_resume_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "ws_wf_tau2_state_checkpoint_resume_001__pass2": {
+      "path": "ws_wf_tau2_state_checkpoint_resume_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "sh_wf_tau2_state_checkpoint_resume_001__pass2": {
+      "path": "sh_wf_tau2_state_checkpoint_resume_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "ps_wf_tau2_state_checkpoint_resume_001__pass2": {
+      "path": "ps_wf_tau2_state_checkpoint_resume_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "ws_wf_tau2_state_wrong_write_target_001__pass1": {
+      "path": "ws_wf_tau2_state_wrong_write_target_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "sh_wf_tau2_state_wrong_write_target_001__pass1": {
+      "path": "sh_wf_tau2_state_wrong_write_target_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "ps_wf_tau2_state_wrong_write_target_001__pass1": {
+      "path": "ps_wf_tau2_state_wrong_write_target_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "ws_wf_tau2_state_wrong_write_target_001__pass2": {
+      "path": "ws_wf_tau2_state_wrong_write_target_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "sh_wf_tau2_state_wrong_write_target_001__pass2": {
+      "path": "sh_wf_tau2_state_wrong_write_target_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "ps_wf_tau2_state_wrong_write_target_001__pass2": {
+      "path": "ps_wf_tau2_state_wrong_write_target_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "ws_wf_tau2_state_recovery_not_committed_001__pass1": {
+      "path": "ws_wf_tau2_state_recovery_not_committed_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "sh_wf_tau2_state_recovery_not_committed_001__pass1": {
+      "path": "sh_wf_tau2_state_recovery_not_committed_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "ps_wf_tau2_state_recovery_not_committed_001__pass1": {
+      "path": "ps_wf_tau2_state_recovery_not_committed_001__pass1.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "ws_wf_tau2_state_recovery_not_committed_001__pass2": {
+      "path": "ws_wf_tau2_state_recovery_not_committed_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "sh_wf_tau2_state_recovery_not_committed_001__pass2": {
+      "path": "sh_wf_tau2_state_recovery_not_committed_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    },
+    "ps_wf_tau2_state_recovery_not_committed_001__pass2": {
+      "path": "ps_wf_tau2_state_recovery_not_committed_001__pass2.json",
+      "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report"
+    }
+  },
+  "task_index": {
+    "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=binding_failure::goal=retrieve_and_write_report": [
+      "ws_wf_tau2_binding_auto_001__pass1",
+      "sh_wf_tau2_binding_auto_001__pass1",
+      "ps_wf_tau2_binding_auto_001__pass1",
+      "ws_wf_tau2_binding_auto_001__pass2",
+      "sh_wf_tau2_binding_auto_001__pass2",
+      "ps_wf_tau2_binding_auto_001__pass2"
+    ],
+    "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report": [
+      "ws_wf_tau2_env_backup_001__pass1",
+      "sh_wf_tau2_env_backup_001__pass1",
+      "ps_wf_tau2_env_backup_001__pass1",
+      "ws_wf_tau2_env_backup_001__pass2",
+      "sh_wf_tau2_env_backup_001__pass2",
+      "ps_wf_tau2_env_backup_001__pass2"
+    ],
+    "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report": [
+      "ws_wf_tau2_state_checkpoint_resume_001__pass1",
+      "sh_wf_tau2_state_checkpoint_resume_001__pass1",
+      "ps_wf_tau2_state_checkpoint_resume_001__pass1",
+      "ws_wf_tau2_state_checkpoint_resume_001__pass2",
+      "sh_wf_tau2_state_checkpoint_resume_001__pass2",
+      "ps_wf_tau2_state_checkpoint_resume_001__pass2",
+      "ws_wf_tau2_state_wrong_write_target_001__pass1",
+      "sh_wf_tau2_state_wrong_write_target_001__pass1",
+      "ps_wf_tau2_state_wrong_write_target_001__pass1",
+      "ws_wf_tau2_state_wrong_write_target_001__pass2",
+      "sh_wf_tau2_state_wrong_write_target_001__pass2",
+      "ps_wf_tau2_state_wrong_write_target_001__pass2",
+      "ws_wf_tau2_state_recovery_not_committed_001__pass1",
+      "sh_wf_tau2_state_recovery_not_committed_001__pass1",
+      "ps_wf_tau2_state_recovery_not_committed_001__pass1",
+      "ws_wf_tau2_state_recovery_not_committed_001__pass2",
+      "sh_wf_tau2_state_recovery_not_committed_001__pass2",
+      "ps_wf_tau2_state_recovery_not_committed_001__pass2"
+    ]
+  }
+}

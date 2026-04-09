@@ -1,0 +1,45 @@
+{
+  "asset_id": "ps_wf_tau2_env_backup_001__pass2",
+  "asset_type": "PolicySnippet",
+  "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report",
+  "payload": {
+    "policy_id": "ps_wf_tau2_env_backup_001__pass2",
+    "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report",
+    "stop_rules": [
+      "success_criteria_satisfied",
+      "hard_constraint_violated",
+      "user_abort"
+    ],
+    "approval_rules": [
+      {
+        "trigger": "risk_level == high",
+        "action": "ask_user"
+      }
+    ],
+    "recovery_rules": [
+      {
+        "trigger": "tool_unavailable",
+        "action": "switch_backup_tool"
+      }
+    ],
+    "version": 1,
+    "quality_score": 0.9,
+    "metadata": {
+      "compile_gate": {
+        "allow_compile": true,
+        "objective_active": false,
+        "objective_consistent": true,
+        "quality_score": 0.95,
+        "min_quality_score": 0.35,
+        "tool_efficiency": 0.85,
+        "turn_efficiency": 1.0,
+        "repair_score": 1.0,
+        "tool_calls": 3,
+        "user_queries": 0,
+        "repair_actions": 1,
+        "expected_tool_calls": 2,
+        "expected_turns": 0
+      }
+    }
+  }
+}

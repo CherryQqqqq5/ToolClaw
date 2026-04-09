@@ -1,0 +1,402 @@
+{
+  "run_id": "a1_recovery_tau2_state_wrong_write_target_001",
+  "workflow_id": "wf_demo_001",
+  "task_id": "tau2_state_wrong_write_target_001",
+  "phase": "phase2_workflow_intelligence",
+  "metadata": {
+    "model_name": "phase1_executor",
+    "mode": "toolclaw",
+    "start_time": "2026-04-09T00:59:12.614504+00:00",
+    "end_time": "2026-04-09T00:59:12.615385+00:00",
+    "benchmark": null,
+    "task_source": null,
+    "primary_failtax": "state",
+    "failtaxes": [
+      "state"
+    ],
+    "budget_profile": {
+      "max_tool_calls": 3,
+      "max_user_turns": 1,
+      "max_repair_attempts": 1,
+      "max_recovery_budget": 1.0
+    },
+    "task_annotations": {
+      "primary_failtax": "state",
+      "failtaxes": [
+        "state"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "patch_state_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path",
+        "retrieved_summary"
+      ],
+      "dependency_edges": [
+        {
+          "source": "step_01",
+          "target": "step_02",
+          "type": "state"
+        }
+      ],
+      "chosen_tool": "search_tool"
+    },
+    "budget_limits": {
+      "max_tool_calls": 3,
+      "max_user_turns": 1,
+      "max_repair_attempts": 1,
+      "max_recovery_budget": 1.0,
+      "budget_limit": null,
+      "time_limit": null
+    },
+    "budget_usage": {
+      "tool_calls": 1,
+      "user_turns": 0,
+      "repair_attempts": 1,
+      "recovery_budget_used": 1.0,
+      "remaining_budgets": {
+        "tool_calls": 2,
+        "user_turns": 1,
+        "repair_attempts": 0,
+        "recovery_budget": 0.0
+      }
+    },
+    "interaction_modules": [
+      "uncertainty_detector",
+      "query_policy",
+      "answer_patch_compiler"
+    ],
+    "run_manifest": {}
+  },
+  "state_snapshots": [
+    {
+      "snapshot_id": "snap_01_start",
+      "timestamp": "2026-04-09T00:59:12.614600+00:00",
+      "active_step_id": "step_01",
+      "completed_steps": [],
+      "pending_steps": [
+        "step_02"
+      ],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "__tool_calls__": 0,
+        "__user_turns__": 0,
+        "__repair_attempts__": 0,
+        "__recovery_budget_spent__": 0.0,
+        "__remaining_budgets__": {
+          "tool_calls": 3,
+          "user_turns": 1,
+          "repair_attempts": 1,
+          "recovery_budget": 1.0
+        }
+      }
+    },
+    {
+      "snapshot_id": "snap_02_start",
+      "timestamp": "2026-04-09T00:59:12.614813+00:00",
+      "active_step_id": "step_02",
+      "completed_steps": [
+        "step_01"
+      ],
+      "pending_steps": [],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "__tool_calls__": 1,
+        "__user_turns__": 0,
+        "__repair_attempts__": 0,
+        "__recovery_budget_spent__": 0.0,
+        "__remaining_budgets__": {
+          "tool_calls": 2,
+          "user_turns": 1,
+          "repair_attempts": 1,
+          "recovery_budget": 1.0
+        },
+        "retrieved_info": "summary for: retrieve and write report",
+        "__budget_spent__": 0.02,
+        "__time_spent_ms__": 150.0
+      }
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-09T00:59:12.614555+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-09T00:59:12.614577+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": true,
+        "missing_assets": [],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_01",
+      "timestamp": "2026-04-09T00:59:12.614695+00:00",
+      "step_id": "step_01",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "low"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_01",
+      "timestamp": "2026-04-09T00:59:12.614720+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": {
+        "query": "retrieve and write report"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_01",
+      "timestamp": "2026-04-09T00:59:12.614734+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "search_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": "summary for: retrieve and write report"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_checkpoint_step_01",
+      "timestamp": "2026-04-09T00:59:12.614796+00:00",
+      "step_id": "step_01",
+      "event_type": "checkpoint_created",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "checkpoint_id": "cp_step_01"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_02",
+      "timestamp": "2026-04-09T00:59:12.614871+00:00",
+      "step_id": "step_02",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "medium"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_repair_triggered_step_02",
+      "timestamp": "2026-04-09T00:59:12.615326+00:00",
+      "step_id": "step_02",
+      "event_type": "repair_triggered",
+      "actor": "recovery_engine",
+      "tool_id": "write_tool",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "repair_id": "rep_err_state_step_02",
+        "run_id": "a1_recovery_tau2_state_wrong_write_target_001",
+        "workflow_id": "wf_demo_001",
+        "triggered_error_ids": [
+          "err_state_step_02"
+        ],
+        "trigger_event_id": null,
+        "phase": "phase2_workflow_intelligence",
+        "repair_type": "ask_user",
+        "decision": {
+          "strategy": "user_in_the_loop",
+          "rationale": "State failure requires either restoring a missing slot or refreshing stale state before retry.",
+          "confidence": 0.82,
+          "metadata": {}
+        },
+        "actions": [
+          {
+            "action_id": "act_state_ask_err_state_step_02",
+            "action_type": "ask_user",
+            "target": "step_02",
+            "value_source": null,
+            "value": null,
+            "metadata": {
+              "state_slot": "retrieved_summary"
+            }
+          }
+        ],
+        "interaction": {
+          "ask_user": true,
+          "question": "Provide a fresh value for `retrieved_summary` so step step_02 can resume safely.",
+          "expected_answer_type": "state_patch",
+          "user_response": null,
+          "answer_patch": {
+            "patched_slots": [],
+            "patched_constraints": {},
+            "patch_confidence": 0.0,
+            "compiler_status": "pending",
+            "metadata": {}
+          }
+        },
+        "workflow_patch": {
+          "modified_steps": [
+            "step_02"
+          ],
+          "reordered_steps": [],
+          "inserted_steps": [],
+          "removed_steps": [],
+          "metadata": {}
+        },
+        "graph_patch": {
+          "inserted_edges": [],
+          "removed_edges": [],
+          "node_updates": {}
+        },
+        "policy_patch": {
+          "approval_pending": null,
+          "approved_actions": [],
+          "budget_delta": 0.0,
+          "metadata": {}
+        },
+        "asset_patch": {
+          "missing_assets_resolved": {},
+          "metadata": {}
+        },
+        "post_conditions": {
+          "expected_effects": [
+            "missing or stale state is patched",
+            "the blocked step can be retried"
+          ],
+          "stop_if": [
+            "state remains missing after patch",
+            "patched state is still stale"
+          ]
+        },
+        "result": {
+          "status": "pending",
+          "success": null,
+          "followup_error_id": null,
+          "message": null,
+          "metadata": {}
+        },
+        "timestamp": "2026-04-09T00:59:12.615017+00:00",
+        "metadata": {
+          "mapped_from_error_category": "state_failure",
+          "missing_assets": [
+            "retrieved_summary"
+          ],
+          "stale_assets": [],
+          "phase": "phase1_training_free"
+        }
+      },
+      "message": null,
+      "metadata": {
+        "failtax_label": "state_failure",
+        "root_cause": "required state not present"
+      }
+    },
+    {
+      "event_id": "evt_stop_blocked",
+      "timestamp": "2026-04-09T00:59:12.615374+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "blocked",
+        "reason": "awaiting_user_interaction"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 2,
+    "tool_calls": 1,
+    "user_queries": 0,
+    "repair_actions": 0,
+    "success": false,
+    "token_cost": null,
+    "latency_ms": null,
+    "clarification_precision": 0.0,
+    "clarification_recall": 0.0,
+    "unnecessary_question_rate": 0.0,
+    "patch_success_rate": 0.0,
+    "post_answer_retry_count": 0,
+    "recovery_budget_used": 1.0,
+    "budget_violation": false,
+    "budget_violation_reason": null,
+    "safe_abort": false,
+    "policy_compliance_success": false,
+    "state_repair_success": false
+  }
+}

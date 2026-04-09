@@ -1,0 +1,19 @@
+{
+  "benchmark": "tau2_bench",
+  "source": "/cephfs/qiuyn/ToolClaw/data/tau2_bench.formal.json",
+  "source_sha256": "3e846d35b10da79fabff5adbc9153652121d80953bc88a165b91315ebf9cda72",
+  "normalized_taskset": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_reuse_second_run/prepared/tau2_bench.normalized.json",
+  "normalized_taskset_sha256": "510f8921330a065ae79be33f08abe438d274b9a5d978b04ac155caa4629ae8dd",
+  "sample_count": 24,
+  "sample_id_checksum": "c1ac3dd36685c8ddda5b42b6c4e282e4f642a6b591c587bbde5a887f148d4072",
+  "mode": "planner",
+  "systems": [
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_runs": 3,
+  "git_commit": "774dabee04c10e3c428c244de8453c31f6a39457",
+  "config_sha256": "960480ea45fe25de51647507eeff8edb04201a64eae6c23fb6f6443948c9f9e9",
+  "scoreboard_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_reuse_second_run/scoreboard.json",
+  "per_system_summary_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_reuse_second_run/per_system_summary.json"
+}

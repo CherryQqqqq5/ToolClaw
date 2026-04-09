@@ -1,0 +1,22 @@
+{
+  "benchmark": "tau2_bench",
+  "source": "/cephfs/qiuyn/ToolClaw/data/tau2_bench.formal.json",
+  "source_sha256": "3e846d35b10da79fabff5adbc9153652121d80953bc88a165b91315ebf9cda72",
+  "normalized_taskset": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_state/prepared/tau2_bench.normalized.json",
+  "normalized_taskset_sha256": "e89f0cffdc439b38621237f22f60a4620dbd827429bc5796e8576d80726eeb1d",
+  "sample_count": 4,
+  "sample_id_checksum": "1c65c53ccfd138aa2a32ae49439c503c5722ee18ab3a75fe3514f4974354ca24",
+  "mode": "planner",
+  "systems": [
+    "a0_baseline",
+    "a1_recovery",
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_runs": 3,
+  "git_commit": "774dabee04c10e3c428c244de8453c31f6a39457",
+  "config_sha256": "c7b41437381c79492be4b40fdc72bad85aef4ecd931bbfa0b71c53bdae1d1dba",
+  "scoreboard_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_state/scoreboard.json",
+  "per_system_summary_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_state/per_system_summary.json"
+}

@@ -1,0 +1,48 @@
+{
+  "asset_id": "sh_wf_tau2_state_recovery_not_committed_001__pass1",
+  "asset_type": "SkillHint",
+  "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report",
+  "payload": {
+    "hint_id": "sh_wf_tau2_state_recovery_not_committed_001__pass1",
+    "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report",
+    "step_pattern": [
+      "step_01",
+      "step_02"
+    ],
+    "trigger_conditions": [
+      "phase1_training_free"
+    ],
+    "version": 1,
+    "quality_score": 1.0,
+    "metadata": {
+      "state_keys": [
+        "__budget_spent__",
+        "__recovery_budget_spent__",
+        "__remaining_budgets__",
+        "__repair_attempts__",
+        "__resume_state_override_applied__",
+        "__time_spent_ms__",
+        "__tool_calls__",
+        "__user_turns__",
+        "force_environment_failure",
+        "report_artifact",
+        "retrieved_info"
+      ],
+      "compile_gate": {
+        "allow_compile": true,
+        "objective_active": false,
+        "objective_consistent": true,
+        "quality_score": 1.0,
+        "min_quality_score": 0.35,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 1.0,
+        "repair_score": 1.0,
+        "tool_calls": 1,
+        "user_queries": 0,
+        "repair_actions": 0,
+        "expected_tool_calls": 2,
+        "expected_turns": 0
+      }
+    }
+  }
+}

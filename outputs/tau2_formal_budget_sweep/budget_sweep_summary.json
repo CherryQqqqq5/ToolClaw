@@ -1,0 +1,326 @@
+{
+  "source": "/cephfs/qiuyn/ToolClaw/data/tau2_bench.formal.json",
+  "systems": [
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "mode": "planner",
+  "slice_by": null,
+  "slice_values": [],
+  "reuse_second_run": false,
+  "sweeps": {
+    "max_user_turns": [
+      {
+        "value": 0,
+        "taskset_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/prepared/budget_sweep/max_user_turns_0.json",
+        "run_outdir": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/max_user_turns/value_0",
+        "per_system": {
+          "a2_planner": {
+            "num_rows": 12.0,
+            "success_rate": 0.25,
+            "avg_tool_calls": 1.5,
+            "avg_user_turns": 0.0,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 0.5833333333333334,
+            "budget_violation_rate": 0.0
+          },
+          "a3_interaction": {
+            "num_rows": 12.0,
+            "success_rate": 0.25,
+            "avg_tool_calls": 1.5,
+            "avg_user_turns": 0.0,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 0.5833333333333334,
+            "budget_violation_rate": 0.75
+          },
+          "a4_reuse": {
+            "num_rows": 12.0,
+            "success_rate": 0.25,
+            "avg_tool_calls": 1.5,
+            "avg_user_turns": 0.0,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 0.5833333333333334,
+            "budget_violation_rate": 0.75
+          }
+        }
+      },
+      {
+        "value": 1,
+        "taskset_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/prepared/budget_sweep/max_user_turns_1.json",
+        "run_outdir": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/max_user_turns/value_1",
+        "per_system": {
+          "a2_planner": {
+            "num_rows": 12.0,
+            "success_rate": 0.25,
+            "avg_tool_calls": 1.5,
+            "avg_user_turns": 0.0,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 0.5833333333333334,
+            "budget_violation_rate": 0.0
+          },
+          "a3_interaction": {
+            "num_rows": 12.0,
+            "success_rate": 0.5,
+            "avg_tool_calls": 1.9166666666666667,
+            "avg_user_turns": 0.75,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.3333333333333333,
+            "budget_violation_rate": 0.5
+          },
+          "a4_reuse": {
+            "num_rows": 12.0,
+            "success_rate": 0.5,
+            "avg_tool_calls": 1.9166666666666667,
+            "avg_user_turns": 0.75,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.3333333333333333,
+            "budget_violation_rate": 0.5
+          }
+        }
+      },
+      {
+        "value": 2,
+        "taskset_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/prepared/budget_sweep/max_user_turns_2.json",
+        "run_outdir": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/max_user_turns/value_2",
+        "per_system": {
+          "a2_planner": {
+            "num_rows": 12.0,
+            "success_rate": 0.25,
+            "avg_tool_calls": 1.5,
+            "avg_user_turns": 0.0,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 0.5833333333333334,
+            "budget_violation_rate": 0.0
+          },
+          "a3_interaction": {
+            "num_rows": 12.0,
+            "success_rate": 0.5,
+            "avg_tool_calls": 1.9166666666666667,
+            "avg_user_turns": 1.0,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.5833333333333333,
+            "budget_violation_rate": 0.5
+          },
+          "a4_reuse": {
+            "num_rows": 12.0,
+            "success_rate": 0.5,
+            "avg_tool_calls": 1.9166666666666667,
+            "avg_user_turns": 1.0,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.5833333333333333,
+            "budget_violation_rate": 0.5
+          }
+        }
+      }
+    ],
+    "max_repair_attempts": [
+      {
+        "value": 0,
+        "taskset_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/prepared/budget_sweep/max_repair_attempts_0.json",
+        "run_outdir": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/max_repair_attempts/value_0",
+        "per_system": {
+          "a2_planner": {
+            "num_rows": 12.0,
+            "success_rate": 0.08333333333333333,
+            "avg_tool_calls": 1.3333333333333333,
+            "avg_user_turns": 0.0,
+            "avg_repair_actions": 0.0,
+            "avg_recovery_budget_used": 0.5833333333333334,
+            "budget_violation_rate": 0.5833333333333334
+          },
+          "a3_interaction": {
+            "num_rows": 12.0,
+            "success_rate": 0.16666666666666666,
+            "avg_tool_calls": 1.5833333333333333,
+            "avg_user_turns": 0.3333333333333333,
+            "avg_repair_actions": 0.0,
+            "avg_recovery_budget_used": 0.9166666666666666,
+            "budget_violation_rate": 0.8333333333333334
+          },
+          "a4_reuse": {
+            "num_rows": 12.0,
+            "success_rate": 0.16666666666666666,
+            "avg_tool_calls": 1.5833333333333333,
+            "avg_user_turns": 0.3333333333333333,
+            "avg_repair_actions": 0.0,
+            "avg_recovery_budget_used": 0.9166666666666666,
+            "budget_violation_rate": 0.8333333333333334
+          }
+        }
+      },
+      {
+        "value": 1,
+        "taskset_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/prepared/budget_sweep/max_repair_attempts_1.json",
+        "run_outdir": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/max_repair_attempts/value_1",
+        "per_system": {
+          "a2_planner": {
+            "num_rows": 12.0,
+            "success_rate": 0.25,
+            "avg_tool_calls": 1.5,
+            "avg_user_turns": 0.0,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 0.5833333333333334,
+            "budget_violation_rate": 0.0
+          },
+          "a3_interaction": {
+            "num_rows": 12.0,
+            "success_rate": 0.5,
+            "avg_tool_calls": 1.9166666666666667,
+            "avg_user_turns": 0.75,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.3333333333333333,
+            "budget_violation_rate": 0.5
+          },
+          "a4_reuse": {
+            "num_rows": 12.0,
+            "success_rate": 0.5,
+            "avg_tool_calls": 1.9166666666666667,
+            "avg_user_turns": 0.75,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.3333333333333333,
+            "budget_violation_rate": 0.5
+          }
+        }
+      },
+      {
+        "value": 2,
+        "taskset_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/prepared/budget_sweep/max_repair_attempts_2.json",
+        "run_outdir": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/max_repair_attempts/value_2",
+        "per_system": {
+          "a2_planner": {
+            "num_rows": 12.0,
+            "success_rate": 0.25,
+            "avg_tool_calls": 1.5,
+            "avg_user_turns": 0.0,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 0.5833333333333334,
+            "budget_violation_rate": 0.0
+          },
+          "a3_interaction": {
+            "num_rows": 12.0,
+            "success_rate": 0.5,
+            "avg_tool_calls": 1.9166666666666667,
+            "avg_user_turns": 0.75,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.3333333333333333,
+            "budget_violation_rate": 0.5
+          },
+          "a4_reuse": {
+            "num_rows": 12.0,
+            "success_rate": 0.5,
+            "avg_tool_calls": 1.9166666666666667,
+            "avg_user_turns": 0.75,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.3333333333333333,
+            "budget_violation_rate": 0.5
+          }
+        }
+      }
+    ],
+    "max_tool_calls": [
+      {
+        "value": 2,
+        "taskset_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/prepared/budget_sweep/max_tool_calls_2.json",
+        "run_outdir": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/max_tool_calls/value_2",
+        "per_system": {
+          "a2_planner": {
+            "num_rows": 12.0,
+            "success_rate": 0.25,
+            "avg_tool_calls": 1.5,
+            "avg_user_turns": 0.0,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 0.5833333333333334,
+            "budget_violation_rate": 0.0
+          },
+          "a3_interaction": {
+            "num_rows": 12.0,
+            "success_rate": 0.3333333333333333,
+            "avg_tool_calls": 1.75,
+            "avg_user_turns": 0.75,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.3333333333333333,
+            "budget_violation_rate": 0.5
+          },
+          "a4_reuse": {
+            "num_rows": 12.0,
+            "success_rate": 0.3333333333333333,
+            "avg_tool_calls": 1.75,
+            "avg_user_turns": 0.75,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.3333333333333333,
+            "budget_violation_rate": 0.5
+          }
+        }
+      },
+      {
+        "value": 3,
+        "taskset_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/prepared/budget_sweep/max_tool_calls_3.json",
+        "run_outdir": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/max_tool_calls/value_3",
+        "per_system": {
+          "a2_planner": {
+            "num_rows": 12.0,
+            "success_rate": 0.25,
+            "avg_tool_calls": 1.5,
+            "avg_user_turns": 0.0,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 0.5833333333333334,
+            "budget_violation_rate": 0.0
+          },
+          "a3_interaction": {
+            "num_rows": 12.0,
+            "success_rate": 0.5,
+            "avg_tool_calls": 1.9166666666666667,
+            "avg_user_turns": 0.75,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.3333333333333333,
+            "budget_violation_rate": 0.5
+          },
+          "a4_reuse": {
+            "num_rows": 12.0,
+            "success_rate": 0.5,
+            "avg_tool_calls": 1.9166666666666667,
+            "avg_user_turns": 0.75,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.3333333333333333,
+            "budget_violation_rate": 0.5
+          }
+        }
+      },
+      {
+        "value": 4,
+        "taskset_path": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/prepared/budget_sweep/max_tool_calls_4.json",
+        "run_outdir": "/cephfs/qiuyn/ToolClaw/outputs/tau2_formal_budget_sweep/max_tool_calls/value_4",
+        "per_system": {
+          "a2_planner": {
+            "num_rows": 12.0,
+            "success_rate": 0.25,
+            "avg_tool_calls": 1.5,
+            "avg_user_turns": 0.0,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 0.5833333333333334,
+            "budget_violation_rate": 0.0
+          },
+          "a3_interaction": {
+            "num_rows": 12.0,
+            "success_rate": 0.5,
+            "avg_tool_calls": 1.9166666666666667,
+            "avg_user_turns": 0.75,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.3333333333333333,
+            "budget_violation_rate": 0.5
+          },
+          "a4_reuse": {
+            "num_rows": 12.0,
+            "success_rate": 0.5,
+            "avg_tool_calls": 1.9166666666666667,
+            "avg_user_turns": 0.75,
+            "avg_repair_actions": 0.16666666666666666,
+            "avg_recovery_budget_used": 1.3333333333333333,
+            "budget_violation_rate": 0.5
+          }
+        }
+      }
+    ]
+  }
+}

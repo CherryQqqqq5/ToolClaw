@@ -1,0 +1,19 @@
+{
+  "source": "/cephfs/qiuyn/ToolClaw/data/tau2_bench.formal.json",
+  "mode": "planner",
+  "systems": [
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "limit": null,
+  "smoke": false,
+  "num_runs": 1,
+  "slice_by": null,
+  "slice_values": [],
+  "reuse_second_run": false,
+  "budget_sweep": true,
+  "user_turn_values": "0,1,2",
+  "repair_attempt_values": "0,1,2",
+  "tool_call_values": "2,3,4"
+}

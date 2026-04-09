@@ -1,0 +1,338 @@
+[
+  {
+    "task_id": "tau2_state_stale_slot_001",
+    "scenario": "state_failure",
+    "query": "retrieve and write report",
+    "target_path": "outputs/tau2_bench/reports/tau2_state_stale_slot_001.txt",
+    "primary_failtax": "state",
+    "failtaxes": [
+      "state"
+    ],
+    "task_family": "t1_static_recovery",
+    "state_slots": [
+      "query",
+      "target_path",
+      "retrieved_info"
+    ],
+    "dependency_edges": [
+      {
+        "source": "step_01",
+        "target": "step_02",
+        "type": "state"
+      }
+    ],
+    "expected_recovery_path": "patch_state_then_retry",
+    "budget_profile": {
+      "max_tool_calls": 3,
+      "max_user_turns": 1,
+      "max_repair_attempts": 1,
+      "max_recovery_budget": 1.0
+    },
+    "metadata": {
+      "benchmark": "tau2_bench",
+      "requires_interaction": true,
+      "expected_user_turns": 1,
+      "expected_repairs": 1,
+      "budget_profile": {
+        "max_tool_calls": 3,
+        "max_user_turns": 1,
+        "max_repair_attempts": 1,
+        "max_recovery_budget": 1.0
+      },
+      "gold_recovery_class": "patch_state_then_retry",
+      "primary_failtax": "state",
+      "failtaxes": [
+        "state"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "patch_state_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path",
+        "retrieved_info"
+      ],
+      "dependency_edges": [
+        {
+          "source": "step_01",
+          "target": "step_02",
+          "type": "state"
+        }
+      ]
+    },
+    "simulated_policy": {
+      "mode": "cooperative",
+      "missing_arg_values": {
+        "retrieved_info": "refreshed summary for: retrieve and write report"
+      }
+    },
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "constraints": {
+      "max_tool_calls": 3,
+      "max_user_turns": 1,
+      "max_repair_attempts": 1,
+      "max_recovery_budget": 1.0
+    },
+    "state_failure_mode": "state_stale_slot",
+    "failure_step": "step_02",
+    "gold_tool": "write_tool"
+  },
+  {
+    "task_id": "tau2_state_checkpoint_resume_001",
+    "scenario": "state_failure",
+    "query": "retrieve and write report",
+    "target_path": "outputs/tau2_bench/reports/tau2_state_checkpoint_resume_001.txt",
+    "primary_failtax": "state",
+    "failtaxes": [
+      "state",
+      "recovery"
+    ],
+    "task_family": "t1_static_recovery",
+    "state_slots": [
+      "query",
+      "target_path",
+      "retrieved_info"
+    ],
+    "dependency_edges": [
+      {
+        "source": "checkpoint",
+        "target": "step_02",
+        "type": "resume_state"
+      }
+    ],
+    "expected_recovery_path": "patch_state_then_retry",
+    "budget_profile": {
+      "max_tool_calls": 4,
+      "max_user_turns": 2,
+      "max_repair_attempts": 2,
+      "max_recovery_budget": 2.0
+    },
+    "metadata": {
+      "benchmark": "tau2_bench",
+      "requires_interaction": true,
+      "expected_user_turns": 2,
+      "expected_repairs": 2,
+      "budget_profile": {
+        "max_tool_calls": 4,
+        "max_user_turns": 2,
+        "max_repair_attempts": 2,
+        "max_recovery_budget": 2.0
+      },
+      "gold_recovery_class": "patch_state_then_retry",
+      "primary_failtax": "state",
+      "failtaxes": [
+        "state",
+        "recovery"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "patch_state_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path",
+        "retrieved_info"
+      ],
+      "dependency_edges": [
+        {
+          "source": "checkpoint",
+          "target": "step_02",
+          "type": "resume_state"
+        }
+      ]
+    },
+    "simulated_policy": {
+      "mode": "cooperative",
+      "missing_arg_values": {
+        "retrieved_info": "summary for: retrieve and write report"
+      },
+      "tool_switch_hints": {
+        "tool_id": "backup_write_tool"
+      }
+    },
+    "candidate_tools": [
+      "search_tool",
+      "write_tool",
+      "backup_write_tool"
+    ],
+    "constraints": {
+      "max_tool_calls": 4,
+      "max_user_turns": 2,
+      "max_repair_attempts": 2,
+      "max_recovery_budget": 2.0
+    },
+    "state_failure_mode": "checkpoint_resume",
+    "failure_step": "step_02",
+    "gold_tool": "write_tool"
+  },
+  {
+    "task_id": "tau2_state_wrong_write_target_001",
+    "scenario": "state_failure",
+    "query": "retrieve and write report",
+    "target_path": "outputs/tau2_bench/reports/tau2_state_wrong_write_target_001.txt",
+    "primary_failtax": "state",
+    "failtaxes": [
+      "state"
+    ],
+    "task_family": "t1_static_recovery",
+    "state_slots": [
+      "query",
+      "target_path",
+      "retrieved_summary"
+    ],
+    "dependency_edges": [
+      {
+        "source": "step_01",
+        "target": "step_02",
+        "type": "state"
+      }
+    ],
+    "expected_recovery_path": "patch_state_then_retry",
+    "budget_profile": {
+      "max_tool_calls": 3,
+      "max_user_turns": 1,
+      "max_repair_attempts": 1,
+      "max_recovery_budget": 1.0
+    },
+    "metadata": {
+      "benchmark": "tau2_bench",
+      "requires_interaction": true,
+      "expected_user_turns": 1,
+      "expected_repairs": 1,
+      "budget_profile": {
+        "max_tool_calls": 3,
+        "max_user_turns": 1,
+        "max_repair_attempts": 1,
+        "max_recovery_budget": 1.0
+      },
+      "gold_recovery_class": "patch_state_then_retry",
+      "primary_failtax": "state",
+      "failtaxes": [
+        "state"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "patch_state_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path",
+        "retrieved_summary"
+      ],
+      "dependency_edges": [
+        {
+          "source": "step_01",
+          "target": "step_02",
+          "type": "state"
+        }
+      ]
+    },
+    "simulated_policy": {
+      "mode": "cooperative",
+      "missing_arg_values": {
+        "retrieved_summary": "summary for: retrieve and write report"
+      }
+    },
+    "candidate_tools": [
+      "search_tool",
+      "write_tool"
+    ],
+    "constraints": {
+      "max_tool_calls": 3,
+      "max_user_turns": 1,
+      "max_repair_attempts": 1,
+      "max_recovery_budget": 1.0
+    },
+    "state_failure_mode": "wrong_write_target",
+    "failure_step": "step_02",
+    "gold_tool": "write_tool"
+  },
+  {
+    "task_id": "tau2_state_recovery_not_committed_001",
+    "scenario": "state_failure",
+    "query": "retrieve and write report",
+    "target_path": "outputs/tau2_bench/reports/tau2_state_recovery_not_committed_001.txt",
+    "primary_failtax": "state",
+    "failtaxes": [
+      "state",
+      "recovery"
+    ],
+    "task_family": "t1_static_recovery",
+    "state_slots": [
+      "query",
+      "target_path",
+      "retrieved_info"
+    ],
+    "dependency_edges": [
+      {
+        "source": "repair",
+        "target": "step_02",
+        "type": "stale_state"
+      }
+    ],
+    "expected_recovery_path": "patch_state_then_retry",
+    "budget_profile": {
+      "max_tool_calls": 4,
+      "max_user_turns": 2,
+      "max_repair_attempts": 2,
+      "max_recovery_budget": 2.0
+    },
+    "metadata": {
+      "benchmark": "tau2_bench",
+      "requires_interaction": true,
+      "expected_user_turns": 2,
+      "expected_repairs": 2,
+      "budget_profile": {
+        "max_tool_calls": 4,
+        "max_user_turns": 2,
+        "max_repair_attempts": 2,
+        "max_recovery_budget": 2.0
+      },
+      "gold_recovery_class": "patch_state_then_retry",
+      "primary_failtax": "state",
+      "failtaxes": [
+        "state",
+        "recovery"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "patch_state_then_retry",
+      "gold_tool": "write_tool",
+      "state_slots": [
+        "query",
+        "target_path",
+        "retrieved_info"
+      ],
+      "dependency_edges": [
+        {
+          "source": "repair",
+          "target": "step_02",
+          "type": "stale_state"
+        }
+      ]
+    },
+    "simulated_policy": {
+      "mode": "cooperative",
+      "missing_arg_values": {
+        "retrieved_info": "refreshed summary for: retrieve and write report"
+      },
+      "tool_switch_hints": {
+        "tool_id": "backup_write_tool"
+      }
+    },
+    "candidate_tools": [
+      "search_tool",
+      "write_tool",
+      "backup_write_tool"
+    ],
+    "constraints": {
+      "max_tool_calls": 4,
+      "max_user_turns": 2,
+      "max_repair_attempts": 2,
+      "max_recovery_budget": 2.0
+    },
+    "state_failure_mode": "recovery_not_committed",
+    "failure_step": "step_02",
+    "gold_tool": "write_tool"
+  }
+]

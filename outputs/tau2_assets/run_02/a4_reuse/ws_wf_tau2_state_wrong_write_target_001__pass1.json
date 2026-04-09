@@ -1,0 +1,50 @@
+{
+  "asset_id": "ws_wf_tau2_state_wrong_write_target_001__pass1",
+  "asset_type": "WorkflowSnippet",
+  "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report",
+  "payload": {
+    "snippet_id": "ws_wf_tau2_state_wrong_write_target_001__pass1",
+    "task_signature": "phase1::family=t1_static_recovery::caps=cap_retrieve+cap_write::fail=state_failure::goal=retrieve_and_write_report",
+    "capability_skeleton": [
+      "cap_retrieve",
+      "cap_write"
+    ],
+    "recommended_bindings": {
+      "cap_retrieve": "search_tool",
+      "cap_write": "write_tool"
+    },
+    "recommended_inputs": {
+      "cap_retrieve": {
+        "query": "retrieve and write report"
+      },
+      "cap_write": {
+        "target_path": "outputs/tau2_bench/reports/tau2_state_wrong_write_target_001__pass1.txt",
+        "force_environment_failure": false,
+        "retrieved_info": "summary for: retrieve and write report"
+      }
+    },
+    "version": 1,
+    "applicability_conditions": [
+      "phase1_training_free"
+    ],
+    "quality_score": 1.0,
+    "metadata": {
+      "final_success": true,
+      "compile_gate": {
+        "allow_compile": true,
+        "objective_active": false,
+        "objective_consistent": true,
+        "quality_score": 1.0,
+        "min_quality_score": 0.35,
+        "tool_efficiency": 1.0,
+        "turn_efficiency": 1.0,
+        "repair_score": 1.0,
+        "tool_calls": 2,
+        "user_queries": 0,
+        "repair_actions": 0,
+        "expected_tool_calls": 2,
+        "expected_turns": 0
+      }
+    }
+  }
+}
