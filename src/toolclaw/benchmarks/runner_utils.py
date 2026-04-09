@@ -15,6 +15,7 @@ from pathlib import Path
 from statistics import mean
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
+from toolclaw.benchmarks.proxy_env import benchmark_proxy_env
 from toolclaw.benchmarks.task_annotations import file_sha256, payload_sha256, sample_id_checksum
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -72,7 +73,7 @@ def invoke_run_eval(
     completed = subprocess.run(
         cmd,
         cwd=ROOT_DIR,
-        env={**os.environ, "PYTHONPATH": str(SRC_DIR)},
+        env=benchmark_proxy_env({**os.environ, "PYTHONPATH": str(SRC_DIR)}),
         check=False,
     )
     if completed.returncode != 0:
