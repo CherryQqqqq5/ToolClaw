@@ -17,9 +17,11 @@ HTTPX_COMPAT_SPEC="${TOOLSANDBOX_HTTPX_COMPAT_SPEC:-httpx<0.28}"
 # Benchmark proxy routing defaults (OpenAI-compatible):
 #   TOOLCLAW_BENCHMARK_PROXY_PROVIDER=novacode|openrouter|custom|direct
 #   TOOLCLAW_BENCHMARK_PROXY_BASE_URL=<custom url>
+#   TOOLCLAW_BENCHMARK_PROXY_FORCE=1 (override explicit OPENAI_BASE_URL / OPENAI_API_BASE)
 # Explicit OPENAI_BASE_URL / OPENAI_API_BASE values still take precedence.
 PROXY_PROVIDER="${TOOLCLAW_BENCHMARK_PROXY_PROVIDER:-novacode}"
 PROXY_PROVIDER="$(printf '%s' "$PROXY_PROVIDER" | tr '[:upper:]' '[:lower:]')"
+PROXY_FORCE="${TOOLCLAW_BENCHMARK_PROXY_FORCE:-0}"
 case "$PROXY_PROVIDER" in
   nova|novacode)
     DEFAULT_PROXY_BASE_URL="${TOOLCLAW_BENCHMARK_NOVACODE_BASE_URL:-https://ai.novacode.top/v1}"
@@ -35,7 +37,10 @@ case "$PROXY_PROVIDER" in
     ;;
 esac
 
-if [[ -z "${OPENAI_BASE_URL:-}" && -z "${OPENAI_API_BASE:-}" && -n "$DEFAULT_PROXY_BASE_URL" ]]; then
+if [[ "$PROXY_FORCE" == "1" && -n "$DEFAULT_PROXY_BASE_URL" ]]; then
+  export OPENAI_BASE_URL="$DEFAULT_PROXY_BASE_URL"
+  export OPENAI_API_BASE="$DEFAULT_PROXY_BASE_URL"
+elif [[ -z "${OPENAI_BASE_URL:-}" && -z "${OPENAI_API_BASE:-}" && -n "$DEFAULT_PROXY_BASE_URL" ]]; then
   export OPENAI_BASE_URL="$DEFAULT_PROXY_BASE_URL"
   export OPENAI_API_BASE="$DEFAULT_PROXY_BASE_URL"
 fi
