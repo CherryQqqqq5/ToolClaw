@@ -355,6 +355,147 @@ def test_run_toolsandbox_bench_script_rejects_smoke_profile_without_reuse_pair(t
     assert "reuse-pair" in completed.stderr
 
 
+def test_run_toolsandbox_bench_script_rejects_smoke_profile_without_transfer_reuse_pair(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "name": "smoke_recovery_001",
+            "query": "Retrieve the billing summary and save the report with backup if needed.",
+            "execution_scenario": "environment_failure",
+            "messages": [{"sender": "user", "recipient": "agent", "content": "Retrieve the billing summary and save the report with backup if needed."}],
+            "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool"],
+            "candidate_tools": [
+                {"tool_id": "search_tool", "description": "Search information"},
+                {"tool_id": "write_tool", "description": "Primary standard writer"},
+                {"tool_id": "backup_write_tool", "description": "Fallback backup writer reserved for outage recovery only"},
+            ],
+            "backup_tool_map": {"write_tool": "backup_write_tool"},
+            "categories": ["Insufficient Information", "Multiple User Turn", "Multiple Tool Call"],
+            "milestones": ["retrieve", "switch tool", "write"],
+        },
+        {
+            "name": "smoke_state_001",
+            "query": "Retrieve the incident summary and recover missing state before writing.",
+            "execution_scenario": "state_failure",
+            "state_failure_mode": "resume_state_loss",
+            "messages": [{"sender": "user", "recipient": "agent", "content": "Retrieve the incident summary and recover missing state before writing."}],
+            "tool_allow_list": ["search_tool", "write_tool"],
+            "candidate_tools": [
+                {"tool_id": "search_tool", "description": "Search information"},
+                {"tool_id": "write_tool", "description": "Standard writer used after retrieval once the retrieved summary is available"},
+            ],
+            "categories": ["State Dependency", "Multiple Tool Call"],
+            "milestones": ["retrieve", "repair state", "write"],
+        },
+        {
+            "name": "smoke_interaction_001",
+            "query": "Retrieve the payout summary and ask for approval before writing.",
+            "execution_scenario": "approval_required",
+            "messages": [{"sender": "user", "recipient": "agent", "content": "Retrieve the payout summary and ask for approval before writing."}],
+            "tool_allow_list": ["search_tool", "write_tool", "ordering_write_tool"],
+            "candidate_tools": [
+                {"tool_id": "search_tool", "description": "Search information"},
+                {"tool_id": "write_tool", "description": "Primary standard writer"},
+                {"tool_id": "ordering_write_tool", "description": "Legacy ordering writer that violates dependency order and should never be selected"},
+            ],
+            "constraints": {"requires_user_approval": True, "risk_level": "high"},
+            "categories": ["Multiple User Turn", "State Dependency"],
+            "milestones": ["retrieve", "ask approval", "write"],
+        },
+        {
+            "name": "smoke_binding_001",
+            "query": "Retrieve the release summary and save the report even if one write argument is missing.",
+            "execution_scenario": "binding_failure",
+            "messages": [{"sender": "user", "recipient": "agent", "content": "Retrieve the release summary and save the report even if one write argument is missing."}],
+            "tool_allow_list": ["search_tool", "write_tool"],
+            "candidate_tools": [
+                {"tool_id": "search_tool", "description": "Search information"},
+                {"tool_id": "write_tool", "description": "Standard writer used after retrieval to save the final report"},
+            ],
+            "categories": ["Insufficient Information", "Single User Turn", "Multiple Tool Call"],
+            "milestones": ["retrieve", "repair binding", "write"],
+        },
+        {
+            "name": "smoke_planner_001",
+            "query": "Retrieve the onboarding summary, then use the standard writer and never the legacy writer.",
+            "messages": [{"sender": "user", "recipient": "agent", "content": "Retrieve the onboarding summary, then use the standard writer and never the legacy writer."}],
+            "tool_allow_list": ["search_tool", "write_tool", "ordering_write_tool"],
+            "candidate_tools": [
+                {"tool_id": "search_tool", "description": "Search information"},
+                {"tool_id": "write_tool", "description": "Primary standard writer used after retrieval"},
+                {"tool_id": "ordering_write_tool", "description": "Legacy ordering writer that violates dependency order and should never be selected"},
+            ],
+            "categories": ["Multiple Tool Call", "State Dependency"],
+            "milestones": ["retrieve", "choose writer", "write"],
+        },
+        {
+            "name": "smoke_planner_002",
+            "query": "Find the audit summary, then write it with the primary writer and avoid both backup and legacy writers unless required.",
+            "messages": [{"sender": "user", "recipient": "agent", "content": "Find the audit summary, then write it with the primary writer and avoid both backup and legacy writers unless required."}],
+            "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool", "ordering_write_tool"],
+            "candidate_tools": [
+                {"tool_id": "search_tool", "description": "Search information"},
+                {"tool_id": "write_tool", "description": "Primary standard writer for normal write operations after retrieval"},
+                {"tool_id": "backup_write_tool", "description": "Fallback backup writer reserved for outage recovery only"},
+                {"tool_id": "ordering_write_tool", "description": "Legacy ordering writer that violates dependency order and should never be selected"},
+            ],
+            "categories": ["Multiple Tool Call", "State Dependency"],
+            "milestones": ["retrieve", "choose writer", "write"],
+        },
+        {
+            "name": "smoke_reuse_exact_001__pass1",
+            "query": "Retrieve the customer handoff summary and save the support handoff report.",
+            "execution_scenario": "binding_failure",
+            "messages": [{"sender": "user", "recipient": "agent", "content": "Retrieve the customer handoff summary and save the support handoff report."}],
+            "tool_allow_list": ["search_tool", "write_tool"],
+            "candidate_tools": [
+                {"tool_id": "search_tool", "description": "Retrieve handoff details"},
+                {"tool_id": "write_tool", "description": "Primary standard writer"},
+            ],
+            "reuse_family_id": "smoke_reuse_exact_001",
+            "reuse_pass_index": 1,
+            "categories": ["Multiple Tool Call", "Insufficient Information"],
+            "milestones": ["retrieve", "repair binding", "write"],
+        },
+        {
+            "name": "smoke_reuse_exact_001__pass2",
+            "query": "Retrieve the customer handoff summary and save the support handoff report.",
+            "execution_scenario": "binding_failure",
+            "messages": [{"sender": "user", "recipient": "agent", "content": "Retrieve the customer handoff summary and save the support handoff report."}],
+            "tool_allow_list": ["search_tool", "write_tool"],
+            "candidate_tools": [
+                {"tool_id": "search_tool", "description": "Retrieve handoff details"},
+                {"tool_id": "write_tool", "description": "Primary standard writer"},
+            ],
+            "reuse_family_id": "smoke_reuse_exact_001",
+            "reuse_pass_index": 2,
+            "categories": ["Multiple Tool Call", "Insufficient Information"],
+            "milestones": ["retrieve", "repair binding", "write"],
+        },
+    ]
+    source_path = tmp_path / "toolsandbox_smoke_missing_transfer.json"
+    source_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_toolsandbox_bench.py",
+            "--source",
+            str(source_path),
+            "--outdir",
+            str(tmp_path / "toolsandbox_smoke_missing_transfer_out"),
+            "--smoke",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode != 0
+    assert "transfer-style reuse" in completed.stderr
+
+
 def test_run_toolsandbox_bench_script_writes_combined_comparison_across_runs(tmp_path: Path) -> None:
     taskset = [
         {

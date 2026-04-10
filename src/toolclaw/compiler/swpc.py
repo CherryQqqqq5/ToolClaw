@@ -85,7 +85,9 @@ def build_task_signature_candidates(
     capability_token = "+".join(_normalize_signature_token(capability, default="cap") for capability in capabilities) if capabilities else "unspecified"
     candidates = [
         f"phase1::family={family}::caps={capability_token}::fail={failure}::goal={goal}",
+        f"phase1::family={family}::caps={capability_token}::fail={failure}",
         f"phase1::family={family}::fail={failure}::goal={goal}",
+        f"phase1::family={family}::fail={failure}",
         f"phase1::{goal}",
     ]
     deduped: List[str] = []
@@ -96,6 +98,21 @@ def build_task_signature_candidates(
 
 
 class SWPCCompiler:
+    @staticmethod
+    def _signature_metadata(workflow: Workflow) -> tuple[str, List[str]]:
+        task_family = workflow.metadata.get("task_family")
+        failure_context = workflow.metadata.get("failure_type") or workflow.metadata.get("scenario")
+        capability_skeleton = [step.capability_id for step in workflow.execution_plan]
+        signatures = build_task_signature_candidates(
+            user_goal=workflow.task.user_goal,
+            task_family=str(task_family) if task_family else None,
+            capability_skeleton=capability_skeleton,
+            failure_context=str(failure_context) if failure_context else None,
+        )
+        primary = signatures[0]
+        aliases = signatures[1:]
+        return primary, aliases
+
     @staticmethod
     def _serialize_policy_rule(rule: Any) -> Dict[str, Any]:
         merged = dict(rule.metadata)
@@ -136,15 +153,20 @@ class SWPCCompiler:
         quality_score: float,
         compile_gate: Dict[str, Any],
     ) -> WorkflowSnippet:
+        primary_signature, alias_signatures = self._signature_metadata(workflow)
         return WorkflowSnippet(
             snippet_id=f"ws_{workflow.workflow_id}",
-            task_signature=self.derive_task_signature(workflow),
+            task_signature=primary_signature,
             capability_skeleton=[step.capability_id for step in workflow.execution_plan],
             recommended_bindings={binding.capability_id: binding.primary_tool for binding in workflow.tool_bindings},
             recommended_inputs={step.capability_id: dict(step.inputs) for step in workflow.execution_plan},
             applicability_conditions=["phase1_training_free"],
             quality_score=quality_score,
-            metadata={"final_success": trace.metrics.success, "compile_gate": dict(compile_gate)},
+            metadata={
+                "final_success": trace.metrics.success,
+                "compile_gate": dict(compile_gate),
+                "task_signature_aliases": alias_signatures,
+            },
         )
 
     def compile_skill(
@@ -155,13 +177,18 @@ class SWPCCompiler:
         quality_score: float,
         compile_gate: Dict[str, Any],
     ) -> SkillHint:
+        primary_signature, alias_signatures = self._signature_metadata(workflow)
         return SkillHint(
             hint_id=f"sh_{workflow.workflow_id}",
-            task_signature=self.derive_task_signature(workflow),
+            task_signature=primary_signature,
             step_pattern=[step.step_id for step in workflow.execution_plan],
             trigger_conditions=["phase1_training_free"],
             quality_score=quality_score if final_state else min(quality_score, 0.6),
-            metadata={"state_keys": sorted(final_state.keys()), "compile_gate": dict(compile_gate)},
+            metadata={
+                "state_keys": sorted(final_state.keys()),
+                "compile_gate": dict(compile_gate),
+                "task_signature_aliases": alias_signatures,
+            },
         )
 
     def compile_policy(
@@ -171,29 +198,26 @@ class SWPCCompiler:
         quality_score: float,
         compile_gate: Dict[str, Any],
     ) -> PolicySnippet:
+        primary_signature, alias_signatures = self._signature_metadata(workflow)
         return PolicySnippet(
             policy_id=f"ps_{workflow.workflow_id}",
-            task_signature=self.derive_task_signature(workflow),
+            task_signature=primary_signature,
             stop_rules=list(workflow.policy.stop_rules),
             approval_rules=[self._serialize_policy_rule(rule) for rule in workflow.policy.approval_rules],
             recovery_rules=[self._serialize_policy_rule(rule) for rule in workflow.policy.recovery_rules],
             quality_score=max(0.5, min(quality_score, 0.9)),
-            metadata={"compile_gate": dict(compile_gate)},
+            metadata={
+                "compile_gate": dict(compile_gate),
+                "task_signature_aliases": alias_signatures,
+            },
         )
 
     def derive_task_signature(
         self,
         workflow: Workflow,
     ) -> str:
-        task_family = workflow.metadata.get("task_family")
-        failure_context = workflow.metadata.get("failure_type") or workflow.metadata.get("scenario")
-        capability_skeleton = [step.capability_id for step in workflow.execution_plan]
-        return build_task_signature_candidates(
-            user_goal=workflow.task.user_goal,
-            task_family=str(task_family) if task_family else None,
-            capability_skeleton=capability_skeleton,
-            failure_context=str(failure_context) if failure_context else None,
-        )[0]
+        primary_signature, _ = self._signature_metadata(workflow)
+        return primary_signature
 
     @staticmethod
     def score_artifact_quality(success: bool | None) -> float:

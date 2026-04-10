@@ -150,6 +150,29 @@ def test_planner_records_overplanning_risk_when_steps_exceed_ideal() -> None:
     assert "overplanning_risk:steps_exceed_ideal_tool_calls" in result.diagnostics.warnings
 
 
+def test_binder_prefers_primary_writer_over_backup_and_ordering_distractors() -> None:
+    binder = ToolBinder()
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_write_pref_001", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="write_tool", description="Primary standard writer used after retrieval to save the final artifact."),
+                ToolSpec(tool_id="backup_write_tool", description="Fallback backup writer reserved for outage recovery only."),
+                ToolSpec(tool_id="ordering_write_tool", description="Legacy ordering writer that violates dependency order."),
+            ]
+        ),
+    )
+
+    planner = build_planner()
+    result = planner.plan(request)
+    write_step = next(step for step in result.workflow.execution_plan if step.capability_id == "cap_write")
+    write_binding = next(binding for binding in result.workflow.tool_bindings if binding.capability_id == "cap_write")
+
+    assert write_step.tool_id == "write_tool"
+    assert write_binding.primary_tool == "write_tool"
+    assert "ordering_write_tool" in write_binding.backup_tools
+
+
 def test_planner_can_round_trip_request_context_from_workflow_metadata() -> None:
     planner = build_planner()
     request = PlanningRequest(

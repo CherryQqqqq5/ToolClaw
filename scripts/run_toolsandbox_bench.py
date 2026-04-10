@@ -178,6 +178,7 @@ def _validate_smoke_profile(samples: List[Any]) -> None:
         for sample in samples
     )
     family_passes: Dict[str, set[int]] = {}
+    family_queries: Dict[str, set[str]] = {}
     for sample in samples:
         family_id = str(sample.raw_payload.get("reuse_family_id") or "").strip()
         pass_index = sample.raw_payload.get("reuse_pass_index")
@@ -188,7 +189,14 @@ def _validate_smoke_profile(samples: List[Any]) -> None:
         except (TypeError, ValueError):
             continue
         family_passes.setdefault(family_id, set()).add(resolved_pass_index)
+        query = str(sample.raw_payload.get("query") or "").strip().lower()
+        if query:
+            family_queries.setdefault(family_id, set()).add(query)
     has_reuse_pair = any(len(pass_indices) >= 2 and 1 in pass_indices and 2 in pass_indices for pass_indices in family_passes.values())
+    has_transfer_reuse_pair = any(
+        len(family_queries.get(family_id, set())) >= 2 and len(pass_indices) >= 2 and 1 in pass_indices and 2 in pass_indices
+        for family_id, pass_indices in family_passes.items()
+    )
     has_planner_distractor = any(
         len(sample.raw_payload.get("candidate_tools", [])) >= 3
         and any(
@@ -198,9 +206,17 @@ def _validate_smoke_profile(samples: List[Any]) -> None:
         )
         for sample in samples
     )
-    if len(samples) < 8 or not has_state or not has_interaction or not has_recovery or not has_reuse_pair or not has_planner_distractor:
+    if (
+        len(samples) < 8
+        or not has_state
+        or not has_interaction
+        or not has_recovery
+        or not has_reuse_pair
+        or not has_transfer_reuse_pair
+        or not has_planner_distractor
+    ):
         raise ValueError(
-            "ToolSandbox smoke requires at least 8 validated samples covering explicit state_failure, interaction, recovery, planner-distractor, and reuse-pair slices."
+            "ToolSandbox smoke requires at least 8 validated samples covering explicit state_failure, interaction, recovery, planner-distractor, exact reuse-pair, and transfer-style reuse slices."
         )
 
 

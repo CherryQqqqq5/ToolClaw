@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import re
 from typing import Any, Dict, List, Optional, Sequence
 
 from toolclaw.schemas.workflow import CapabilityNode, ToolBinding, ToolSpec, WorkflowContext
@@ -37,11 +38,26 @@ class BindingResult:
 class ToolBinder:
     """Rule-based capability-to-tool binder for phase-1."""
 
+    _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+    _RETRIEVE_HINTS = {"retrieve", "search", "find", "lookup", "fetch", "collect", "summary", "summarize"}
+    _WRITE_HINTS = {"write", "writer", "save", "report", "artifact", "final", "draft", "reply", "send"}
+    _WRITE_POSITIVE_HINTS = {"primary", "standard", "approved", "normal", "main"}
+    _WRITE_NEGATIVE_HINTS = {"backup", "fallback", "reserve", "reserved", "outage", "legacy", "ordering", "order", "violate", "violates"}
+
+    @classmethod
+    def _tokens(cls, *values: str) -> set[str]:
+        tokens: set[str] = set()
+        for value in values:
+            for token in cls._TOKEN_PATTERN.findall(str(value or "").lower()):
+                tokens.add(token)
+        return tokens
+
     def bind_one(self, request: BindingRequest) -> BindingResult:
         capability_name = request.capability.description.lower()
         matches: List[ToolMatch] = []
         sole_candidate = len(request.candidate_tools) == 1
         preferred_tools = set(request.preferred_tools)
+        capability_tokens = self._tokens(request.capability.capability_id, request.capability.description)
 
         for tool in request.candidate_tools:
             if tool.tool_id in request.forbidden_tools:
@@ -49,25 +65,48 @@ class ToolBinder:
 
             score = 0.1
             reasons: List[str] = []
-            if "retrieve" in capability_name or "search" in capability_name:
-                if "search" in tool.tool_id:
-                    score += 0.8
-                    reasons.append("keyword_match:retrieve->search")
-            if "write" in capability_name:
-                if "write" in tool.tool_id:
-                    score += 0.8
-                    reasons.append("keyword_match:write->write")
+            tool_tokens = self._tokens(tool.tool_id, tool.description)
+            overlap = capability_tokens.intersection(tool_tokens)
+            if overlap:
+                score += min(0.35, 0.1 * len(overlap))
+                reasons.append(f"token_overlap:{'+'.join(sorted(overlap))}")
+
+            is_retrieve = bool({"retrieve", "search", "find", "lookup", "fetch"}.intersection(capability_tokens))
+            is_write = bool({"write", "save", "report", "artifact", "send", "reply"}.intersection(capability_tokens)) or "write" in capability_name
+
+            if is_retrieve:
+                retrieve_overlap = self._RETRIEVE_HINTS.intersection(tool_tokens)
+                if retrieve_overlap:
+                    score += 0.65
+                    reasons.append("semantic_match:retrieve_tool")
+                if "write" in tool_tokens:
+                    score -= 0.2
+                    reasons.append("penalty:write_tool_for_retrieve")
+            if is_write:
+                write_overlap = self._WRITE_HINTS.intersection(tool_tokens)
+                if write_overlap:
+                    score += 0.65
+                    reasons.append("semantic_match:write_tool")
+                positive_write_hints = self._WRITE_POSITIVE_HINTS.intersection(tool_tokens)
+                if positive_write_hints:
+                    score += 0.2
+                    reasons.append(f"preferred_write_semantics:{'+'.join(sorted(positive_write_hints))}")
+                negative_write_hints = self._WRITE_NEGATIVE_HINTS.intersection(tool_tokens)
+                if negative_write_hints:
+                    penalty = 0.25 if {"backup", "fallback", "outage", "reserved", "reserve"}.intersection(negative_write_hints) else 0.45
+                    score -= penalty
+                    reasons.append(f"penalty:write_distractor:{'+'.join(sorted(negative_write_hints))}")
             if tool.tool_id in preferred_tools:
-                score += 0.2
+                score += 0.35
                 reasons.append("reusable_preference")
             if sole_candidate and score <= 0.15:
                 score = 0.55
                 reasons.append("sole_candidate_tool")
 
             if score > 0.15:
-                matches.append(ToolMatch(tool_id=tool.tool_id, score=score, reasons=reasons))
+                matches.append(ToolMatch(tool_id=tool.tool_id, score=round(score, 4), reasons=reasons))
 
-        matches.sort(key=lambda m: m.score, reverse=True)
+        matches.sort(key=lambda m: (-m.score, m.tool_id))
         if not matches:
             return BindingResult(binding=None, unresolved_reason="no_tool_match")
 

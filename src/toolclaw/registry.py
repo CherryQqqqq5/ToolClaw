@@ -42,10 +42,11 @@ class InMemoryAssetRegistry:
 
         task_signature = getattr(artifact, "task_signature", "")
         self._assets[asset_id] = artifact
-        if task_signature:
-            self._task_index.setdefault(task_signature, [])
-            if asset_id not in self._task_index[task_signature]:
-                self._task_index[task_signature].append(asset_id)
+        signatures = self._artifact_signatures(artifact, primary_signature=task_signature)
+        for signature in signatures:
+            self._task_index.setdefault(signature, [])
+            if asset_id not in self._task_index[signature]:
+                self._task_index[signature].append(asset_id)
         return asset_id
 
     def query(self, task_signature: str, top_k: int = 5) -> List[AssetMatch]:
@@ -66,6 +67,19 @@ class InMemoryAssetRegistry:
 
     def get(self, asset_id: str) -> Optional[Any]:
         return self._assets.get(asset_id)
+
+    @staticmethod
+    def _artifact_signatures(artifact: Any, *, primary_signature: str) -> List[str]:
+        signatures: List[str] = []
+        if primary_signature:
+            signatures.append(primary_signature)
+        metadata = getattr(artifact, "metadata", {})
+        if isinstance(metadata, dict):
+            for alias in metadata.get("task_signature_aliases", []):
+                alias_text = str(alias).strip()
+                if alias_text and alias_text not in signatures:
+                    signatures.append(alias_text)
+        return signatures
 
 
 class FileAssetRegistry:
@@ -93,6 +107,7 @@ class FileAssetRegistry:
         )
         task_signature = getattr(artifact, "task_signature", "")
         asset_payload = artifact.__dict__ if hasattr(artifact, "__dict__") else {"value": artifact}
+        signatures = InMemoryAssetRegistry._artifact_signatures(artifact, primary_signature=task_signature)
         asset_path = self.root / f"{asset_id}.json"
         asset_path.write_text(
             json.dumps(
@@ -100,6 +115,7 @@ class FileAssetRegistry:
                     "asset_id": asset_id,
                     "asset_type": type(artifact).__name__,
                     "task_signature": task_signature,
+                    "task_signature_aliases": signatures[1:],
                     "payload": asset_payload,
                 },
                 indent=2,
@@ -107,10 +123,10 @@ class FileAssetRegistry:
             encoding="utf-8",
         )
         index["assets"][asset_id] = {"path": asset_path.name, "task_signature": task_signature}
-        if task_signature:
-            index["task_index"].setdefault(task_signature, [])
-            if asset_id not in index["task_index"][task_signature]:
-                index["task_index"][task_signature].append(asset_id)
+        for signature in signatures:
+            index["task_index"].setdefault(signature, [])
+            if asset_id not in index["task_index"][signature]:
+                index["task_index"][signature].append(asset_id)
         self._save_index(index)
         return asset_id
 

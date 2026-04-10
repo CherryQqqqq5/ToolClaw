@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from toolclaw.compiler.swpc import SWPCCompiler
+from toolclaw.compiler.swpc import SWPCCompiler, build_task_signature_candidates
 from toolclaw.execution.executor import ExecutionOutcome, SequentialExecutor
 from toolclaw.main import ToolClawRuntime
 from toolclaw.planner.htgp import (
@@ -175,3 +175,40 @@ def test_runtime_compile_gate_uses_real_trace_metrics_before_upserting(tmp_path:
     assert registry._assets == {}
     trace_payload = __import__("json").loads(trace_path.read_text(encoding="utf-8"))
     assert trace_payload["metrics"]["tool_calls"] >= 1
+
+
+def test_compiler_indexes_signature_aliases_for_structural_reuse() -> None:
+    workflow = Workflow.demo()
+    workflow.task.user_goal = "Retrieve the customer handoff summary and save the support report."
+    workflow.metadata["task_family"] = "toolsandbox_reuse_transfer_001"
+    workflow.metadata["failure_type"] = "binding_failure"
+
+    artifacts = SWPCCompiler().compile_from_trace(workflow=workflow, trace=Trace.demo(), final_state={})
+    snippet = artifacts.workflow_snippets[0]
+
+    assert snippet.task_signature.endswith("goal=retrieve_the_customer_handoff_summary_and_save_the_support_report")
+    assert "task_signature_aliases" in snippet.metadata
+    aliases = snippet.metadata["task_signature_aliases"]
+    assert any(alias.endswith("::family=toolsandbox_reuse_transfer_001::caps=cap_retrieve+cap_write::fail=binding_failure") for alias in aliases)
+
+
+def test_structural_signature_candidates_support_query_variation() -> None:
+    registry = InMemoryAssetRegistry()
+    workflow = Workflow.demo()
+    workflow.task.user_goal = "Retrieve the customer handoff summary and save the support report."
+    workflow.metadata["task_family"] = "toolsandbox_reuse_transfer_001"
+    workflow.metadata["failure_type"] = "binding_failure"
+    snippet = SWPCCompiler().compile_from_trace(workflow=workflow, trace=Trace.demo(), final_state={}).workflow_snippets[0]
+    registry.upsert(snippet)
+
+    variant_signatures = build_task_signature_candidates(
+        user_goal="Fetch the customer transition notes and write the support brief.",
+        task_family="toolsandbox_reuse_transfer_001",
+        capability_skeleton=["cap_retrieve", "cap_write"],
+        failure_context="binding_failure",
+    )
+    matches = []
+    for signature in variant_signatures:
+        matches.extend(registry.query(signature))
+
+    assert matches

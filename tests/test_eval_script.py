@@ -324,6 +324,40 @@ def test_run_eval_script_supports_state_failure_slice(tmp_path: Path) -> None:
     assert rows[0]["failure_type"] == "state_failure"
 
 
+def test_run_eval_script_reuses_artifact_for_structurally_similar_query_variant(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "task_id": "reuse_transfer_001__pass1",
+            "scenario": "binding_failure",
+            "query": "Retrieve the customer handoff summary and save the support report.",
+            "metadata": {"reuse_family_id": "reuse_transfer_001", "reuse_pass_index": 1},
+        },
+        {
+            "task_id": "reuse_transfer_001__pass2",
+            "scenario": "binding_failure",
+            "query": "Fetch the customer transition notes and write the support brief.",
+            "metadata": {"reuse_family_id": "reuse_transfer_001", "reuse_pass_index": 2},
+        },
+    ]
+    taskset_path = tmp_path / "taskset_reuse_transfer.json"
+    taskset_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    outdir = tmp_path / "eval_out_reuse_transfer"
+    completed = subprocess.run(
+        [sys.executable, "scripts/run_eval.py", "--taskset", str(taskset_path), "--outdir", str(outdir), "--systems", "a4_reuse"],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
+    pass2 = next(row for row in rows if row["task_id"].endswith("__pass2"))
+    assert pass2["reused_artifact"] == "True"
+
+
 def test_run_eval_script_recovers_stale_state_without_budget_double_count(tmp_path: Path) -> None:
     taskset = [
         {

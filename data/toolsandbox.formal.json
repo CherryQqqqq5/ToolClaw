@@ -13,8 +13,8 @@
     "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool"],
     "candidate_tools": [
       {"tool_id": "search_tool", "description": "Retrieve and summarize the source material needed for the report."},
-      {"tool_id": "write_tool", "description": "Primary writer for saving the final report under normal conditions."},
-      {"tool_id": "backup_write_tool", "description": "Fallback writer to use only when the primary writer is unavailable."}
+      {"tool_id": "write_tool", "description": "Primary standard writer for saving the final report under normal conditions."},
+      {"tool_id": "backup_write_tool", "description": "Fallback backup writer reserved for outage recovery only."}
     ],
     "categories": ["Insufficient Information", "Multiple User Turn", "Multiple Tool Call"],
     "milestones": ["retrieve billing summary", "detect writer outage", "switch to backup writer", "save report"],
@@ -40,7 +40,7 @@
     "tool_allow_list": ["search_tool", "write_tool"],
     "candidate_tools": [
       {"tool_id": "search_tool", "description": "Retrieve and summarize the release details."},
-      {"tool_id": "write_tool", "description": "Write the final report after retrieval is complete."}
+      {"tool_id": "write_tool", "description": "Standard writer used after retrieval to save the final report."}
     ],
     "categories": ["Insufficient Information", "Single User Turn", "Multiple Tool Call"],
     "milestones": ["retrieve release summary", "repair missing write argument", "save report"],
@@ -89,7 +89,7 @@
     "tool_allow_list": ["search_tool", "write_tool"],
     "candidate_tools": [
       {"tool_id": "search_tool", "description": "Retrieve and summarize the incident details."},
-      {"tool_id": "write_tool", "description": "Write the final report once the retrieved summary is available."}
+      {"tool_id": "write_tool", "description": "Standard writer used after retrieval once the retrieved summary is available."}
     ],
     "categories": ["State Dependency", "Multiple Tool Call"],
     "milestones": ["retrieve incident summary", "recover lost state", "write report"],
@@ -117,7 +117,7 @@
     "tool_allow_list": ["search_tool", "write_tool"],
     "candidate_tools": [
       {"tool_id": "search_tool", "description": "Retrieve and summarize the compliance notes."},
-      {"tool_id": "write_tool", "description": "Write the final report to the approved target path."}
+      {"tool_id": "write_tool", "description": "Primary standard writer for the approved target path."}
     ],
     "categories": ["State Dependency", "Multiple Tool Call"],
     "milestones": ["retrieve compliance notes", "repair wrong target path", "write report to approved destination"],
@@ -147,8 +147,8 @@
     "tool_allow_list": ["search_tool", "write_tool", "ordering_write_tool"],
     "candidate_tools": [
       {"tool_id": "search_tool", "description": "Retrieve and summarize the onboarding material."},
-      {"tool_id": "write_tool", "description": "Standard writer used after retrieval to save the final artifact."},
-      {"tool_id": "ordering_write_tool", "description": "Legacy writer that always fails because it violates dependency order."}
+      {"tool_id": "write_tool", "description": "Primary standard writer used after retrieval to save the final artifact."},
+      {"tool_id": "ordering_write_tool", "description": "Legacy ordering writer that violates dependency order and should never be selected for normal report writing."}
     ],
     "categories": ["Multiple Tool Call", "State Dependency"],
     "milestones": ["retrieve onboarding summary", "select standard writer", "save report"],
@@ -168,9 +168,9 @@
     "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool", "ordering_write_tool"],
     "candidate_tools": [
       {"tool_id": "search_tool", "description": "Retrieve and summarize the audit material."},
-      {"tool_id": "write_tool", "description": "Primary writer for normal write operations after retrieval."},
-      {"tool_id": "backup_write_tool", "description": "Backup writer reserved for environment outages."},
-      {"tool_id": "ordering_write_tool", "description": "Legacy writer that always fails because it writes out of order."}
+      {"tool_id": "write_tool", "description": "Primary standard writer for normal write operations after retrieval."},
+      {"tool_id": "backup_write_tool", "description": "Fallback backup writer reserved for outage recovery only."},
+      {"tool_id": "ordering_write_tool", "description": "Legacy ordering writer that violates dependency order and should never be selected for normal report writing."}
     ],
     "categories": ["Multiple Tool Call", "State Dependency"],
     "milestones": ["retrieve audit summary", "choose correct writer", "save report"],
@@ -191,7 +191,7 @@
     "tool_allow_list": ["search_tool", "write_tool"],
     "candidate_tools": [
       {"tool_id": "search_tool", "description": "Retrieve and summarize the customer handoff details."},
-      {"tool_id": "write_tool", "description": "Write the handoff report after retrieval is complete."}
+      {"tool_id": "write_tool", "description": "Standard writer used after retrieval to save the handoff report."}
     ],
     "categories": ["Multiple Tool Call", "Insufficient Information"],
     "milestones": ["retrieve handoff summary", "repair missing write argument", "save handoff report"],
@@ -214,13 +214,59 @@
     "tool_allow_list": ["search_tool", "write_tool"],
     "candidate_tools": [
       {"tool_id": "search_tool", "description": "Retrieve and summarize the customer handoff details."},
-      {"tool_id": "write_tool", "description": "Write the handoff report after retrieval is complete."}
+      {"tool_id": "write_tool", "description": "Standard writer used after retrieval to save the handoff report."}
     ],
     "categories": ["Multiple Tool Call", "Insufficient Information"],
     "milestones": ["retrieve handoff summary", "repair missing write argument", "save handoff report"],
     "ideal_turn_count": 2,
     "ideal_tool_calls": 2,
     "reuse_family_id": "toolsandbox_reuse_family_001",
+    "reuse_pass_index": 2
+  },
+  {
+    "name": "toolsandbox_reuse_transfer_001__pass1",
+    "query": "Retrieve the customer handoff summary and save the support report.",
+    "execution_scenario": "binding_failure",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Retrieve the customer handoff summary and save the support report."
+      }
+    ],
+    "tool_allow_list": ["search_tool", "write_tool"],
+    "candidate_tools": [
+      {"tool_id": "search_tool", "description": "Retrieve and summarize the customer handoff details."},
+      {"tool_id": "write_tool", "description": "Primary standard writer for the support handoff report."}
+    ],
+    "categories": ["Multiple Tool Call", "Insufficient Information"],
+    "milestones": ["retrieve handoff summary", "repair missing write argument", "save support report"],
+    "ideal_turn_count": 2,
+    "ideal_tool_calls": 2,
+    "reuse_family_id": "toolsandbox_reuse_transfer_001",
+    "reuse_pass_index": 1
+  },
+  {
+    "name": "toolsandbox_reuse_transfer_001__pass2",
+    "query": "Fetch the customer transition notes and write the support brief.",
+    "execution_scenario": "binding_failure",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Fetch the customer transition notes and write the support brief."
+      }
+    ],
+    "tool_allow_list": ["search_tool", "write_tool"],
+    "candidate_tools": [
+      {"tool_id": "search_tool", "description": "Retrieve and summarize the customer transition details for the handoff."},
+      {"tool_id": "write_tool", "description": "Primary standard writer for the support brief after retrieval."}
+    ],
+    "categories": ["Multiple Tool Call", "Insufficient Information"],
+    "milestones": ["retrieve transition notes", "repair missing write argument", "save support brief"],
+    "ideal_turn_count": 2,
+    "ideal_tool_calls": 2,
+    "reuse_family_id": "toolsandbox_reuse_transfer_001",
     "reuse_pass_index": 2
   },
   {

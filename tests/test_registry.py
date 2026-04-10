@@ -18,3 +18,24 @@ def test_file_asset_registry_persists_and_reads_assets(tmp_path) -> None:
 
     assert matches[0].asset_id == asset_id
     assert asset.capability_skeleton == ["cap_retrieve", "cap_write"]
+
+
+def test_file_asset_registry_indexes_signature_aliases(tmp_path) -> None:
+    registry = FileAssetRegistry(str(tmp_path / "assets"))
+    asset_id = registry.upsert(
+        SimpleNamespace(
+            snippet_id="ws_test_002",
+            task_signature="phase1::family=toolsandbox_reuse_transfer_001::caps=cap_retrieve+cap_write::fail=binding_failure::goal=retrieve_the_customer_handoff_summary",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "write_tool"},
+            metadata={
+                "task_signature_aliases": [
+                    "phase1::family=toolsandbox_reuse_transfer_001::caps=cap_retrieve+cap_write::fail=binding_failure"
+                ]
+            },
+        )
+    )
+
+    matches = registry.query("phase1::family=toolsandbox_reuse_transfer_001::caps=cap_retrieve+cap_write::fail=binding_failure")
+
+    assert matches[0].asset_id == asset_id
