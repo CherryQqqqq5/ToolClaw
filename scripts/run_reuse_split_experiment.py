@@ -64,6 +64,26 @@ def _run_eval(taskset_path: Path, outdir: Path, systems: str, asset_registry_roo
         raise SystemExit(completed.returncode)
 
 
+def _stage_taskset_with_split_metadata(source_path: Path, out_path: Path, *, split: str, allow_compile: bool) -> Path:
+    tasks = json.loads(source_path.read_text(encoding="utf-8"))
+    if not isinstance(tasks, list):
+        raise ValueError(f"expected JSON task list in {source_path}")
+    staged: List[Dict[str, Any]] = []
+    for task in tasks:
+        if not isinstance(task, dict):
+            continue
+        metadata = dict(task.get("metadata", {})) if isinstance(task.get("metadata"), dict) else {}
+        metadata["reuse_split"] = split
+        metadata["contamination_guard"] = {
+            **(metadata.get("contamination_guard", {}) if isinstance(metadata.get("contamination_guard"), dict) else {}),
+            "allow_compile": allow_compile,
+            "reuse_split": split,
+        }
+        staged.append({**task, "metadata": metadata})
+    out_path.write_text(json.dumps(staged, indent=2), encoding="utf-8")
+    return out_path
+
+
 def _load_rows(csv_path: Path) -> List[Dict[str, str]]:
     with csv_path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
@@ -261,14 +281,28 @@ def main() -> None:
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     asset_registry_root = Path(args.asset_registry_root) if args.asset_registry_root else (outdir / "asset_registry")
+    staged_dir = outdir / "staged_tasksets"
+    staged_dir.mkdir(parents=True, exist_ok=True)
+    staged_train = _stage_taskset_with_split_metadata(
+        args.train_taskset,
+        staged_dir / "train.compile.json",
+        split="train",
+        allow_compile=True,
+    )
+    staged_eval = _stage_taskset_with_split_metadata(
+        args.eval_taskset,
+        staged_dir / "eval.heldout.json",
+        split="eval",
+        allow_compile=False,
+    )
 
     train_outdir = outdir / "train_compile"
     eval_outdir = outdir / "eval_compare"
-    _run_eval(args.train_taskset, train_outdir, args.train_systems, asset_registry_root)
-    _run_eval(args.eval_taskset, eval_outdir, args.eval_systems, asset_registry_root)
+    _run_eval(staged_train, train_outdir, args.train_systems, asset_registry_root)
+    _run_eval(staged_eval, eval_outdir, args.eval_systems, asset_registry_root)
 
-    train_tasks = json.loads(args.train_taskset.read_text(encoding="utf-8"))
-    eval_tasks = json.loads(args.eval_taskset.read_text(encoding="utf-8"))
+    train_tasks = json.loads(staged_train.read_text(encoding="utf-8"))
+    eval_tasks = json.loads(staged_eval.read_text(encoding="utf-8"))
     if not isinstance(train_tasks, list) or not isinstance(eval_tasks, list):
         raise ValueError("train/eval tasksets must be JSON lists")
     eval_task_index = {_canonical_task_id(task): task for task in eval_tasks}

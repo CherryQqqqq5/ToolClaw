@@ -46,6 +46,7 @@ def test_toolsandbox_adapter_build_request_uses_allow_list_and_message_query() -
 
     assert request.task.user_goal == "Find Alex and message the ETA"
     assert [tool.tool_id for tool in request.context.candidate_tools] == ["find_contact", "send_message"]
+    assert request.context.candidate_tools[0].metadata["execution_backend"] == "semantic_mock"
     assert request.hints.user_style["benchmark"] == "toolsandbox"
     assert request.hints.user_style["requires_interaction"] is True
     assert request.hints.user_style["categories"] == ["multiple_user_turn", "insufficient_information"]
@@ -213,3 +214,4 @@ def test_toolsandbox_adapter_preserves_execution_controls_in_eval_task() -> None
     assert eval_task["reuse_pass_index"] == 2
     assert eval_task["wrong_target_path"] == "outputs/reports/shadow.txt"
     assert eval_task["reuse_override_inputs"] == {"cap_write": ["target_path"]}
+    assert eval_task["tool_execution_backend"] == "semantic_mock"

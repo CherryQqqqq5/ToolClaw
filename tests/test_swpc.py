@@ -47,6 +47,8 @@ def test_compiler_extracts_workflow_snippet_from_success_trace(tmp_path: Path) -
     assert len(artifacts.workflow_snippets) == 1
     assert len(artifacts.skill_hints) == 1
     assert len(artifacts.policy_snippets) == 1
+    assert artifacts.workflow_snippets[0].metadata["promotion_status"] == "promoted"
+    assert artifacts.workflow_snippets[0].metadata["promotion_mode"] == "heuristic_only"
     assert "family=" in artifacts.workflow_snippets[0].task_signature
     assert "caps=" in artifacts.workflow_snippets[0].task_signature
     assert "fail=" in artifacts.workflow_snippets[0].task_signature
@@ -139,6 +141,7 @@ def test_compiler_rejects_artifact_when_workflow_violates_overplanning_objective
     assert artifacts.policy_snippets == []
     assert artifacts.metadata["compile_gate"]["allow_compile"] is False
     assert artifacts.metadata["compile_gate"]["objective_consistent"] is False
+    assert artifacts.metadata["compile_gate"]["promotion_status"] == "rejected"
 
 
 def test_runtime_compile_gate_uses_real_trace_metrics_before_upserting(tmp_path: Path) -> None:
@@ -212,3 +215,15 @@ def test_structural_signature_candidates_support_query_variation() -> None:
         matches.extend(registry.query(signature))
 
     assert matches
+
+
+def test_compiler_blocks_promotion_on_heldout_eval_split() -> None:
+    workflow = Workflow.demo()
+    workflow.metadata["reuse_split"] = "eval"
+
+    artifacts = SWPCCompiler().compile_from_trace(workflow=workflow, trace=Trace.demo(), final_state={})
+
+    assert artifacts.workflow_snippets == []
+    assert artifacts.metadata["compile_gate"]["allow_compile"] is False
+    assert artifacts.metadata["compile_gate"]["promotion_status"] == "rejected"
+    assert "heldout_split:eval" in artifacts.metadata["compile_gate"]["rejection_reasons"]

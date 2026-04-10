@@ -166,6 +166,10 @@ class SWPCCompiler:
                 "final_success": trace.metrics.success,
                 "compile_gate": dict(compile_gate),
                 "task_signature_aliases": alias_signatures,
+                "promotion_status": compile_gate.get("promotion_status"),
+                "promotion_mode": compile_gate.get("promotion_mode"),
+                "verifier_backed": bool(compile_gate.get("verifier_backed")),
+                "promotion_version": "phase1.v1",
             },
         )
 
@@ -188,6 +192,10 @@ class SWPCCompiler:
                 "state_keys": sorted(final_state.keys()),
                 "compile_gate": dict(compile_gate),
                 "task_signature_aliases": alias_signatures,
+                "promotion_status": compile_gate.get("promotion_status"),
+                "promotion_mode": compile_gate.get("promotion_mode"),
+                "verifier_backed": bool(compile_gate.get("verifier_backed")),
+                "promotion_version": "phase1.v1",
             },
         )
 
@@ -209,6 +217,10 @@ class SWPCCompiler:
             metadata={
                 "compile_gate": dict(compile_gate),
                 "task_signature_aliases": alias_signatures,
+                "promotion_status": compile_gate.get("promotion_status"),
+                "promotion_mode": compile_gate.get("promotion_mode"),
+                "verifier_backed": bool(compile_gate.get("verifier_backed")),
+                "promotion_version": "phase1.v1",
             },
         )
 
@@ -251,7 +263,29 @@ class SWPCCompiler:
         objective_consistent = self._workflow_matches_objective(workflow, objective)
         objective_active = bool(objective.get("active"))
         min_quality_score = 0.55 if objective_active else 0.35
-        allow_compile = success and objective_consistent and quality_score >= min_quality_score
+        contamination_guard = self._contamination_guard(workflow=workflow, benchmark_hints=benchmark_hints)
+        verifier_backed = bool(
+            workflow.metadata.get("verifier_backed")
+            or workflow.metadata.get("verifier_passed")
+            or benchmark_hints.get("verifier_backed")
+            or benchmark_hints.get("verifier_passed")
+        )
+        allow_compile = (
+            success
+            and objective_consistent
+            and quality_score >= min_quality_score
+            and not contamination_guard["blocked"]
+        )
+        promotion_status = "promoted" if allow_compile else "rejected"
+        rejection_reasons: List[str] = []
+        if not success:
+            rejection_reasons.append("trace_unsuccessful")
+        if not objective_consistent:
+            rejection_reasons.append("objective_inconsistent")
+        if quality_score < min_quality_score:
+            rejection_reasons.append("quality_below_threshold")
+        if contamination_guard["blocked"]:
+            rejection_reasons.append(str(contamination_guard["reason"]))
 
         return {
             "allow_compile": allow_compile,
@@ -267,6 +301,35 @@ class SWPCCompiler:
             "repair_actions": repair_actions,
             "expected_tool_calls": expected_tool_calls,
             "expected_turns": expected_turns,
+            "promotion_status": promotion_status,
+            "promotion_mode": "verifier_backed" if verifier_backed else "heuristic_only",
+            "verifier_backed": verifier_backed,
+            "rejection_reasons": rejection_reasons,
+            "contamination_guard": contamination_guard,
+        }
+
+    @staticmethod
+    def _contamination_guard(*, workflow: Workflow, benchmark_hints: Dict[str, Any]) -> Dict[str, Any]:
+        workflow_guard = workflow.metadata.get("contamination_guard", {})
+        guard = dict(workflow_guard) if isinstance(workflow_guard, dict) else {}
+        split = str(
+            guard.get("reuse_split")
+            or workflow.metadata.get("reuse_split")
+            or benchmark_hints.get("reuse_split")
+            or workflow.metadata.get("split")
+            or benchmark_hints.get("split")
+            or ""
+        ).strip().lower()
+        allow_compile = guard.get("allow_compile")
+        blocked_reason = ""
+        if allow_compile is False:
+            blocked_reason = "contamination_guard_blocked"
+        elif split in {"eval", "heldout", "held_out", "test"}:
+            blocked_reason = f"heldout_split:{split}"
+        return {
+            "blocked": bool(blocked_reason),
+            "reason": blocked_reason or None,
+            "reuse_split": split or None,
         }
 
     @staticmethod

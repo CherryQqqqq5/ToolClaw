@@ -8,7 +8,7 @@ from toolclaw.planner.capability_graph import CapabilityTemplateRegistry, RuleBa
 from toolclaw.planner.htgp import HTGPPlanner, PlanningHints, PlanningRequest, PolicyInjector, RuleBasedCapabilitySelector
 from toolclaw.schemas.error import ErrorCategory, ErrorEvidence, ErrorSeverity, ErrorStage, Recoverability, StateContext, ToolClawError
 from toolclaw.schemas.trace import EventType, Trace
-from toolclaw.schemas.workflow import ActionType, Workflow, WorkflowStep
+from toolclaw.schemas.workflow import ActionType, ToolSpec, Workflow, WorkflowStep
 
 
 def build_planner() -> HTGPPlanner:
@@ -198,3 +198,31 @@ def test_check_state_failure_enforces_cellular_preflight_for_outbound_message() 
     assert result.error.category == ErrorCategory.STATE_FAILURE
     assert result.error.subtype == "preflight_state_unsatisfied"
     assert result.error.evidence.metadata["preflight_state_policy"]["state_slot"] == "cellular_service_status"
+
+
+def test_executor_supports_semantic_mock_backend_for_non_toy_tools(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    workflow.execution_plan = workflow.execution_plan[:1]
+    workflow.execution_plan[0].tool_id = "set_wifi_status"
+    workflow.execution_plan[0].inputs = {"enabled": False}
+    workflow.execution_plan[0].expected_output = "wifi_status_update"
+    workflow.context.candidate_tools = [
+        ToolSpec(
+            tool_id="set_wifi_status",
+            description="Toggle device WiFi state.",
+            metadata={"execution_backend": "semantic_mock", "affordances": ["set", "state", "status"]},
+        )
+    ]
+    workflow.metadata["tool_execution_backend"] = "semantic_mock"
+
+    trace = SequentialExecutor().run(
+        workflow=workflow,
+        run_id="run_semantic_mock_001",
+        output_path=str(tmp_path / "semantic_mock_trace.json"),
+    )
+
+    assert trace.metrics.success is True
+    payload = json.loads((tmp_path / "semantic_mock_trace.json").read_text(encoding="utf-8"))
+    result_event = next(event for event in payload["events"] if event["event_type"] == EventType.TOOL_RESULT.value)
+    assert result_event["tool_id"] == "set_wifi_status"
+    assert "updated state" in result_event["output"]["payload"]

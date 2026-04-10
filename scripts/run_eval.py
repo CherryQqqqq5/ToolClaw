@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import json
 import re
@@ -149,6 +150,59 @@ def _build_tool_specs(raw_tools: Any) -> List[ToolSpec]:
     return candidate_tools
 
 
+def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, Any]):
+    scripted_payload = dict(backend_cfg.get("payload", {})) if isinstance(backend_cfg.get("payload"), dict) else {}
+    scripted_replies = dict(backend_cfg.get("scripted_replies", {})) if isinstance(backend_cfg.get("scripted_replies"), dict) else {}
+    default_status = str(backend_cfg.get("status", "accept"))
+    policy_missing = dict(policy_cfg.get("missing_arg_values", {})) if isinstance(policy_cfg.get("missing_arg_values"), dict) else {}
+    policy_constraints = dict(policy_cfg.get("constraint_overrides", {})) if isinstance(policy_cfg.get("constraint_overrides"), dict) else {}
+    policy_switch_hints = dict(policy_cfg.get("tool_switch_hints", {})) if isinstance(policy_cfg.get("tool_switch_hints"), dict) else {}
+    policy_approvals = dict(policy_cfg.get("approval_responses", {})) if isinstance(policy_cfg.get("approval_responses"), dict) else {}
+    provider_mode = str(backend_cfg.get("mode", "scripted")).strip().lower() or "scripted"
+    env_payload_key = str(backend_cfg.get("env_payload_var", "TOOLCLAW_LLM_REPLY_PAYLOAD"))
+
+    def _completion(request: Any) -> Dict[str, Any]:
+        env_payload = None
+        raw_env_payload = os.environ.get(env_payload_key)
+        if raw_env_payload:
+            try:
+                parsed_env_payload = json.loads(raw_env_payload)
+                if isinstance(parsed_env_payload, dict):
+                    env_payload = parsed_env_payload
+            except json.JSONDecodeError:
+                env_payload = {"raw_text": raw_env_payload}
+
+        question_key = str(request.metadata.get("query_policy", {}).get("question_type") or request.expected_answer_type or "default")
+        payload = {}
+        payload.update(policy_missing)
+        payload.update(policy_constraints)
+        payload.update(policy_switch_hints)
+        payload.update(scripted_payload)
+        if isinstance(scripted_replies.get(question_key), dict):
+            payload.update(scripted_replies[question_key])
+        if isinstance(scripted_replies.get("default"), dict):
+            payload.update(scripted_replies["default"])
+        if isinstance(env_payload, dict):
+            payload.update(env_payload)
+        if request.metadata.get("recommended_backup_tool") and "tool_id" not in payload:
+            payload["tool_id"] = request.metadata["recommended_backup_tool"]
+        if "approval" in request.expected_answer_type or "approve" in request.question.lower():
+            payload.setdefault("approved", bool(policy_approvals.get(request.interaction_id, True)))
+
+        return {
+            "payload": payload,
+            "status": default_status,
+            "accepted": default_status == "accept",
+            "raw_text": str(backend_cfg.get("raw_text", f"{provider_mode}-reply")),
+            "metadata": {
+                "provider_mode": provider_mode,
+                "question_key": question_key,
+            },
+        }
+
+    return _completion
+
+
 def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workflow:
     task = annotate_task_payload(task)
     raw_metadata = task.get("metadata")
@@ -176,6 +230,9 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
             else []
         )
         request.hints.user_style["milestones"] = list(task.get("milestones", []))
+        request.hints.user_style["tool_execution_backend"] = (
+            str(task.get("tool_execution_backend") or (raw_metadata or {}).get("tool_execution_backend") or ("semantic_mock" if toolsandbox_metadata else "mock"))
+        )
         workflow = planner.plan(request).workflow
     else:
         workflow = Workflow.demo()
@@ -223,6 +280,14 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
 
     if isinstance(raw_metadata, dict):
         workflow.metadata.update(raw_metadata)
+    configured_tool_backend = None
+    if isinstance(raw_metadata, dict):
+        configured_tool_backend = raw_metadata.get("tool_execution_backend") or raw_metadata.get("tool_backend")
+    if configured_tool_backend is None:
+        configured_tool_backend = task.get("tool_execution_backend") or task.get("tool_backend")
+    if configured_tool_backend is None and toolsandbox_metadata:
+        configured_tool_backend = "semantic_mock"
+    workflow.metadata["tool_execution_backend"] = str(configured_tool_backend or "mock")
     workflow.metadata.update(annotate_task(task))
     workflow.metadata["task_family"] = derive_task_family(task, scenario=str(task.get("scenario", "success")), task_id=workflow.task.task_id)
     workflow.metadata["failure_type"] = derive_failure_type(task, scenario=str(task.get("scenario", "success")))
@@ -450,10 +515,10 @@ def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any]) -> InteractionSh
     if backend == "human":
         reply_provider = HumanReplyProvider(prompt_prefix=str(backend_cfg.get("prompt_prefix", "toolclaw")))
     elif backend == "llm":
-        def _llm_completion(_: Any) -> Dict[str, Any]:
-            raise NotImplementedError("Configure an LLM completion callback before using interaction_backend.type=llm")
-
-        reply_provider = LLMReplyProvider(completion_fn=_llm_completion, provider_name=str(backend_cfg.get("provider_name", "llm")))
+        reply_provider = LLMReplyProvider(
+            completion_fn=_llm_backend_completion(backend_cfg, policy_cfg),
+            provider_name=str(backend_cfg.get("provider_name", "llm")),
+        )
     return InteractionShell(
         runtime=runtime,
         config=InteractionLoopConfig(

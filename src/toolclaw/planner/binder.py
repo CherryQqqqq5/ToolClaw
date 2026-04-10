@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 import re
 from typing import Any, Dict, List, Optional, Sequence
@@ -43,14 +44,49 @@ class ToolBinder:
     _WRITE_HINTS = {"write", "writer", "save", "report", "artifact", "final", "draft", "reply", "send"}
     _WRITE_POSITIVE_HINTS = {"primary", "standard", "approved", "normal", "main"}
     _WRITE_NEGATIVE_HINTS = {"backup", "fallback", "reserve", "reserved", "outage", "legacy", "ordering", "order", "violate", "violates"}
+    _RETRIEVE_CAPABILITY_IDS = {"cap_retrieve", "cap_search", "cap_lookup"}
+    _WRITE_CAPABILITY_IDS = {"cap_write", "cap_send", "cap_reply"}
 
     @classmethod
     def _tokens(cls, *values: str) -> set[str]:
         tokens: set[str] = set()
         for value in values:
+            if isinstance(value, (list, tuple, set)):
+                tokens.update(cls._tokens(*value))
+                continue
+            if isinstance(value, dict):
+                tokens.update(cls._tokens(*value.keys()))
+                tokens.update(cls._tokens(*value.values()))
+                continue
             for token in cls._TOKEN_PATTERN.findall(str(value or "").lower()):
                 tokens.add(token)
         return tokens
+
+    @classmethod
+    def _metadata_tokens(cls, metadata: Dict[str, Any]) -> set[str]:
+        return cls._tokens(
+            metadata.get("affordances", []),
+            metadata.get("semantic_tags", []),
+            metadata.get("preferred_capabilities", []),
+            metadata.get("disallowed_capabilities", []),
+            metadata.get("usage_notes"),
+            metadata.get("failure_priors", []),
+            metadata.get("strengths", []),
+            metadata.get("weaknesses", []),
+        )
+
+    @staticmethod
+    def _normalized_items(value: Any) -> set[str]:
+        if isinstance(value, str):
+            return {value.strip().lower()} if value.strip() else set()
+        if isinstance(value, Iterable):
+            items: set[str] = set()
+            for item in value:
+                text = str(item or "").strip().lower()
+                if text:
+                    items.add(text)
+            return items
+        return set()
 
     def bind_one(self, request: BindingRequest) -> BindingResult:
         capability_name = request.capability.description.lower()
@@ -65,20 +101,42 @@ class ToolBinder:
 
             score = 0.1
             reasons: List[str] = []
+            metadata = tool.metadata if isinstance(tool.metadata, dict) else {}
             tool_tokens = self._tokens(tool.tool_id, tool.description)
+            metadata_tokens = self._metadata_tokens(metadata)
+            if metadata_tokens:
+                tool_tokens = tool_tokens.union(metadata_tokens)
             overlap = capability_tokens.intersection(tool_tokens)
             if overlap:
                 score += min(0.35, 0.1 * len(overlap))
                 reasons.append(f"token_overlap:{'+'.join(sorted(overlap))}")
 
             is_retrieve = bool({"retrieve", "search", "find", "lookup", "fetch"}.intersection(capability_tokens))
+            is_retrieve = is_retrieve or request.capability.capability_id in self._RETRIEVE_CAPABILITY_IDS
             is_write = bool({"write", "save", "report", "artifact", "send", "reply"}.intersection(capability_tokens)) or "write" in capability_name
+            is_write = is_write or request.capability.capability_id in self._WRITE_CAPABILITY_IDS
+
+            preferred_capabilities = self._normalized_items(metadata.get("preferred_capabilities", []))
+            disallowed_capabilities = self._normalized_items(metadata.get("disallowed_capabilities", []))
+            affordances = self._normalized_items(metadata.get("affordances", []))
+            failure_priors = self._normalized_items(metadata.get("failure_priors", []))
+
+            capability_id = request.capability.capability_id.lower()
+            if capability_id in preferred_capabilities:
+                score += 0.45
+                reasons.append("metadata:preferred_capability")
+            if capability_id in disallowed_capabilities:
+                score -= 0.7
+                reasons.append("metadata:disallowed_capability")
 
             if is_retrieve:
                 retrieve_overlap = self._RETRIEVE_HINTS.intersection(tool_tokens)
                 if retrieve_overlap:
                     score += 0.65
                     reasons.append("semantic_match:retrieve_tool")
+                if affordances.intersection(self._RETRIEVE_HINTS):
+                    score += 0.3
+                    reasons.append("metadata:retrieve_affordance")
                 if "write" in tool_tokens:
                     score -= 0.2
                     reasons.append("penalty:write_tool_for_retrieve")
@@ -87,6 +145,9 @@ class ToolBinder:
                 if write_overlap:
                     score += 0.65
                     reasons.append("semantic_match:write_tool")
+                if affordances.intersection(self._WRITE_HINTS):
+                    score += 0.3
+                    reasons.append("metadata:write_affordance")
                 positive_write_hints = self._WRITE_POSITIVE_HINTS.intersection(tool_tokens)
                 if positive_write_hints:
                     score += 0.2
@@ -96,6 +157,11 @@ class ToolBinder:
                     penalty = 0.25 if {"backup", "fallback", "outage", "reserved", "reserve"}.intersection(negative_write_hints) else 0.45
                     score -= penalty
                     reasons.append(f"penalty:write_distractor:{'+'.join(sorted(negative_write_hints))}")
+            if request.state_values.get("__failure_context__"):
+                failure_context = str(request.state_values["__failure_context__"]).strip().lower()
+                if failure_context and failure_context in failure_priors:
+                    score -= 0.2
+                    reasons.append("metadata:failure_prior_penalty")
             if tool.tool_id in preferred_tools:
                 score += 0.35
                 reasons.append("reusable_preference")

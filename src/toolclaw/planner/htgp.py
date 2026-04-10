@@ -590,6 +590,7 @@ class HTGPPlanner:
                     "profile_loaded": bool(resolved_reusable_asset_ids),
                 },
                 "reuse_override_inputs": deepcopy(request.hints.user_style.get("reuse_override_inputs", {})),
+                "tool_execution_backend": str(request.hints.user_style.get("tool_execution_backend", "mock")),
             },
         )
         self._apply_request_overrides(workflow, request.workflow_overrides)

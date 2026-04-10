@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from toolclaw.interaction.repair_updater import InteractionRequest
+
 
 def test_run_eval_script_generates_csv_and_report(tmp_path: Path) -> None:
     taskset = [
@@ -142,6 +144,7 @@ def test_build_workflow_from_task_plans_with_toolsandbox_candidate_tools() -> No
 
     assert [tool.tool_id for tool in workflow.context.candidate_tools] == ["set_wifi_status"]
     assert workflow.execution_plan[0].tool_id == "set_wifi_status"
+    assert workflow.metadata["tool_execution_backend"] == "semantic_mock"
 
 
 def test_build_workflow_from_task_rejects_empty_toolsandbox_tool_space() -> None:
@@ -216,6 +219,40 @@ def test_run_eval_script_preserves_failure_injection_for_toolclaw_lite(tmp_path:
     toolclaw_rows = {(row["task_id"], row["system"]): row for row in rows}
     assert int(toolclaw_rows[("task_binding_planner_001", "a1_recovery")]["repair_actions"]) >= 1
     assert int(toolclaw_rows[("task_env_planner_001", "a2_planner")]["repair_actions"]) >= 1
+
+
+def test_build_shell_supports_configured_llm_backend_without_placeholder_error() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_llm", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    shell = module.build_shell(
+        module.build_runtime(),
+        {
+            "interaction_backend": {
+                "type": "llm",
+                "provider_name": "scripted_llm",
+                "payload": {"target_path": "outputs/reports/llm_reply.txt"},
+            },
+            "simulated_policy": {"approval_responses": {"int_001": True}},
+        },
+    )
+
+    reply = shell.reply_provider.reply(
+        InteractionRequest(
+            interaction_id="int_001",
+            question="Please provide the target path.",
+            expected_answer_type="target_path_patch",
+            metadata={"patch_targets": {"target_path": "step.inputs.target_path"}},
+        )
+    )
+
+    assert reply.accepted is True
+    assert reply.payload["target_path"] == "outputs/reports/llm_reply.txt"
+    assert reply.metadata["provider"] == "scripted_llm"
 
 
 def test_run_eval_script_supports_legacy_aliases(tmp_path: Path) -> None:

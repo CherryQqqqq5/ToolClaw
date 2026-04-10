@@ -173,6 +173,32 @@ def test_binder_prefers_primary_writer_over_backup_and_ordering_distractors() ->
     assert "ordering_write_tool" in write_binding.backup_tools
 
 
+def test_binder_uses_tool_metadata_to_avoid_lexical_distractors() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_write_metadata_001", user_goal="write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(
+                    tool_id="writer_tool",
+                    description="Legacy fallback writer for emergency use only.",
+                    metadata={"disallowed_capabilities": ["cap_write"]},
+                ),
+                ToolSpec(
+                    tool_id="finalize_artifact_tool",
+                    description="Finalize the artifact for normal report generation.",
+                    metadata={"affordances": ["write", "report"], "preferred_capabilities": ["cap_write"]},
+                ),
+            ]
+        ),
+    )
+
+    result = planner.plan(request)
+    write_step = next(step for step in result.workflow.execution_plan if step.capability_id == "cap_write")
+
+    assert write_step.tool_id == "finalize_artifact_tool"
+
+
 def test_planner_can_round_trip_request_context_from_workflow_metadata() -> None:
     planner = build_planner()
     request = PlanningRequest(

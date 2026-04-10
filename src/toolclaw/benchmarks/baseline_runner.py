@@ -8,7 +8,8 @@ from typing import Any, Dict, Tuple
 
 from toolclaw.schemas.trace import EventType, RunMetadata, RunMode, Trace
 from toolclaw.schemas.workflow import Workflow
-from toolclaw.tools.mock_tools import ToolExecutionError, run_mock_tool
+from toolclaw.tools.mock_tools import ToolExecutionError
+from toolclaw.tools.runtime import run_tool
 
 
 def run_baseline(workflow: Workflow, run_id: str, output_path: Path) -> Tuple[Trace, str]:
@@ -26,6 +27,7 @@ def run_baseline(workflow: Workflow, run_id: str, output_path: Path) -> Tuple[Tr
         actor="baseline_executor",
         output={"steps": len(workflow.execution_plan)},
     )
+    trace.metadata.run_manifest["tool_runtime_backend"] = str(workflow.metadata.get("tool_execution_backend", "mock"))
 
     stop_reason = "success_criteria_satisfied"
     state_values: Dict[str, Any] = {}
@@ -56,7 +58,7 @@ def run_baseline(workflow: Workflow, run_id: str, output_path: Path) -> Tuple[Tr
         )
 
         try:
-            result = run_mock_tool(step.tool_id or "", dict(tool_args))
+            result = run_tool(step.tool_id or "", dict(tool_args), workflow=workflow)
         except ToolExecutionError as exc:
             stop_reason = f"step_failed:{step.step_id}:{exc}"
             trace.add_event(

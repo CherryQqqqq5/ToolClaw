@@ -701,6 +701,7 @@ class ToolSandboxAdapter:
         request.hints.user_style["branch_options"] = list(sample.raw_payload.get("branch_options", []))
         request.hints.user_style["ideal_tool_calls"] = sample.raw_payload.get("ideal_tool_calls")
         request.hints.user_style["ideal_turn_count"] = sample.raw_payload.get("ideal_turn_count")
+        request.hints.user_style["tool_execution_backend"] = "semantic_mock"
         return request
 
     def to_eval_task(self, sample: BenchmarkSample) -> Dict[str, Any]:
@@ -738,8 +739,10 @@ class ToolSandboxAdapter:
                 "branch_options": list(sample.raw_payload.get("branch_options", [])),
                 "toolsandbox_reference_result": reference_result_summary,
                 "reference_result_summary_present": bool(reference_result_summary),
+                "tool_execution_backend": "semantic_mock",
             },
         }
+        task["tool_execution_backend"] = "semantic_mock"
         if "candidate_tools" in sample.raw_payload:
             task["candidate_tools"] = list(sample.raw_payload.get("candidate_tools", []))
         elif tool_allow_list:
@@ -965,9 +968,16 @@ class ToolSandboxAdapter:
             tools: List[ToolSpec] = []
             for idx, raw_tool in enumerate(raw_tools, start=1):
                 if isinstance(raw_tool, str):
-                    tools.append(ToolSpec(tool_id=raw_tool, description=f"ToolSandbox tool: {raw_tool}"))
+                    tools.append(
+                        ToolSpec(
+                            tool_id=raw_tool,
+                            description=f"ToolSandbox tool: {raw_tool}",
+                            metadata={"execution_backend": "semantic_mock", "benchmark": self.benchmark_name},
+                        )
+                    )
                     continue
                 if isinstance(raw_tool, dict):
+                    raw_metadata = {k: v for k, v in raw_tool.items() if k not in {"tool_id", "name", "description"}}
                     tools.append(
                         ToolSpec(
                             tool_id=str(raw_tool.get("tool_id") or raw_tool.get("name") or f"tool_{idx:02d}"),
@@ -977,14 +987,25 @@ class ToolSandboxAdapter:
                                 or raw_tool.get("name")
                                 or "ToolSandbox tool"
                             ),
-                            metadata={k: v for k, v in raw_tool.items() if k not in {"tool_id", "name", "description"}},
+                            metadata={
+                                "execution_backend": "semantic_mock",
+                                "benchmark": self.benchmark_name,
+                                **raw_metadata,
+                            },
                         )
                     )
             return tools
 
         allow_list = self._tool_allow_list(raw)
         if allow_list:
-            return [ToolSpec(tool_id=tool_id, description=f"ToolSandbox tool: {tool_id}") for tool_id in allow_list]
+            return [
+                ToolSpec(
+                    tool_id=tool_id,
+                    description=f"ToolSandbox tool: {tool_id}",
+                    metadata={"execution_backend": "semantic_mock", "benchmark": self.benchmark_name},
+                )
+                for tool_id in allow_list
+            ]
 
         return []
 

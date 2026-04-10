@@ -23,7 +23,8 @@ from toolclaw.schemas.error import (
 from toolclaw.schemas.repair import Repair
 from toolclaw.schemas.trace import EventType, RunMetadata, RunMode, Trace
 from toolclaw.schemas.workflow import Workflow, WorkflowStep
-from toolclaw.tools.mock_tools import ToolExecutionError, run_mock_tool
+from toolclaw.tools.mock_tools import ToolExecutionError
+from toolclaw.tools.runtime import run_tool
 
 PLACEHOLDER_ARGUMENT_STRINGS = {
     "",
@@ -200,6 +201,7 @@ class SequentialExecutor:
             "query_policy",
             "answer_patch_compiler",
         ]
+        trace.metadata.run_manifest["tool_runtime_backend"] = str(workflow.metadata.get("tool_execution_backend", "mock"))
         tracker.state_values.setdefault("__tool_calls__", 0)
         tracker.state_values.setdefault("__user_turns__", 0)
         tracker.state_values.setdefault("__repair_attempts__", 0)
@@ -322,7 +324,7 @@ class SequentialExecutor:
                 )
 
             state_error = self._check_state_failure(step=step, trace=trace, state_values=tracker.state_values)
-            step_result = state_error or self._execute_step(step=step, trace=trace, state_values=tracker.state_values)
+            step_result = state_error or self._execute_step(workflow=workflow, step=step, trace=trace, state_values=tracker.state_values)
             tracker.state_values["__tool_calls__"] = trace.metrics.tool_calls
             self._update_trace_budget_usage(trace, tracker.state_values)
             if step_result.ok:
@@ -581,7 +583,7 @@ class SequentialExecutor:
             initial_state=initial_state,
         )
 
-    def _execute_step(self, step: WorkflowStep, trace: Trace, state_values: Dict[str, Any]) -> StepExecutionResult:
+    def _execute_step(self, workflow: Workflow, step: WorkflowStep, trace: Trace, state_values: Dict[str, Any]) -> StepExecutionResult:
         trace.metadata.task_annotations["chosen_tool"] = step.tool_id
         tool_args = self._materialize_tool_args(step=step, state_values=state_values)
         trace.add_event(
@@ -594,7 +596,7 @@ class SequentialExecutor:
         )
 
         try:
-            result = run_mock_tool(step.tool_id or "", dict(tool_args))
+            result = run_tool(step.tool_id or "", dict(tool_args), workflow=workflow)
             trace.add_event(
                 event_id=f"evt_result_{step.step_id}",
                 event_type=EventType.TOOL_RESULT,
@@ -683,7 +685,7 @@ class SequentialExecutor:
             metadata={"origin": "repair_retry", "repair_type": repair.repair_type.value},
         )
         try:
-            retry_result = run_mock_tool(selected_tool, dict(retry_tool_args))
+            retry_result = run_tool(selected_tool, dict(retry_tool_args), workflow=workflow)
         except ToolExecutionError as exc:
             error = ToolClawError(
                 error_id=f"err_retry_{step.step_id}",
