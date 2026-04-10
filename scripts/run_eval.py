@@ -130,8 +130,33 @@ SYSTEM_ALIASES: Dict[str, str] = {
 }
 
 
+def _build_tool_specs(raw_tools: Any) -> List[ToolSpec]:
+    candidate_tools: List[ToolSpec] = []
+    if not isinstance(raw_tools, list):
+        return candidate_tools
+    for idx, raw_tool in enumerate(raw_tools, start=1):
+        if isinstance(raw_tool, str):
+            candidate_tools.append(ToolSpec(tool_id=raw_tool, description=raw_tool))
+            continue
+        if isinstance(raw_tool, dict):
+            candidate_tools.append(
+                ToolSpec(
+                    tool_id=str(raw_tool.get("tool_id") or raw_tool.get("name") or f"tool_{idx:02d}"),
+                    description=str(raw_tool.get("description") or raw_tool.get("tool_id") or raw_tool.get("name") or "tool"),
+                    metadata={k: v for k, v in raw_tool.items() if k not in {"tool_id", "name", "description"}},
+                )
+            )
+    return candidate_tools
+
+
 def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workflow:
     task = annotate_task_payload(task)
+    raw_metadata = task.get("metadata")
+    toolsandbox_metadata = raw_metadata if isinstance(raw_metadata, dict) and raw_metadata.get("benchmark") == "toolsandbox" else {}
+    raw_tools = task.get("candidate_tools")
+    if raw_tools is None and isinstance(task.get("tool_allow_list"), list):
+        raw_tools = list(task.get("tool_allow_list", []))
+    candidate_tools = _build_tool_specs(raw_tools)
     if mode == "planner":
         planner = build_default_planner()
         demo = Workflow.demo()
@@ -142,14 +167,21 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         )
         request.task.task_id = canonical_task_id(task)
         request.task.user_goal = str(task.get("query") or request.task.user_goal)
+        if candidate_tools:
+            request.context.candidate_tools = list(candidate_tools)
+        request.hints.user_style["tool_allow_list"] = list(task.get("tool_allow_list", []))
+        request.hints.user_style["categories"] = list(
+            (raw_metadata or {}).get("toolsandbox_categories", [])
+            if isinstance(raw_metadata, dict)
+            else []
+        )
+        request.hints.user_style["milestones"] = list(task.get("milestones", []))
         workflow = planner.plan(request).workflow
     else:
         workflow = Workflow.demo()
 
     workflow.task.task_id = canonical_task_id(task)
 
-    raw_metadata = task.get("metadata")
-    toolsandbox_metadata = raw_metadata if isinstance(raw_metadata, dict) and raw_metadata.get("benchmark") == "toolsandbox" else {}
     retrieve_query = task.get("query")
     if not retrieve_query and isinstance(task.get("messages"), list):
         for message in task["messages"]:
@@ -182,22 +214,12 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
             constraints.risk_level = RiskLevel(risk_level)
         workflow.task.constraints = constraints
 
-    raw_tools = task.get("candidate_tools")
-    if isinstance(raw_tools, list):
-        candidate_tools: List[ToolSpec] = []
-        for idx, raw_tool in enumerate(raw_tools, start=1):
-            if isinstance(raw_tool, str):
-                candidate_tools.append(ToolSpec(tool_id=raw_tool, description=raw_tool))
-                continue
-            if isinstance(raw_tool, dict):
-                candidate_tools.append(
-                    ToolSpec(
-                        tool_id=str(raw_tool.get("tool_id") or raw_tool.get("name") or f"tool_{idx:02d}"),
-                        description=str(raw_tool.get("description") or raw_tool.get("tool_id") or raw_tool.get("name") or "tool"),
-                        metadata={k: v for k, v in raw_tool.items() if k not in {"tool_id", "name", "description"}},
-                    )
-                )
+    if raw_tools is not None:
         workflow.context.candidate_tools = candidate_tools
+    if toolsandbox_metadata and not workflow.context.candidate_tools:
+        raise ValueError(
+            f"ToolSandbox task '{workflow.task.task_id}' has empty candidate_tools/tool_allow_list; refusing to fall back to demo tools."
+        )
 
     if isinstance(raw_metadata, dict):
         workflow.metadata.update(raw_metadata)

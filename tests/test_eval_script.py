@@ -1,4 +1,5 @@
 import csv
+import importlib.util
 import json
 import os
 import subprocess
@@ -113,6 +114,64 @@ def test_run_eval_script_with_planner_mode(tmp_path: Path) -> None:
     )
     assert completed.returncode == 0
     assert (outdir / "comparison.csv").exists()
+
+
+def test_build_workflow_from_task_plans_with_toolsandbox_candidate_tools() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "toolsandbox_single_tool_001",
+            "scenario": "single_tool",
+            "query": "Turn wifi off and confirm it.",
+            "tool_allow_list": ["set_wifi_status"],
+            "candidate_tools": [{"tool_id": "set_wifi_status", "description": "Toggle WiFi"}],
+            "messages": [{"sender": "user", "recipient": "agent", "content": "Turn wifi off and confirm it."}],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["single_tool", "state_dependency"],
+            },
+        },
+        mode="planner",
+    )
+
+    assert [tool.tool_id for tool in workflow.context.candidate_tools] == ["set_wifi_status"]
+    assert workflow.execution_plan[0].tool_id == "set_wifi_status"
+
+
+def test_build_workflow_from_task_rejects_empty_toolsandbox_tool_space() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_empty", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    try:
+        module.build_workflow_from_task(
+            {
+                "task_id": "toolsandbox_empty_001",
+                "scenario": "multiple_user_turn",
+                "query": "send_message_with_contact_content_cellular_off_multiple_user_turn",
+                "tool_allow_list": [],
+                "candidate_tools": [],
+                "messages": [],
+                "metadata": {
+                    "benchmark": "toolsandbox",
+                    "toolsandbox_categories": ["state_dependency", "multiple_user_turn"],
+                },
+            },
+            mode="planner",
+        )
+    except ValueError as exc:
+        assert "empty candidate_tools/tool_allow_list" in str(exc)
+    else:
+        raise AssertionError("expected ValueError for empty ToolSandbox tool space")
 
 
 def test_run_eval_script_preserves_failure_injection_for_toolclaw_lite(tmp_path: Path) -> None:

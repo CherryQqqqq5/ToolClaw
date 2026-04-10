@@ -57,6 +57,119 @@ def _bool_from_value(value: Any) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes"}
 
 
+def _query_is_natural_language(query: Any, sample_id: str) -> bool:
+    normalized_query = str(query or "").strip()
+    normalized_sample_id = str(sample_id).strip()
+    if not normalized_query:
+        return False
+    if normalized_query == normalized_sample_id:
+        return False
+    return (" " in normalized_query) or any(char in normalized_query for char in "?!.:,;'\"")
+
+
+def _reference_result_summary(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = raw_payload.get("metadata", {})
+    for container in (raw_payload, metadata if isinstance(metadata, dict) else {}):
+        if isinstance(container, dict):
+            summary = (
+                container.get("reference_result_summary")
+                or container.get("toolsandbox_reference_result")
+                or container.get("result_summary")
+                or container.get("toolsandbox_result")
+            )
+            if isinstance(summary, dict):
+                return summary
+    return {}
+
+
+def _summary_exception_type(summary: Dict[str, Any]) -> str:
+    exception_type = summary.get("exception_type") or summary.get("error_type")
+    if exception_type:
+        return str(exception_type)
+    traceback = str(summary.get("traceback") or "")
+    if "APIConnectionError" in traceback:
+        return "APIConnectionError"
+    return ""
+
+
+def _has_alternative_verification_signal(raw_payload: Dict[str, Any]) -> bool:
+    summary = _reference_result_summary(raw_payload)
+    mapping = summary.get("milestone_mapping")
+    if isinstance(mapping, dict) and mapping:
+        return True
+    if isinstance(mapping, list) and mapping:
+        return True
+    matched = summary.get("matched_milestones")
+    total = summary.get("total_milestones")
+    try:
+        if int(matched or 0) > 0 or int(total or 0) > 0:
+            return True
+    except (TypeError, ValueError):
+        pass
+    return False
+
+
+def _ground_truth_present(raw_payload: Dict[str, Any], sample_id: str) -> bool:
+    return (
+        bool(raw_payload.get("messages"))
+        or bool(raw_payload.get("candidate_tools"))
+        or bool(raw_payload.get("tool_allow_list"))
+        or bool(raw_payload.get("milestones"))
+        or _query_is_natural_language(raw_payload.get("query"), sample_id)
+    )
+
+
+def _validate_toolsandbox_sample(sample: Any) -> List[str]:
+    raw_payload = sample.raw_payload
+    issues: List[str] = []
+    if not raw_payload.get("messages") and not _query_is_natural_language(raw_payload.get("query"), sample.sample_id):
+        issues.append("missing_messages_or_natural_language_query")
+    if not raw_payload.get("candidate_tools") and not raw_payload.get("tool_allow_list"):
+        issues.append("missing_candidate_tools_and_tool_allow_list")
+    if not raw_payload.get("milestones") and not _has_alternative_verification_signal(raw_payload):
+        issues.append("missing_milestones_and_execution_verified_signal")
+    return issues
+
+
+def _filter_and_validate_samples(samples: List[Any], *, smoke: bool) -> List[Any]:
+    valid_samples: List[Any] = []
+    invalid_rows: List[str] = []
+    for sample in samples:
+        issues = _validate_toolsandbox_sample(sample)
+        if not issues:
+            valid_samples.append(sample)
+            continue
+        exception_type = _summary_exception_type(_reference_result_summary(sample.raw_payload))
+        if exception_type == "APIConnectionError" and not _ground_truth_present(sample.raw_payload, sample.sample_id):
+            print(
+                f"skipping ToolSandbox sample without recoverable ground truth: {sample.sample_id} ({', '.join(issues)})",
+                file=sys.stderr,
+            )
+            continue
+        invalid_rows.append(f"{sample.sample_id}: {', '.join(issues)}")
+    if invalid_rows:
+        raise ValueError("invalid ToolSandbox samples detected before benchmark execution:\n- " + "\n- ".join(invalid_rows))
+    if not valid_samples:
+        raise ValueError("No valid ToolSandbox samples remain after source validation")
+    if smoke:
+        _validate_smoke_profile(valid_samples)
+    return valid_samples
+
+
+def _validate_smoke_profile(samples: List[Any]) -> None:
+    categories = {
+        category
+        for sample in samples
+        for category in sample.metadata.get("toolsandbox_categories", [])
+    }
+    has_state = "state_dependency" in categories
+    has_interaction = any(category in categories for category in ("multiple_user_turn", "insufficient_information"))
+    if len(samples) < 3 or not has_state or not has_interaction:
+        raise ValueError(
+            "ToolSandbox smoke requires at least 3 validated samples including state_dependency and interaction-heavy slices."
+        )
+
+
 def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload: Dict[str, Any]) -> Dict[str, Any]:
     metrics = dict(score_payload.get("metrics", {}))
     diagnostics = dict(score_payload.get("diagnostics", {}))
@@ -406,6 +519,7 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
         f"- samples: `{scoreboard['num_samples']}`",
         f"- runs: `{scoreboard['num_runs']}`",
         f"- systems: `{', '.join(scoreboard['systems'])}`",
+        f"- raw_execution_report: `{outdir / 'latest_run_raw_report.md'}`",
         f"- raw_comparison: `{outdir / 'comparison.raw.csv'}`",
         f"- scored_comparison: `{outdir / 'comparison.scored.csv'}`",
         f"- focused_slice_summary: `{outdir / 'focused_slice_summary.md'}`",
@@ -476,6 +590,7 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
             "- All aggregate and category tables in this report are computed from `comparison.scored.csv`, not from raw `run_eval.py` rows.",
             "- FailTax is the default slicing axis for phase-2 style failure studies; category tables remain useful but secondary.",
             "- `comparison.raw.csv` preserves the original execution outputs from `run_eval.py` for audit and debugging.",
+            "- `latest_run_raw_report.md` preserves the raw `run_eval.py` report so it is not confused with this scored benchmark report.",
             "- `result_summary_coverage` shows how much of the benchmark has a current ToolClaw-run ToolSandbox summary attached to the trace. This should be 1.0 for normal runs.",
             "- `reference_summary_coverage` shows how much of the benchmark also carries imported external ToolSandbox summaries for offline comparison or dataset freezing.",
             "- These scores come from ToolClaw proxy evaluation over ToolSandbox-style tasks unless you are reading outputs from the official ToolSandbox CLI directly.",
@@ -566,12 +681,14 @@ def main() -> None:
 
     adapter = ToolSandboxAdapter()
     samples = adapter.load_samples(str(source_for_adapter))
+    samples = _filter_and_validate_samples(samples, smoke=False)
     if args.limit is not None:
         samples = samples[: args.limit]
     if args.smoke:
         samples = samples[: min(len(samples), 10)]
+        _validate_smoke_profile(samples)
     if not samples:
-        raise ValueError("No ToolSandbox samples loaded from source")
+        raise ValueError("No ToolSandbox samples loaded from source after validation")
     if args.require_result_summary and not any(sample.raw_payload.get("result_summary") for sample in samples):
         raise ValueError("require-result-summary was set, but no ToolSandbox result_summary / toolsandbox_result was found")
     systems = normalize_systems(args.systems)
@@ -591,6 +708,9 @@ def main() -> None:
         if args.asset_registry_root:
             asset_registry_root = Path(args.asset_registry_root) / f"run_{run_index:02d}"
         invoke_run_eval(normalized_path, run_outdir, args.mode, systems, asset_registry_root=asset_registry_root)
+        raw_report_path = run_outdir / "report.md"
+        if raw_report_path.exists():
+            raw_report_path.replace(run_outdir / "raw_report.md")
         raw_rows = load_run_rows(run_outdir / "comparison.csv")
         write_csv_rows(raw_rows, run_outdir / "comparison.raw.csv")
         scored_rows_for_run: List[Dict[str, Any]] = []
@@ -663,6 +783,9 @@ def main() -> None:
     latest_run_index = args.num_runs
     write_csv_rows([row for row in raw_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.raw.csv")
     write_csv_rows([row for row in scored_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.scored.csv")
+    latest_run_raw_report = outdir / "runs" / f"run_{latest_run_index:02d}" / "raw_report.md"
+    if latest_run_raw_report.exists():
+        (outdir / "latest_run_raw_report.md").write_text(latest_run_raw_report.read_text(encoding="utf-8"), encoding="utf-8")
     update_experiment_manifest(
         outdir,
         updates={
@@ -671,6 +794,7 @@ def main() -> None:
             "comparison_scored_path": str((outdir / "comparison.scored.csv").resolve()),
             "latest_comparison_raw_path": str((outdir / "latest_run_comparison.raw.csv").resolve()),
             "latest_comparison_scored_path": str((outdir / "latest_run_comparison.scored.csv").resolve()),
+            "latest_raw_report_path": str((outdir / "latest_run_raw_report.md").resolve()) if (outdir / "latest_run_raw_report.md").exists() else None,
         },
     )
     for obsolete_name in ("comparison.csv", "latest_run_comparison.csv"):
@@ -678,10 +802,19 @@ def main() -> None:
         if obsolete_path.exists():
             obsolete_path.unlink()
     _write_toolsandbox_report(scoreboard, outdir)
+    update_experiment_manifest(
+        outdir,
+        updates={
+            "report_path": str((outdir / "report.md").resolve()),
+        },
+    )
 
     print(f"prepared toolsandbox taskset: {normalized_path}")
     print(f"outputs written under: {outdir}")
-    print(f"scoreboard: {outdir / 'scoreboard.json'}")
+    print(f"raw execution: {outdir / 'runs' / f'run_{latest_run_index:02d}' / 'comparison.csv'}")
+    print(f"raw report: {outdir / 'latest_run_raw_report.md'}")
+    print(f"scored evaluation: {outdir / 'comparison.scored.csv'}")
+    print(f"final benchmark verdict: {outdir / 'scoreboard.json'}")
     print(f"per-system summary: {outdir / 'per_system_summary.json'}")
 
 

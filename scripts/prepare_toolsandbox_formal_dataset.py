@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -140,6 +141,65 @@ def aligned_row_to_formal_record(row: Dict[str, Any]) -> Dict[str, Any]:
     return record
 
 
+def _summary_exception_type(summary: Dict[str, Any]) -> str:
+    exception_type = summary.get("exception_type") or summary.get("error_type")
+    if exception_type:
+        return str(exception_type)
+    traceback = str(summary.get("traceback") or "")
+    if "APIConnectionError" in traceback:
+        return "APIConnectionError"
+    return ""
+
+
+def _query_is_natural_language(row: Dict[str, Any]) -> bool:
+    query = str(row.get("query") or "").strip()
+    sample_id = str(row.get("sample_id") or "").strip()
+    if not query:
+        return False
+    if query == sample_id:
+        return False
+    return (" " in query) or any(char in query for char in "?!.:,;'\"")
+
+
+def _has_alternative_verification_signal(row: Dict[str, Any]) -> bool:
+    summary = dict(row.get("result_summary", {}))
+    mapping = summary.get("milestone_mapping")
+    if isinstance(mapping, dict) and mapping:
+        return True
+    if isinstance(mapping, list) and mapping:
+        return True
+    matched = summary.get("matched_milestones")
+    total = summary.get("total_milestones")
+    try:
+        if int(matched or 0) > 0 or int(total or 0) > 0:
+            return True
+    except (TypeError, ValueError):
+        pass
+    return False
+
+
+def _ground_truth_present(row: Dict[str, Any]) -> bool:
+    return bool(row.get("messages")) or bool(row.get("candidate_tools")) or bool(row.get("tool_allow_list")) or bool(row.get("milestones"))
+
+
+def validate_aligned_row(row: Dict[str, Any]) -> List[str]:
+    issues: List[str] = []
+    if not row.get("messages") and not _query_is_natural_language(row):
+        issues.append("missing_messages_or_natural_language_query")
+    if not row.get("candidate_tools") and not row.get("tool_allow_list"):
+        issues.append("missing_candidate_tools_and_tool_allow_list")
+    if not row.get("milestones") and not _has_alternative_verification_signal(row):
+        issues.append("missing_milestones_and_execution_verified_signal")
+    return issues
+
+
+def should_skip_row(row: Dict[str, Any], issues: List[str]) -> bool:
+    if not issues:
+        return False
+    exception_type = _summary_exception_type(dict(row.get("result_summary", {})))
+    return exception_type == "APIConnectionError" and not _ground_truth_present(row)
+
+
 def main() -> None:
     args = parse_args()
     run_dir = resolve_run_dir(args.official_run_dir, Path(args.official_data_root))
@@ -150,6 +210,25 @@ def main() -> None:
     rows.sort(key=lambda row: str(row.get("sample_id") or ""))
     if args.limit is not None:
         rows = rows[: args.limit]
+    validated_rows: List[Dict[str, Any]] = []
+    invalid_rows: List[str] = []
+    for row in rows:
+        issues = validate_aligned_row(row)
+        if should_skip_row(row, issues):
+            sample_id = str(row.get("sample_id") or "unknown")
+            print(
+                f"skipping ToolSandbox sample without recoverable ground truth: {sample_id} ({', '.join(issues)})",
+                file=sys.stderr,
+            )
+            continue
+        if issues:
+            sample_id = str(row.get("sample_id") or "unknown")
+            invalid_rows.append(f"{sample_id}: {', '.join(issues)}")
+            continue
+        validated_rows.append(row)
+    if invalid_rows:
+        raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+    rows = validated_rows
     if not rows:
         raise RuntimeError("no ToolSandbox rows available after filtering")
     records = [aligned_row_to_formal_record(row) for row in rows]

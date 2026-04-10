@@ -90,6 +90,7 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     normalized_path = outdir / "prepared" / "toolsandbox.normalized.json"
     report_path = outdir / "report.md"
     manifest_path = outdir / "experiment_manifest.json"
+    latest_raw_report_path = outdir / "latest_run_raw_report.md"
 
     assert scoreboard_path.exists()
     assert raw_comparison_path.exists()
@@ -102,7 +103,10 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert normalized_path.exists()
     assert report_path.exists()
     assert manifest_path.exists()
+    assert latest_raw_report_path.exists()
     assert not (outdir / "comparison.csv").exists()
+    assert not (outdir / "runs" / "run_01" / "report.md").exists()
+    assert (outdir / "runs" / "run_01" / "raw_report.md").exists()
 
     scoreboard = json.loads(scoreboard_path.read_text(encoding="utf-8"))
     assert scoreboard["benchmark"] == "toolsandbox"
@@ -139,6 +143,7 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
 
     report = report_path.read_text(encoding="utf-8")
     assert "ToolSandbox Benchmark Report" in report
+    assert "raw_execution_report" in report
     assert "execution_verified_success" in report
     assert "proxy_summary_success" in report
     assert "dominant_result_summary_source" in report
@@ -189,6 +194,45 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     )
     assert check_completed.returncode == 0
     assert "CONSISTENCY CHECK: PASSED" in check_completed.stdout
+
+
+def test_run_toolsandbox_bench_script_rejects_empty_shell_source(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "name": "send_message_with_contact_content_cellular_off_multiple_user_turn",
+            "query": "send_message_with_contact_content_cellular_off_multiple_user_turn",
+            "messages": [],
+            "tool_allow_list": [],
+            "candidate_tools": [],
+            "categories": ["State Dependency", "Multiple User Turn"],
+            "milestones": [],
+            "result_summary": {
+                "traceback": "Traceback ... APIConnectionError ...",
+            },
+        }
+    ]
+    source_path = tmp_path / "toolsandbox_invalid.json"
+    source_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_toolsandbox_bench.py",
+            "--source",
+            str(source_path),
+            "--outdir",
+            str(tmp_path / "toolsandbox_invalid_out"),
+            "--smoke",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode != 0
+    assert "No valid ToolSandbox samples remain after source validation" in completed.stderr
 
 
 def test_run_toolsandbox_bench_script_writes_combined_comparison_across_runs(tmp_path: Path) -> None:
