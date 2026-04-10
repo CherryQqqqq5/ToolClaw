@@ -854,18 +854,12 @@ class ToolSandboxAdapter:
         trace_events = trace_payload.get("events", [])
         milestones = list(sample.raw_payload.get("milestones", []))
         success = bool(trace_metrics.get("success"))
-        tool_results = sum(1 for event in trace_events if event.get("event_type") == "tool_result")
         user_queries = sum(1 for event in trace_events if event.get("event_type") == "user_query")
         turn_count = self._extract_turn_count({}, trace_events)
         matched_milestones = 0
         if milestones:
-            progress_signals = max(tool_results, 0)
-            if self._interaction_expected(self._extract_categories(sample.raw_payload)) and user_queries > 0:
-                progress_signals += 1
-            if success:
-                matched_milestones = len(milestones)
-            else:
-                matched_milestones = min(len(milestones), progress_signals)
+            progress_signals = self._proxy_progress_signals(sample.raw_payload, trace_payload)
+            matched_milestones = min(len(milestones), progress_signals)
         similarity = (matched_milestones / len(milestones)) if milestones else None
         milestone_mapping: List[Any] = [idx for idx in range(matched_milestones)] + [None] * max(len(milestones) - matched_milestones, 0)
         return {
@@ -878,6 +872,60 @@ class ToolSandboxAdapter:
             "source": "toolclaw_proxy",
             "proxy_evaluation": True,
         }
+
+    def _proxy_progress_signals(self, raw: Dict[str, Any], trace_payload: Dict[str, Any]) -> int:
+        trace_metrics = trace_payload.get("metrics", {})
+        trace_events = trace_payload.get("events", [])
+        tool_ids = [
+            str(event.get("tool_id") or "").strip()
+            for event in trace_events
+            if event.get("event_type") in {"tool_call", "tool_result"} and str(event.get("tool_id") or "").strip()
+        ]
+        unique_capabilities = {
+            capability
+            for capability in (self._infer_proxy_tool_capability(raw, tool_id) for tool_id in tool_ids)
+            if capability
+        }
+        interaction_bonus = 1 if self._interaction_expected(self._extract_categories(raw)) and any(event.get("event_type") == "user_query" for event in trace_events) else 0
+        repair_bonus = 1 if any(event.get("event_type") in {"repair_triggered", "repair_applied"} for event in trace_events) else 0
+        success_bonus = 0
+        expected_tool_calls = self._expected_tool_calls(raw, self._extract_categories(raw))
+        if bool(trace_metrics.get("success")) and len(unique_capabilities) >= min(max(expected_tool_calls, 1), 2):
+            success_bonus = 1
+        return len(unique_capabilities) + interaction_bonus + repair_bonus + success_bonus
+
+    @staticmethod
+    def _proxy_tool_spec(raw: Dict[str, Any], tool_id: str) -> Dict[str, Any]:
+        for raw_tool in raw.get("candidate_tools", []) or []:
+            if isinstance(raw_tool, dict):
+                candidate_id = raw_tool.get("tool_id") or raw_tool.get("name")
+                if str(candidate_id or "").strip() == tool_id:
+                    return raw_tool
+        return {}
+
+    def _infer_proxy_tool_capability(self, raw: Dict[str, Any], tool_id: str) -> str:
+        spec = self._proxy_tool_spec(raw, tool_id)
+        text = " ".join(
+            [
+                tool_id,
+                str(spec.get("description") or ""),
+                " ".join(str(item) for item in spec.get("affordances", []) if str(item)),
+                " ".join(str(item) for item in spec.get("semantic_tags", []) if str(item)),
+            ]
+        ).lower()
+        retrieve_hints = {"retrieve", "search", "find", "lookup", "fetch", "query", "read", "collect"}
+        write_hints = {"write", "writer", "save", "store", "persist", "create"}
+        message_hints = {"message", "send", "reply", "email", "sms", "text", "notify"}
+        state_hints = {"set", "toggle", "enable", "disable", "status", "state", "update"}
+        if any(token in text for token in message_hints):
+            return "message"
+        if any(token in text for token in state_hints):
+            return "state"
+        if any(token in text for token in retrieve_hints):
+            return "retrieve"
+        if any(token in text for token in write_hints):
+            return "write"
+        return ""
 
     def _make_sample(self, raw: Dict[str, Any], idx: int) -> BenchmarkSample:
         sample_id = str(

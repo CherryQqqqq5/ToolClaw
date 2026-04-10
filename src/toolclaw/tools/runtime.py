@@ -11,6 +11,7 @@ from toolclaw.tools.mock_tools import MOCK_TOOL_REGISTRY, ToolExecutionError, ru
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 _RETRIEVE_HINTS = {"retrieve", "search", "find", "lookup", "fetch", "query", "read", "get", "collect"}
 _WRITE_HINTS = {"write", "writer", "save", "store", "persist", "report", "artifact", "draft", "create"}
+_WRITE_VALIDATION_HINTS = {"write", "writer", "save", "store", "persist", "create"}
 _MESSAGE_HINTS = {"message", "send", "reply", "email", "sms", "text", "notify"}
 _STATE_HINTS = {"set", "toggle", "enable", "disable", "turn", "update", "status", "state"}
 _ORDERING_HINTS = {"ordering", "legacy", "out_of_order", "order"}
@@ -83,6 +84,49 @@ def _tool_tokens(tool_id: str, spec: Optional[ToolSpec]) -> set[str]:
     )
 
 
+def _primary_tool_kind(tool_id: str, spec: Optional[ToolSpec]) -> str:
+    metadata = spec.metadata if spec and isinstance(spec.metadata, dict) else {}
+    explicit_kind = str(
+        metadata.get("tool_kind")
+        or metadata.get("operation_type")
+        or metadata.get("primary_affordance")
+        or ""
+    ).strip().lower()
+    if explicit_kind in {"retrieve", "search", "lookup", "write", "message", "state"}:
+        return "retrieve" if explicit_kind in {"search", "lookup"} else explicit_kind
+
+    id_tokens = _tokens(tool_id)
+    metadata_tokens = _tokens(
+        metadata.get("affordances", []),
+        metadata.get("semantic_tags", []),
+        metadata.get("preferred_capabilities", []),
+        metadata.get("usage_notes"),
+    )
+    description_tokens = _tokens(spec.description if spec else "")
+
+    def _score(hints: set[str]) -> int:
+        return (
+            3 * len(id_tokens.intersection(hints))
+            + 2 * len(metadata_tokens.intersection(hints))
+            + len(description_tokens.intersection(hints))
+        )
+
+    retrieve_score = _score(_RETRIEVE_HINTS)
+    write_score = _score(_WRITE_VALIDATION_HINTS)
+    message_score = _score(_MESSAGE_HINTS)
+    state_score = _score(_STATE_HINTS)
+
+    if message_score > 0 and message_score >= max(write_score, retrieve_score, state_score):
+        return "message"
+    if state_score > 0 and state_score >= max(write_score, retrieve_score):
+        return "state"
+    if retrieve_score > 0 and retrieve_score >= write_score:
+        return "retrieve"
+    if write_score > 0:
+        return "write"
+    return "unknown"
+
+
 def _run_semantic_tool(tool_id: str, args: Dict[str, Any], *, spec: Optional[ToolSpec]) -> Dict[str, Any]:
     metadata = spec.metadata if spec and isinstance(spec.metadata, dict) else {}
     tool_tokens = _tool_tokens(tool_id, spec)
@@ -126,15 +170,16 @@ def _validate_semantic_args(tool_id: str, args: Dict[str, Any], *, spec: Optiona
             raise ToolExecutionError(f"missing required field(s): {', '.join(missing)}")
         return
 
-    if _WRITE_HINTS.intersection(tool_tokens):
-        if _MESSAGE_HINTS.intersection(tool_tokens):
-            if not _has_any_value(args, ("content", "message", "body", "text", "recipient", "phone_number", "email")):
-                raise ToolExecutionError("missing required field: content")
-            return
-        if _STATE_HINTS.intersection(tool_tokens):
-            if not _has_any_value(args, ("value", "enabled", "status", "state", "mode")):
-                raise ToolExecutionError("missing required field: state")
-            return
+    primary_kind = _primary_tool_kind(tool_id, spec)
+    if primary_kind == "message":
+        if not _has_any_value(args, ("content", "message", "body", "text", "recipient", "phone_number", "email")):
+            raise ToolExecutionError("missing required field: content")
+        return
+    if primary_kind == "state":
+        if not _has_any_value(args, ("value", "enabled", "status", "state", "mode")):
+            raise ToolExecutionError("missing required field: state")
+        return
+    if primary_kind == "write":
         if not _has_any_value(args, ("target_path", "content", "body", "text", "value")):
             raise ToolExecutionError(f"missing required field for write-like tool: {tool_id}")
 
