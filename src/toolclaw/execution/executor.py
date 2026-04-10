@@ -25,6 +25,18 @@ from toolclaw.schemas.trace import EventType, RunMetadata, RunMode, Trace
 from toolclaw.schemas.workflow import Workflow, WorkflowStep
 from toolclaw.tools.mock_tools import ToolExecutionError, run_mock_tool
 
+PLACEHOLDER_ARGUMENT_STRINGS = {
+    "",
+    "unknown",
+    "none",
+    "null",
+    "n/a",
+    "na",
+    "not provided",
+    "not_given",
+    "unspecified",
+}
+
 
 @dataclass
 class PendingInteraction:
@@ -316,6 +328,8 @@ class SequentialExecutor:
             if step_result.ok:
                 tracker.mark_completed(step.step_id)
                 tracker.state_values[step.expected_output or step.step_id] = step_result.output.get("payload")
+                if isinstance(step_result.output.get("state_patch"), dict):
+                    tracker.state_values.update(step_result.output["state_patch"])
                 self._clear_state_slot_flags(tracker.state_values, [step.expected_output or step.step_id])
                 after_decision = self.policy_engine.evaluate_after_step(step, workflow, tracker.state_values)
                 tracker.state_values.update(after_decision.state_patch)
@@ -437,6 +451,7 @@ class SequentialExecutor:
                 repair=repair,
                 trace=trace,
                 backup_tool_map=backup_tool_map,
+                state_values=tracker.state_values,
             )
             if repair_result.blocked:
                 trace.add_event(
@@ -590,7 +605,7 @@ class SequentialExecutor:
             )
             return StepExecutionResult(ok=True, step_id=step.step_id, tool_id=step.tool_id, output=result)
         except ToolExecutionError as exc:
-            error = self._build_error(step, trace, exc)
+            error = self._build_error(step, trace, exc, tool_args)
             return StepExecutionResult(ok=False, step_id=step.step_id, tool_id=step.tool_id, error=error)
 
     def _apply_repair(
@@ -600,10 +615,12 @@ class SequentialExecutor:
         repair: Repair,
         trace: Trace,
         backup_tool_map: Dict[str, str],
+        state_values: Dict[str, Any],
     ) -> RepairApplyResult:
         patched_inputs = dict(step.inputs)
         selected_tool = step.tool_id
         should_reexecute = False
+        extra_state_patch: Dict[str, Any] = {}
 
         for action in repair.actions:
             action_type = action.action_type.value
@@ -614,6 +631,10 @@ class SequentialExecutor:
                     patched_inputs[key] = action.value
                 elif target.endswith(".inputs") and isinstance(action.value, dict):
                     patched_inputs.update(action.value)
+                elif target.startswith("state."):
+                    state_key = target.split("state.", 1)[1]
+                    if state_key:
+                        extra_state_patch[state_key] = action.value
             elif action_type == "switch_tool":
                 if isinstance(action.value, str):
                     selected_tool = action.value
@@ -649,17 +670,20 @@ class SequentialExecutor:
 
         step.inputs = patched_inputs
         trace.metadata.task_annotations["chosen_tool"] = selected_tool
+        retry_state_values = dict(state_values)
+        retry_state_values.update(extra_state_patch)
+        retry_tool_args = self._materialize_tool_args(step=step, state_values=retry_state_values)
         trace.add_event(
             event_id=f"evt_repair_call_{step.step_id}",
             event_type=EventType.TOOL_CALL,
             actor="executor",
             step_id=step.step_id,
             tool_id=selected_tool,
-            tool_args=dict(step.inputs),
+            tool_args=retry_tool_args,
             metadata={"origin": "repair_retry", "repair_type": repair.repair_type.value},
         )
         try:
-            retry_result = run_mock_tool(selected_tool, dict(step.inputs))
+            retry_result = run_mock_tool(selected_tool, dict(retry_tool_args))
         except ToolExecutionError as exc:
             error = ToolClawError(
                 error_id=f"err_retry_{step.step_id}",
@@ -671,7 +695,7 @@ class SequentialExecutor:
                 severity=ErrorSeverity.MEDIUM,
                 stage=ErrorStage.RECOVERY,
                 symptoms=[str(exc)],
-                evidence=ErrorEvidence(tool_id=selected_tool, raw_message=str(exc), inputs=dict(step.inputs)),
+                evidence=ErrorEvidence(tool_id=selected_tool, raw_message=str(exc), inputs=dict(retry_tool_args)),
                 root_cause_hypothesis=["repair retry failed during execution"],
                 state_context=StateContext(active_capability=step.capability_id, active_step_id=step.step_id),
                 recoverability=Recoverability(recoverable=True, requires_rollback=True),
@@ -698,7 +722,11 @@ class SequentialExecutor:
         return RepairApplyResult(
             applied=True,
             workflow=workflow,
-            state_patch={step.expected_output or step.step_id: retry_result.get("payload")},
+            state_patch={
+                **extra_state_patch,
+                **(retry_result.get("state_patch") if isinstance(retry_result.get("state_patch"), dict) else {}),
+                (step.expected_output or step.step_id): retry_result.get("payload"),
+            },
         )
 
     @staticmethod
@@ -811,7 +839,11 @@ class SequentialExecutor:
             for input_key, state_key in state_bindings.items():
                 if state_key in state_values:
                     tool_args[str(input_key)] = state_values[state_key]
-        return tool_args
+        inferred_preflight = SequentialExecutor._preflight_state_policy_for_step(step)
+        state_slot = str(inferred_preflight.get("state_slot") or "")
+        if state_slot and state_slot in state_values and SequentialExecutor._tool_uses_outbound_cellular(step.tool_id):
+            tool_args.setdefault("cellular_on", state_values[state_slot])
+        return SequentialExecutor._sanitize_tool_args(step.tool_id, tool_args)
 
     def _check_state_failure(
         self,
@@ -825,19 +857,34 @@ class SequentialExecutor:
         stale_slots = [str(item) for item in state_values.get("__stale_state_slots__", []) if str(item)]
         missing_slots = [slot for slot in required_slots if slot not in state_values or state_values.get(slot) in {None, ""}]
         stale_required = [slot for slot in required_slots if slot in stale_slots]
-        if not missing_slots and not stale_required:
+        preflight_policy = self._preflight_state_policy_for_step(step)
+        unsatisfied_slots: list[str] = []
+        state_slot = str(preflight_policy.get("state_slot") or "")
+        required_value = preflight_policy.get("required_value")
+        if state_slot:
+            if state_slot not in required_slots:
+                required_slots.append(state_slot)
+            if state_slot not in state_values or state_values.get(state_slot) in {None, ""}:
+                if state_slot not in missing_slots:
+                    missing_slots.append(state_slot)
+            elif required_value is not None and state_values.get(state_slot) != required_value:
+                unsatisfied_slots.append(state_slot)
+        if not missing_slots and not stale_required and not unsatisfied_slots:
             return None
         for slot in missing_slots:
             if slot not in stale_slots:
                 state_values.setdefault("__missing_assets__", [])
                 if slot not in state_values["__missing_assets__"]:
                     state_values["__missing_assets__"].append(slot)
-        subtype = "stale_state" if stale_required else "missing_state_slot"
+        preflight_blocked = bool(preflight_policy) and bool(missing_slots or unsatisfied_slots)
+        subtype = "preflight_state_unsatisfied" if preflight_blocked else ("stale_state" if stale_required else "missing_state_slot")
         symptoms = []
         if missing_slots:
             symptoms.append(f"missing required state slot(s): {', '.join(missing_slots)}")
         if stale_required:
             symptoms.append(f"stale state slot(s): {', '.join(stale_required)}")
+        if unsatisfied_slots:
+            symptoms.append(f"preflight state requirement not satisfied: {', '.join(unsatisfied_slots)}")
         error = ToolClawError(
             error_id=f"err_state_{step.step_id}",
             run_id=trace.run_id,
@@ -852,13 +899,16 @@ class SequentialExecutor:
                 tool_id=step.tool_id,
                 raw_message="; ".join(symptoms),
                 inputs=self._materialize_tool_args(step=step, state_values=state_values),
-                metadata={"required_state_slots": required_slots},
+                metadata={
+                    "required_state_slots": required_slots,
+                    "preflight_state_policy": preflight_policy,
+                },
             ),
             root_cause_hypothesis=["required state was missing or stale before tool execution"],
             state_context=StateContext(
                 active_capability=step.capability_id,
                 active_step_id=step.step_id,
-                missing_assets=missing_slots or stale_required,
+                missing_assets=missing_slots or unsatisfied_slots or stale_required,
                 state_values=dict(state_values),
                 policy_flags={"approval_pending": False},
             ),
@@ -932,10 +982,17 @@ class SequentialExecutor:
         step: WorkflowStep,
         trace: Trace,
         exc: Exception,
+        tool_args: Dict[str, Any],
     ) -> ToolClawError:
         message = str(exc)
+        preflight_policy = self._preflight_state_policy_for_step(step)
+        lowered_message = message.lower()
         if "missing required field" in message:
             category = ErrorCategory.BINDING_FAILURE
+        elif "numberparseexception" in lowered_message or "missing or invalid default region" in lowered_message:
+            category = ErrorCategory.BINDING_FAILURE
+        elif "cellular service is not enabled" in lowered_message:
+            category = ErrorCategory.STATE_FAILURE
         elif "write target mismatch" in message or "stale state" in message or "state slot" in message:
             category = ErrorCategory.STATE_FAILURE
         elif "permission" in message:
@@ -959,13 +1016,18 @@ class SequentialExecutor:
                 tool_id=step.tool_id,
                 raw_message=message,
                 related_events=[f"evt_call_{step.step_id}"],
-                inputs=dict(step.inputs),
+                inputs=dict(tool_args),
+                metadata={"preflight_state_policy": preflight_policy},
             ),
             root_cause_hypothesis=["tool invocation failed in sequential execution"],
             state_context=StateContext(
                 active_capability=step.capability_id,
                 active_step_id=step.step_id,
-                missing_assets=["target_path"] if ("target_path" in message or "write target mismatch" in message) else [],
+                missing_assets=(
+                    ["cellular_service_status"]
+                    if "cellular service is not enabled" in lowered_message
+                    else (["target_path"] if ("target_path" in message or "write target mismatch" in message) else [])
+                ),
                 state_values={},
                 policy_flags={"approval_pending": False},
             ),
@@ -988,7 +1050,60 @@ class SequentialExecutor:
                 missing_assets.append(f"{step.step_id}.target_path")
             if not step.tool_id:
                 warnings.append(f"{step.step_id} has no bound tool")
+            preflight_policy = SequentialExecutor._preflight_state_policy_for_step(step)
+            state_slot = str(preflight_policy.get("state_slot") or "")
+            if state_slot:
+                missing_assets.append(f"{step.step_id}.{state_slot}")
         return PreflightReport(ok=not warnings, missing_assets=missing_assets, warnings=warnings)
+
+    @staticmethod
+    def _sanitize_tool_args(tool_id: Optional[str], tool_args: Dict[str, Any]) -> Dict[str, Any]:
+        sanitized: Dict[str, Any] = {}
+        for key, value in tool_args.items():
+            if value is None:
+                continue
+            if isinstance(value, str):
+                normalized = value.strip()
+                if normalized.lower() in PLACEHOLDER_ARGUMENT_STRINGS:
+                    continue
+                sanitized[key] = normalized
+                continue
+            sanitized[key] = value
+
+        if tool_id == "search_contacts":
+            for key in ("person_id", "phone_number", "relationship"):
+                value = sanitized.get(key)
+                if isinstance(value, str) and value.strip().lower() in PLACEHOLDER_ARGUMENT_STRINGS:
+                    sanitized.pop(key, None)
+            if sanitized.get("is_self") is False and any(field in sanitized for field in ("name", "person_id", "phone_number", "relationship")):
+                sanitized.pop("is_self", None)
+
+        return sanitized
+
+    @staticmethod
+    def _tool_uses_outbound_cellular(tool_id: Optional[str]) -> bool:
+        normalized = str(tool_id or "").strip().lower()
+        return "send_message" in normalized or normalized in {"send_sms", "send_text"}
+
+    @staticmethod
+    def _preflight_state_policy_for_step(step: WorkflowStep) -> Dict[str, Any]:
+        existing = step.metadata.get("preflight_state_policy")
+        if isinstance(existing, dict) and existing:
+            return dict(existing)
+        allowed_tools = {str(item) for item in step.metadata.get("allowed_tools", []) if str(item)}
+        if SequentialExecutor._tool_uses_outbound_cellular(step.tool_id) and {
+            "get_cellular_service_status",
+            "set_cellular_service_status",
+        }.intersection(allowed_tools):
+            return {
+                "state_slot": "cellular_service_status",
+                "required_value": True,
+                "repair_target": "cellular_service_status",
+                "repair_value": True,
+                "auto_repair": "set_cellular_service_status" in allowed_tools,
+                "reason": "outbound messaging requires cellular connectivity",
+            }
+        return {}
 
     @staticmethod
     def _write_trace(trace: Trace, output_path: str) -> None:

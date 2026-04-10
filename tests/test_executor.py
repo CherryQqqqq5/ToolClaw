@@ -8,7 +8,7 @@ from toolclaw.planner.capability_graph import CapabilityTemplateRegistry, RuleBa
 from toolclaw.planner.htgp import HTGPPlanner, PlanningHints, PlanningRequest, PolicyInjector, RuleBasedCapabilitySelector
 from toolclaw.schemas.error import ErrorCategory, ErrorEvidence, ErrorSeverity, ErrorStage, Recoverability, StateContext, ToolClawError
 from toolclaw.schemas.trace import EventType, Trace
-from toolclaw.schemas.workflow import Workflow
+from toolclaw.schemas.workflow import ActionType, Workflow, WorkflowStep
 
 
 def build_planner() -> HTGPPlanner:
@@ -157,3 +157,44 @@ def test_executor_suffix_replan_preserves_request_hints_from_workflow_metadata()
     assert replanned_workflow.metadata["planning_request"]["hints"]["user_style"]["benchmark"] == "toolsandbox"
     assert replanned_workflow.metadata["replan_context"]["reusable_asset_ids"] == ["asset_003"]
     assert "ordering_failure" in replanned_workflow.metadata["replan_context"]["prior_failures"]
+
+
+def test_materialize_tool_args_sanitizes_overfilled_search_contacts_inputs() -> None:
+    step = WorkflowStep(
+        step_id="step_01",
+        capability_id="cap_retrieve",
+        tool_id="search_contacts",
+        action_type=ActionType.TOOL_CALL,
+        inputs={
+            "name": " Fredrik Thordendal ",
+            "person_id": "",
+            "phone_number": "unknown",
+            "relationship": " ",
+            "is_self": False,
+        },
+    )
+
+    tool_args = SequentialExecutor._materialize_tool_args(step=step, state_values={})
+
+    assert tool_args == {"name": "Fredrik Thordendal"}
+
+
+def test_check_state_failure_enforces_cellular_preflight_for_outbound_message() -> None:
+    step = WorkflowStep(
+        step_id="step_02",
+        capability_id="cap_write",
+        tool_id="send_message_with_phone_number",
+        action_type=ActionType.TOOL_CALL,
+        inputs={"phone_number": "+12453344098", "content": "hello"},
+        metadata={"allowed_tools": ["get_cellular_service_status", "set_cellular_service_status"]},
+    )
+    trace = Trace(run_id="run_preflight_001", workflow_id="wf_preflight_001", task_id="task_preflight_001")
+
+    result = SequentialExecutor()._check_state_failure(step=step, trace=trace, state_values={})
+
+    assert result is not None
+    assert result.ok is False
+    assert result.error is not None
+    assert result.error.category == ErrorCategory.STATE_FAILURE
+    assert result.error.subtype == "preflight_state_unsatisfied"
+    assert result.error.evidence.metadata["preflight_state_policy"]["state_slot"] == "cellular_service_status"

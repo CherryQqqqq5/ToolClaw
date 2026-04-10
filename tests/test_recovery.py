@@ -71,3 +71,45 @@ def test_environment_failure_maps_to_ask_user_when_no_backup() -> None:
     repair = engine.plan_repair(error, backup_tool_id=None)
 
     assert repair.repair_type == RepairType.ASK_USER
+
+
+def test_binding_failure_sanitizes_invalid_search_contact_filters_before_retry() -> None:
+    engine = RecoveryEngine()
+    error = make_error(ErrorCategory.BINDING_FAILURE, error_id="err_binding_contacts_001")
+    error.evidence.tool_id = "search_contacts"
+    error.evidence.raw_message = "NumberParseException: The string supplied did not seem to be a phone number."
+    error.evidence.inputs = {
+        "name": "Fredrik Thordendal",
+        "phone_number": "0000000000",
+        "person_id": "",
+        "relationship": "",
+        "is_self": False,
+    }
+
+    repair = engine.plan_repair(error)
+
+    assert repair.repair_type == RepairType.REBIND_ARGS
+    assert repair.actions[0].target == "step_01.inputs"
+    assert repair.actions[0].value == {"name": "Fredrik Thordendal"}
+
+
+def test_state_failure_with_preflight_policy_patches_required_state_before_retry() -> None:
+    engine = RecoveryEngine()
+    error = make_error(ErrorCategory.STATE_FAILURE, error_id="err_state_preflight_001")
+    error.evidence.tool_id = "send_message_with_phone_number"
+    error.evidence.raw_message = "Cellular service is not enabled"
+    error.evidence.metadata["preflight_state_policy"] = {
+        "state_slot": "cellular_service_status",
+        "required_value": True,
+        "repair_target": "cellular_service_status",
+        "repair_value": True,
+        "auto_repair": True,
+    }
+    error.state_context.missing_assets = ["cellular_service_status"]
+
+    repair = engine.plan_repair(error)
+
+    assert repair.repair_type == RepairType.ACQUIRE_MISSING_ASSET
+    assert repair.interaction.ask_user is False
+    assert repair.actions[0].target == "state.cellular_service_status"
+    assert repair.actions[0].value is True

@@ -21,6 +21,18 @@ from toolclaw.schemas.repair import (
     WorkflowPatch,
 )
 
+PLACEHOLDER_ARGUMENT_STRINGS = {
+    "",
+    "unknown",
+    "none",
+    "null",
+    "n/a",
+    "na",
+    "not provided",
+    "not_given",
+    "unspecified",
+}
+
 
 @dataclass
 class RecoveryConfig:
@@ -69,11 +81,30 @@ class RecoveryEngine:
     def _repair_binding_failure(self, error: ToolClawError) -> Repair:
         step_id = error.step_id or "unknown_step"
         missing_target = None
+        repaired_inputs = self._sanitize_binding_inputs(
+            tool_id=error.evidence.tool_id,
+            inputs=error.evidence.inputs,
+            raw_message=error.evidence.raw_message,
+        )
 
         if error.state_context.missing_assets:
             missing_target = error.state_context.missing_assets[0]
 
         target_expr = f"{step_id}.inputs.{missing_target}" if missing_target else f"{step_id}.inputs"
+        patch_value: object = missing_target or "auto_filled_value"
+        rationale = "Binding failure is treated as an argument-mapping error and patched by rebinding inputs."
+        expected_effects = [
+            "tool arguments become valid",
+            "the failed step can be re-executed",
+        ]
+        if repaired_inputs and repaired_inputs != error.evidence.inputs:
+            target_expr = f"{step_id}.inputs"
+            patch_value = repaired_inputs
+            rationale = "Binding failure matches an invalid-argument pattern, so placeholder and malformed filters are stripped before retry."
+            expected_effects = [
+                "invalid optional arguments are removed",
+                "the failed step can be re-executed with sanitized inputs",
+            ]
 
         repair = Repair(
             repair_id=f"rep_{error.error_id}",
@@ -83,7 +114,7 @@ class RecoveryEngine:
             repair_type=RepairType.REBIND_ARGS,
             decision=RepairDecision(
                 strategy=RepairStrategy.DIRECT_PATCH,
-                rationale="Binding failure is treated as an argument-mapping error and patched by rebinding inputs.",
+                rationale=rationale,
                 confidence=0.80,
             ),
             actions=[
@@ -92,7 +123,7 @@ class RecoveryEngine:
                     action_type=RepairActionType.STATE_PATCH,
                     target=target_expr,
                     value_source=self.config.default_binding_patch_source,
-                    value=missing_target or "auto_filled_value",
+                    value=patch_value,
                     metadata={
                         "category": error.category.value,
                         "subtype": error.subtype,
@@ -114,10 +145,7 @@ class RecoveryEngine:
                 modified_steps=[step_id] if error.step_id else [],
             ),
             post_conditions=RepairPostConditions(
-                expected_effects=[
-                    "tool arguments become valid",
-                    "the failed step can be re-executed",
-                ],
+                expected_effects=expected_effects,
                 stop_if=[
                     "same binding_failure repeats twice",
                     "hard constraint violated",
@@ -305,6 +333,68 @@ class RecoveryEngine:
             for item in error.state_context.state_values.get("__stale_state_slots__", [])
             if str(item)
         ]
+        preflight_policy = error.evidence.metadata.get("preflight_state_policy", {})
+        if not isinstance(preflight_policy, dict):
+            preflight_policy = {}
+        repair_target = str(preflight_policy.get("repair_target") or "")
+        if (
+            preflight_policy.get("auto_repair")
+            and repair_target
+            and preflight_policy.get("repair_value") is not None
+        ):
+            repair_value = preflight_policy["repair_value"]
+            return Repair(
+                repair_id=f"rep_{error.error_id}",
+                run_id=error.run_id,
+                workflow_id=error.workflow_id,
+                triggered_error_ids=[error.error_id],
+                repair_type=RepairType.ACQUIRE_MISSING_ASSET,
+                decision=RepairDecision(
+                    strategy=RepairStrategy.DIRECT_PATCH,
+                    rationale="State failure matches a preflight dependency, so the required runtime state is patched before retry.",
+                    confidence=0.84,
+                ),
+                actions=[
+                    RepairAction(
+                        action_id=f"act_state_patch_{error.error_id}",
+                        action_type=RepairActionType.STATE_PATCH,
+                        target=f"state.{repair_target}",
+                        value_source="state://preflight_policy",
+                        value=repair_value,
+                        metadata={"state_slot": repair_target},
+                    ),
+                    RepairAction(
+                        action_id=f"act_retry_{error.error_id}",
+                        action_type=RepairActionType.RE_EXECUTE_STEP,
+                        target=step_id,
+                    ),
+                ],
+                interaction=RepairInteraction(
+                    ask_user=False,
+                    question=None,
+                    expected_answer_type=None,
+                    user_response=None,
+                ),
+                workflow_patch=WorkflowPatch(modified_steps=[step_id] if error.step_id else []),
+                post_conditions=RepairPostConditions(
+                    expected_effects=[
+                        f"{repair_target} is restored to the required preflight value",
+                        "the blocked step can be retried without asking the user",
+                    ],
+                    stop_if=[
+                        "same state_failure repeats twice",
+                        "patched state still violates the preflight policy",
+                    ],
+                ),
+                result=RepairResult(status=RepairStatus.PENDING, success=None),
+                metadata={
+                    "mapped_from_error_category": error.category.value,
+                    "missing_assets": missing_assets,
+                    "stale_assets": stale_assets,
+                    "preflight_state_policy": preflight_policy,
+                    "phase": "phase1_training_free",
+                },
+            )
         primary_slot = missing_assets[0] if missing_assets else (stale_assets[0] if stale_assets else "state_slot")
         if missing_assets or stale_assets:
             return Repair(
@@ -346,6 +436,37 @@ class RecoveryEngine:
                 },
             )
         return self._repair_replan_or_rollback(error)
+
+    @staticmethod
+    def _sanitize_binding_inputs(
+        *,
+        tool_id: Optional[str],
+        inputs: dict[str, object],
+        raw_message: Optional[str],
+    ) -> dict[str, object]:
+        sanitized: dict[str, object] = {}
+        for key, value in inputs.items():
+            if value is None:
+                continue
+            if isinstance(value, str):
+                normalized = value.strip()
+                if normalized.lower() in PLACEHOLDER_ARGUMENT_STRINGS:
+                    continue
+                sanitized[key] = normalized
+                continue
+            sanitized[key] = value
+
+        lowered_message = str(raw_message or "").lower()
+        if tool_id == "search_contacts" and (
+            "numberparseexception" in lowered_message or "missing or invalid default region" in lowered_message
+        ):
+            sanitized.pop("phone_number", None)
+            sanitized.pop("person_id", None)
+            sanitized.pop("relationship", None)
+            if sanitized.get("is_self") is False:
+                sanitized.pop("is_self", None)
+
+        return sanitized
 
     def _repair_replan_or_rollback(self, error: ToolClawError) -> Repair:
         step_id = error.step_id or "unknown_step"
