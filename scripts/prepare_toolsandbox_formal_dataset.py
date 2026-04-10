@@ -126,6 +126,9 @@ def aligned_row_to_formal_record(row: Dict[str, Any]) -> Dict[str, Any]:
         "ideal_turn_count": row.get("ideal_turn_count"),
         "ideal_tool_calls": row.get("ideal_tool_calls"),
         "result_summary": dict(row.get("result_summary", {})),
+        "has_ground_truth_messages": bool(row.get("has_ground_truth_messages")),
+        "has_ground_truth_milestones": bool(row.get("has_ground_truth_milestones")),
+        "has_ground_truth_tools": bool(row.get("has_ground_truth_tools")),
         "metadata": dict(row.get("metadata", {})),
     }
     execution_scenario = infer_execution_scenario(row)

@@ -4,11 +4,21 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_ROOT = Path("data/external/ToolSandbox/data")
+VENDORED_SCENARIO_ROOT = REPO_ROOT / "data/external/ToolSandbox/tool_sandbox/scenarios"
+BUNDLED_SOURCE_CANDIDATES = (
+    REPO_ROOT / "data/toolsandbox.formal.json",
+    REPO_ROOT / "data/toolsandbox.formal.eval.json",
+    REPO_ROOT / "data/toolsandbox.formal.train.json",
+    REPO_ROOT / "data/toolsandbox.formal.official.json",
+)
 SCENARIO_EXPORT_CANDIDATES = (
     "scenario_export.json",
     "scenario.json",
@@ -169,6 +179,153 @@ def extract_milestones(scenario_export: Dict[str, Any], result_row: Dict[str, An
     return []
 
 
+def _ast_value(node: ast.AST) -> Any:
+    if isinstance(node, ast.Constant):
+        return node.value
+    if isinstance(node, ast.List):
+        return [_ast_value(item) for item in node.elts if not isinstance(item, ast.Starred)]
+    if isinstance(node, ast.Tuple):
+        return [_ast_value(item) for item in node.elts]
+    if isinstance(node, ast.Dict):
+        payload: Dict[str, Any] = {}
+        for key_node, value_node in zip(node.keys, node.values):
+            if key_node is None:
+                continue
+            key = _ast_value(key_node)
+            if key is None:
+                continue
+            payload[str(key)] = _ast_value(value_node)
+        return payload
+    return ast.unparse(node)
+
+
+def _ast_string_list(node: ast.AST | None) -> List[str]:
+    if not isinstance(node, ast.List):
+        return []
+    values: List[str] = []
+    for item in node.elts:
+        if isinstance(item, ast.Starred):
+            continue
+        value = _ast_value(item)
+        if isinstance(value, str) and value:
+            values.append(value)
+    return values
+
+
+def _ast_message_list(node: ast.AST | None) -> List[Dict[str, Any]]:
+    if not isinstance(node, ast.List):
+        return []
+    messages: List[Dict[str, Any]] = []
+    for item in node.elts:
+        if isinstance(item, ast.Starred):
+            continue
+        value = _ast_value(item)
+        if isinstance(value, dict):
+            messages.append(value)
+    return normalize_messages(messages)
+
+
+def _ast_milestones(node: ast.AST | None) -> List[Any]:
+    if not isinstance(node, ast.List):
+        return []
+    milestones: List[Any] = []
+    for item in node.elts:
+        if isinstance(item, ast.Starred):
+            continue
+        milestones.append(ast.unparse(item))
+    return milestones
+
+
+@lru_cache(maxsize=1)
+def load_vendored_ground_truth_index() -> Dict[str, Dict[str, Any]]:
+    index: Dict[str, Dict[str, Any]] = {}
+    if not VENDORED_SCENARIO_ROOT.exists():
+        return index
+    for path in sorted(VENDORED_SCENARIO_ROOT.glob("*_scenarios.py")):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func_name = getattr(node.func, "id", None) or getattr(node.func, "attr", None)
+            if func_name != "ScenarioExtension":
+                continue
+            kwargs = {keyword.arg: keyword.value for keyword in node.keywords if keyword.arg}
+            name = _ast_value(kwargs.get("name")) if kwargs.get("name") is not None else None
+            if not isinstance(name, str) or not name:
+                continue
+            tool_allow_list = _ast_string_list(kwargs.get("tool_allow_list"))
+            index[name] = {
+                "messages": _ast_message_list(kwargs.get("messages")),
+                "tool_allow_list": tool_allow_list,
+                "candidate_tools": list(tool_allow_list),
+                "milestones": _ast_milestones(kwargs.get("milestones")),
+                "ground_truth_source": "vendored_scenario_source",
+                "ground_truth_source_path": str(path.resolve()),
+            }
+    return index
+
+
+@lru_cache(maxsize=1)
+def load_bundled_ground_truth_index() -> Dict[str, Dict[str, Any]]:
+    index: Dict[str, Dict[str, Any]] = {}
+    for path in BUNDLED_SOURCE_CANDIDATES:
+        if not path.exists():
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload, list):
+            continue
+        for row in payload:
+            if not isinstance(row, dict):
+                continue
+            sample_id = row.get("sample_id") or row.get("name")
+            if not sample_id:
+                continue
+            entry = index.setdefault(
+                str(sample_id),
+                {
+                    "messages": [],
+                    "tool_allow_list": [],
+                    "candidate_tools": [],
+                    "milestones": [],
+                    "ground_truth_source": "bundled_formal_source",
+                    "ground_truth_source_path": str(path.resolve()),
+                },
+            )
+            for field in ("messages", "tool_allow_list", "candidate_tools", "milestones"):
+                value = row.get(field)
+                if isinstance(value, list) and value and not entry[field]:
+                    entry[field] = list(value)
+    return index
+
+
+def resolve_ground_truth(scenario_name: str) -> Dict[str, Any]:
+    for index in (load_vendored_ground_truth_index(), load_bundled_ground_truth_index()):
+        entry = index.get(scenario_name)
+        if entry:
+            return {
+                "messages": list(entry.get("messages", [])),
+                "tool_allow_list": list(entry.get("tool_allow_list", [])),
+                "candidate_tools": list(entry.get("candidate_tools", [])),
+                "milestones": list(entry.get("milestones", [])),
+                "ground_truth_source": entry.get("ground_truth_source"),
+                "ground_truth_source_path": entry.get("ground_truth_source_path"),
+            }
+    return {
+        "messages": [],
+        "tool_allow_list": [],
+        "candidate_tools": [],
+        "milestones": [],
+        "ground_truth_source": None,
+        "ground_truth_source_path": None,
+    }
+
+
 def iter_aligned_rows(run_dir: Path, result_summary: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
     for item in result_summary.get("per_scenario_results", []):
         if not isinstance(item, dict):
@@ -178,24 +335,42 @@ def iter_aligned_rows(run_dir: Path, result_summary: Dict[str, Any]) -> Iterable
             continue
         conversation = load_conversation(run_dir, scenario_name)
         scenario_export = load_scenario_export(run_dir, scenario_name)
-        tool_allow_list = extract_tool_allow_list(scenario_export)
+        ground_truth = resolve_ground_truth(scenario_name)
+        messages = conversation or list(ground_truth["messages"])
+        tool_allow_list = extract_tool_allow_list(scenario_export) or list(ground_truth["tool_allow_list"])
+        candidate_tools = extract_candidate_tools(scenario_export, tool_allow_list)
+        if not candidate_tools:
+            candidate_tools = list(ground_truth["candidate_tools"]) or list(tool_allow_list)
+        milestones = extract_milestones(scenario_export, item) or list(ground_truth["milestones"])
+        has_ground_truth_messages = bool(messages)
+        has_ground_truth_milestones = bool(milestones)
+        has_ground_truth_tools = bool(tool_allow_list) or bool(candidate_tools)
         yield {
             "sample_id": scenario_name,
-            "query": extract_query(conversation, scenario_name),
-            "messages": conversation,
+            "query": extract_query(messages, scenario_name),
+            "messages": messages,
             "tool_allow_list": tool_allow_list,
-            "candidate_tools": extract_candidate_tools(scenario_export, tool_allow_list),
+            "candidate_tools": candidate_tools,
             "categories": list(item.get("categories", [])),
-            "milestones": extract_milestones(scenario_export, item),
+            "milestones": milestones,
             "ideal_turn_count": item.get("turn_count"),
             "ideal_tool_calls": scenario_export.get("ideal_tool_calls") or scenario_export.get("expected_tool_calls"),
             "result_summary": item,
+            "has_ground_truth_messages": has_ground_truth_messages,
+            "has_ground_truth_milestones": has_ground_truth_milestones,
+            "has_ground_truth_tools": has_ground_truth_tools,
             "metadata": {
                 "source": "official_toolsandbox_run",
                 "official_run_dir": str(run_dir.resolve()),
                 "trajectory_dir": str((run_dir / 'trajectories' / scenario_name).resolve()),
                 "result_summary_path": str((run_dir / 'result_summary.json').resolve()),
+                "conversation_present": bool(conversation),
                 "scenario_export_present": bool(scenario_export),
+                "has_ground_truth_messages": has_ground_truth_messages,
+                "has_ground_truth_milestones": has_ground_truth_milestones,
+                "has_ground_truth_tools": has_ground_truth_tools,
+                "ground_truth_backfill_source": ground_truth.get("ground_truth_source"),
+                "ground_truth_backfill_path": ground_truth.get("ground_truth_source_path"),
             },
         }
 

@@ -709,6 +709,7 @@ class ToolSandboxAdapter:
         task_id = sample.sample_id
         target_path = sample.raw_payload.get("target_path") or f"{self.default_target_dir}/{task_id}.txt"
         tool_allow_list = self._tool_allow_list(sample.raw_payload)
+        raw_metadata = dict(sample.raw_payload.get("metadata", {}))
         milestones = list(sample.raw_payload.get("milestones", []))
         reference_result_summary = self._extract_reference_result_summary(sample.raw_payload)
 
@@ -725,6 +726,7 @@ class ToolSandboxAdapter:
             "ideal_tool_calls": sample.raw_payload.get("ideal_tool_calls"),
             "reference_result_summary": reference_result_summary,
             "metadata": {
+                **raw_metadata,
                 "benchmark": self.benchmark_name,
                 "toolsandbox_categories": categories,
                 "tool_allow_list": tool_allow_list,
@@ -738,8 +740,10 @@ class ToolSandboxAdapter:
                 "reference_result_summary_present": bool(reference_result_summary),
             },
         }
-        if tool_allow_list:
-            task["candidate_tools"] = tool_allow_list
+        if "candidate_tools" in sample.raw_payload:
+            task["candidate_tools"] = list(sample.raw_payload.get("candidate_tools", []))
+        elif tool_allow_list:
+            task["candidate_tools"] = list(tool_allow_list)
         if "constraints" in sample.raw_payload:
             task["constraints"] = dict(sample.raw_payload["constraints"])
         if "simulated_policy" in sample.raw_payload:
@@ -762,7 +766,7 @@ class ToolSandboxAdapter:
         if total_milestones > 0 and has_explicit_milestone_signal:
             milestone_coverage = matched_milestones / total_milestones
         else:
-            milestone_coverage = 1.0 if raw_trace_success else 0.0
+            milestone_coverage = 0.0
 
         tool_calls = int(trace_metrics.get("tool_calls", 0))
         user_queries = sum(1 for event in trace_events if event.get("event_type") == "user_query")
@@ -772,7 +776,13 @@ class ToolSandboxAdapter:
         hallucination_free = self._hallucination_avoidance(sample.raw_payload, trace_events)
         reference_result_summary = self._extract_reference_result_summary(sample.raw_payload)
         result_summary_source = self._result_summary_source(result_summary)
-        proxy_summary_success = self._proxy_summary_success(similarity)
+        if result_summary_source == "toolclaw_proxy" and total_milestones == 0:
+            similarity = None
+        proxy_summary_success = self._proxy_summary_success(
+            similarity=similarity,
+            result_summary_source=result_summary_source,
+            total_milestones=total_milestones,
+        )
         execution_verified_success = self._execution_verified_success(
             raw_trace_success=raw_trace_success,
             result_summary_source=result_summary_source,
@@ -780,13 +790,14 @@ class ToolSandboxAdapter:
             matched_milestones=matched_milestones,
             total_milestones=total_milestones,
         )
+        milestone_similarity = float(similarity) if similarity is not None else 0.0
 
         return BenchmarkTraceScore(
             benchmark=self.benchmark_name,
             sample_id=sample.sample_id,
             success=execution_verified_success,
             metrics={
-                "milestone_similarity": similarity if similarity is not None else (1.0 if raw_trace_success else 0.0),
+                "milestone_similarity": milestone_similarity,
                 "milestone_coverage": milestone_coverage,
                 "tool_efficiency": self._efficiency_score(tool_calls, expected_tool_calls, step_penalty=0.15),
                 "turn_efficiency": self._efficiency_score(turn_count, expected_turns, step_penalty=0.2),
@@ -800,11 +811,7 @@ class ToolSandboxAdapter:
                 "hallucination_avoidance": hallucination_free,
                 "execution_verified_success": 1.0 if execution_verified_success else 0.0,
                 "proxy_summary_success": 1.0 if proxy_summary_success else 0.0,
-                "state_dependency_score": (
-                    similarity if similarity is not None else (1.0 if raw_trace_success else 0.0)
-                )
-                if "state_dependency" in categories
-                else 1.0,
+                "state_dependency_score": milestone_similarity if "state_dependency" in categories else 1.0,
             },
             diagnostics={
                 "categories": categories,
@@ -820,6 +827,7 @@ class ToolSandboxAdapter:
                 "expected_tool_calls": expected_tool_calls,
                 "tool_calls": tool_calls,
                 "user_queries": user_queries,
+                "milestone_signal_available": total_milestones > 0 and has_explicit_milestone_signal,
                 "used_result_summary": bool(result_summary),
                 "result_summary_source": result_summary_source,
                 "reference_result_summary_available": bool(reference_result_summary),
@@ -843,10 +851,10 @@ class ToolSandboxAdapter:
                 matched_milestones = len(milestones)
             else:
                 matched_milestones = min(len(milestones), progress_signals)
-        similarity = (matched_milestones / len(milestones)) if milestones else (1.0 if success else 0.0)
+        similarity = (matched_milestones / len(milestones)) if milestones else None
         milestone_mapping: List[Any] = [idx for idx in range(matched_milestones)] + [None] * max(len(milestones) - matched_milestones, 0)
         return {
-            "similarity": float(similarity),
+            "similarity": float(similarity) if similarity is not None else None,
             "milestone_mapping": milestone_mapping,
             "matched_milestones": matched_milestones,
             "turn_count": turn_count,
@@ -941,7 +949,7 @@ class ToolSandboxAdapter:
 
     def _build_candidate_tools(self, raw: Dict[str, Any]) -> List[ToolSpec]:
         raw_tools = raw.get("candidate_tools")
-        if isinstance(raw_tools, list) and raw_tools:
+        if isinstance(raw_tools, list):
             tools: List[ToolSpec] = []
             for idx, raw_tool in enumerate(raw_tools, start=1):
                 if isinstance(raw_tool, str):
@@ -960,14 +968,13 @@ class ToolSandboxAdapter:
                             metadata={k: v for k, v in raw_tool.items() if k not in {"tool_id", "name", "description"}},
                         )
                     )
-            if tools:
-                return tools
+            return tools
 
         allow_list = self._tool_allow_list(raw)
         if allow_list:
             return [ToolSpec(tool_id=tool_id, description=f"ToolSandbox tool: {tool_id}") for tool_id in allow_list]
 
-        return Workflow.demo().context.candidate_tools
+        return []
 
     @staticmethod
     def _build_constraints(raw: Dict[str, Any]) -> TaskConstraints:
@@ -1156,7 +1163,9 @@ class ToolSandboxAdapter:
     def _result_summary_source(result_summary: Dict[str, Any]) -> str:
         return str(result_summary.get("source") or result_summary.get("summary_source") or "toolclaw_proxy")
 
-    def _proxy_summary_success(self, similarity: Any) -> bool:
+    def _proxy_summary_success(self, similarity: Any, result_summary_source: str, total_milestones: int) -> bool:
+        if result_summary_source == "toolclaw_proxy" and total_milestones <= 0:
+            return False
         try:
             return float(similarity) >= float(self.default_success_threshold)
         except (TypeError, ValueError):

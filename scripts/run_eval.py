@@ -183,7 +183,7 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         workflow.task.constraints = constraints
 
     raw_tools = task.get("candidate_tools")
-    if isinstance(raw_tools, list) and raw_tools:
+    if isinstance(raw_tools, list):
         candidate_tools: List[ToolSpec] = []
         for idx, raw_tool in enumerate(raw_tools, start=1):
             if isinstance(raw_tool, str):
@@ -197,8 +197,7 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
                         metadata={k: v for k, v in raw_tool.items() if k not in {"tool_id", "name", "description"}},
                     )
                 )
-        if candidate_tools:
-            workflow.context.candidate_tools = candidate_tools
+        workflow.context.candidate_tools = candidate_tools
 
     if isinstance(raw_metadata, dict):
         workflow.metadata.update(raw_metadata)

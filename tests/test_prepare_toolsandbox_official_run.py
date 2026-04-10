@@ -79,3 +79,67 @@ def test_prepare_toolsandbox_official_run_extracts_latest_run(tmp_path: Path) ->
     assert row["milestones"] == ["disable wifi", "confirm wifi disabled"]
     assert row["result_summary"]["similarity"] == 0.92
     assert row["metadata"]["scenario_export_present"] is True
+    assert row["has_ground_truth_messages"] is True
+    assert row["has_ground_truth_milestones"] is True
+    assert row["has_ground_truth_tools"] is True
+
+
+def test_prepare_toolsandbox_official_run_backfills_ground_truth_when_export_is_missing(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    run_dir = data_root / "agent_demo_user_demo_2026_04_04_00_00_00"
+    scenario_name = "send_message_with_contact_content_cellular_off_multiple_user_turn"
+    (run_dir / "trajectories" / scenario_name).mkdir(parents=True)
+
+    (run_dir / "result_summary.json").write_text(
+        json.dumps(
+            {
+                "per_scenario_results": [
+                    {
+                        "name": scenario_name,
+                        "categories": ["state_dependency", "multiple_user_turn"],
+                        "similarity": 0.0,
+                        "turn_count": 4,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    out_path = tmp_path / "official.aligned.jsonl"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/prepare_toolsandbox_official_run.py",
+            "--run-dir",
+            "latest",
+            "--data-root",
+            str(data_root),
+            "--out",
+            str(out_path),
+        ],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = [json.loads(line) for line in out_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["query"] == "Send a message"
+    assert row["tool_allow_list"] == [
+        "search_contacts",
+        "send_message_with_phone_number",
+        "set_cellular_service_status",
+        "get_cellular_service_status",
+    ]
+    assert row["candidate_tools"] == row["tool_allow_list"]
+    assert len(row["milestones"]) == 4
+    assert row["has_ground_truth_messages"] is True
+    assert row["has_ground_truth_milestones"] is True
+    assert row["has_ground_truth_tools"] is True
+    assert row["metadata"]["scenario_export_present"] is False
+    assert row["metadata"]["ground_truth_backfill_source"] == "vendored_scenario_source"

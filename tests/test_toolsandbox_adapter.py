@@ -157,5 +157,26 @@ def test_toolsandbox_adapter_strips_proxy_only_success_when_no_milestones_are_ve
 
     assert score.success is False
     assert score.metrics["execution_verified_success"] == 0.0
-    assert score.metrics["proxy_summary_success"] == 1.0
+    assert score.metrics["proxy_summary_success"] == 0.0
+    assert score.metrics["milestone_similarity"] == 0.0
+    assert score.metrics["milestone_coverage"] == 0.0
+    assert score.metrics["state_dependency_score"] == 0.0
     assert score.diagnostics["result_summary_source"] == "toolclaw_proxy"
+
+
+def test_toolsandbox_adapter_does_not_fallback_to_demo_tools_for_empty_tool_space() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_empty_tools_001",
+        raw_payload={
+            "messages": [{"sender": "user", "recipient": "agent", "content": "Do the thing."}],
+            "candidate_tools": [],
+            "tool_allow_list": [],
+        },
+    )
+
+    request = adapter.build_request(sample)
+    eval_task = adapter.to_eval_task(sample)
+
+    assert request.context.candidate_tools == []
+    assert eval_task["candidate_tools"] == []

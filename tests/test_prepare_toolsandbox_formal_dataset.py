@@ -100,3 +100,6 @@ def test_prepare_toolsandbox_formal_dataset_maps_official_run_to_formal_schema(t
     assert row["ideal_turn_count"] == 2
     assert row["ideal_tool_calls"] == 1
     assert row["result_summary"]["similarity"] == 0.92
+    assert row["has_ground_truth_messages"] is True
+    assert row["has_ground_truth_milestones"] is True
+    assert row["has_ground_truth_tools"] is True
