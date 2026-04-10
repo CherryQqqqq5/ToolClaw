@@ -79,6 +79,9 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "state_slots": raw_row.get("state_slots", "[]"),
         "dependency_edges": raw_row.get("dependency_edges", "[]"),
         "success": bool(score_payload.get("success")),
+        "execution_verified_success": bool(metrics.get("execution_verified_success", 0.0)),
+        "proxy_summary_success": bool(metrics.get("proxy_summary_success", 0.0)),
+        "raw_trace_success": _bool_from_value(raw_row.get("success", "False")),
         "raw_success": _bool_from_value(raw_row.get("success", "False")),
         "stop_reason": raw_row.get("stop_reason", "unknown"),
         "trace_path": raw_row.get("trace_path", ""),
@@ -91,6 +94,8 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "total_milestones": int(diagnostics.get("total_milestones", 0) or 0),
         "milestone_similarity": float(metrics.get("milestone_similarity", 0.0) or 0.0),
         "milestone_coverage": float(metrics.get("milestone_coverage", 0.0) or 0.0),
+        "execution_verified_success_rate": float(metrics.get("execution_verified_success", 0.0) or 0.0),
+        "proxy_summary_success_rate": float(metrics.get("proxy_summary_success", 0.0) or 0.0),
         "interaction_efficiency": float(metrics.get("interaction_efficiency", 0.0) or 0.0),
         "tool_efficiency": float(metrics.get("tool_efficiency", 0.0) or 0.0),
         "turn_efficiency": float(metrics.get("turn_efficiency", 0.0) or 0.0),
@@ -139,6 +144,8 @@ def _category_breakdown(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, fl
         summary[category] = {
             "num_rows": float(len(category_records)),
             "success_rate": mean_or_zero([1.0 if _bool_from_value(record["row"].get("success")) else 0.0 for record in category_records]),
+            "execution_verified_success": mean_or_zero([float(record["row"].get("execution_verified_success_rate", 0.0)) for record in category_records]),
+            "proxy_summary_success": mean_or_zero([float(record["row"].get("proxy_summary_success_rate", 0.0)) for record in category_records]),
             "milestone_similarity": mean_or_zero([float(record["row"].get("milestone_similarity", 0.0)) for record in category_records]),
             "milestone_coverage": mean_or_zero([float(record["row"].get("milestone_coverage", 0.0)) for record in category_records]),
             "interaction_efficiency": mean_or_zero([float(record["row"].get("interaction_efficiency", 0.0)) for record in category_records]),
@@ -148,11 +155,32 @@ def _category_breakdown(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, fl
             "state_dependency_score": mean_or_zero([float(record["row"].get("state_dependency_score", 0.0)) for record in category_records]),
             "result_summary_coverage": mean_or_zero([float(record["row"].get("result_summary_coverage", 0.0)) for record in category_records]),
             "reference_summary_coverage": mean_or_zero([float(record["row"].get("reference_summary_coverage", 0.0)) for record in category_records]),
+            "dominant_result_summary_source": _dominant_result_summary_source(category_records),
         }
     return summary
 
 
+def _dominant_result_summary_source(records: List[Dict[str, Any]]) -> str:
+    counts: Dict[str, int] = {}
+    for record in records:
+        source = str(record["row"].get("result_summary_source", "unknown"))
+        counts[source] = counts.get(source, 0) + 1
+    if not counts:
+        return "unknown"
+    return max(sorted(counts), key=lambda key: counts[key])
+
+
+def _result_summary_source_breakdown(records: List[Dict[str, Any]]) -> Dict[str, float]:
+    counts: Dict[str, float] = {}
+    for record in records:
+        source = str(record["row"].get("result_summary_source", "unknown"))
+        counts[source] = counts.get(source, 0.0) + 1.0
+    return counts
+
+
 TOOLSANDBOX_GROUP_METRICS = [
+    AggregateMetric("execution_verified_success"),
+    AggregateMetric("proxy_summary_success"),
     AggregateMetric("milestone_similarity"),
     AggregateMetric("milestone_coverage"),
     AggregateMetric("interaction_efficiency"),
@@ -176,6 +204,8 @@ TOOLSANDBOX_CONFIG = BenchmarkScriptConfig(
     normalized_filename="toolsandbox.normalized.json",
     system_summary_title="ToolSandbox Per-System Summary",
     aggregate_metrics=[
+        AggregateMetric("execution_verified_success"),
+        AggregateMetric("proxy_summary_success"),
         AggregateMetric("milestone_similarity"),
         AggregateMetric("milestone_coverage"),
         AggregateMetric("interaction_efficiency"),
@@ -202,6 +232,8 @@ TOOLSANDBOX_CONFIG = BenchmarkScriptConfig(
     },
     system_extra_builder=lambda records: {
         "per_category": _category_breakdown(records),
+        "result_summary_source_breakdown": _result_summary_source_breakdown(records),
+        "dominant_result_summary_source": _dominant_result_summary_source(records),
     },
 )
 
@@ -381,13 +413,13 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
         "",
         "## Aggregate",
         "",
-        "| system | mean_success_rate | pass@k | consistency | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | budget_violation_rate | result_summary_coverage | reference_summary_coverage |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| system | mean_success_rate | execution_verified_success | proxy_summary_success | consistency | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | budget_violation_rate | result_summary_coverage | reference_summary_coverage | dominant_result_summary_source |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     per_system = scoreboard["per_system_summary"]
     for system, stats in per_system.items():
         lines.append(
-            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('pass_at_k', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('budget_violation_rate', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} | {float(stats.get('reference_result_summary_available', 0.0)):.3f} |"
+            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('execution_verified_success', 0.0)):.3f} | {float(stats.get('proxy_summary_success', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('budget_violation_rate', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} | {float(stats.get('reference_result_summary_available', 0.0)):.3f} | {stats.get('dominant_result_summary_source', 'unknown')} |"
         )
 
     lines.extend(
@@ -410,21 +442,37 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
             "",
             "## Category Breakdown",
             "",
-            "| system | category | rows | success_rate | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage | reference_summary_coverage |",
-            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| system | category | rows | success_rate | execution_verified_success | proxy_summary_success | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage | reference_summary_coverage | dominant_result_summary_source |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
         ]
     )
     for system, stats in per_system.items():
         for category, category_stats in sorted(stats.get("per_category", {}).items()):
             lines.append(
-                f"| {system} | {category} | {int(category_stats.get('num_rows', 0))} | {float(category_stats.get('success_rate', 0.0)):.3f} | {float(category_stats.get('milestone_similarity', 0.0)):.3f} | {float(category_stats.get('milestone_coverage', 0.0)):.3f} | {float(category_stats.get('state_dependency_score', 0.0)):.3f} | {float(category_stats.get('hallucination_avoidance', 0.0)):.3f} | {float(category_stats.get('tool_efficiency', 0.0)):.3f} | {float(category_stats.get('turn_efficiency', 0.0)):.3f} | {float(category_stats.get('result_summary_coverage', 0.0)):.3f} | {float(category_stats.get('reference_summary_coverage', 0.0)):.3f} |"
+                f"| {system} | {category} | {int(category_stats.get('num_rows', 0))} | {float(category_stats.get('success_rate', 0.0)):.3f} | {float(category_stats.get('execution_verified_success', 0.0)):.3f} | {float(category_stats.get('proxy_summary_success', 0.0)):.3f} | {float(category_stats.get('milestone_similarity', 0.0)):.3f} | {float(category_stats.get('milestone_coverage', 0.0)):.3f} | {float(category_stats.get('state_dependency_score', 0.0)):.3f} | {float(category_stats.get('hallucination_avoidance', 0.0)):.3f} | {float(category_stats.get('tool_efficiency', 0.0)):.3f} | {float(category_stats.get('turn_efficiency', 0.0)):.3f} | {float(category_stats.get('result_summary_coverage', 0.0)):.3f} | {float(category_stats.get('reference_summary_coverage', 0.0)):.3f} | {category_stats.get('dominant_result_summary_source', 'unknown')} |"
             )
+
+    lines.extend(
+        [
+            "",
+            "## Result Summary Sources",
+            "",
+            "| system | result_summary_source | rows |",
+            "|---|---|---:|",
+        ]
+    )
+    for system, stats in per_system.items():
+        for source, count in sorted(dict(stats.get("result_summary_source_breakdown", {})).items()):
+            lines.append(f"| {system} | {source} | {int(count)} |")
 
     lines.extend(
         [
             "",
             "## Interpretation",
             "",
+            "- `mean_success_rate` is computed from `execution_verified_success`, not from proxy summaries alone.",
+            "- `proxy_summary_success` tracks runs that looked successful under the attached ToolClaw proxy summary path.",
+            "- `result_summary_source` is reported explicitly so proxy-derived runs are visible in the main report.",
             "- All aggregate and category tables in this report are computed from `comparison.scored.csv`, not from raw `run_eval.py` rows.",
             "- FailTax is the default slicing axis for phase-2 style failure studies; category tables remain useful but secondary.",
             "- `comparison.raw.csv` preserves the original execution outputs from `run_eval.py` for audit and debugging.",

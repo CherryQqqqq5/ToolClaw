@@ -115,6 +115,9 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "per_category" in per_system["a0_baseline"]
     assert "state_dependency" in per_system["a0_baseline"]["per_category"]
     assert "used_result_summary" in per_system["a0_baseline"]
+    assert "execution_verified_success" in per_system["a0_baseline"]
+    assert "proxy_summary_success" in per_system["a0_baseline"]
+    assert "dominant_result_summary_source" in per_system["a0_baseline"]
     experiment_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert experiment_manifest["comparison_path"].endswith("comparison.scored.csv")
     assert experiment_manifest["comparison_raw_path"].endswith("comparison.raw.csv")
@@ -125,6 +128,8 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "ToolSandbox Category Summary" in per_category_md
     assert "state_dependency" in per_category_md
     assert "result_summary_coverage" in per_category_md
+    assert "execution_verified_success" in per_category_md
+    assert "proxy_summary_success" in per_category_md
     assert "| a0_baseline | state_dependency | 1 | 1.000" in per_category_md
     per_category_json = json.loads(per_category_json_path.read_text(encoding="utf-8"))
     assert "a0_baseline" in per_category_json
@@ -134,6 +139,11 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
 
     report = report_path.read_text(encoding="utf-8")
     assert "ToolSandbox Benchmark Report" in report
+    assert "execution_verified_success" in report
+    assert "proxy_summary_success" in report
+    assert "dominant_result_summary_source" in report
+    assert "Result Summary Sources" in report
+    assert "toolclaw_proxy" in report
     assert "result_summary_coverage" in report
     assert "reference_summary_coverage" in report
     assert "state_dependency_score" in report
@@ -308,6 +318,7 @@ def test_run_toolsandbox_bench_summary_recomputes_from_scored_rows(tmp_path: Pat
             key = (system, category)
             assert report_category_rows[key] == expected
             assert category_md_rows[key] == expected
+            assert "dominant_result_summary_source" in category_stats
 
 
 def test_run_toolsandbox_bench_script_merges_external_result_summaries(tmp_path: Path) -> None:

@@ -754,7 +754,7 @@ class ToolSandboxAdapter:
             result_summary = self.build_proxy_result_summary(sample, trace_payload)
         categories = self._extract_categories(sample.raw_payload)
         similarity = self._extract_similarity(result_summary)
-        success = bool(trace_metrics.get("success"))
+        raw_trace_success = bool(trace_metrics.get("success"))
         milestone_mapping = self._extract_milestone_mapping(result_summary)
         total_milestones = self._expected_milestone_count(sample.raw_payload, milestone_mapping)
         matched_milestones = self._matched_milestones(milestone_mapping, result_summary)
@@ -762,7 +762,7 @@ class ToolSandboxAdapter:
         if total_milestones > 0 and has_explicit_milestone_signal:
             milestone_coverage = matched_milestones / total_milestones
         else:
-            milestone_coverage = 1.0 if success else 0.0
+            milestone_coverage = 1.0 if raw_trace_success else 0.0
 
         tool_calls = int(trace_metrics.get("tool_calls", 0))
         user_queries = sum(1 for event in trace_events if event.get("event_type") == "user_query")
@@ -771,26 +771,37 @@ class ToolSandboxAdapter:
         expected_tool_calls = self._expected_tool_calls(sample.raw_payload, categories)
         hallucination_free = self._hallucination_avoidance(sample.raw_payload, trace_events)
         reference_result_summary = self._extract_reference_result_summary(sample.raw_payload)
+        result_summary_source = self._result_summary_source(result_summary)
+        proxy_summary_success = self._proxy_summary_success(similarity)
+        execution_verified_success = self._execution_verified_success(
+            raw_trace_success=raw_trace_success,
+            result_summary_source=result_summary_source,
+            proxy_summary_success=proxy_summary_success,
+            matched_milestones=matched_milestones,
+            total_milestones=total_milestones,
+        )
 
         return BenchmarkTraceScore(
             benchmark=self.benchmark_name,
             sample_id=sample.sample_id,
-            success=success,
+            success=execution_verified_success,
             metrics={
-                "milestone_similarity": similarity if similarity is not None else (1.0 if success else 0.0),
+                "milestone_similarity": similarity if similarity is not None else (1.0 if raw_trace_success else 0.0),
                 "milestone_coverage": milestone_coverage,
                 "tool_efficiency": self._efficiency_score(tool_calls, expected_tool_calls, step_penalty=0.15),
                 "turn_efficiency": self._efficiency_score(turn_count, expected_turns, step_penalty=0.2),
                 "interaction_efficiency": self._interaction_efficiency(
-                    success=success,
+                    success=execution_verified_success,
                     categories=categories,
                     user_queries=user_queries,
                     turn_count=turn_count,
                     expected_turns=expected_turns,
                 ),
                 "hallucination_avoidance": hallucination_free,
+                "execution_verified_success": 1.0 if execution_verified_success else 0.0,
+                "proxy_summary_success": 1.0 if proxy_summary_success else 0.0,
                 "state_dependency_score": (
-                    similarity if similarity is not None else (1.0 if success else 0.0)
+                    similarity if similarity is not None else (1.0 if raw_trace_success else 0.0)
                 )
                 if "state_dependency" in categories
                 else 1.0,
@@ -799,6 +810,9 @@ class ToolSandboxAdapter:
                 "categories": categories,
                 "primary_category": categories[0] if categories else "toolsandbox",
                 "similarity": similarity,
+                "raw_trace_success": raw_trace_success,
+                "execution_verified_success": execution_verified_success,
+                "proxy_summary_success": proxy_summary_success,
                 "matched_milestones": matched_milestones,
                 "total_milestones": total_milestones,
                 "turn_count": turn_count,
@@ -807,7 +821,7 @@ class ToolSandboxAdapter:
                 "tool_calls": tool_calls,
                 "user_queries": user_queries,
                 "used_result_summary": bool(result_summary),
-                "result_summary_source": str(result_summary.get("source") or result_summary.get("summary_source") or "toolclaw_proxy"),
+                "result_summary_source": result_summary_source,
                 "reference_result_summary_available": bool(reference_result_summary),
             },
         )
@@ -1137,6 +1151,31 @@ class ToolSandboxAdapter:
             if tool_id and str(tool_id) not in allowed_tools:
                 return 0.0
         return 1.0
+
+    @staticmethod
+    def _result_summary_source(result_summary: Dict[str, Any]) -> str:
+        return str(result_summary.get("source") or result_summary.get("summary_source") or "toolclaw_proxy")
+
+    def _proxy_summary_success(self, similarity: Any) -> bool:
+        try:
+            return float(similarity) >= float(self.default_success_threshold)
+        except (TypeError, ValueError):
+            return False
+
+    @staticmethod
+    def _execution_verified_success(
+        *,
+        raw_trace_success: bool,
+        result_summary_source: str,
+        proxy_summary_success: bool,
+        matched_milestones: int,
+        total_milestones: int,
+    ) -> bool:
+        if not raw_trace_success or not proxy_summary_success:
+            return False
+        if result_summary_source != "toolclaw_proxy":
+            return True
+        return total_milestones > 0 and matched_milestones == total_milestones
 
 
 @dataclass

@@ -87,6 +87,8 @@ def test_toolsandbox_adapter_scores_similarity_coverage_and_hallucination_avoida
     score = adapter.score_trace(sample, trace_payload)
 
     assert score.success is False
+    assert score.metrics["execution_verified_success"] == 0.0
+    assert score.metrics["proxy_summary_success"] == 0.0
     assert score.metrics["milestone_similarity"] == 0.9
     assert score.metrics["milestone_coverage"] == 2 / 3
     assert score.metrics["tool_efficiency"] < 1.0
@@ -122,8 +124,38 @@ def test_toolsandbox_adapter_ignores_external_reference_summary_when_trace_summa
 
     score = adapter.score_trace(sample, trace_payload)
 
+    assert score.success is False
     assert score.metrics["milestone_similarity"] == 0.5
     assert score.metrics["milestone_coverage"] == 0.5
     assert score.diagnostics["used_result_summary"] is True
     assert score.diagnostics["result_summary_source"] == "toolclaw_proxy"
     assert score.diagnostics["reference_result_summary_available"] is True
+
+
+def test_toolsandbox_adapter_strips_proxy_only_success_when_no_milestones_are_verified() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_proxy_only_001",
+        raw_payload={
+            "categories": ["State Dependency"],
+            "milestones": [],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "metadata": {
+            "toolsandbox_result": {
+                "similarity": 1.0,
+                "matched_milestones": 0,
+                "source": "toolclaw_proxy",
+            }
+        },
+        "events": [{"event_type": "tool_result", "tool_id": "set_wifi_status"}],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.success is False
+    assert score.metrics["execution_verified_success"] == 0.0
+    assert score.metrics["proxy_summary_success"] == 1.0
+    assert score.diagnostics["result_summary_source"] == "toolclaw_proxy"
