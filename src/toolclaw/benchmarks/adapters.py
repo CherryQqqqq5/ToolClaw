@@ -748,6 +748,18 @@ class ToolSandboxAdapter:
             task["constraints"] = dict(sample.raw_payload["constraints"])
         if "simulated_policy" in sample.raw_payload:
             task["simulated_policy"] = dict(sample.raw_payload["simulated_policy"])
+        if sample.raw_payload.get("reuse_family_id") is not None:
+            task["reuse_family_id"] = sample.raw_payload.get("reuse_family_id")
+        if sample.raw_payload.get("reuse_pass_index") is not None:
+            task["reuse_pass_index"] = sample.raw_payload.get("reuse_pass_index")
+        if "backup_tool_map" in sample.raw_payload:
+            task["backup_tool_map"] = dict(sample.raw_payload["backup_tool_map"])
+        if "state_failure_mode" in sample.raw_payload:
+            task["state_failure_mode"] = sample.raw_payload["state_failure_mode"]
+        if "wrong_target_path" in sample.raw_payload:
+            task["wrong_target_path"] = sample.raw_payload["wrong_target_path"]
+        if "reuse_override_inputs" in sample.raw_payload:
+            task["reuse_override_inputs"] = dict(sample.raw_payload["reuse_override_inputs"])
         return annotate_task_payload(task)
 
     def score_trace(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> BenchmarkTraceScore:

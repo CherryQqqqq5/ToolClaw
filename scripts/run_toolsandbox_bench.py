@@ -162,11 +162,45 @@ def _validate_smoke_profile(samples: List[Any]) -> None:
         for sample in samples
         for category in sample.metadata.get("toolsandbox_categories", [])
     }
-    has_state = "state_dependency" in categories
-    has_interaction = any(category in categories for category in ("multiple_user_turn", "insufficient_information"))
-    if len(samples) < 3 or not has_state or not has_interaction:
+    has_state = any(str(sample.raw_payload.get("execution_scenario") or "") == "state_failure" for sample in samples)
+    has_interaction = any(
+        str(sample.raw_payload.get("execution_scenario") or "") == "approval_required"
+        or bool(sample.raw_payload.get("constraints", {}).get("requires_user_approval"))
+        or any(category in sample.metadata.get("toolsandbox_categories", []) for category in ("multiple_user_turn", "insufficient_information"))
+        for sample in samples
+    )
+    has_recovery = any(
+        str(sample.raw_payload.get("execution_scenario") or "") == "binding_failure"
+        or (
+            str(sample.raw_payload.get("execution_scenario") or "") == "environment_failure"
+            and bool(sample.raw_payload.get("backup_tool_map"))
+        )
+        for sample in samples
+    )
+    family_passes: Dict[str, set[int]] = {}
+    for sample in samples:
+        family_id = str(sample.raw_payload.get("reuse_family_id") or "").strip()
+        pass_index = sample.raw_payload.get("reuse_pass_index")
+        if not family_id:
+            continue
+        try:
+            resolved_pass_index = int(pass_index)
+        except (TypeError, ValueError):
+            continue
+        family_passes.setdefault(family_id, set()).add(resolved_pass_index)
+    has_reuse_pair = any(len(pass_indices) >= 2 and 1 in pass_indices and 2 in pass_indices for pass_indices in family_passes.values())
+    has_planner_distractor = any(
+        len(sample.raw_payload.get("candidate_tools", [])) >= 3
+        and any(
+            str(item.get("tool_id") or item.get("name") or "") == "ordering_write_tool"
+            for item in sample.raw_payload.get("candidate_tools", [])
+            if isinstance(item, dict)
+        )
+        for sample in samples
+    )
+    if len(samples) < 8 or not has_state or not has_interaction or not has_recovery or not has_reuse_pair or not has_planner_distractor:
         raise ValueError(
-            "ToolSandbox smoke requires at least 3 validated samples including state_dependency and interaction-heavy slices."
+            "ToolSandbox smoke requires at least 8 validated samples covering explicit state_failure, interaction, recovery, planner-distractor, and reuse-pair slices."
         )
 
 

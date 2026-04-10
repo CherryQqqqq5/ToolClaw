@@ -180,3 +180,36 @@ def test_toolsandbox_adapter_does_not_fallback_to_demo_tools_for_empty_tool_spac
 
     assert request.context.candidate_tools == []
     assert eval_task["candidate_tools"] == []
+
+
+def test_toolsandbox_adapter_preserves_execution_controls_in_eval_task() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_controls_001",
+        raw_payload={
+            "query": "Retrieve the compliance notes and write the approved report.",
+            "messages": [{"sender": "user", "recipient": "agent", "content": "Retrieve the compliance notes and write the approved report."}],
+            "candidate_tools": [
+                {"tool_id": "search_tool", "description": "Search"},
+                {"tool_id": "write_tool", "description": "Write"},
+            ],
+            "tool_allow_list": ["search_tool", "write_tool"],
+            "execution_scenario": "state_failure",
+            "state_failure_mode": "wrong_write_target",
+            "backup_tool_map": {"write_tool": "backup_write_tool"},
+            "reuse_family_id": "reuse_case_001",
+            "reuse_pass_index": 2,
+            "wrong_target_path": "outputs/reports/shadow.txt",
+            "reuse_override_inputs": {"cap_write": ["target_path"]},
+        },
+    )
+
+    eval_task = adapter.to_eval_task(sample)
+
+    assert eval_task["scenario"] == "state_failure"
+    assert eval_task["state_failure_mode"] == "wrong_write_target"
+    assert eval_task["backup_tool_map"] == {"write_tool": "backup_write_tool"}
+    assert eval_task["reuse_family_id"] == "reuse_case_001"
+    assert eval_task["reuse_pass_index"] == 2
+    assert eval_task["wrong_target_path"] == "outputs/reports/shadow.txt"
+    assert eval_task["reuse_override_inputs"] == {"cap_write": ["target_path"]}
