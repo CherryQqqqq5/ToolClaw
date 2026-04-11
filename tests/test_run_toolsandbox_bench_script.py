@@ -121,7 +121,13 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "used_result_summary" in per_system["a0_baseline"]
     assert "execution_verified_success" in per_system["a0_baseline"]
     assert "proxy_summary_success" in per_system["a0_baseline"]
+    assert "raw_trace_success_rate" in per_system["a0_baseline"]
+    assert "milestone_signal_coverage" in per_system["a0_baseline"]
     assert "dominant_result_summary_source" in per_system["a0_baseline"]
+    assert "benchmark_caution_flags" in scoreboard
+    assert "single_validated_sample" in scoreboard["benchmark_caution_flags"]
+    assert "no_reference_result_summaries" in scoreboard["benchmark_caution_flags"]
+    assert "proxy_only_result_summaries" in scoreboard["benchmark_caution_flags"]
     experiment_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert experiment_manifest["comparison_path"].endswith("comparison.scored.csv")
     assert experiment_manifest["comparison_raw_path"].endswith("comparison.raw.csv")
@@ -134,6 +140,8 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "result_summary_coverage" in per_category_md
     assert "execution_verified_success" in per_category_md
     assert "proxy_summary_success" in per_category_md
+    assert "raw_trace_success_rate" in per_category_md
+    assert "milestone_signal_coverage" in per_category_md
     assert "| a0_baseline | state_dependency | 1 | 1.000" in per_category_md
     per_category_json = json.loads(per_category_json_path.read_text(encoding="utf-8"))
     assert "a0_baseline" in per_category_json
@@ -146,8 +154,13 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "raw_execution_report" in report
     assert "execution_verified_success" in report
     assert "proxy_summary_success" in report
+    assert "raw_trace_success_rate" in report
+    assert "milestone_signal_coverage" in report
     assert "dominant_result_summary_source" in report
     assert "Result Summary Sources" in report
+    assert "Readiness" in report
+    assert "primary_result_ready: `False`" in report
+    assert "single_validated_sample" in report
     assert "toolclaw_proxy" in report
     assert "result_summary_coverage" in report
     assert "reference_summary_coverage" in report

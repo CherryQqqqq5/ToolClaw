@@ -150,7 +150,10 @@ def aggregate_records(
                     _extract_stat(record["score"], metric)
                     for record in sample_records
                 ]
-                sample_stats[metric.key] = mean_or_zero(values)
+                metric_value = mean_or_zero(values)
+                sample_stats[metric.key] = metric_value
+                if metric.column_label != metric.key:
+                    sample_stats[metric.column_label] = metric_value
             if sample is not None and config.sample_extra_builder is not None:
                 sample_stats.update(config.sample_extra_builder(sample))
             per_sample[sample_id] = sample_stats
@@ -165,7 +168,10 @@ def aggregate_records(
             "per_failtax": _group_sample_summary(per_sample, "primary_failtax"),
         }
         for metric in config.aggregate_metrics:
-            system_stats[metric.key] = mean_or_zero([float(item.get(metric.key, 0.0)) for item in per_sample.values()])
+            metric_value = mean_or_zero([float(item.get(metric.key, 0.0)) for item in per_sample.values()])
+            system_stats[metric.key] = metric_value
+            if metric.column_label != metric.key:
+                system_stats[metric.column_label] = metric_value
         if config.system_extra_builder is not None:
             system_stats.update(config.system_extra_builder(system_records))
         per_system_summary[system] = system_stats

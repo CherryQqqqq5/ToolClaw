@@ -238,6 +238,12 @@ def main() -> None:
     print(f"official ToolSandbox run: {run_dir}")
     print(f"wrote formal dataset: {out_path}")
     print(f"total samples: {len(records)}")
+    if len(records) <= 1:
+        print(
+            "warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; "
+            "this is suitable for a failure case study but not a primary benchmark result.",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":
