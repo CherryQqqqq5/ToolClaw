@@ -2,40 +2,40 @@
   "a0_baseline": {
     "state": {
       "num_rows": 1.0,
-      "success_rate": 1.0,
-      "pass_at_k": 1.0,
+      "success_rate": 0.0,
+      "pass_at_k": 0.0,
       "consistency": 1.0
     }
   },
   "a1_recovery": {
     "state": {
       "num_rows": 1.0,
-      "success_rate": 1.0,
-      "pass_at_k": 1.0,
+      "success_rate": 0.0,
+      "pass_at_k": 0.0,
       "consistency": 1.0
     }
   },
   "a2_planner": {
     "state": {
       "num_rows": 1.0,
-      "success_rate": 1.0,
-      "pass_at_k": 1.0,
+      "success_rate": 0.0,
+      "pass_at_k": 0.0,
       "consistency": 1.0
     }
   },
   "a3_interaction": {
     "state": {
       "num_rows": 1.0,
-      "success_rate": 1.0,
-      "pass_at_k": 1.0,
+      "success_rate": 0.0,
+      "pass_at_k": 0.0,
       "consistency": 1.0
     }
   },
   "a4_reuse": {
     "state": {
       "num_rows": 1.0,
-      "success_rate": 1.0,
-      "pass_at_k": 1.0,
+      "success_rate": 0.0,
+      "pass_at_k": 0.0,
       "consistency": 1.0
     }
   }

@@ -57,6 +57,169 @@ def _bool_from_value(value: Any) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes"}
 
 
+def _query_is_natural_language(query: Any, sample_id: str) -> bool:
+    normalized_query = str(query or "").strip()
+    normalized_sample_id = str(sample_id).strip()
+    if not normalized_query:
+        return False
+    if normalized_query == normalized_sample_id:
+        return False
+    return (" " in normalized_query) or any(char in normalized_query for char in "?!.:,;'\"")
+
+
+def _reference_result_summary(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = raw_payload.get("metadata", {})
+    for container in (raw_payload, metadata if isinstance(metadata, dict) else {}):
+        if isinstance(container, dict):
+            summary = (
+                container.get("reference_result_summary")
+                or container.get("toolsandbox_reference_result")
+                or container.get("result_summary")
+                or container.get("toolsandbox_result")
+            )
+            if isinstance(summary, dict):
+                return summary
+    return {}
+
+
+def _summary_exception_type(summary: Dict[str, Any]) -> str:
+    exception_type = summary.get("exception_type") or summary.get("error_type")
+    if exception_type:
+        return str(exception_type)
+    traceback = str(summary.get("traceback") or "")
+    if "APIConnectionError" in traceback:
+        return "APIConnectionError"
+    return ""
+
+
+def _has_alternative_verification_signal(raw_payload: Dict[str, Any]) -> bool:
+    summary = _reference_result_summary(raw_payload)
+    mapping = summary.get("milestone_mapping")
+    if isinstance(mapping, dict) and mapping:
+        return True
+    if isinstance(mapping, list) and mapping:
+        return True
+    matched = summary.get("matched_milestones")
+    total = summary.get("total_milestones")
+    try:
+        if int(matched or 0) > 0 or int(total or 0) > 0:
+            return True
+    except (TypeError, ValueError):
+        pass
+    return False
+
+
+def _ground_truth_present(raw_payload: Dict[str, Any], sample_id: str) -> bool:
+    return (
+        bool(raw_payload.get("messages"))
+        or bool(raw_payload.get("candidate_tools"))
+        or bool(raw_payload.get("tool_allow_list"))
+        or bool(raw_payload.get("milestones"))
+        or _query_is_natural_language(raw_payload.get("query"), sample_id)
+    )
+
+
+def _validate_toolsandbox_sample(sample: Any) -> List[str]:
+    raw_payload = sample.raw_payload
+    issues: List[str] = []
+    if not raw_payload.get("messages") and not _query_is_natural_language(raw_payload.get("query"), sample.sample_id):
+        issues.append("missing_messages_or_natural_language_query")
+    if not raw_payload.get("candidate_tools") and not raw_payload.get("tool_allow_list"):
+        issues.append("missing_candidate_tools_and_tool_allow_list")
+    if not raw_payload.get("milestones") and not _has_alternative_verification_signal(raw_payload):
+        issues.append("missing_milestones_and_execution_verified_signal")
+    return issues
+
+
+def _filter_and_validate_samples(samples: List[Any], *, smoke: bool) -> List[Any]:
+    valid_samples: List[Any] = []
+    invalid_rows: List[str] = []
+    for sample in samples:
+        issues = _validate_toolsandbox_sample(sample)
+        if not issues:
+            valid_samples.append(sample)
+            continue
+        exception_type = _summary_exception_type(_reference_result_summary(sample.raw_payload))
+        if exception_type == "APIConnectionError" and not _ground_truth_present(sample.raw_payload, sample.sample_id):
+            print(
+                f"skipping ToolSandbox sample without recoverable ground truth: {sample.sample_id} ({', '.join(issues)})",
+                file=sys.stderr,
+            )
+            continue
+        invalid_rows.append(f"{sample.sample_id}: {', '.join(issues)}")
+    if invalid_rows:
+        raise ValueError("invalid ToolSandbox samples detected before benchmark execution:\n- " + "\n- ".join(invalid_rows))
+    if not valid_samples:
+        raise ValueError("No valid ToolSandbox samples remain after source validation")
+    if smoke:
+        _validate_smoke_profile(valid_samples)
+    return valid_samples
+
+
+def _validate_smoke_profile(samples: List[Any]) -> None:
+    categories = {
+        category
+        for sample in samples
+        for category in sample.metadata.get("toolsandbox_categories", [])
+    }
+    has_state = any(str(sample.raw_payload.get("execution_scenario") or "") == "state_failure" for sample in samples)
+    has_interaction = any(
+        str(sample.raw_payload.get("execution_scenario") or "") == "approval_required"
+        or bool(sample.raw_payload.get("constraints", {}).get("requires_user_approval"))
+        or any(category in sample.metadata.get("toolsandbox_categories", []) for category in ("multiple_user_turn", "insufficient_information"))
+        for sample in samples
+    )
+    has_recovery = any(
+        str(sample.raw_payload.get("execution_scenario") or "") == "binding_failure"
+        or (
+            str(sample.raw_payload.get("execution_scenario") or "") == "environment_failure"
+            and bool(sample.raw_payload.get("backup_tool_map"))
+        )
+        for sample in samples
+    )
+    family_passes: Dict[str, set[int]] = {}
+    family_queries: Dict[str, set[str]] = {}
+    for sample in samples:
+        family_id = str(sample.raw_payload.get("reuse_family_id") or "").strip()
+        pass_index = sample.raw_payload.get("reuse_pass_index")
+        if not family_id:
+            continue
+        try:
+            resolved_pass_index = int(pass_index)
+        except (TypeError, ValueError):
+            continue
+        family_passes.setdefault(family_id, set()).add(resolved_pass_index)
+        query = str(sample.raw_payload.get("query") or "").strip().lower()
+        if query:
+            family_queries.setdefault(family_id, set()).add(query)
+    has_reuse_pair = any(len(pass_indices) >= 2 and 1 in pass_indices and 2 in pass_indices for pass_indices in family_passes.values())
+    has_transfer_reuse_pair = any(
+        len(family_queries.get(family_id, set())) >= 2 and len(pass_indices) >= 2 and 1 in pass_indices and 2 in pass_indices
+        for family_id, pass_indices in family_passes.items()
+    )
+    has_planner_distractor = any(
+        len(sample.raw_payload.get("candidate_tools", [])) >= 3
+        and any(
+            str(item.get("tool_id") or item.get("name") or "") == "ordering_write_tool"
+            for item in sample.raw_payload.get("candidate_tools", [])
+            if isinstance(item, dict)
+        )
+        for sample in samples
+    )
+    if (
+        len(samples) < 8
+        or not has_state
+        or not has_interaction
+        or not has_recovery
+        or not has_reuse_pair
+        or not has_transfer_reuse_pair
+        or not has_planner_distractor
+    ):
+        raise ValueError(
+            "ToolSandbox smoke requires at least 8 validated samples covering explicit state_failure, interaction, recovery, planner-distractor, exact reuse-pair, and transfer-style reuse slices."
+        )
+
+
 def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload: Dict[str, Any]) -> Dict[str, Any]:
     metrics = dict(score_payload.get("metrics", {}))
     diagnostics = dict(score_payload.get("diagnostics", {}))
@@ -79,6 +242,9 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "state_slots": raw_row.get("state_slots", "[]"),
         "dependency_edges": raw_row.get("dependency_edges", "[]"),
         "success": bool(score_payload.get("success")),
+        "execution_verified_success": bool(metrics.get("execution_verified_success", 0.0)),
+        "proxy_summary_success": bool(metrics.get("proxy_summary_success", 0.0)),
+        "raw_trace_success": _bool_from_value(raw_row.get("success", "False")),
         "raw_success": _bool_from_value(raw_row.get("success", "False")),
         "stop_reason": raw_row.get("stop_reason", "unknown"),
         "trace_path": raw_row.get("trace_path", ""),
@@ -91,6 +257,8 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "total_milestones": int(diagnostics.get("total_milestones", 0) or 0),
         "milestone_similarity": float(metrics.get("milestone_similarity", 0.0) or 0.0),
         "milestone_coverage": float(metrics.get("milestone_coverage", 0.0) or 0.0),
+        "execution_verified_success_rate": float(metrics.get("execution_verified_success", 0.0) or 0.0),
+        "proxy_summary_success_rate": float(metrics.get("proxy_summary_success", 0.0) or 0.0),
         "interaction_efficiency": float(metrics.get("interaction_efficiency", 0.0) or 0.0),
         "tool_efficiency": float(metrics.get("tool_efficiency", 0.0) or 0.0),
         "turn_efficiency": float(metrics.get("turn_efficiency", 0.0) or 0.0),
@@ -139,6 +307,8 @@ def _category_breakdown(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, fl
         summary[category] = {
             "num_rows": float(len(category_records)),
             "success_rate": mean_or_zero([1.0 if _bool_from_value(record["row"].get("success")) else 0.0 for record in category_records]),
+            "execution_verified_success": mean_or_zero([float(record["row"].get("execution_verified_success_rate", 0.0)) for record in category_records]),
+            "proxy_summary_success": mean_or_zero([float(record["row"].get("proxy_summary_success_rate", 0.0)) for record in category_records]),
             "milestone_similarity": mean_or_zero([float(record["row"].get("milestone_similarity", 0.0)) for record in category_records]),
             "milestone_coverage": mean_or_zero([float(record["row"].get("milestone_coverage", 0.0)) for record in category_records]),
             "interaction_efficiency": mean_or_zero([float(record["row"].get("interaction_efficiency", 0.0)) for record in category_records]),
@@ -148,11 +318,32 @@ def _category_breakdown(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, fl
             "state_dependency_score": mean_or_zero([float(record["row"].get("state_dependency_score", 0.0)) for record in category_records]),
             "result_summary_coverage": mean_or_zero([float(record["row"].get("result_summary_coverage", 0.0)) for record in category_records]),
             "reference_summary_coverage": mean_or_zero([float(record["row"].get("reference_summary_coverage", 0.0)) for record in category_records]),
+            "dominant_result_summary_source": _dominant_result_summary_source(category_records),
         }
     return summary
 
 
+def _dominant_result_summary_source(records: List[Dict[str, Any]]) -> str:
+    counts: Dict[str, int] = {}
+    for record in records:
+        source = str(record["row"].get("result_summary_source", "unknown"))
+        counts[source] = counts.get(source, 0) + 1
+    if not counts:
+        return "unknown"
+    return max(sorted(counts), key=lambda key: counts[key])
+
+
+def _result_summary_source_breakdown(records: List[Dict[str, Any]]) -> Dict[str, float]:
+    counts: Dict[str, float] = {}
+    for record in records:
+        source = str(record["row"].get("result_summary_source", "unknown"))
+        counts[source] = counts.get(source, 0.0) + 1.0
+    return counts
+
+
 TOOLSANDBOX_GROUP_METRICS = [
+    AggregateMetric("execution_verified_success"),
+    AggregateMetric("proxy_summary_success"),
     AggregateMetric("milestone_similarity"),
     AggregateMetric("milestone_coverage"),
     AggregateMetric("interaction_efficiency"),
@@ -176,6 +367,8 @@ TOOLSANDBOX_CONFIG = BenchmarkScriptConfig(
     normalized_filename="toolsandbox.normalized.json",
     system_summary_title="ToolSandbox Per-System Summary",
     aggregate_metrics=[
+        AggregateMetric("execution_verified_success"),
+        AggregateMetric("proxy_summary_success"),
         AggregateMetric("milestone_similarity"),
         AggregateMetric("milestone_coverage"),
         AggregateMetric("interaction_efficiency"),
@@ -202,6 +395,8 @@ TOOLSANDBOX_CONFIG = BenchmarkScriptConfig(
     },
     system_extra_builder=lambda records: {
         "per_category": _category_breakdown(records),
+        "result_summary_source_breakdown": _result_summary_source_breakdown(records),
+        "dominant_result_summary_source": _dominant_result_summary_source(records),
     },
 )
 
@@ -374,6 +569,7 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
         f"- samples: `{scoreboard['num_samples']}`",
         f"- runs: `{scoreboard['num_runs']}`",
         f"- systems: `{', '.join(scoreboard['systems'])}`",
+        f"- raw_execution_report: `{outdir / 'latest_run_raw_report.md'}`",
         f"- raw_comparison: `{outdir / 'comparison.raw.csv'}`",
         f"- scored_comparison: `{outdir / 'comparison.scored.csv'}`",
         f"- focused_slice_summary: `{outdir / 'focused_slice_summary.md'}`",
@@ -381,13 +577,13 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
         "",
         "## Aggregate",
         "",
-        "| system | mean_success_rate | pass@k | consistency | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | budget_violation_rate | result_summary_coverage | reference_summary_coverage |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| system | mean_success_rate | execution_verified_success | proxy_summary_success | consistency | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | budget_violation_rate | result_summary_coverage | reference_summary_coverage | dominant_result_summary_source |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     per_system = scoreboard["per_system_summary"]
     for system, stats in per_system.items():
         lines.append(
-            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('pass_at_k', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('budget_violation_rate', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} | {float(stats.get('reference_result_summary_available', 0.0)):.3f} |"
+            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('execution_verified_success', 0.0)):.3f} | {float(stats.get('proxy_summary_success', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('budget_violation_rate', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} | {float(stats.get('reference_result_summary_available', 0.0)):.3f} | {stats.get('dominant_result_summary_source', 'unknown')} |"
         )
 
     lines.extend(
@@ -410,24 +606,41 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
             "",
             "## Category Breakdown",
             "",
-            "| system | category | rows | success_rate | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage | reference_summary_coverage |",
-            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| system | category | rows | success_rate | execution_verified_success | proxy_summary_success | milestone_similarity | milestone_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage | reference_summary_coverage | dominant_result_summary_source |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
         ]
     )
     for system, stats in per_system.items():
         for category, category_stats in sorted(stats.get("per_category", {}).items()):
             lines.append(
-                f"| {system} | {category} | {int(category_stats.get('num_rows', 0))} | {float(category_stats.get('success_rate', 0.0)):.3f} | {float(category_stats.get('milestone_similarity', 0.0)):.3f} | {float(category_stats.get('milestone_coverage', 0.0)):.3f} | {float(category_stats.get('state_dependency_score', 0.0)):.3f} | {float(category_stats.get('hallucination_avoidance', 0.0)):.3f} | {float(category_stats.get('tool_efficiency', 0.0)):.3f} | {float(category_stats.get('turn_efficiency', 0.0)):.3f} | {float(category_stats.get('result_summary_coverage', 0.0)):.3f} | {float(category_stats.get('reference_summary_coverage', 0.0)):.3f} |"
+                f"| {system} | {category} | {int(category_stats.get('num_rows', 0))} | {float(category_stats.get('success_rate', 0.0)):.3f} | {float(category_stats.get('execution_verified_success', 0.0)):.3f} | {float(category_stats.get('proxy_summary_success', 0.0)):.3f} | {float(category_stats.get('milestone_similarity', 0.0)):.3f} | {float(category_stats.get('milestone_coverage', 0.0)):.3f} | {float(category_stats.get('state_dependency_score', 0.0)):.3f} | {float(category_stats.get('hallucination_avoidance', 0.0)):.3f} | {float(category_stats.get('tool_efficiency', 0.0)):.3f} | {float(category_stats.get('turn_efficiency', 0.0)):.3f} | {float(category_stats.get('result_summary_coverage', 0.0)):.3f} | {float(category_stats.get('reference_summary_coverage', 0.0)):.3f} | {category_stats.get('dominant_result_summary_source', 'unknown')} |"
             )
+
+    lines.extend(
+        [
+            "",
+            "## Result Summary Sources",
+            "",
+            "| system | result_summary_source | rows |",
+            "|---|---|---:|",
+        ]
+    )
+    for system, stats in per_system.items():
+        for source, count in sorted(dict(stats.get("result_summary_source_breakdown", {})).items()):
+            lines.append(f"| {system} | {source} | {int(count)} |")
 
     lines.extend(
         [
             "",
             "## Interpretation",
             "",
+            "- `mean_success_rate` is computed from `execution_verified_success`, not from proxy summaries alone.",
+            "- `proxy_summary_success` tracks runs that looked successful under the attached ToolClaw proxy summary path.",
+            "- `result_summary_source` is reported explicitly so proxy-derived runs are visible in the main report.",
             "- All aggregate and category tables in this report are computed from `comparison.scored.csv`, not from raw `run_eval.py` rows.",
             "- FailTax is the default slicing axis for phase-2 style failure studies; category tables remain useful but secondary.",
             "- `comparison.raw.csv` preserves the original execution outputs from `run_eval.py` for audit and debugging.",
+            "- `latest_run_raw_report.md` preserves the raw `run_eval.py` report so it is not confused with this scored benchmark report.",
             "- `result_summary_coverage` shows how much of the benchmark has a current ToolClaw-run ToolSandbox summary attached to the trace. This should be 1.0 for normal runs.",
             "- `reference_summary_coverage` shows how much of the benchmark also carries imported external ToolSandbox summaries for offline comparison or dataset freezing.",
             "- These scores come from ToolClaw proxy evaluation over ToolSandbox-style tasks unless you are reading outputs from the official ToolSandbox CLI directly.",
@@ -518,12 +731,14 @@ def main() -> None:
 
     adapter = ToolSandboxAdapter()
     samples = adapter.load_samples(str(source_for_adapter))
+    samples = _filter_and_validate_samples(samples, smoke=False)
     if args.limit is not None:
         samples = samples[: args.limit]
     if args.smoke:
         samples = samples[: min(len(samples), 10)]
+        _validate_smoke_profile(samples)
     if not samples:
-        raise ValueError("No ToolSandbox samples loaded from source")
+        raise ValueError("No ToolSandbox samples loaded from source after validation")
     if args.require_result_summary and not any(sample.raw_payload.get("result_summary") for sample in samples):
         raise ValueError("require-result-summary was set, but no ToolSandbox result_summary / toolsandbox_result was found")
     systems = normalize_systems(args.systems)
@@ -543,6 +758,9 @@ def main() -> None:
         if args.asset_registry_root:
             asset_registry_root = Path(args.asset_registry_root) / f"run_{run_index:02d}"
         invoke_run_eval(normalized_path, run_outdir, args.mode, systems, asset_registry_root=asset_registry_root)
+        raw_report_path = run_outdir / "report.md"
+        if raw_report_path.exists():
+            raw_report_path.replace(run_outdir / "raw_report.md")
         raw_rows = load_run_rows(run_outdir / "comparison.csv")
         write_csv_rows(raw_rows, run_outdir / "comparison.raw.csv")
         scored_rows_for_run: List[Dict[str, Any]] = []
@@ -615,6 +833,9 @@ def main() -> None:
     latest_run_index = args.num_runs
     write_csv_rows([row for row in raw_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.raw.csv")
     write_csv_rows([row for row in scored_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.scored.csv")
+    latest_run_raw_report = outdir / "runs" / f"run_{latest_run_index:02d}" / "raw_report.md"
+    if latest_run_raw_report.exists():
+        (outdir / "latest_run_raw_report.md").write_text(latest_run_raw_report.read_text(encoding="utf-8"), encoding="utf-8")
     update_experiment_manifest(
         outdir,
         updates={
@@ -623,6 +844,7 @@ def main() -> None:
             "comparison_scored_path": str((outdir / "comparison.scored.csv").resolve()),
             "latest_comparison_raw_path": str((outdir / "latest_run_comparison.raw.csv").resolve()),
             "latest_comparison_scored_path": str((outdir / "latest_run_comparison.scored.csv").resolve()),
+            "latest_raw_report_path": str((outdir / "latest_run_raw_report.md").resolve()) if (outdir / "latest_run_raw_report.md").exists() else None,
         },
     )
     for obsolete_name in ("comparison.csv", "latest_run_comparison.csv"):
@@ -630,10 +852,19 @@ def main() -> None:
         if obsolete_path.exists():
             obsolete_path.unlink()
     _write_toolsandbox_report(scoreboard, outdir)
+    update_experiment_manifest(
+        outdir,
+        updates={
+            "report_path": str((outdir / "report.md").resolve()),
+        },
+    )
 
     print(f"prepared toolsandbox taskset: {normalized_path}")
     print(f"outputs written under: {outdir}")
-    print(f"scoreboard: {outdir / 'scoreboard.json'}")
+    print(f"raw execution: {outdir / 'runs' / f'run_{latest_run_index:02d}' / 'comparison.csv'}")
+    print(f"raw report: {outdir / 'latest_run_raw_report.md'}")
+    print(f"scored evaluation: {outdir / 'comparison.scored.csv'}")
+    print(f"final benchmark verdict: {outdir / 'scoreboard.json'}")
     print(f"per-system summary: {outdir / 'per_system_summary.json'}")
 
 

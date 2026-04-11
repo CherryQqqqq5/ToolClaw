@@ -140,3 +140,5 @@
 - Use primary_failtax and task_family tables to keep benchmark slicing aligned with experimental claims.
 
 _ Results generated from commit 1c65a73dd4fa9d0eae83e1d33484c6b0b5621fab. _
+
+_ Results generated from commit 5fbcdbae1aeb034189d5940c80737f9de65c2804. _

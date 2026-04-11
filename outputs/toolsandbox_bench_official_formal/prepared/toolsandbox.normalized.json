@@ -2,12 +2,33 @@
   {
     "task_id": "send_message_with_contact_content_cellular_off_multiple_user_turn",
     "scenario": "state_dependency",
-    "query": "send_message_with_contact_content_cellular_off_multiple_user_turn",
+    "query": "Send a message",
     "target_path": "outputs/toolsandbox/reports/send_message_with_contact_content_cellular_off_multiple_user_turn.txt",
-    "messages": [],
-    "milestones": [],
+    "messages": [
+      {
+        "sender": "RoleType.SYSTEM",
+        "recipient": "RoleType.USER",
+        "content": "USER_INSTRUCTION + \"Send a message to Fredrik Thordendal saying: How's the new album coming along. You only know Fredrik Thordendal is in your contact. You don not have more information.\""
+      },
+      {
+        "sender": "RoleType.USER",
+        "recipient": "RoleType.AGENT",
+        "content": "Send a message"
+      }
+    ],
+    "milestones": [
+      "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SETTING, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'cellular': True}))])",
+      "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SANDBOX, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'sender': RoleType.EXECUTION_ENVIRONMENT, 'recipient': RoleType.AGENT, 'tool_trace': json.dumps({'tool_name': 'search_contacts', 'arguments': {'name': 'Fredrik Thordendal'}}, ensure_ascii=False)}))], guardrail_database_exclusion_list=[DatabaseNamespace.SETTING])",
+      "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.MESSAGING, snapshot_constraint=addition_similarity, target_dataframe=pl.DataFrame({'recipient_phone_number': '+12453344098', 'content': \"How's the new album coming along\"}), reference_milestone_node_index=0)], guardrail_database_exclusion_list=[DatabaseNamespace.SETTING])",
+      "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SANDBOX, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'sender': RoleType.AGENT, 'recipient': RoleType.USER, 'content': \"Your message to Fredrik Thordendal has been sent saying: How's the new album coming along\"}))])"
+    ],
     "branch_options": [],
-    "tool_allow_list": [],
+    "tool_allow_list": [
+      "search_contacts",
+      "send_message_with_phone_number",
+      "set_cellular_service_status",
+      "get_cellular_service_status"
+    ],
     "ideal_turn_count": 30,
     "ideal_tool_calls": null,
     "reference_result_summary": {
@@ -18,8 +39,8 @@
         "MULTIPLE_USER_TURN",
         "NO_DISTRACTION_TOOLS"
       ],
-      "traceback": "Traceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 72, in map_httpcore_exceptions\n    yield\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 236, in handle_request\n    resp = self._pool.handle_request(req)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py\", line 256, in handle_request\n    raise exc from None\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py\", line 236, in handle_request\n    response = connection.handle_request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection.py\", line 101, in handle_request\n    raise exc\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection.py\", line 78, in handle_request\n    stream = self._connect(request)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection.py\", line 124, in _connect\n    stream = self._network_backend.connect_tcp(**kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_backends/sync.py\", line 207, in connect_tcp\n    with map_exceptions(exc_map):\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/contextlib.py\", line 153, in __exit__\n    self.gen.throw(typ, value, traceback)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_exceptions.py\", line 14, in map_exceptions\n    raise to_exc(exc) from exc\nhttpcore.ConnectError: [Errno 99] Cannot assign requested address\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 951, in _request\n    response = self._client.send(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 926, in send\n    response = self._send_handling_auth(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 954, in _send_handling_auth\n    response = self._send_handling_redirects(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 991, in _send_handling_redirects\n    response = self._send_single_request(request)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 1027, in _send_single_request\n    response = transport.handle_request(request)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 235, in handle_request\n    with map_httpcore_exceptions():\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/contextlib.py\", line 153, in __exit__\n    self.gen.throw(typ, value, traceback)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 89, in map_httpcore_exceptions\n    raise mapped_exc(message) from exc\nhttpx.ConnectError: [Errno 99] Cannot assign requested address\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/cli/utils.py\", line 179, in run_scenario\n    result = scenario.play_and_evaluate(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/common/scenario.py\", line 141, in play_and_evaluate\n    self.play(roles=roles, scenario_name=scenario_name)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/common/scenario.py\", line 102, in play\n    roles[sandbox_db[\"recipient\"][-1]].respond()\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/roles/openai_api_agent.py\", line 90, in respond\n    response = self.model_inference(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 332, in wrapped_f\n    return self(f, *args, **kw)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 469, in __call__\n    do = self.iter(retry_state=retry_state)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 370, in iter\n    result = action(retry_state)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 392, in <lambda>\n    self._add_action_func(lambda rs: rs.outcome.result())\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/concurrent/futures/_base.py\", line 451, in result\n    return self.__get_result()\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/concurrent/futures/_base.py\", line 403, in __get_result\n    raise self._exception\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 472, in __call__\n    result = fn(*args, **kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/roles/openai_api_agent.py\", line 155, in model_inference\n    return self.openai_client.chat.completions.create(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_utils/_utils.py\", line 275, in wrapper\n    return func(*args, **kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/resources/chat/completions.py\", line 667, in create\n    return self._post(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1233, in post\n    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 922, in request\n    return self._request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 975, in _request\n    return self._retry_request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1046, in _retry_request\n    return self._request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 975, in _request\n    return self._retry_request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1046, in _retry_request\n    return self._request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 985, in _request\n    raise APIConnectionError(request=request) from err\nopenai.APIConnectionError: Connection error.\n",
-      "exception_type": "APIConnectionError",
+      "traceback": "Traceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/cli/utils.py\", line 184, in run_scenario\n    result = scenario.play_and_evaluate(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/common/scenario.py\", line 141, in play_and_evaluate\n    self.play(roles=roles, scenario_name=scenario_name)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/common/scenario.py\", line 102, in play\n    roles[sandbox_db[\"recipient\"][-1]].respond()\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/roles/openai_api_agent.py\", line 106, in respond\n    response = self.model_inference(\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 332, in wrapped_f\n    return self(f, *args, **kw)\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 469, in __call__\n    do = self.iter(retry_state=retry_state)\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 370, in iter\n    result = action(retry_state)\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 392, in <lambda>\n    self._add_action_func(lambda rs: rs.outcome.result())\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/concurrent/futures/_base.py\", line 451, in result\n    return self.__get_result()\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/concurrent/futures/_base.py\", line 403, in __get_result\n    raise self._exception\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 472, in __call__\n    result = fn(*args, **kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/roles/openai_api_agent.py\", line 171, in model_inference\n    return self.openai_client.chat.completions.create(\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/openai/_utils/_utils.py\", line 275, in wrapper\n    return func(*args, **kwargs)\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/openai/resources/chat/completions.py\", line 667, in create\n    return self._post(\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1233, in post\n    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 922, in request\n    return self._request(\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1013, in _request\n    raise self._make_status_error_from_response(err.response) from None\nopenai.PermissionDeniedError: Error code: 403 - {'error': {'message': 'This model is not available in your region.', 'code': 403}}\n",
+      "exception_type": "PermissionDeniedError",
       "milestone_similarity": 0,
       "minefield_similarity": 0,
       "similarity": 0,
@@ -28,6 +49,17 @@
       "minefield_mapping": {}
     },
     "metadata": {
+      "source": "official_toolsandbox_run",
+      "official_run_dir": "/cephfs/qiuyn/ToolClaw/data/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_11_2026_16_10_44",
+      "trajectory_dir": "/cephfs/qiuyn/ToolClaw/data/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_11_2026_16_10_44/trajectories/send_message_with_contact_content_cellular_off_multiple_user_turn",
+      "result_summary_path": "/cephfs/qiuyn/ToolClaw/data/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_11_2026_16_10_44/result_summary.json",
+      "conversation_present": false,
+      "scenario_export_present": false,
+      "has_ground_truth_messages": true,
+      "has_ground_truth_milestones": true,
+      "has_ground_truth_tools": true,
+      "ground_truth_backfill_source": "vendored_scenario_source",
+      "ground_truth_backfill_path": "/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/scenarios/multiple_user_turn_scenarios.py",
       "benchmark": "toolsandbox",
       "toolsandbox_categories": [
         "state_dependency",
@@ -35,12 +67,33 @@
         "multiple_user_turn",
         "no_distraction_tools"
       ],
-      "tool_allow_list": [],
-      "milestone_count": 0,
+      "tool_allow_list": [
+        "search_contacts",
+        "send_message_with_phone_number",
+        "set_cellular_service_status",
+        "get_cellular_service_status"
+      ],
+      "milestone_count": 4,
       "ideal_turn_count": 30,
       "ideal_tool_calls": null,
-      "messages": [],
-      "milestones": [],
+      "messages": [
+        {
+          "sender": "RoleType.SYSTEM",
+          "recipient": "RoleType.USER",
+          "content": "USER_INSTRUCTION + \"Send a message to Fredrik Thordendal saying: How's the new album coming along. You only know Fredrik Thordendal is in your contact. You don not have more information.\""
+        },
+        {
+          "sender": "RoleType.USER",
+          "recipient": "RoleType.AGENT",
+          "content": "Send a message"
+        }
+      ],
+      "milestones": [
+        "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SETTING, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'cellular': True}))])",
+        "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SANDBOX, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'sender': RoleType.EXECUTION_ENVIRONMENT, 'recipient': RoleType.AGENT, 'tool_trace': json.dumps({'tool_name': 'search_contacts', 'arguments': {'name': 'Fredrik Thordendal'}}, ensure_ascii=False)}))], guardrail_database_exclusion_list=[DatabaseNamespace.SETTING])",
+        "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.MESSAGING, snapshot_constraint=addition_similarity, target_dataframe=pl.DataFrame({'recipient_phone_number': '+12453344098', 'content': \"How's the new album coming along\"}), reference_milestone_node_index=0)], guardrail_database_exclusion_list=[DatabaseNamespace.SETTING])",
+        "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SANDBOX, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'sender': RoleType.AGENT, 'recipient': RoleType.USER, 'content': \"Your message to Fredrik Thordendal has been sent saying: How's the new album coming along\"}))])"
+      ],
       "branch_options": [],
       "toolsandbox_reference_result": {
         "name": "send_message_with_contact_content_cellular_off_multiple_user_turn",
@@ -50,8 +103,8 @@
           "MULTIPLE_USER_TURN",
           "NO_DISTRACTION_TOOLS"
         ],
-        "traceback": "Traceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 72, in map_httpcore_exceptions\n    yield\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 236, in handle_request\n    resp = self._pool.handle_request(req)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py\", line 256, in handle_request\n    raise exc from None\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py\", line 236, in handle_request\n    response = connection.handle_request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection.py\", line 101, in handle_request\n    raise exc\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection.py\", line 78, in handle_request\n    stream = self._connect(request)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_sync/connection.py\", line 124, in _connect\n    stream = self._network_backend.connect_tcp(**kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_backends/sync.py\", line 207, in connect_tcp\n    with map_exceptions(exc_map):\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/contextlib.py\", line 153, in __exit__\n    self.gen.throw(typ, value, traceback)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpcore/_exceptions.py\", line 14, in map_exceptions\n    raise to_exc(exc) from exc\nhttpcore.ConnectError: [Errno 99] Cannot assign requested address\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 951, in _request\n    response = self._client.send(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 926, in send\n    response = self._send_handling_auth(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 954, in _send_handling_auth\n    response = self._send_handling_redirects(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 991, in _send_handling_redirects\n    response = self._send_single_request(request)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_client.py\", line 1027, in _send_single_request\n    response = transport.handle_request(request)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 235, in handle_request\n    with map_httpcore_exceptions():\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/contextlib.py\", line 153, in __exit__\n    self.gen.throw(typ, value, traceback)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/httpx/_transports/default.py\", line 89, in map_httpcore_exceptions\n    raise mapped_exc(message) from exc\nhttpx.ConnectError: [Errno 99] Cannot assign requested address\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/cli/utils.py\", line 179, in run_scenario\n    result = scenario.play_and_evaluate(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/common/scenario.py\", line 141, in play_and_evaluate\n    self.play(roles=roles, scenario_name=scenario_name)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/common/scenario.py\", line 102, in play\n    roles[sandbox_db[\"recipient\"][-1]].respond()\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/roles/openai_api_agent.py\", line 90, in respond\n    response = self.model_inference(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 332, in wrapped_f\n    return self(f, *args, **kw)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 469, in __call__\n    do = self.iter(retry_state=retry_state)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 370, in iter\n    result = action(retry_state)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 392, in <lambda>\n    self._add_action_func(lambda rs: rs.outcome.result())\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/concurrent/futures/_base.py\", line 451, in result\n    return self.__get_result()\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/concurrent/futures/_base.py\", line 403, in __get_result\n    raise self._exception\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 472, in __call__\n    result = fn(*args, **kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/roles/openai_api_agent.py\", line 155, in model_inference\n    return self.openai_client.chat.completions.create(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_utils/_utils.py\", line 275, in wrapper\n    return func(*args, **kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/resources/chat/completions.py\", line 667, in create\n    return self._post(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1233, in post\n    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 922, in request\n    return self._request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 975, in _request\n    return self._retry_request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1046, in _retry_request\n    return self._request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 975, in _request\n    return self._retry_request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1046, in _retry_request\n    return self._request(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 985, in _request\n    raise APIConnectionError(request=request) from err\nopenai.APIConnectionError: Connection error.\n",
-        "exception_type": "APIConnectionError",
+        "traceback": "Traceback (most recent call last):\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/cli/utils.py\", line 184, in run_scenario\n    result = scenario.play_and_evaluate(\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/common/scenario.py\", line 141, in play_and_evaluate\n    self.play(roles=roles, scenario_name=scenario_name)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/common/scenario.py\", line 102, in play\n    roles[sandbox_db[\"recipient\"][-1]].respond()\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/roles/openai_api_agent.py\", line 106, in respond\n    response = self.model_inference(\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 332, in wrapped_f\n    return self(f, *args, **kw)\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 469, in __call__\n    do = self.iter(retry_state=retry_state)\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 370, in iter\n    result = action(retry_state)\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 392, in <lambda>\n    self._add_action_func(lambda rs: rs.outcome.result())\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/concurrent/futures/_base.py\", line 451, in result\n    return self.__get_result()\n  File \"/cephfs/qiuyn/miniconda3/envs/tooluse/lib/python3.10/concurrent/futures/_base.py\", line 403, in __get_result\n    raise self._exception\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/tenacity/__init__.py\", line 472, in __call__\n    result = fn(*args, **kwargs)\n  File \"/cephfs/qiuyn/ToolClaw/data/external/ToolSandbox/tool_sandbox/roles/openai_api_agent.py\", line 171, in model_inference\n    return self.openai_client.chat.completions.create(\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/openai/_utils/_utils.py\", line 275, in wrapper\n    return func(*args, **kwargs)\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/openai/resources/chat/completions.py\", line 667, in create\n    return self._post(\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1233, in post\n    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 922, in request\n    return self._request(\n  File \"/tmp/toolclaw_toolsandbox_shared/.venv/lib/python3.10/site-packages/openai/_base_client.py\", line 1013, in _request\n    raise self._make_status_error_from_response(err.response) from None\nopenai.PermissionDeniedError: Error code: 403 - {'error': {'message': 'This model is not available in your region.', 'code': 403}}\n",
+        "exception_type": "PermissionDeniedError",
         "milestone_similarity": 0,
         "minefield_similarity": 0,
         "similarity": 0,
@@ -60,6 +113,7 @@
         "minefield_mapping": {}
       },
       "reference_result_summary_present": true,
+      "tool_execution_backend": "semantic_mock",
       "primary_failtax": "state",
       "failtaxes": [
         "state",
@@ -72,6 +126,7 @@
       "state_slots": [
         "query",
         "target_path",
+        "messages",
         "retrieved_info",
         "artifact_ready"
       ],
@@ -83,6 +138,13 @@
         }
       ]
     },
+    "tool_execution_backend": "semantic_mock",
+    "candidate_tools": [
+      "search_contacts",
+      "send_message_with_phone_number",
+      "set_cellular_service_status",
+      "get_cellular_service_status"
+    ],
     "simulated_policy": {
       "mode": "cooperative"
     },
@@ -98,6 +160,7 @@
     "state_slots": [
       "query",
       "target_path",
+      "messages",
       "retrieved_info",
       "artifact_ready"
     ],
