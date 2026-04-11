@@ -40,6 +40,22 @@ def test_uncertainty_detector_marks_branch_disambiguation_when_branch_options_ex
     assert report.metadata["branch_options"] == ["primary_path", "fallback_path"]
 
 
+def test_uncertainty_detector_uses_execution_guidance_when_no_real_branch_options_exist() -> None:
+    workflow = Workflow.demo()
+    workflow.execution_plan[1].inputs["target_path"] = "outputs/reports/demo_report.txt"
+    repair = Repair.demo()
+    repair.repair_type = RepairType.ASK_USER
+    repair.metadata["mapped_from_error_category"] = "unknown"
+    repair.interaction = RepairInteraction(
+        ask_user=True,
+        question="The current tool/environment failed at step_02. Do you want to provide an alternative tool, missing asset, or allow a different execution path?",
+        expected_answer_type="tool_or_asset_hint",
+    )
+    report = UncertaintyDetector().analyze_failure(workflow, repair, {})
+    assert report.primary_label == "execution_guidance"
+    assert report.metadata["branch_options"] == []
+
+
 def test_uncertainty_detector_marks_tool_mismatch_when_alternative_tool_exists() -> None:
     workflow = Workflow.demo()
     workflow.execution_plan[1].inputs["target_path"] = "outputs/reports/demo_report.txt"

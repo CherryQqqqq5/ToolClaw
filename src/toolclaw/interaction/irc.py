@@ -497,6 +497,7 @@ class InteractionShell:
             "stale_state",
             "constraint_conflict",
             "branch_disambiguation",
+            "execution_guidance",
             "tool_mismatch",
             "environment_unavailable",
         }

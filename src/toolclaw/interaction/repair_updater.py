@@ -264,6 +264,7 @@ class RepairUpdater:
     @staticmethod
     def _default_patch_targets(repair: Repair, missing_input_keys: list[str]) -> Dict[str, str]:
         patch_targets: Dict[str, str] = {}
+        branch_options = [str(item) for item in repair.metadata.get("branch_options", []) if str(item)]
         for key in missing_input_keys:
             patch_targets[key] = f"step.inputs.{key}"
         if repair.metadata.get("mapped_from_error_category") == "environment_failure":
@@ -281,7 +282,7 @@ class RepairUpdater:
                     patch_targets.setdefault(key, "step.inputs.target_path")
                 else:
                     patch_targets.setdefault(key, f"state.{key}")
-        if repair.repair_type.value == "reroute_branch" or repair.metadata.get("branch_options"):
+        if branch_options:
             patch_targets.setdefault("branch_choice", "state.selected_branch")
         if repair.repair_type.value == "request_approval":
             patch_targets["approved"] = "policy.approved"

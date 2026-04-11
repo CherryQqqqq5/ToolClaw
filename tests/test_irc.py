@@ -138,6 +138,18 @@ def test_query_policy_uses_one_shot_target_path_patch_schema() -> None:
     assert plan.patch_targets == {"target_path": "step.inputs.target_path"}
 
 
+def test_repair_updater_does_not_default_branch_choice_patch_without_branch_options() -> None:
+    workflow = Workflow.demo()
+    repair = __import__("toolclaw.schemas.repair", fromlist=["Repair"]).Repair.demo()
+    repair.repair_type = __import__("toolclaw.schemas.repair", fromlist=["RepairType"]).RepairType.REROUTE_BRANCH
+    repair.metadata["branch_options"] = []
+
+    request = RepairUpdater().build_query(workflow, repair, {})
+
+    assert request.metadata["branch_options"] == []
+    assert "branch_choice" not in request.metadata["patch_targets"]
+
+
 def test_interaction_shell_aborts_after_repeated_same_failure_signature(tmp_path: Path) -> None:
     registry = InMemoryAssetRegistry()
     runtime = ToolClawRuntime(

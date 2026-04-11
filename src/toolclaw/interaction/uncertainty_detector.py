@@ -204,9 +204,9 @@ class UncertaintyDetector:
                     },
                 )
             return UncertaintyReport(
-                primary_label="branch_disambiguation",
+                primary_label="execution_guidance",
                 confidence=0.85,
-                information_gaps=[InformationGap(gap_type="user_guidance", rationale="repair requires a direct execution choice")],
+                information_gaps=[InformationGap(gap_type="user_guidance", rationale="repair requires a direct tool, asset, or path hint")],
                 metadata={
                     "state_keys": sorted(state_values.keys()),
                     "step_id": step_id,
@@ -283,14 +283,6 @@ class UncertaintyDetector:
                 option = str(item)
                 if option and option not in branch_options:
                     branch_options.append(option)
-        if repair.repair_type == RepairType.REROUTE_BRANCH and not branch_options:
-            branch_options.extend(["primary", "fallback"])
-        if (
-            repair.repair_type == RepairType.ASK_USER
-            and not branch_options
-            and "different execution path" in (repair.interaction.question or "").lower()
-        ):
-            branch_options.extend(["current_path", "fallback_path"])
         return branch_options
 
     @staticmethod

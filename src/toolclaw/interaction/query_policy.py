@@ -123,16 +123,18 @@ class QueryPolicy:
             properties: Dict[str, Any] = {}
             required: list[str] = []
             patch_targets: Dict[str, str] = {}
+            if not branch_options:
+                return self._tool_or_asset_hint_query(
+                    backup_tool_id=backup_tool_id,
+                    alternative_tool_ids=alternative_tool_ids,
+                    error_category=error_category,
+                )
             question_text = "Choose the fallback execution branch that should run next."
             if branch_options:
                 properties["branch_choice"] = {"type": "string", "enum": branch_options}
                 required.append("branch_choice")
                 patch_targets["branch_choice"] = "state.selected_branch"
                 question_text = "Choose the execution branch that should run next."
-            else:
-                properties["fallback_execution_path"] = {"type": "string"}
-                required.append("fallback_execution_path")
-                patch_targets["fallback_execution_path"] = "step.inputs.target_path"
             return QueryPlan(
                 ask=True,
                 question_type="branch_choice",
@@ -145,6 +147,12 @@ class QueryPolicy:
                 },
                 patch_targets=patch_targets,
                 urgency="high",
+            )
+        if report.primary_label == "execution_guidance":
+            return self._tool_or_asset_hint_query(
+                backup_tool_id=backup_tool_id,
+                alternative_tool_ids=alternative_tool_ids,
+                error_category=error_category,
             )
         if report.primary_label == "tool_mismatch":
             if backup_tool_id:
@@ -204,3 +212,39 @@ class QueryPolicy:
                 urgency="high",
             )
         return QueryPlan(ask=False, question_type="none", question_text="")
+
+    @staticmethod
+    def _tool_or_asset_hint_query(
+        *,
+        backup_tool_id: str,
+        alternative_tool_ids: list[str],
+        error_category: str,
+    ) -> QueryPlan:
+        properties: Dict[str, Any] = {
+            "fallback_execution_path": {"type": "string"},
+            "input_patch": {"type": "object"},
+            "clear_failure_flag": {"type": "boolean"},
+        }
+        if backup_tool_id or alternative_tool_ids:
+            properties["tool_id"] = {"type": "string"}
+            if alternative_tool_ids:
+                properties["tool_id"]["enum"] = alternative_tool_ids
+        question_text = "The current path is blocked. Provide one direct fix: `tool_id`, `fallback_execution_path`, or `input_patch`."
+        if error_category == "environment_failure":
+            question_text = "The environment is blocked. Provide one direct fix: `tool_id`, `fallback_execution_path`, or `input_patch`."
+        return QueryPlan(
+            ask=True,
+            question_type="tool_or_asset_hint",
+            question_text=question_text,
+            response_schema={
+                "type": "object",
+                "properties": properties,
+                "additionalProperties": False,
+            },
+            patch_targets={
+                "tool_id": "binding.primary_tool",
+                "fallback_execution_path": "step.inputs.target_path",
+                "clear_failure_flag": "state.force_environment_failure",
+            },
+            urgency="high",
+        )

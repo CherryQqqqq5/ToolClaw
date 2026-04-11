@@ -40,6 +40,20 @@ def test_query_policy_builds_branch_disambiguation_query() -> None:
     assert plan.patch_targets == {"branch_choice": "state.selected_branch"}
 
 
+def test_query_policy_does_not_build_branch_choice_without_branch_options() -> None:
+    plan = QueryPolicy().decide_query(
+        UncertaintyReport(
+            primary_label="branch_disambiguation",
+            confidence=0.8,
+            metadata={"branch_options": [], "error_category": "environment_failure"},
+        )
+    )
+    assert plan.ask is True
+    assert plan.question_type == "tool_or_asset_hint"
+    assert "branch_choice" not in plan.response_schema["properties"]
+    assert plan.patch_targets["fallback_execution_path"] == "step.inputs.target_path"
+
+
 def test_query_policy_builds_tool_switch_query() -> None:
     plan = QueryPolicy().decide_query(
         UncertaintyReport(
