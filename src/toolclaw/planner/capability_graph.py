@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence
 
+from toolclaw.planner.capability_intents import infer_capability_from_text
 from toolclaw.schemas.workflow import CapabilityEdge, CapabilityGraph, CapabilityNode, TaskSpec
 
 
@@ -62,6 +63,7 @@ class RuleBasedCapabilityGraphBuilder:
                 chain.extend(template.capability_chain)
                 edges.extend(template.edges)
             chain = self._prune_and_order_nodes(chain, benchmark_hints=benchmark_hints, diagnostics=diagnostics)
+            chain = self._topologically_order_nodes(chain, edges)
             return CapabilityGraph(
                 capabilities=chain,
                 edges=self._rebuild_edges(chain),
@@ -101,6 +103,7 @@ class RuleBasedCapabilityGraphBuilder:
                 continue
         if not edges and len(nodes) > 1:
             edges = self._rebuild_edges(nodes)
+        nodes = self._topologically_order_nodes(nodes, edges)
         return CapabilityGraph(
             capabilities=nodes,
             edges=edges,
@@ -157,6 +160,42 @@ class RuleBasedCapabilityGraphBuilder:
             for index in range(len(nodes) - 1)
         ]
 
+    @staticmethod
+    def _topologically_order_nodes(
+        nodes: Sequence[CapabilityNode],
+        edges: Sequence[CapabilityEdge],
+    ) -> List[CapabilityNode]:
+        if len(nodes) <= 1 or not edges:
+            return list(nodes)
+
+        node_by_id = {node.capability_id: node for node in nodes}
+        original_rank = {node.capability_id: index for index, node in enumerate(nodes)}
+        indegree = {node.capability_id: 0 for node in nodes}
+        adjacency: Dict[str, List[str]] = {node.capability_id: [] for node in nodes}
+        for edge in edges:
+            if edge.source not in node_by_id or edge.target not in node_by_id:
+                continue
+            adjacency[edge.source].append(edge.target)
+            indegree[edge.target] += 1
+
+        ready = sorted(
+            [capability_id for capability_id, degree in indegree.items() if degree == 0],
+            key=lambda capability_id: original_rank[capability_id],
+        )
+        ordered: List[CapabilityNode] = []
+        while ready:
+            capability_id = ready.pop(0)
+            ordered.append(node_by_id[capability_id])
+            for target in adjacency.get(capability_id, []):
+                indegree[target] -= 1
+                if indegree[target] == 0:
+                    ready.append(target)
+                    ready.sort(key=lambda candidate_id: original_rank[candidate_id])
+
+        if len(ordered) != len(nodes):
+            return list(nodes)
+        return ordered
+
     @classmethod
     def _capability_order_from_texts(cls, raw_values: Sequence[Any]) -> List[str]:
         ordered: List[str] = []
@@ -168,15 +207,4 @@ class RuleBasedCapabilityGraphBuilder:
 
     @staticmethod
     def _infer_capability_from_text(raw_value: Any) -> Optional[str]:
-        text = str(raw_value or "").strip().lower()
-        if not text:
-            return None
-        keyword_map = (
-            ("cap_summarize", ("summarize", "summary", "analyze", "analysis", "draft", "compose")),
-            ("cap_write", ("write", "save", "send", "set", "update", "book", "reply", "report", "disable", "enable")),
-            ("cap_retrieve", ("retrieve", "find", "search", "lookup", "locate", "collect", "fetch", "get")),
-        )
-        for capability_id, keywords in keyword_map:
-            if any(keyword in text for keyword in keywords):
-                return capability_id
-        return None
+        return infer_capability_from_text(raw_value)

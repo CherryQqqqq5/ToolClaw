@@ -125,6 +125,28 @@ def test_planner_applies_bypass_for_single_tool_benchmark_hints() -> None:
     assert "tool_allow_list" in result.diagnostics.benchmark_hints_used
 
 
+def test_selector_can_infer_single_write_step_from_tool_semantics_without_benchmark_hints() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_semantic_write_001", user_goal="enable cellular service", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(
+                    tool_id="set_cellular_service_status",
+                    description="Enable or disable cellular service status on the device.",
+                    metadata={"affordances": ["set", "update", "enable"]},
+                )
+            ]
+        ),
+    )
+
+    result = planner.plan(request)
+
+    assert len(result.workflow.execution_plan) == 1
+    assert result.workflow.execution_plan[0].capability_id == "cap_write"
+    assert result.workflow.execution_plan[0].tool_id == "set_cellular_service_status"
+
+
 def test_planner_records_overplanning_risk_when_steps_exceed_ideal() -> None:
     planner = build_planner()
     request = PlanningRequest(

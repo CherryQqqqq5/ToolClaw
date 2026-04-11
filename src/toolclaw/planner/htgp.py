@@ -8,6 +8,11 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from toolclaw.compiler.swpc import build_task_signature_candidates
 from toolclaw.planner.binder import ToolBinder
+from toolclaw.planner.capability_intents import (
+    CAPABILITY_PROFILES_BY_ID,
+    rank_capability_profiles,
+    tool_semantic_tokens,
+)
 from toolclaw.planner.capability_graph import RuleBasedCapabilityGraphBuilder
 from toolclaw.schemas.error import ToolClawError
 from toolclaw.schemas.workflow import (
@@ -120,56 +125,75 @@ class RuleBasedCapabilitySelector(CapabilitySelector):
     ) -> List[CapabilityCandidate]:
         benchmark_hints = self._benchmark_hints(context=context, hints=hints)
         goal = task.user_goal.lower()
-        candidates: List[CapabilityCandidate] = []
-        minimal_capability = self._minimal_capability_hint(goal=goal, benchmark_hints=benchmark_hints)
+        tool_tokens = tool_semantic_tokens(
+            context.candidate_tools,
+            allowed_tool_ids=benchmark_hints.get("tool_allow_list", []),
+        )
+        ranked_profiles = rank_capability_profiles(
+            goal_text=goal,
+            tool_tokens=tool_tokens,
+            hint_texts=[
+                benchmark_hints.get("milestones", []),
+                benchmark_hints.get("tool_allow_list", []),
+                hints.preferred_capabilities,
+            ],
+        )
+        minimal_capability = self._minimal_capability_hint(
+            goal=goal,
+            benchmark_hints=benchmark_hints,
+            ranked_profiles=ranked_profiles,
+        )
         if minimal_capability is not None:
             return [minimal_capability]
-        if any(word in goal for word in ["search", "retrieve", "find", "collect"]):
-            candidates.append(
+        candidates = self._candidates_from_ranked_profiles(ranked_profiles)
+        if any(candidate.capability_id == "cap_summarize" for candidate in candidates) and not any(
+            candidate.capability_id == "cap_retrieve" for candidate in candidates
+        ):
+            retrieve_profile = CAPABILITY_PROFILES_BY_ID["cap_retrieve"]
+            candidates.insert(
+                0,
                 CapabilityCandidate(
-                    capability_id="cap_retrieve",
-                    description="Retrieve relevant information",
-                    score=0.9,
-                    postconditions=["information_obtained"],
-                )
-            )
-        if any(word in goal for word in ["summarize", "analyze"]):
-            candidates.append(
-                CapabilityCandidate(
-                    capability_id="cap_summarize",
-                    description="Summarize retrieved information",
-                    score=0.82,
-                    preconditions=["information_obtained"],
-                    postconditions=["summary_ready"],
-                )
-            )
-        if any(word in goal for word in ["write", "report", "save", "output"]):
-            preconditions = ["summary_ready"] if any(c.capability_id == "cap_summarize" for c in candidates) else ["information_obtained"]
-            candidates.append(
-                CapabilityCandidate(
-                    capability_id="cap_write",
-                    description="Write final report artifact",
-                    score=0.85,
-                    preconditions=preconditions,
-                    postconditions=["artifact_ready"],
-                )
+                    capability_id=retrieve_profile.capability_id,
+                    description=retrieve_profile.description,
+                    score=0.58,
+                    postconditions=list(retrieve_profile.postconditions),
+                    metadata={"injected_dependency": "cap_summarize"},
+                ),
             )
         if not candidates:
-            candidates = [
-                CapabilityCandidate(
-                    capability_id="cap_retrieve",
-                    description="Retrieve relevant information",
-                    score=0.6,
-                    postconditions=["information_obtained"],
-                ),
-                CapabilityCandidate(
-                    capability_id="cap_write",
-                    description="Write final report artifact",
-                    score=0.6,
-                    preconditions=["information_obtained"],
-                    postconditions=["artifact_ready"],
-                ),
-            ]
+            fallback_profile = ranked_profiles[0]["profile"] if ranked_profiles and ranked_profiles[0]["score"] > 0 else None
+            if fallback_profile is not None:
+                candidates = [
+                    CapabilityCandidate(
+                        capability_id=fallback_profile.capability_id,
+                        description=fallback_profile.description,
+                        score=max(0.55, float(ranked_profiles[0]["score"])),
+                        preconditions=list(fallback_profile.preconditions),
+                        postconditions=list(fallback_profile.postconditions),
+                        metadata={
+                            "selected_from_tool_semantics": True,
+                            "tool_overlap": list(ranked_profiles[0]["tool_overlap"]),
+                        },
+                    )
+                ]
+            else:
+                retrieve_profile = CAPABILITY_PROFILES_BY_ID["cap_retrieve"]
+                write_profile = CAPABILITY_PROFILES_BY_ID["cap_write"]
+                candidates = [
+                    CapabilityCandidate(
+                        capability_id=retrieve_profile.capability_id,
+                        description=retrieve_profile.description,
+                        score=0.6,
+                        postconditions=list(retrieve_profile.postconditions),
+                    ),
+                    CapabilityCandidate(
+                        capability_id=write_profile.capability_id,
+                        description=write_profile.description,
+                        score=0.6,
+                        preconditions=["information_obtained"],
+                        postconditions=list(write_profile.postconditions),
+                    ),
+                ]
         preferred = set(hints.preferred_capabilities)
         for candidate in candidates:
             if candidate.capability_id in preferred:
@@ -179,12 +203,46 @@ class RuleBasedCapabilitySelector(CapabilitySelector):
         return candidates
 
     @staticmethod
+    def _candidates_from_ranked_profiles(ranked_profiles: Sequence[Dict[str, Any]]) -> List[CapabilityCandidate]:
+        candidates: List[CapabilityCandidate] = []
+        selected_capability_ids = {
+            item["profile"].capability_id for item in ranked_profiles if float(item["score"]) >= 0.22
+        }
+        for ranked in ranked_profiles:
+            profile = ranked["profile"]
+            score = float(ranked["score"])
+            if score < 0.22:
+                continue
+            preconditions = list(profile.preconditions)
+            if profile.capability_id == "cap_write":
+                if "cap_summarize" in selected_capability_ids:
+                    preconditions = ["summary_ready"]
+                elif "cap_retrieve" in selected_capability_ids:
+                    preconditions = ["information_obtained"]
+            candidates.append(
+                CapabilityCandidate(
+                    capability_id=profile.capability_id,
+                    description=profile.description,
+                    score=score,
+                    preconditions=preconditions,
+                    postconditions=list(profile.postconditions),
+                    metadata={
+                        "goal_overlap": list(ranked["goal_overlap"]),
+                        "tool_overlap": list(ranked["tool_overlap"]),
+                        "hint_overlap": list(ranked["hint_overlap"]),
+                    },
+                )
+            )
+        return candidates
+
+    @staticmethod
     def _benchmark_hints(context: WorkflowContext, hints: PlanningHints) -> Dict[str, Any]:
         user_style = dict(hints.user_style)
         categories = [str(item) for item in user_style.get("categories", []) if str(item)]
         tool_allow_list = [str(item) for item in user_style.get("tool_allow_list", []) if str(item)]
         if not tool_allow_list:
             tool_allow_list = [tool.tool_id for tool in context.candidate_tools]
+        milestones = [str(item) for item in user_style.get("milestones", []) if str(item)]
         ideal_tool_calls = HTGPPlanner._coerce_int(user_style.get("ideal_tool_calls"))
         preferred_capabilities = []
         if any(category in {"single_tool", "state_dependency"} for category in categories):
@@ -195,33 +253,56 @@ class RuleBasedCapabilitySelector(CapabilitySelector):
             "categories": categories,
             "tool_allow_list": tool_allow_list,
             "ideal_tool_calls": ideal_tool_calls,
+            "milestones": milestones,
             "preferred_capabilities": preferred_capabilities,
         }
 
     @staticmethod
-    def _minimal_capability_hint(goal: str, benchmark_hints: Dict[str, Any]) -> Optional[CapabilityCandidate]:
+    def _minimal_capability_hint(
+        goal: str,
+        benchmark_hints: Dict[str, Any],
+        ranked_profiles: Sequence[Dict[str, Any]],
+    ) -> Optional[CapabilityCandidate]:
         categories = set(benchmark_hints.get("categories", []))
         ideal_tool_calls = benchmark_hints.get("ideal_tool_calls")
         tool_allow_list = benchmark_hints.get("tool_allow_list", [])
+        top_score = float(ranked_profiles[0]["score"]) if ranked_profiles else 0.0
+        runner_up_score = float(ranked_profiles[1]["score"]) if len(ranked_profiles) > 1 else 0.0
         should_minimize = (
             "multiple_user_turn" not in categories
             and (
                 ideal_tool_calls == 1
                 or len(tool_allow_list) == 1
                 or "single_tool" in categories
+                or (len(tool_allow_list) == 1 and top_score >= 0.24 and runner_up_score <= top_score * 0.75)
             )
         )
         if not should_minimize:
             return None
-        capability_id = "cap_write" if any(token in goal for token in ["write", "save", "send", "report", "set"]) else "cap_retrieve"
-        description = "Complete the single-step tool action" if capability_id == "cap_write" else "Retrieve the required result"
-        postconditions = ["artifact_ready"] if capability_id == "cap_write" else ["information_obtained"]
+        if ranked_profiles and top_score > 0:
+            chosen_profile = ranked_profiles[0]["profile"]
+            capability_id = chosen_profile.capability_id
+            description = chosen_profile.description
+            postconditions = list(chosen_profile.postconditions)
+            metadata = {
+                "selected_from_benchmark_hints": bool(
+                    ideal_tool_calls == 1 or "single_tool" in categories or len(tool_allow_list) == 1
+                ),
+                "selected_from_tool_semantics": bool(ranked_profiles[0]["tool_overlap"]),
+                "goal_overlap": list(ranked_profiles[0]["goal_overlap"]),
+                "tool_overlap": list(ranked_profiles[0]["tool_overlap"]),
+            }
+        else:
+            capability_id = "cap_write" if any(token in goal for token in ["write", "save", "send", "report", "set"]) else "cap_retrieve"
+            description = "Complete the single-step tool action" if capability_id == "cap_write" else "Retrieve the required result"
+            postconditions = ["artifact_ready"] if capability_id == "cap_write" else ["information_obtained"]
+            metadata = {"selected_from_benchmark_hints": True}
         return CapabilityCandidate(
             capability_id=capability_id,
             description=description,
             score=0.95,
             postconditions=postconditions,
-            metadata={"selected_from_benchmark_hints": True},
+            metadata=metadata,
         )
 
 

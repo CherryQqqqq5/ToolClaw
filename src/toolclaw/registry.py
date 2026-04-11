@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+import re
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Protocol
 
@@ -26,6 +27,82 @@ class AssetRegistry(Protocol):
 
     def get(self, asset_id: str) -> Optional[Any]:
         ...
+
+
+_SIGNATURE_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+
+
+def _signature_tokens(value: Any) -> set[str]:
+    tokens: set[str] = set()
+    for token in _SIGNATURE_TOKEN_PATTERN.findall(str(value or "").lower()):
+        if token:
+            tokens.add(token)
+    return tokens
+
+
+def _parse_task_signature(signature: str) -> Dict[str, Any]:
+    text = str(signature or "").strip().lower()
+    parsed: Dict[str, Any] = {
+        "raw": text,
+        "family": "",
+        "fail": "",
+        "goal": "",
+        "caps": [],
+        "tokens": _signature_tokens(text),
+    }
+    for part in text.split("::"):
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if key == "caps":
+            parsed["caps"] = [item for item in value.split("+") if item]
+        elif key in {"family", "fail", "goal"}:
+            parsed[key] = value
+    parsed["goal_tokens"] = _signature_tokens(parsed["goal"])
+    return parsed
+
+
+def _jaccard(left: set[str], right: set[str]) -> float:
+    if not left or not right:
+        return 0.0
+    union = left.union(right)
+    if not union:
+        return 0.0
+    return len(left.intersection(right)) / len(union)
+
+
+def _score_signature_match(query_signature: str, candidate_signature: str) -> tuple[float, str]:
+    query = _parse_task_signature(query_signature)
+    candidate = _parse_task_signature(candidate_signature)
+    if query["raw"] == candidate["raw"]:
+        return 1.0, "exact"
+
+    score = 0.0
+    match_type = "lexical_similarity"
+    if query["family"] and candidate["family"] and query["family"] == candidate["family"]:
+        score += 0.28
+        match_type = "structural_similarity"
+    if query["fail"] and candidate["fail"] and query["fail"] == candidate["fail"]:
+        score += 0.14
+        match_type = "structural_similarity"
+
+    query_caps = set(query["caps"])
+    candidate_caps = set(candidate["caps"])
+    if query_caps and candidate_caps:
+        score += 0.38 * _jaccard(query_caps, candidate_caps)
+        match_type = "structural_similarity"
+
+    goal_overlap = _jaccard(query["goal_tokens"], candidate["goal_tokens"])
+    if goal_overlap:
+        score += 0.14 * goal_overlap
+
+    token_overlap = _jaccard(query["tokens"], candidate["tokens"])
+    if token_overlap:
+        score += 0.06 * token_overlap
+
+    return round(score, 4), match_type
 
 
 class InMemoryAssetRegistry:
@@ -50,20 +127,45 @@ class InMemoryAssetRegistry:
         return asset_id
 
     def query(self, task_signature: str, top_k: int = 5) -> List[AssetMatch]:
-        ids = self._task_index.get(task_signature, [])[:top_k]
-        matches: List[AssetMatch] = []
-        for rank, asset_id in enumerate(ids):
+        ranked_matches: Dict[str, AssetMatch] = {}
+        for rank, asset_id in enumerate(self._task_index.get(task_signature, [])):
             asset = self._assets[asset_id]
-            asset_type = type(asset).__name__
-            matches.append(
-                AssetMatch(
-                    asset_id=asset_id,
-                    asset_type=asset_type,
-                    score=max(0.0, 1.0 - rank * 0.1),
-                    metadata={"task_signature": task_signature},
-                )
+            ranked_matches[asset_id] = AssetMatch(
+                asset_id=asset_id,
+                asset_type=type(asset).__name__,
+                score=max(0.0, 1.0 - rank * 0.02),
+                metadata={"task_signature": task_signature, "matched_signature": task_signature, "match_type": "exact"},
             )
-        return matches
+
+        for asset_id, asset in self._assets.items():
+            primary_signature = getattr(asset, "task_signature", "")
+            signatures = self._artifact_signatures(asset, primary_signature=primary_signature)
+            best_score = -1.0
+            best_signature = ""
+            best_match_type = "lexical_similarity"
+            for candidate_signature in signatures:
+                score, match_type = _score_signature_match(task_signature, candidate_signature)
+                if score > best_score:
+                    best_score = score
+                    best_signature = candidate_signature
+                    best_match_type = match_type
+            if best_score < 0.34:
+                continue
+            current = ranked_matches.get(asset_id)
+            if current is None or best_score > current.score:
+                ranked_matches[asset_id] = AssetMatch(
+                    asset_id=asset_id,
+                    asset_type=type(asset).__name__,
+                    score=best_score,
+                    metadata={
+                        "task_signature": task_signature,
+                        "matched_signature": best_signature,
+                        "match_type": best_match_type,
+                    },
+                )
+
+        matches = sorted(ranked_matches.values(), key=lambda match: (-match.score, match.asset_id))
+        return matches[:top_k]
 
     def get(self, asset_id: str) -> Optional[Any]:
         return self._assets.get(asset_id)
@@ -123,6 +225,7 @@ class FileAssetRegistry:
             encoding="utf-8",
         )
         index["assets"][asset_id] = {"path": asset_path.name, "task_signature": task_signature}
+        index["assets"][asset_id]["signatures"] = signatures
         for signature in signatures:
             index["task_index"].setdefault(signature, [])
             if asset_id not in index["task_index"][signature]:
@@ -132,19 +235,48 @@ class FileAssetRegistry:
 
     def query(self, task_signature: str, top_k: int = 5) -> List[AssetMatch]:
         index = self._load_index()
-        ids = index["task_index"].get(task_signature, [])[:top_k]
-        matches: List[AssetMatch] = []
-        for rank, asset_id in enumerate(ids):
+        ranked_matches: Dict[str, AssetMatch] = {}
+        for rank, asset_id in enumerate(index["task_index"].get(task_signature, [])):
             asset_meta = index["assets"][asset_id]
-            matches.append(
-                AssetMatch(
+            ranked_matches[asset_id] = AssetMatch(
+                asset_id=asset_id,
+                asset_type=asset_meta["path"].replace(".json", ""),
+                score=max(0.0, 1.0 - rank * 0.02),
+                metadata={"task_signature": task_signature, "matched_signature": task_signature, "match_type": "exact"},
+            )
+
+        for asset_id, asset_meta in index["assets"].items():
+            signatures = [
+                str(item)
+                for item in asset_meta.get("signatures", [asset_meta.get("task_signature", "")])
+                if str(item)
+            ]
+            best_score = -1.0
+            best_signature = ""
+            best_match_type = "lexical_similarity"
+            for candidate_signature in signatures:
+                score, match_type = _score_signature_match(task_signature, candidate_signature)
+                if score > best_score:
+                    best_score = score
+                    best_signature = candidate_signature
+                    best_match_type = match_type
+            if best_score < 0.34:
+                continue
+            current = ranked_matches.get(asset_id)
+            if current is None or best_score > current.score:
+                ranked_matches[asset_id] = AssetMatch(
                     asset_id=asset_id,
                     asset_type=asset_meta["path"].replace(".json", ""),
-                    score=max(0.0, 1.0 - rank * 0.1),
-                    metadata={"task_signature": task_signature},
+                    score=best_score,
+                    metadata={
+                        "task_signature": task_signature,
+                        "matched_signature": best_signature,
+                        "match_type": best_match_type,
+                    },
                 )
-            )
-        return matches
+
+        matches = sorted(ranked_matches.values(), key=lambda match: (-match.score, match.asset_id))
+        return matches[:top_k]
 
     def get(self, asset_id: str) -> Optional[Any]:
         index = self._load_index()

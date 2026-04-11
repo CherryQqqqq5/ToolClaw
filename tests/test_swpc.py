@@ -217,6 +217,23 @@ def test_structural_signature_candidates_support_query_variation() -> None:
     assert matches
 
 
+def test_registry_query_supports_structural_similarity_without_exact_signature() -> None:
+    registry = InMemoryAssetRegistry()
+    workflow = Workflow.demo()
+    workflow.task.user_goal = "Retrieve the customer handoff summary and save the support report."
+    workflow.metadata["task_family"] = "toolsandbox_reuse_transfer_001"
+    workflow.metadata["failure_type"] = "binding_failure"
+    snippet = SWPCCompiler().compile_from_trace(workflow=workflow, trace=Trace.demo(), final_state={}).workflow_snippets[0]
+    registry.upsert(snippet)
+
+    matches = registry.query(
+        "phase1::family=t0_general::caps=cap_retrieve+cap_write::fail=none::goal=fetch_transition_notes_and_write_support_brief"
+    )
+
+    assert matches
+    assert matches[0].metadata["match_type"] in {"structural_similarity", "lexical_similarity", "exact"}
+
+
 def test_compiler_blocks_promotion_on_heldout_eval_split() -> None:
     workflow = Workflow.demo()
     workflow.metadata["reuse_split"] = "eval"
