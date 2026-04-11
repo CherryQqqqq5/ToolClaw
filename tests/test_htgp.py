@@ -147,6 +147,64 @@ def test_selector_can_infer_single_write_step_from_tool_semantics_without_benchm
     assert result.workflow.execution_plan[0].tool_id == "set_cellular_service_status"
 
 
+def test_planner_preserves_retrieve_then_send_chain_for_toolsandbox_message_state_dependency() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(
+            task_id="task_toolsandbox_message_001",
+            user_goal="Send a message",
+            constraints=TaskConstraints(max_tool_calls=2, max_user_turns=1, max_repair_attempts=1, max_recovery_budget=1.0),
+        ),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_contacts", description="Search contacts by name."),
+                ToolSpec(tool_id="send_message_with_phone_number", description="Send a message to a phone number."),
+                ToolSpec(
+                    tool_id="set_cellular_service_status",
+                    description="Enable or disable cellular service status on the device.",
+                    metadata={"affordances": ["set", "enable", "update"]},
+                ),
+                ToolSpec(
+                    tool_id="get_cellular_service_status",
+                    description="Get the current cellular service status.",
+                    metadata={"affordances": ["get", "status", "retrieve"]},
+                ),
+            ]
+        ),
+        hints=PlanningHints(
+            user_style={
+                "categories": ["state_dependency", "multiple_tool", "multiple_user_turn", "no_distraction_tools"],
+                "tool_allow_list": [
+                    "search_contacts",
+                    "send_message_with_phone_number",
+                    "set_cellular_service_status",
+                    "get_cellular_service_status",
+                ],
+                "milestones": [
+                    "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SETTING, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'cellular': True}))])",
+                    "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SANDBOX, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'sender': RoleType.EXECUTION_ENVIRONMENT, 'recipient': RoleType.AGENT, 'tool_trace': json.dumps({'tool_name': 'search_contacts', 'arguments': {'name': 'Fredrik Thordendal'}}, ensure_ascii=False)}))], guardrail_database_exclusion_list=[DatabaseNamespace.SETTING])",
+                    "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.MESSAGING, snapshot_constraint=addition_similarity, target_dataframe=pl.DataFrame({'recipient_phone_number': '+12453344098', 'content': \"How's the new album coming along\"}), reference_milestone_node_index=0)], guardrail_database_exclusion_list=[DatabaseNamespace.SETTING])",
+                    "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SANDBOX, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'sender': RoleType.AGENT, 'recipient': RoleType.USER, 'content': \"Your message to Fredrik Thordendal has been sent saying: How's the new album coming along\"}))])",
+                ],
+                "ideal_turn_count": 30,
+                "ideal_tool_calls": None,
+            }
+        ),
+    )
+
+    result = planner.plan(request)
+
+    assert [step.capability_id for step in result.workflow.execution_plan] == ["cap_retrieve", "cap_write"]
+    assert [step.tool_id for step in result.workflow.execution_plan] == [
+        "search_contacts",
+        "send_message_with_phone_number",
+    ]
+    assert result.workflow.execution_plan[0].inputs["name"] == "Fredrik Thordendal"
+    assert result.workflow.execution_plan[1].inputs["content"] == "How's the new album coming along"
+    assert result.workflow.execution_plan[1].inputs["recipient"] == "Fredrik Thordendal"
+    assert "set_cellular_service_status" in result.workflow.execution_plan[1].metadata["allowed_tools"]
+
+
 def test_planner_records_overplanning_risk_when_steps_exceed_ideal() -> None:
     planner = build_planner()
     request = PlanningRequest(

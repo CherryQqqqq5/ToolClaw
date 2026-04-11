@@ -163,7 +163,7 @@ class ToolBinder:
                     score -= 0.2
                     reasons.append("metadata:failure_prior_penalty")
             if tool.tool_id in preferred_tools:
-                score += 0.35
+                score += 0.9
                 reasons.append("reusable_preference")
             if sole_candidate and score <= 0.15:
                 score = 0.55

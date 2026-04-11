@@ -130,6 +130,8 @@ class RuleBasedCapabilityGraphBuilder:
         categories = {str(item) for item in benchmark_hints.get("categories", []) if str(item)}
 
         preferred_order = milestone_order or allow_order
+        if allow_order and len(allow_order) > len(preferred_order):
+            preferred_order = allow_order
         if preferred_order:
             preferred_ids = set(preferred_order)
             pruned = [node.capability_id for node in ordered_nodes if node.capability_id not in preferred_ids]
