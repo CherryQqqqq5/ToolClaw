@@ -11,6 +11,8 @@ from typing import Mapping
 
 DEFAULT_NOVACODE_BASE_URL = "https://ai.novacode.top/v1"
 DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_NOVACODE_MODEL = "gpt-5.4"
+DEFAULT_OPENROUTER_MODEL = "x-ai/grok-3"
 
 
 def _normalized_provider(value: str | None) -> str:
@@ -47,8 +49,12 @@ def benchmark_proxy_env(base_env: Mapping[str, str] | None = None) -> dict[str, 
     chosen_base_url = env.get("TOOLCLAW_BENCHMARK_PROXY_BASE_URL", "").strip()
     if provider == "novacode":
         chosen_base_url = chosen_base_url or env.get("TOOLCLAW_BENCHMARK_NOVACODE_BASE_URL", DEFAULT_NOVACODE_BASE_URL)
+        env.setdefault("TOOLSANDBOX_OPENAI_MODEL", env.get("TOOLSANDBOX_NOVACODE_MODEL", DEFAULT_NOVACODE_MODEL))
+        env.setdefault("TOOLSANDBOX_NOVACODE_MODEL", DEFAULT_NOVACODE_MODEL)
     elif provider == "openrouter":
         chosen_base_url = chosen_base_url or env.get("TOOLCLAW_BENCHMARK_OPENROUTER_BASE_URL", DEFAULT_OPENROUTER_BASE_URL)
+        env.setdefault("TOOLSANDBOX_OPENAI_MODEL", env.get("TOOLSANDBOX_OPENROUTER_MODEL", DEFAULT_OPENROUTER_MODEL))
+        env.setdefault("TOOLSANDBOX_OPENROUTER_MODEL", DEFAULT_OPENROUTER_MODEL)
 
     chosen_base_url = chosen_base_url.strip()
     openai_base_url = env.get("OPENAI_BASE_URL", "").strip()

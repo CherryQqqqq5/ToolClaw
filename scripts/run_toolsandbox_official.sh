@@ -163,7 +163,7 @@ validate_env() {
       fi
       ;;
     openrouter|router)
-      export TOOLSANDBOX_OPENAI_MODEL="${TOOLSANDBOX_OPENAI_MODEL:-openai/gpt-4.1}"
+      export TOOLSANDBOX_OPENAI_MODEL="${TOOLSANDBOX_OPENAI_MODEL:-x-ai/grok-3}"
       ;;
   esac
 }

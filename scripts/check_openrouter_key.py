@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "openai/gpt-4.1"
+DEFAULT_MODEL = "x-ai/grok-3"
 
 
 def parse_args() -> argparse.Namespace:

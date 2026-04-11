@@ -16,7 +16,8 @@ from openai import OpenAI
 
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_CANDIDATES = [
-    "openai/gpt-4.1",
+    "x-ai/grok-3",
+    "x-ai/grok-3-mini",
     "openai/o4-mini",
     "anthropic/claude-sonnet-4.5",
     "google/gemini-2.5-pro",

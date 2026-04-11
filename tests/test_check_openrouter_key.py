@@ -9,6 +9,10 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
+def test_default_model_is_grok3() -> None:
+    assert MODULE.DEFAULT_MODEL == "x-ai/grok-3"
+
+
 def test_summarize_status_reports_success_for_both_mode() -> None:
     summary, exit_code = MODULE.summarize_status(
         {
