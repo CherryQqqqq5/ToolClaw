@@ -61,22 +61,20 @@ class SystemSpec:
 
 
 SYSTEM_SPECS: Dict[str, SystemSpec] = {
-    "a0_baseline": SystemSpec(system_id="a0_baseline", workflow_mode="planner", execution_mode="baseline"),
+    "a0_baseline": SystemSpec(system_id="a0_baseline", workflow_mode="demo", execution_mode="baseline"),
     "a1_recovery": SystemSpec(
         system_id="a1_recovery",
-        workflow_mode="seed",
+        workflow_mode="demo",
         execution_mode="executor",
         allow_repair=True,
         allow_fallback=True,
-        allow_suffix_replan=False,
     ),
     "a2_planner": SystemSpec(
         system_id="a2_planner",
         workflow_mode="planner",
         execution_mode="executor",
-        allow_repair=False,
-        allow_fallback=False,
-        allow_suffix_replan=False,
+        allow_repair=True,
+        allow_fallback=True,
     ),
     "a3_interaction": SystemSpec(
         system_id="a3_interaction",
@@ -84,6 +82,8 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         execution_mode="interaction",
         compile_on_success=False,
         use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
     ),
     "a4_reuse": SystemSpec(
         system_id="a4_reuse",
@@ -91,6 +91,8 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         execution_mode="interaction",
         compile_on_success=True,
         use_reuse=True,
+        allow_repair=True,
+        allow_fallback=True,
     ),
     "tc_full": SystemSpec(
         system_id="tc_full",
@@ -128,15 +130,41 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         allow_repair=True,
         allow_fallback=True,
     ),
-    "tc_planner_only": SystemSpec(
-        system_id="tc_planner_only",
+    "tc_recovery_only": SystemSpec(
+        system_id="tc_recovery_only",
+        workflow_mode="demo",
+        execution_mode="executor",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+    ),
+    "tc_no_interaction": SystemSpec(
+        system_id="tc_no_interaction",
+        workflow_mode="planner",
+        execution_mode="executor",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+    ),
+    "tc_planner_strict": SystemSpec(
+        system_id="tc_planner_strict",
         workflow_mode="planner",
         execution_mode="executor",
         compile_on_success=False,
         use_reuse=False,
         allow_repair=False,
         allow_fallback=False,
-        allow_suffix_replan=False,
+    ),
+    "tc_planner_only": SystemSpec(
+        system_id="tc_planner_only",
+        workflow_mode="planner",
+        execution_mode="executor",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
     ),
 }
 
