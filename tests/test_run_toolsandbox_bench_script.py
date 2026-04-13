@@ -183,6 +183,22 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert trace_payload["metadata"]["toolsandbox_result"]["source"] == "toolclaw_proxy"
     assert trace_payload["metadata"]["toolsandbox_result_source"] == "toolclaw_proxy"
 
+
+def test_toolsandbox_formal_dataset_includes_planner_sensitive_slices() -> None:
+    source_path = Path(__file__).resolve().parents[1] / "data" / "toolsandbox.formal.json"
+    payload = json.loads(source_path.read_text(encoding="utf-8"))
+    sample_ids = {
+        str(item.get("name") or item.get("task_id") or item.get("id") or item.get("sample_id") or "")
+        for item in payload
+    }
+
+    assert {
+        "toolsandbox_planner_sensitive_001",
+        "toolsandbox_planner_sensitive_002",
+        "toolsandbox_planner_sensitive_003",
+        "toolsandbox_planner_sensitive_004",
+    }.issubset(sample_ids)
+
     check_completed = subprocess.run(
         [
             sys.executable,

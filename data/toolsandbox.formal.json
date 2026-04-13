@@ -287,5 +287,97 @@
     "milestones": ["retrieve summary"],
     "ideal_turn_count": 1,
     "ideal_tool_calls": 1
+  },
+  {
+    "name": "toolsandbox_planner_sensitive_001",
+    "query": "Retrieve the escalation summary, then save it with the compliant writer. Never route the final report through the legacy ordering writer.",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Retrieve the escalation summary, then save it with the compliant writer. Never route the final report through the legacy ordering writer."
+      }
+    ],
+    "tool_allow_list": ["search_tool", "ordering_write_tool", "write_tool"],
+    "candidate_tools": [
+      {"tool_id": "search_tool", "description": "Retrieve and summarize the escalation details required before the final report can be written."},
+      {"tool_id": "ordering_write_tool", "description": "Legacy ordering writer that looks similar to the normal writer but violates dependency order and should never be selected for final report writing."},
+      {"tool_id": "write_tool", "description": "Compliant primary writer used after retrieval to save the final escalation report."}
+    ],
+    "categories": ["Multiple Tool Call", "State Dependency"],
+    "milestones": ["retrieve escalation summary", "choose compliant writer", "save escalation report"],
+    "ideal_turn_count": 2,
+    "ideal_tool_calls": 2,
+    "target_path": "outputs/toolsandbox/reports/toolsandbox_planner_sensitive_001.txt"
+  },
+  {
+    "name": "toolsandbox_planner_sensitive_002",
+    "query": "Retrieve the board update summary, then finalize the report with the standard writer. The archive writer is read-only and cannot complete the final report.",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Retrieve the board update summary, then finalize the report with the standard writer. The archive writer is read-only and cannot complete the final report."
+      }
+    ],
+    "tool_allow_list": ["search_tool", "archive_write_tool", "write_tool"],
+    "candidate_tools": [
+      {"tool_id": "search_tool", "description": "Retrieve and summarize the board update details needed for the final report."},
+      {"tool_id": "archive_write_tool", "description": "Read-only archive writer for historical snapshots only. It cannot finalize the live report and should never be used as the final writer.", "always_fail": true, "failure_message": "archive writer cannot finalize the live report"},
+      {"tool_id": "write_tool", "description": "Standard primary writer for the final board update report after retrieval."}
+    ],
+    "categories": ["Multiple Tool Call", "State Dependency"],
+    "milestones": ["retrieve board update summary", "prune archive writer", "save final board update report"],
+    "ideal_turn_count": 2,
+    "ideal_tool_calls": 2,
+    "target_path": "outputs/toolsandbox/reports/toolsandbox_planner_sensitive_002.txt"
+  },
+  {
+    "name": "toolsandbox_planner_sensitive_003",
+    "query": "Save the release approval note with the compliant writer. Never use the legacy ordering writer.",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Save the release approval note with the compliant writer. Never use the legacy ordering writer."
+      }
+    ],
+    "tool_allow_list": ["ordering_write_tool", "write_tool"],
+    "candidate_tools": [
+      {"tool_id": "ordering_write_tool", "description": "Legacy ordering writer that appears compatible but violates the approved release note workflow and should never be selected."},
+      {"tool_id": "write_tool", "description": "Compliant writer for saving the approved release note directly to disk."}
+    ],
+    "categories": ["Single Tool Call", "Single User Turn"],
+    "milestones": ["choose compliant writer", "save release approval note"],
+    "ideal_turn_count": 1,
+    "ideal_tool_calls": 1,
+    "target_path": "outputs/toolsandbox/reports/toolsandbox_planner_sensitive_003.txt"
+  },
+  {
+    "name": "toolsandbox_planner_sensitive_004",
+    "query": "Retrieve the security rollout summary, then save it with the primary writer on the first try. The legacy ordering writer burns the recovery budget and must not be used.",
+    "messages": [
+      {
+        "sender": "user",
+        "recipient": "agent",
+        "content": "Retrieve the security rollout summary, then save it with the primary writer on the first try. The legacy ordering writer burns the recovery budget and must not be used."
+      }
+    ],
+    "tool_allow_list": ["search_tool", "ordering_write_tool", "write_tool"],
+    "candidate_tools": [
+      {"tool_id": "search_tool", "description": "Retrieve and summarize the security rollout details required for the final report."},
+      {"tool_id": "ordering_write_tool", "description": "Legacy ordering writer that fails if selected and consumes the limited recovery budget."},
+      {"tool_id": "write_tool", "description": "Primary writer for the final security rollout report after retrieval."}
+    ],
+    "categories": ["Multiple Tool Call", "State Dependency"],
+    "milestones": ["retrieve security rollout summary", "avoid burning recovery budget on the legacy writer", "save rollout report"],
+    "ideal_turn_count": 2,
+    "ideal_tool_calls": 2,
+    "target_path": "outputs/toolsandbox/reports/toolsandbox_planner_sensitive_004.txt",
+    "constraints": {
+      "max_tool_calls": 2,
+      "max_repair_attempts": 0,
+      "max_recovery_budget": 0.0
+    }
   }
 ]
