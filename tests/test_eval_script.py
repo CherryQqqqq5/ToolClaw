@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+from toolclaw.benchmarks.baseline_runner import run_baseline
 from toolclaw.interaction.repair_updater import InteractionRequest
 from toolclaw.schemas.workflow import Workflow
 
@@ -414,6 +415,44 @@ def test_execute_system_recovery_executor_uses_planner_workflow(monkeypatch, tmp
     assert build_calls == ["planner"]
     assert executed["workflow"] is workflow
     assert row["system"] == "a1_recovery"
+
+
+def test_run_baseline_preserves_toolsandbox_trace_metadata(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    workflow.workflow_id = "wf_toolsandbox_baseline_metadata_001"
+    workflow.task.task_id = "toolsandbox_baseline_metadata_001"
+    workflow.metadata.update(
+        {
+            "benchmark": "toolsandbox",
+            "source": "toolsandbox.formal.json",
+            "primary_failtax": "state",
+            "failtaxes": ["state", "ordering"],
+            "failure_step": "step_02",
+            "expected_recovery_path": "patch_state_then_retry",
+            "gold_tool": "write_tool",
+            "state_slots": ["messages", "target_path"],
+            "dependency_edges": [{"source": "step_01", "target": "step_02", "type": "state"}],
+            "tool_execution_backend": "semantic_mock",
+        }
+    )
+
+    trace, _ = run_baseline(
+        workflow=workflow,
+        run_id="run_toolsandbox_baseline_metadata_001",
+        output_path=tmp_path / "baseline_trace.json",
+    )
+
+    assert trace.metadata.benchmark == "toolsandbox"
+    assert trace.metadata.task_source == "toolsandbox.formal.json"
+    assert trace.metadata.primary_failtax == "state"
+    assert trace.metadata.failtaxes == ["state", "ordering"]
+    assert trace.metadata.task_annotations["failure_step"] == "step_02"
+    assert trace.metadata.task_annotations["expected_recovery_path"] == "patch_state_then_retry"
+    assert trace.metadata.task_annotations["dependency_edges"] == [
+        {"source": "step_01", "target": "step_02", "type": "state"}
+    ]
+    assert trace.metadata.task_annotations["chosen_tool"] == "write_tool"
+    assert trace.metadata.budget_limits["max_tool_calls"] is None
 
 
 def test_run_eval_script_preserves_failure_injection_for_toolclaw_lite(tmp_path: Path) -> None:

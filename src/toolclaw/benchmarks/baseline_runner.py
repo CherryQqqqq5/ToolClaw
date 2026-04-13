@@ -20,6 +20,29 @@ def run_baseline(workflow: Workflow, run_id: str, output_path: Path) -> Tuple[Tr
         task_id=workflow.task.task_id,
         metadata=RunMetadata(model_name="baseline_executor", mode=RunMode.BASELINE),
     )
+    trace.metadata.benchmark = (
+        str(workflow.metadata.get("benchmark"))
+        if workflow.metadata.get("benchmark") is not None
+        else None
+    )
+    trace.metadata.task_source = (
+        str(
+            workflow.metadata.get("task_source")
+            or workflow.metadata.get("source")
+            or workflow.metadata.get("benchmark")
+        )
+        if (
+            workflow.metadata.get("task_source") is not None
+            or workflow.metadata.get("source") is not None
+            or workflow.metadata.get("benchmark") is not None
+        )
+        else None
+    )
+    trace.metadata.primary_failtax = workflow.metadata.get("primary_failtax")
+    trace.metadata.failtaxes = list(workflow.metadata.get("failtaxes", []))
+    trace.metadata.budget_profile = dict(workflow.metadata.get("budget_profile", {}))
+    trace.metadata.task_annotations = _task_annotations(workflow)
+    trace.metadata.budget_limits = _budget_limits(workflow)
 
     trace.add_event(
         event_id="evt_000",
@@ -48,6 +71,7 @@ def run_baseline(workflow: Workflow, run_id: str, output_path: Path) -> Tuple[Tr
             return trace, stop_reason
 
         tool_args = _materialize_tool_args(step=step, state_values=state_values)
+        trace.metadata.task_annotations["chosen_tool"] = step.tool_id
         trace.add_event(
             event_id=f"evt_call_{step.step_id}",
             event_type=EventType.TOOL_CALL,
@@ -159,3 +183,29 @@ def _clear_state_slot_flags(state_values: Dict[str, Any], slots: list[str]) -> N
         state_values["__stale_state_slots__"] = [slot for slot in stale if slot not in slot_set]
     if missing:
         state_values["__missing_assets__"] = [slot for slot in missing if slot not in slot_set]
+
+
+def _task_annotations(workflow: Workflow) -> Dict[str, Any]:
+    keys = (
+        "primary_failtax",
+        "failtaxes",
+        "failure_step",
+        "expected_recovery_path",
+        "gold_tool",
+        "chosen_tool",
+        "state_slots",
+        "dependency_edges",
+    )
+    return {key: workflow.metadata.get(key) for key in keys if workflow.metadata.get(key) is not None}
+
+
+def _budget_limits(workflow: Workflow) -> Dict[str, Any]:
+    constraints = workflow.task.constraints
+    return {
+        "max_tool_calls": constraints.max_tool_calls,
+        "max_user_turns": constraints.max_user_turns,
+        "max_repair_attempts": constraints.max_repair_attempts,
+        "max_recovery_budget": constraints.max_recovery_budget,
+        "budget_limit": constraints.budget_limit,
+        "time_limit": constraints.time_limit,
+    }
