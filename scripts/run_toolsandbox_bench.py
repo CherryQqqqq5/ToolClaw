@@ -51,6 +51,18 @@ def _default_source() -> Path:
 
 DEFAULT_SOURCE = _default_source()
 DEFAULT_OFFICIAL_DATA_ROOT = ROOT_DIR / "data" / "external" / "ToolSandbox" / "data"
+SMOKE_SAMPLE_IDS = [
+    "toolsandbox_env_backup_001",
+    "toolsandbox_binding_repair_001",
+    "toolsandbox_approval_interaction_001",
+    "toolsandbox_state_failure_resume_001",
+    "toolsandbox_state_failure_target_001",
+    "toolsandbox_reuse_family_001__pass1",
+    "toolsandbox_reuse_family_001__pass2",
+    "toolsandbox_reuse_transfer_001__pass1",
+    "toolsandbox_reuse_transfer_001__pass2",
+    "toolsandbox_planner_sensitive_001",
+]
 
 
 def _bool_from_value(value: Any) -> bool:
@@ -212,6 +224,27 @@ def _validate_smoke_profile(samples: List[Any]) -> None:
         raise ValueError(
             "ToolSandbox smoke requires at least 8 validated samples covering explicit state_failure, interaction, recovery, planner-sensitive, exact reuse-pair, and transfer-style reuse slices."
         )
+
+
+def _select_smoke_samples(samples: List[Any], max_count: int = 10) -> List[Any]:
+    by_id = {str(sample.sample_id): sample for sample in samples}
+    selected: List[Any] = []
+    missing: List[str] = []
+
+    for sample_id in SMOKE_SAMPLE_IDS:
+        sample = by_id.get(sample_id)
+        if sample is None:
+            missing.append(sample_id)
+        else:
+            selected.append(sample)
+
+    if missing:
+        raise ValueError(
+            "ToolSandbox smoke profile is missing required samples: "
+            + ", ".join(missing)
+        )
+
+    return selected[:max_count]
 
 
 def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -1110,7 +1143,7 @@ def main() -> None:
     if args.limit is not None:
         samples = samples[: args.limit]
     if args.smoke:
-        samples = samples[: min(len(samples), 10)]
+        samples = _select_smoke_samples(samples, max_count=10)
         _validate_smoke_profile(samples)
     if not samples:
         raise ValueError("No ToolSandbox samples loaded from source after validation")
