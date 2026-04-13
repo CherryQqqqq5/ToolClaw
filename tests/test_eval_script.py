@@ -5,8 +5,10 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 from toolclaw.interaction.repair_updater import InteractionRequest
+from toolclaw.schemas.workflow import Workflow
 
 
 def test_run_eval_script_generates_csv_and_report(tmp_path: Path) -> None:
@@ -147,6 +149,63 @@ def test_build_workflow_from_task_plans_with_toolsandbox_candidate_tools() -> No
     assert workflow.metadata["tool_execution_backend"] == "semantic_mock"
 
 
+def test_build_workflow_from_task_restores_toolsandbox_goal_from_messages() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_messages", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "toolsandbox_message_001",
+            "scenario": "multiple_user_turn",
+            "query": "Send a message",
+            "tool_allow_list": [
+                "search_contacts",
+                "send_message_with_phone_number",
+                "set_cellular_service_status",
+                "get_cellular_service_status",
+            ],
+            "candidate_tools": [
+                "search_contacts",
+                "send_message_with_phone_number",
+                "set_cellular_service_status",
+                "get_cellular_service_status",
+            ],
+            "messages": [
+                {
+                    "sender": "RoleType.SYSTEM",
+                    "recipient": "RoleType.USER",
+                    "content": 'USER_INSTRUCTION + "Send a message to Fredrik Thordendal saying: How\\\'s the new album coming along. You only know Fredrik Thordendal is in your contact. You don not have more information."',
+                },
+                {
+                    "sender": "RoleType.USER",
+                    "recipient": "RoleType.AGENT",
+                    "content": "Send a message",
+                },
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["state_dependency", "multiple_tool", "multiple_user_turn"],
+            },
+            "milestones": [
+                "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SETTING, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'cellular': True}))])",
+                "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SANDBOX, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'sender': RoleType.EXECUTION_ENVIRONMENT, 'recipient': RoleType.AGENT, 'tool_trace': json.dumps({'tool_name': 'search_contacts', 'arguments': {'name': 'Fredrik Thordendal'}}, ensure_ascii=False)}))], guardrail_database_exclusion_list=[DatabaseNamespace.SETTING])",
+                "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.MESSAGING, snapshot_constraint=addition_similarity, target_dataframe=pl.DataFrame({'recipient_phone_number': '+12453344098', 'content': \"How's the new album coming along\"}), reference_milestone_node_index=0)], guardrail_database_exclusion_list=[DatabaseNamespace.SETTING])",
+            ],
+        },
+        mode="planner",
+    )
+
+    assert workflow.task.user_goal != "Send a message"
+    assert "Fredrik Thordendal" in workflow.task.user_goal
+    assert "How's the new album coming along" in workflow.task.user_goal
+    assert workflow.execution_plan[0].inputs["name"] == "Fredrik Thordendal"
+    assert "query" not in workflow.execution_plan[0].inputs
+
+
 def test_build_workflow_from_task_rejects_empty_toolsandbox_tool_space() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_empty", module_path)
@@ -175,6 +234,91 @@ def test_build_workflow_from_task_rejects_empty_toolsandbox_tool_space() -> None
         assert "empty candidate_tools/tool_allow_list" in str(exc)
     else:
         raise AssertionError("expected ValueError for empty ToolSandbox tool space")
+
+
+def test_build_planning_request_preserves_toolsandbox_metadata() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_request", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = Workflow.demo()
+    workflow.metadata.update(
+        {
+            "benchmark": "toolsandbox",
+            "messages": [{"sender": "system", "content": "full instruction"}],
+            "tool_allow_list": ["search_contacts", "send_message_with_phone_number"],
+            "milestones": ["retrieve contact", "send message"],
+            "primary_failtax": "state",
+            "failtaxes": ["state", "ordering"],
+            "failure_step": "step_02",
+            "expected_recovery_path": "patch_state_then_retry",
+            "gold_tool": "send_message_with_phone_number",
+            "state_slots": ["messages", "cellular_service_status"],
+            "dependency_edges": [{"source": "step_01", "target": "step_02", "type": "state"}],
+            "tool_execution_backend": "semantic_mock",
+        }
+    )
+
+    request = module.build_planning_request(workflow, allow_reuse=False)
+
+    assert request.hints.user_style["benchmark"] == "toolsandbox"
+    assert request.hints.user_style["messages"] == [{"sender": "system", "content": "full instruction"}]
+    assert request.hints.user_style["primary_failtax"] == "state"
+    assert request.hints.user_style["dependency_edges"] == [{"source": "step_01", "target": "step_02", "type": "state"}]
+    assert request.hints.user_style["tool_execution_backend"] == "semantic_mock"
+
+
+def test_execute_system_planner_executor_skips_second_planner(monkeypatch, tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_execute", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    seed_workflow = Workflow.demo()
+    seed_workflow.metadata["primary_failtax"] = "state"
+
+    build_calls: list[str] = []
+    executed: dict[str, object] = {}
+
+    def fake_build_workflow_from_task(task, mode="demo"):
+        build_calls.append(mode)
+        return seed_workflow
+
+    def fake_run_until_blocked(*, workflow, run_id, output_path, backup_tool_map):
+        executed["workflow"] = workflow
+        executed["run_id"] = run_id
+        executed["output_path"] = output_path
+
+    def fake_row_from_trace(*, task, system, scenario, trace_path, reused_artifact):
+        return {"system": system, "scenario": scenario, "trace_path": str(trace_path)}
+
+    def forbidden_plan(_request):
+        raise AssertionError("execute_system should not invoke runtime.planner.plan for a2_planner")
+
+    monkeypatch.setattr(module, "build_workflow_from_task", fake_build_workflow_from_task)
+    monkeypatch.setattr(module, "row_from_trace", fake_row_from_trace)
+
+    runtime = SimpleNamespace(
+        planner=SimpleNamespace(plan=forbidden_plan),
+        executor=SimpleNamespace(run_until_blocked=fake_run_until_blocked),
+    )
+
+    row = module.execute_system(
+        spec=module.SYSTEM_SPECS["a2_planner"],
+        task={"task_id": "toolsandbox_exec_001", "query": "Send a message"},
+        task_index=1,
+        traces_dir=tmp_path,
+        runtime=runtime,
+    )
+
+    assert build_calls == ["planner"]
+    assert executed["workflow"] is seed_workflow
+    assert row["system"] == "a2_planner"
 
 
 def test_run_eval_script_preserves_failure_injection_for_toolclaw_lite(tmp_path: Path) -> None:

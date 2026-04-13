@@ -751,6 +751,7 @@ class HTGPPlanner:
                 "tool_execution_backend": str(request.hints.user_style.get("tool_execution_backend", "mock")),
             },
         )
+        workflow.metadata.update(self._passthrough_workflow_metadata(request))
         self._apply_request_overrides(workflow, request.workflow_overrides)
         self._apply_reusable_hints(workflow, reusable_profile)
 
@@ -794,6 +795,40 @@ class HTGPPlanner:
                 "user_style": deepcopy(request.hints.user_style),
             },
         }
+
+    @staticmethod
+    def _passthrough_workflow_metadata(request: PlanningRequest) -> Dict[str, Any]:
+        user_style = request.hints.user_style
+        passthrough_keys = (
+            "benchmark",
+            "messages",
+            "milestones",
+            "tool_allow_list",
+            "branch_options",
+            "ideal_tool_calls",
+            "ideal_turn_count",
+            "primary_failtax",
+            "failtaxes",
+            "failure_step",
+            "expected_recovery_path",
+            "gold_tool",
+            "state_slots",
+            "dependency_edges",
+            "reuse_override_inputs",
+            "tool_execution_backend",
+        )
+        metadata: Dict[str, Any] = {}
+        for key in passthrough_keys:
+            value = user_style.get(key)
+            if value is None:
+                continue
+            metadata[key] = deepcopy(value)
+
+        categories = user_style.get("categories")
+        if categories:
+            metadata["categories"] = list(categories)
+            metadata.setdefault("toolsandbox_categories", list(categories))
+        return metadata
 
     @classmethod
     def request_from_workflow(cls, workflow: Workflow) -> PlanningRequest:

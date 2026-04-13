@@ -310,6 +310,48 @@ def test_planner_can_round_trip_request_context_from_workflow_metadata() -> None
     assert restored.workflow_overrides["steps"]["step_01"]["inputs"]["target_path"] == "outputs/custom.txt"
 
 
+def test_planner_passthrough_metadata_preserves_toolsandbox_annotations() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_passthrough_001", user_goal="Send a message", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_contacts", description="Search contacts by name."),
+                ToolSpec(tool_id="send_message_with_phone_number", description="Send a message to a phone number."),
+            ]
+        ),
+        hints=PlanningHints(
+            user_style={
+                "benchmark": "toolsandbox",
+                "messages": [{"sender": "system", "content": "full instruction"}],
+                "categories": ["state_dependency", "multiple_user_turn"],
+                "tool_allow_list": ["search_contacts", "send_message_with_phone_number"],
+                "milestones": ["retrieve contact", "send message"],
+                "primary_failtax": "state",
+                "failtaxes": ["state", "ordering"],
+                "failure_step": "step_02",
+                "expected_recovery_path": "patch_state_then_retry",
+                "gold_tool": "send_message_with_phone_number",
+                "state_slots": ["messages", "cellular_service_status"],
+                "dependency_edges": [{"source": "step_01", "target": "step_02", "type": "state"}],
+                "tool_execution_backend": "semantic_mock",
+            }
+        ),
+    )
+
+    result = planner.plan(request)
+
+    assert result.workflow.metadata["benchmark"] == "toolsandbox"
+    assert result.workflow.metadata["messages"] == [{"sender": "system", "content": "full instruction"}]
+    assert result.workflow.metadata["toolsandbox_categories"] == ["state_dependency", "multiple_user_turn"]
+    assert result.workflow.metadata["primary_failtax"] == "state"
+    assert result.workflow.metadata["dependency_edges"] == [{"source": "step_01", "target": "step_02", "type": "state"}]
+    assert result.workflow.metadata["tool_execution_backend"] == "semantic_mock"
+    assert result.workflow.metadata["planning_request"]["hints"]["user_style"]["messages"] == [
+        {"sender": "system", "content": "full instruction"}
+    ]
+
+
 def test_replan_from_error_inherits_workflow_request_context_when_request_is_sparse() -> None:
     planner = build_planner()
     original_request = PlanningRequest(

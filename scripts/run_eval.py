@@ -150,6 +150,52 @@ def _build_tool_specs(raw_tools: Any) -> List[ToolSpec]:
     return candidate_tools
 
 
+def _normalize_message_role(value: Any) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized.startswith("roletype."):
+        normalized = normalized.split(".", 1)[1]
+    return normalized
+
+
+def _recover_toolsandbox_message_content(content: Any) -> str:
+    text = str(content or "").strip()
+    if not text:
+        return ""
+    if "USER_INSTRUCTION" not in text:
+        return text
+    segments = re.findall(r'"((?:\\.|[^"\\])*)"', text)
+    if segments:
+        recovered = [bytes(segment, "utf-8").decode("unicode_escape").strip() for segment in segments]
+        return " ".join(segment for segment in recovered if segment)
+    stripped = text.replace("USER_INSTRUCTION", " ").replace("+", " ").strip()
+    return stripped.strip('"').strip()
+
+
+def _planner_goal_from_task(task: Dict[str, Any], fallback: str) -> str:
+    messages = task.get("messages")
+    metadata = task.get("metadata")
+    is_toolsandbox = isinstance(metadata, dict) and metadata.get("benchmark") == "toolsandbox"
+    if not is_toolsandbox or not isinstance(messages, list):
+        return fallback
+
+    goal_parts: List[str] = []
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        sender = _normalize_message_role(message.get("sender") or message.get("role"))
+        if sender not in {"system", "user"}:
+            continue
+        content = message.get("content")
+        normalized = (
+            _recover_toolsandbox_message_content(content)
+            if sender == "system"
+            else str(content or "").strip()
+        )
+        if normalized and normalized not in goal_parts:
+            goal_parts.append(normalized)
+    return "\n".join(goal_parts) if goal_parts else fallback
+
+
 def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, Any]):
     scripted_payload = dict(backend_cfg.get("payload", {})) if isinstance(backend_cfg.get("payload"), dict) else {}
     scripted_replies = dict(backend_cfg.get("scripted_replies", {})) if isinstance(backend_cfg.get("scripted_replies"), dict) else {}
@@ -211,6 +257,8 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
     if raw_tools is None and isinstance(task.get("tool_allow_list"), list):
         raw_tools = list(task.get("tool_allow_list", []))
     candidate_tools = _build_tool_specs(raw_tools)
+    raw_query = str(task.get("query") or "").strip()
+    planner_goal = _planner_goal_from_task(task, raw_query or Workflow.demo().task.user_goal)
     if mode == "planner":
         planner = build_default_planner()
         demo = Workflow.demo()
@@ -220,16 +268,32 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
             policy=demo.policy,
         )
         request.task.task_id = canonical_task_id(task)
-        request.task.user_goal = str(task.get("query") or request.task.user_goal)
+        request.task.user_goal = planner_goal
         if candidate_tools:
             request.context.candidate_tools = list(candidate_tools)
+        request.hints.user_style["benchmark"] = (
+            str(raw_metadata.get("benchmark"))
+            if isinstance(raw_metadata, dict) and raw_metadata.get("benchmark")
+            else None
+        )
         request.hints.user_style["tool_allow_list"] = list(task.get("tool_allow_list", []))
         request.hints.user_style["categories"] = list(
             (raw_metadata or {}).get("toolsandbox_categories", [])
             if isinstance(raw_metadata, dict)
             else []
         )
+        request.hints.user_style["messages"] = list(task.get("messages", []))
         request.hints.user_style["milestones"] = list(task.get("milestones", []))
+        request.hints.user_style["branch_options"] = list(task.get("branch_options", []))
+        request.hints.user_style["primary_failtax"] = task.get("primary_failtax")
+        request.hints.user_style["failtaxes"] = list(task.get("failtaxes", []))
+        request.hints.user_style["failure_step"] = task.get("failure_step")
+        request.hints.user_style["expected_recovery_path"] = task.get("expected_recovery_path")
+        request.hints.user_style["gold_tool"] = task.get("gold_tool")
+        request.hints.user_style["state_slots"] = list(task.get("state_slots", []))
+        request.hints.user_style["dependency_edges"] = list(task.get("dependency_edges", []))
+        request.hints.user_style["ideal_turn_count"] = task.get("ideal_turn_count")
+        request.hints.user_style["ideal_tool_calls"] = task.get("ideal_tool_calls")
         request.hints.user_style["tool_execution_backend"] = (
             str(task.get("tool_execution_backend") or (raw_metadata or {}).get("tool_execution_backend") or ("semantic_mock" if toolsandbox_metadata else "mock"))
         )
@@ -248,7 +312,7 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
             if sender == "user" and message.get("content"):
                 retrieve_query = str(message["content"])
                 break
-    if retrieve_query:
+    if retrieve_query and mode != "planner":
         workflow.execution_plan[0].inputs["query"] = retrieve_query
 
     if task.get("target_path") is not None and len(workflow.execution_plan) > 1:
@@ -488,6 +552,8 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
         or workflow.metadata.get("categories")
         or []
     )
+    request.hints.user_style["benchmark"] = workflow.metadata.get("benchmark")
+    request.hints.user_style["messages"] = list(workflow.metadata.get("messages", []))
     request.hints.user_style["tool_allow_list"] = list(workflow.metadata.get("tool_allow_list", []))
     request.hints.user_style["branch_options"] = list(workflow.metadata.get("branch_options", []))
     request.hints.user_style["ideal_tool_calls"] = workflow.metadata.get("ideal_tool_calls")
@@ -501,6 +567,7 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
     request.hints.user_style["state_slots"] = list(workflow.metadata.get("state_slots", []))
     request.hints.user_style["dependency_edges"] = list(workflow.metadata.get("dependency_edges", []))
     request.hints.user_style["reuse_override_inputs"] = dict(workflow.metadata.get("reuse_override_inputs", {}))
+    request.hints.user_style["tool_execution_backend"] = workflow.metadata.get("tool_execution_backend")
     if not allow_reuse:
         request.hints.reusable_asset_ids = []
     return request
@@ -873,8 +940,7 @@ def execute_system(
 
     if spec.execution_mode == "executor":
         if spec.workflow_mode == "planner":
-            seed_workflow = build_workflow_from_task(task, mode="planner")
-            workflow = runtime.planner.plan(build_planning_request(seed_workflow, allow_reuse=False)).workflow
+            workflow = build_workflow_from_task(task, mode="planner")
         else:
             workflow = build_workflow_from_task(task, mode="demo")
         runtime.executor.run_until_blocked(
