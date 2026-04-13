@@ -37,8 +37,8 @@ from toolclaw.benchmarks.runner_utils import (
 
 def _default_source() -> Path:
     candidates = [
-        ROOT_DIR / "data" / "toolsandbox.formal.official.json",
         ROOT_DIR / "data" / "toolsandbox.formal.json",
+        ROOT_DIR / "data" / "toolsandbox.formal.official.json",
         ROOT_DIR / "data" / "toolsandbox.sample.json",
     ]
     for candidate in candidates:

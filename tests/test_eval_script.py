@@ -321,6 +321,101 @@ def test_execute_system_planner_executor_skips_second_planner(monkeypatch, tmp_p
     assert row["system"] == "a2_planner"
 
 
+def test_execute_system_baseline_uses_planner_workflow(monkeypatch, tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_baseline", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = Workflow.demo()
+    build_calls: list[str] = []
+    run_calls: dict[str, object] = {}
+
+    def fake_build_workflow_from_task(task, mode="demo"):
+        build_calls.append(mode)
+        return workflow
+
+    def fake_run_baseline(*, workflow, run_id, output_path):
+        run_calls["workflow"] = workflow
+        return SimpleNamespace(
+            metrics=SimpleNamespace(
+                success=True,
+                tool_calls=1,
+                repair_actions=0,
+                total_steps=1,
+                token_cost=0.0,
+                latency_ms=0,
+                clarification_precision=0.0,
+                clarification_recall=0.0,
+                unnecessary_question_rate=0.0,
+                patch_success_rate=0.0,
+                post_answer_retry_count=0,
+                budget_violation=False,
+                budget_violation_reason="",
+                recovery_budget_used=0.0,
+            )
+        ), "success_criteria_satisfied"
+
+    monkeypatch.setattr(module, "build_workflow_from_task", fake_build_workflow_from_task)
+    monkeypatch.setattr(module, "run_baseline", fake_run_baseline)
+
+    row = module.execute_system(
+        spec=module.SYSTEM_SPECS["a0_baseline"],
+        task={"task_id": "toolsandbox_baseline_001", "query": "Send a message"},
+        task_index=1,
+        traces_dir=tmp_path,
+        runtime=None,
+    )
+
+    assert build_calls == ["planner"]
+    assert run_calls["workflow"] is workflow
+    assert row.system == "a0_baseline"
+
+
+def test_execute_system_recovery_executor_uses_planner_workflow(monkeypatch, tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_recovery", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = Workflow.demo()
+    build_calls: list[str] = []
+    executed: dict[str, object] = {}
+
+    def fake_build_workflow_from_task(task, mode="demo"):
+        build_calls.append(mode)
+        return workflow
+
+    def fake_run_until_blocked(*, workflow, run_id, output_path, backup_tool_map):
+        executed["workflow"] = workflow
+
+    def fake_row_from_trace(*, task, system, scenario, trace_path, reused_artifact):
+        return {"system": system}
+
+    monkeypatch.setattr(module, "build_workflow_from_task", fake_build_workflow_from_task)
+    monkeypatch.setattr(module, "row_from_trace", fake_row_from_trace)
+
+    runtime = SimpleNamespace(
+        executor=SimpleNamespace(run_until_blocked=fake_run_until_blocked),
+    )
+
+    row = module.execute_system(
+        spec=module.SYSTEM_SPECS["a1_recovery"],
+        task={"task_id": "toolsandbox_recovery_001", "query": "Send a message"},
+        task_index=1,
+        traces_dir=tmp_path,
+        runtime=runtime,
+    )
+
+    assert build_calls == ["planner"]
+    assert executed["workflow"] is workflow
+    assert row["system"] == "a1_recovery"
+
+
 def test_run_eval_script_preserves_failure_injection_for_toolclaw_lite(tmp_path: Path) -> None:
     taskset = [
         {

@@ -59,8 +59,8 @@ class SystemSpec:
 
 
 SYSTEM_SPECS: Dict[str, SystemSpec] = {
-    "a0_baseline": SystemSpec(system_id="a0_baseline", workflow_mode="demo", execution_mode="baseline"),
-    "a1_recovery": SystemSpec(system_id="a1_recovery", workflow_mode="demo", execution_mode="executor"),
+    "a0_baseline": SystemSpec(system_id="a0_baseline", workflow_mode="planner", execution_mode="baseline"),
+    "a1_recovery": SystemSpec(system_id="a1_recovery", workflow_mode="planner", execution_mode="executor"),
     "a2_planner": SystemSpec(system_id="a2_planner", workflow_mode="planner", execution_mode="executor"),
     "a3_interaction": SystemSpec(
         system_id="a3_interaction",
@@ -884,7 +884,7 @@ def execute_system(
             reused_artifact = any(runtime.asset_registry.query(signature) for signature in signature_candidates)
 
     if spec.execution_mode == "baseline":
-        workflow = build_workflow_from_task(task, mode="demo")
+        workflow = build_workflow_from_task(task, mode=spec.workflow_mode)
         baseline_trace, baseline_stop = run_baseline(
             workflow=workflow,
             run_id=f"{spec.system_id}_{task_id}",
@@ -939,10 +939,7 @@ def execute_system(
         raise RuntimeError(f"runtime missing for system {spec.system_id}")
 
     if spec.execution_mode == "executor":
-        if spec.workflow_mode == "planner":
-            workflow = build_workflow_from_task(task, mode="planner")
-        else:
-            workflow = build_workflow_from_task(task, mode="demo")
+        workflow = build_workflow_from_task(task, mode=spec.workflow_mode)
         runtime.executor.run_until_blocked(
             workflow=workflow,
             run_id=f"{spec.system_id}_{task_id}",

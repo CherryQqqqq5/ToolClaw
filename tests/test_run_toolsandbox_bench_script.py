@@ -1,4 +1,5 @@
 import csv
+import importlib.util
 import json
 import os
 import subprocess
@@ -207,6 +208,17 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     )
     assert check_completed.returncode == 0
     assert "CONSISTENCY CHECK: PASSED" in check_completed.stdout
+
+
+def test_run_toolsandbox_bench_default_source_prefers_multi_sample_formal_dataset() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_toolsandbox_bench.py"
+    spec = importlib.util.spec_from_file_location("run_toolsandbox_bench_module", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    assert module.DEFAULT_SOURCE.name == "toolsandbox.formal.json"
 
 
 def test_run_toolsandbox_bench_script_rejects_empty_shell_source(tmp_path: Path) -> None:
