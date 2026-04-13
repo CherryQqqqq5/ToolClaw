@@ -228,3 +228,43 @@ def test_toolsandbox_adapter_proxy_capability_prefers_write_over_retrieval_words
     capability = adapter._infer_proxy_tool_capability(raw, "write_tool")
 
     assert capability == "write"
+
+
+def test_toolsandbox_adapter_rejects_verified_success_when_write_target_path_is_wrong() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_reuse_family_001__pass2",
+        raw_payload={
+            "categories": ["Multiple Tool Call", "Insufficient Information"],
+            "candidate_tools": [
+                {"tool_id": "search_tool", "description": "Search"},
+                {"tool_id": "write_tool", "description": "Write"},
+            ],
+            "milestones": ["retrieve handoff summary", "prepare report", "write report"],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 2},
+        "metadata": {
+            "toolsandbox_result": {
+                "similarity": 1.0,
+                "milestone_mapping": [0, 1, 2],
+                "turn_count": 4,
+                "source": "toolclaw_proxy",
+            }
+        },
+        "events": [
+            {"event_type": "tool_call", "tool_id": "search_tool", "tool_args": {"query": "Retrieve the same customer handoff summary again and write the matching support handoff report."}},
+            {"event_type": "tool_call", "tool_id": "write_tool", "tool_args": {"target_path": "outputs/toolsandbox/reports/toolsandbox_env_backup_001.txt"}},
+            {"event_type": "tool_result", "tool_id": "write_tool"},
+        ],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.success is False
+    assert score.metrics["execution_verified_success"] == 0.0
+    assert score.metrics["proxy_summary_success"] == 1.0
+    assert score.metrics["write_target_verified"] == 0.0
+    assert score.diagnostics["expected_target_path"] == "outputs/toolsandbox/reports/toolsandbox_reuse_family_001__pass2.txt"
+    assert score.diagnostics["observed_target_path"] == "outputs/toolsandbox/reports/toolsandbox_env_backup_001.txt"

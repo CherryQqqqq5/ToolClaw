@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Protocol
+from typing import Any, Dict, List, Optional, Protocol
 
 from toolclaw.benchmarks.task_annotations import annotate_task_payload
 from toolclaw.planner.htgp import PlanningRequest
@@ -798,14 +798,22 @@ class ToolSandboxAdapter:
             result_summary_source=result_summary_source,
             total_milestones=total_milestones,
         )
+        write_target_verified = self._write_target_verified(
+            raw=sample.raw_payload,
+            task_id=sample.sample_id,
+            trace_events=trace_events,
+        )
         execution_verified_success = self._execution_verified_success(
             raw_trace_success=raw_trace_success,
             result_summary_source=result_summary_source,
             proxy_summary_success=proxy_summary_success,
             matched_milestones=matched_milestones,
             total_milestones=total_milestones,
+            write_target_verified=write_target_verified,
         )
         milestone_similarity = float(similarity) if similarity is not None else 0.0
+        expected_target_path = self._expected_write_target_path(sample.raw_payload, sample.sample_id)
+        observed_target_path = self._observed_write_target_path(sample.raw_payload, trace_events)
 
         return BenchmarkTraceScore(
             benchmark=self.benchmark_name,
@@ -827,6 +835,7 @@ class ToolSandboxAdapter:
                 "execution_verified_success": 1.0 if execution_verified_success else 0.0,
                 "proxy_summary_success": 1.0 if proxy_summary_success else 0.0,
                 "state_dependency_score": milestone_similarity if "state_dependency" in categories else 1.0,
+                "write_target_verified": 1.0 if write_target_verified else 0.0,
             },
             diagnostics={
                 "categories": categories,
@@ -846,6 +855,8 @@ class ToolSandboxAdapter:
                 "used_result_summary": bool(result_summary),
                 "result_summary_source": result_summary_source,
                 "reference_result_summary_available": bool(reference_result_summary),
+                "expected_target_path": expected_target_path,
+                "observed_target_path": observed_target_path,
             },
         )
 
@@ -1252,6 +1263,50 @@ class ToolSandboxAdapter:
         except (TypeError, ValueError):
             return False
 
+    def _expected_write_target_path(self, raw: Dict[str, Any], task_id: str) -> Optional[str]:
+        if raw.get("target_path") is not None:
+            return str(raw.get("target_path"))
+        if self._task_expects_write(raw):
+            return f"{self.default_target_dir}/{task_id}.txt"
+        return None
+
+    def _observed_write_target_path(self, raw: Dict[str, Any], trace_events: List[Dict[str, Any]]) -> Optional[str]:
+        observed_paths: List[str] = []
+        for event in trace_events:
+            if event.get("event_type") != "tool_call":
+                continue
+            tool_id = str(event.get("tool_id") or "").strip()
+            if not tool_id or self._infer_proxy_tool_capability(raw, tool_id) != "write":
+                continue
+            tool_args = event.get("tool_args")
+            if not isinstance(tool_args, dict):
+                continue
+            target_path = tool_args.get("target_path")
+            if target_path is not None:
+                observed_paths.append(str(target_path))
+        if not observed_paths:
+            return None
+        return observed_paths[-1]
+
+    def _write_target_verified(self, *, raw: Dict[str, Any], task_id: str, trace_events: List[Dict[str, Any]]) -> bool:
+        expected_target_path = self._expected_write_target_path(raw, task_id)
+        if expected_target_path is None:
+            return True
+        observed_target_path = self._observed_write_target_path(raw, trace_events)
+        return observed_target_path == expected_target_path
+
+    def _task_expects_write(self, raw: Dict[str, Any]) -> bool:
+        if raw.get("target_path") is not None:
+            return True
+        tool_ids = self._tool_allow_list(raw)
+        if not tool_ids:
+            tool_ids = [
+                str(raw_tool.get("tool_id") or raw_tool.get("name") or "").strip()
+                for raw_tool in raw.get("candidate_tools", []) or []
+                if isinstance(raw_tool, dict)
+            ]
+        return any(self._infer_proxy_tool_capability(raw, tool_id) == "write" for tool_id in tool_ids if tool_id)
+
     @staticmethod
     def _execution_verified_success(
         *,
@@ -1260,8 +1315,9 @@ class ToolSandboxAdapter:
         proxy_summary_success: bool,
         matched_milestones: int,
         total_milestones: int,
+        write_target_verified: bool,
     ) -> bool:
-        if not raw_trace_success or not proxy_summary_success:
+        if not raw_trace_success or not proxy_summary_success or not write_target_verified:
             return False
         if result_summary_source != "toolclaw_proxy":
             return True

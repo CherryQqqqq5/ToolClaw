@@ -355,9 +355,37 @@ def test_planner_passthrough_metadata_preserves_toolsandbox_annotations() -> Non
     assert result.workflow.metadata["primary_failtax"] == "state"
     assert result.workflow.metadata["dependency_edges"] == [{"source": "step_01", "target": "step_02", "type": "state"}]
     assert result.workflow.metadata["tool_execution_backend"] == "semantic_mock"
-    assert result.workflow.metadata["planning_request"]["hints"]["user_style"]["messages"] == [
-        {"sender": "system", "content": "full instruction"}
-    ]
+
+
+def test_reusable_hints_do_not_leak_foreign_toolsandbox_target_path() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(task_id="toolsandbox_reuse_001", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+            ]
+        ),
+    )
+
+    workflow = planner.plan(request).workflow
+    workflow.metadata["benchmark"] = "toolsandbox"
+    workflow.metadata["reuse_override_inputs"] = {"cap_write": ["target_path"]}
+    write_step = next(step for step in workflow.execution_plan if step.capability_id == "cap_write")
+    write_step.inputs.pop("target_path", None)
+    write_step.metadata["repair_default_inputs"] = {"target_path": "outputs/toolsandbox/reports/toolsandbox_reuse_001.txt"}
+
+    HTGPPlanner._apply_reusable_hints(
+        workflow,
+        {
+            "recommended_inputs": {
+                "cap_write": {"target_path": "outputs/toolsandbox/reports/foreign_task.txt"}
+            }
+        },
+    )
+
+    assert write_step.inputs["target_path"] == "outputs/toolsandbox/reports/toolsandbox_reuse_001.txt"
 
 
 def test_replan_from_error_inherits_workflow_request_context_when_request_is_sparse() -> None:

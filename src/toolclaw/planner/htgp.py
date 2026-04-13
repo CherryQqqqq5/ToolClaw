@@ -1344,14 +1344,51 @@ class HTGPPlanner:
                 for item in override_map.get(step.capability_id, override_map.get("*", []))
                 if str(item)
             }
+            task_scoped_keys = HTGPPlanner._task_scoped_reuse_keys(workflow, step)
             for key, value in suggested_inputs.items():
+                resolved_value = value
+                if key in task_scoped_keys:
+                    task_local_value = HTGPPlanner._task_local_reuse_value(workflow, step, key)
+                    if task_local_value is None:
+                        continue
+                    resolved_value = task_local_value
                 if key not in step.inputs or key in override_keys:
-                    step.inputs[key] = value
+                    step.inputs[key] = resolved_value
             node = graph_nodes.get(step.step_id)
             if node is not None:
                 for key, value in suggested_inputs.items():
+                    resolved_value = value
+                    if key in task_scoped_keys:
+                        task_local_value = HTGPPlanner._task_local_reuse_value(workflow, step, key)
+                        if task_local_value is None:
+                            continue
+                        resolved_value = task_local_value
                     if key not in node.inputs or key in override_keys:
-                        node.inputs[key] = value
+                        node.inputs[key] = resolved_value
+
+    @staticmethod
+    def _task_scoped_reuse_keys(workflow: Workflow, step: WorkflowStep) -> set[str]:
+        benchmark = str(workflow.metadata.get("benchmark") or "").strip().lower()
+        if benchmark != "toolsandbox":
+            return set()
+        if step.capability_id == "cap_write":
+            return {"target_path", "expected_target_path"}
+        return set()
+
+    @staticmethod
+    def _task_local_reuse_value(workflow: Workflow, step: WorkflowStep, key: str) -> Any:
+        repair_defaults = step.metadata.get("repair_default_inputs")
+        if isinstance(repair_defaults, dict):
+            value = repair_defaults.get(key)
+            if value not in (None, ""):
+                return value
+        value = step.inputs.get(key)
+        if value not in (None, ""):
+            return value
+        metadata_value = workflow.metadata.get(key)
+        if metadata_value not in (None, ""):
+            return metadata_value
+        return None
 
     @staticmethod
     def _constrain_reusable_profile(
