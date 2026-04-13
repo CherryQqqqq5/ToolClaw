@@ -88,6 +88,9 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     per_category_json_path = outdir / "per_category_summary.json"
     focused_slice_md_path = outdir / "focused_slice_summary.md"
     focused_slice_json_path = outdir / "focused_slice_summary.json"
+    reuse_focused_md_path = outdir / "reuse_focused_summary.md"
+    reuse_focused_json_path = outdir / "reuse_focused_summary.json"
+    robustness_json_path = outdir / "statistical_robustness_summary.json"
     normalized_path = outdir / "prepared" / "toolsandbox.normalized.json"
     report_path = outdir / "report.md"
     manifest_path = outdir / "experiment_manifest.json"
@@ -101,6 +104,9 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert per_category_json_path.exists()
     assert focused_slice_md_path.exists()
     assert focused_slice_json_path.exists()
+    assert reuse_focused_md_path.exists()
+    assert reuse_focused_json_path.exists()
+    assert robustness_json_path.exists()
     assert normalized_path.exists()
     assert report_path.exists()
     assert manifest_path.exists()
@@ -167,15 +173,39 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "reference_summary_coverage" in report
     assert "state_dependency_score" in report
     assert "focused_slice_summary.md" in report
+    assert "reuse_focused_summary.md" in report
+    assert "statistical_robustness_summary.json" in report
+    assert "Reuse Focused" in report
+    assert "Statistical Robustness" in report
+    assert "bootstrap_95%_ci" in report
+    assert "Focused Slice: approval" in report
+    assert "reuse_scope: `within_invocation`" in report
+    assert "asset_registry_root: `none`" in report
+    assert "avg_tool_calls" in report
+    assert "reused_artifact_rate" in report
+    assert "first_failure_recovered_rate" in report
 
     focused_slice_md = focused_slice_md_path.read_text(encoding="utf-8")
     assert "ToolSandbox Focused Slice Summary" in focused_slice_md
     focused_slice_json = json.loads(focused_slice_json_path.read_text(encoding="utf-8"))
     assert focused_slice_json["focus_categories"] == [
+        "planner_sensitive",
         "insufficient_information",
         "multiple_user_turn",
         "single_tool",
     ]
+    reuse_focused_md = reuse_focused_md_path.read_text(encoding="utf-8")
+    assert "ToolSandbox Reuse Focused Summary" in reuse_focused_md
+    assert "avg_repair_actions" in reuse_focused_md
+    assert "mean_second_run_improvement" in reuse_focused_md
+    reuse_focused_json = json.loads(reuse_focused_json_path.read_text(encoding="utf-8"))
+    assert reuse_focused_json["reuse_scope"] == "within_invocation"
+    assert reuse_focused_json["asset_registry_root"] is None
+    assert "per_system" in reuse_focused_json
+    assert "deltas" in reuse_focused_json
+    robustness_json = json.loads(robustness_json_path.read_text(encoding="utf-8"))
+    assert "paired_overall" in robustness_json
+    assert "paired_focused_slices" in robustness_json
 
     trace_payload = json.loads(
         (outdir / "runs" / "run_01" / "traces" / "001_toolsandbox_cli_001_a0_baseline.json").read_text(encoding="utf-8")
@@ -184,7 +214,7 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert trace_payload["metadata"]["toolsandbox_result_source"] == "toolclaw_proxy"
 
 
-def test_toolsandbox_formal_dataset_includes_planner_sensitive_slices() -> None:
+def test_toolsandbox_formal_dataset_includes_planner_sensitive_slices(tmp_path: Path) -> None:
     source_path = Path(__file__).resolve().parents[1] / "data" / "toolsandbox.formal.json"
     payload = json.loads(source_path.read_text(encoding="utf-8"))
     sample_ids = {
@@ -198,6 +228,28 @@ def test_toolsandbox_formal_dataset_includes_planner_sensitive_slices() -> None:
         "toolsandbox_planner_sensitive_003",
         "toolsandbox_planner_sensitive_004",
     }.issubset(sample_ids)
+
+    outdir = tmp_path / "toolsandbox_formal_out"
+    bench_completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_toolsandbox_bench.py",
+            "--source",
+            str(source_path),
+            "--outdir",
+            str(outdir),
+            "--num-runs",
+            "1",
+            "--limit",
+            "8",
+        ],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert bench_completed.returncode == 0
 
     check_completed = subprocess.run(
         [
@@ -323,7 +375,7 @@ def test_run_toolsandbox_bench_script_rejects_smoke_profile_without_reuse_pair(t
             "milestones": ["retrieve", "ask approval", "write"],
         },
         {
-            "name": "smoke_planner_001",
+            "name": "toolsandbox_planner_sensitive_smoke_001",
             "query": "Retrieve the onboarding summary, then use the standard writer and never the legacy writer.",
             "messages": [{"sender": "user", "recipient": "agent", "content": "Retrieve the onboarding summary, then use the standard writer and never the legacy writer."}],
             "tool_allow_list": ["search_tool", "write_tool", "ordering_write_tool"],
@@ -358,7 +410,7 @@ def test_run_toolsandbox_bench_script_rejects_smoke_profile_without_reuse_pair(t
             "milestones": ["retrieve", "repair binding", "write"],
         },
         {
-            "name": "smoke_planner_002",
+            "name": "toolsandbox_planner_sensitive_smoke_002",
             "query": "Find the audit summary, then write it with the primary writer and avoid both backup and legacy writers unless required.",
             "messages": [{"sender": "user", "recipient": "agent", "content": "Find the audit summary, then write it with the primary writer and avoid both backup and legacy writers unless required."}],
             "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool", "ordering_write_tool"],
@@ -456,7 +508,7 @@ def test_run_toolsandbox_bench_script_rejects_smoke_profile_without_transfer_reu
             "milestones": ["retrieve", "repair binding", "write"],
         },
         {
-            "name": "smoke_planner_001",
+            "name": "toolsandbox_planner_sensitive_smoke_001",
             "query": "Retrieve the onboarding summary, then use the standard writer and never the legacy writer.",
             "messages": [{"sender": "user", "recipient": "agent", "content": "Retrieve the onboarding summary, then use the standard writer and never the legacy writer."}],
             "tool_allow_list": ["search_tool", "write_tool", "ordering_write_tool"],
@@ -469,7 +521,7 @@ def test_run_toolsandbox_bench_script_rejects_smoke_profile_without_transfer_reu
             "milestones": ["retrieve", "choose writer", "write"],
         },
         {
-            "name": "smoke_planner_002",
+            "name": "toolsandbox_planner_sensitive_smoke_002",
             "query": "Find the audit summary, then write it with the primary writer and avoid both backup and legacy writers unless required.",
             "messages": [{"sender": "user", "recipient": "agent", "content": "Find the audit summary, then write it with the primary writer and avoid both backup and legacy writers unless required."}],
             "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool", "ordering_write_tool"],

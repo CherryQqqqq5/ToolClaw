@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import os
+import random
 import subprocess
 import sys
 from pathlib import Path
@@ -197,15 +199,7 @@ def _validate_smoke_profile(samples: List[Any]) -> None:
         len(family_queries.get(family_id, set())) >= 2 and len(pass_indices) >= 2 and 1 in pass_indices and 2 in pass_indices
         for family_id, pass_indices in family_passes.items()
     )
-    has_planner_distractor = any(
-        len(sample.raw_payload.get("candidate_tools", [])) >= 3
-        and any(
-            str(item.get("tool_id") or item.get("name") or "") == "ordering_write_tool"
-            for item in sample.raw_payload.get("candidate_tools", [])
-            if isinstance(item, dict)
-        )
-        for sample in samples
-    )
+    has_planner_sensitive = any(_is_planner_sensitive_task(sample.sample_id) for sample in samples)
     if (
         len(samples) < 8
         or not has_state
@@ -213,10 +207,10 @@ def _validate_smoke_profile(samples: List[Any]) -> None:
         or not has_recovery
         or not has_reuse_pair
         or not has_transfer_reuse_pair
-        or not has_planner_distractor
+        or not has_planner_sensitive
     ):
         raise ValueError(
-            "ToolSandbox smoke requires at least 8 validated samples covering explicit state_failure, interaction, recovery, planner-distractor, exact reuse-pair, and transfer-style reuse slices."
+            "ToolSandbox smoke requires at least 8 validated samples covering explicit state_failure, interaction, recovery, planner-sensitive, exact reuse-pair, and transfer-style reuse slices."
         )
 
 
@@ -301,6 +295,9 @@ def _category_breakdown(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, fl
         categories = json.loads(record["row"].get("categories", "[]"))
         if not categories:
             categories = [record["row"].get("scenario", "toolsandbox")]
+        task_id = str(record["row"].get("task_id", ""))
+        if _is_planner_sensitive_task(task_id):
+            categories = [*categories, "planner_sensitive"]
         for category in categories:
             grouped.setdefault(str(category), []).append(record)
 
@@ -385,7 +382,12 @@ TOOLSANDBOX_GROUP_METRICS = [
     AggregateMetric("reference_result_summary_available", source="diagnostics", label="reference_summary_coverage"),
 ]
 
+def _is_planner_sensitive_task(task_id: str) -> bool:
+    return str(task_id or "").strip().startswith("toolsandbox_planner_sensitive_")
+
+
 FOCUSED_SLICE_CATEGORIES = (
+    "planner_sensitive",
     "insufficient_information",
     "multiple_user_turn",
     "single_tool",
@@ -518,6 +520,8 @@ def _focused_slice_summary(per_system_summary: Dict[str, Any]) -> Dict[str, Any]
         }
     deltas: Dict[str, Dict[str, Dict[str, float]]] = {}
     delta_pairs = [
+        ("a2_planner_minus_a0_baseline", "a2_planner", "a0_baseline"),
+        ("a2_planner_minus_a3_interaction", "a2_planner", "a3_interaction"),
         ("a3_interaction_minus_a0_baseline", "a3_interaction", "a0_baseline"),
         ("a3_interaction_minus_a1_recovery", "a3_interaction", "a1_recovery"),
         ("a3_interaction_minus_a2_planner", "a3_interaction", "a2_planner"),
@@ -592,7 +596,253 @@ def _write_focused_slice_markdown(summary: Dict[str, Any], out_path: Path) -> No
     out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
+def _load_scored_rows(outdir: Path) -> List[Dict[str, Any]]:
+    scored_path = outdir / "comparison.scored.csv"
+    if not scored_path.exists():
+        return []
+    with scored_path.open("r", encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def _mean_float(rows: List[Dict[str, Any]], key: str) -> float:
+    if not rows:
+        return 0.0
+    values = [_float_cell(row.get(key, 0.0)) for row in rows]
+    return sum(values) / len(values)
+
+
+def _float_cell(value: Any) -> float:
+    if isinstance(value, bool):
+        return 1.0 if value else 0.0
+    text = str(value or "").strip().lower()
+    if text in {"true", "yes"}:
+        return 1.0
+    if text in {"false", "no"}:
+        return 0.0
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _reuse_focused_summary(outdir: Path, *, reuse_scope: str, asset_registry_root: str | None) -> Dict[str, Any]:
+    rows = _load_scored_rows(outdir)
+    if not rows:
+        return {
+            "reuse_scope": reuse_scope,
+            "asset_registry_root": asset_registry_root,
+            "metrics": [],
+            "per_system": {},
+            "deltas": {},
+        }
+    reuse_rows = [row for row in rows if str(row.get("task_id", "")).startswith("toolsandbox_reuse_")]
+    if not reuse_rows:
+        return {
+            "reuse_scope": reuse_scope,
+            "asset_registry_root": asset_registry_root,
+            "metrics": [],
+            "per_system": {},
+            "deltas": {},
+        }
+
+    metrics = [
+        "tool_calls",
+        "raw_repair_triggered",
+        "raw_repair_actions",
+        "repair_extra_tool_calls",
+        "repair_extra_user_turns",
+        "reused_artifact",
+        "second_run_improvement",
+        "first_failure_recovered",
+    ]
+    per_system: Dict[str, Dict[str, float]] = {}
+    for system in sorted({str(row.get("system", "")) for row in reuse_rows}):
+        system_rows = [row for row in reuse_rows if str(row.get("system", "")) == system]
+        per_system[system] = {
+            "num_rows": float(len(system_rows)),
+            "avg_tool_calls": _mean_float(system_rows, "tool_calls"),
+            "repair_trigger_rate": _mean_float(system_rows, "raw_repair_triggered"),
+            "avg_repair_actions": _mean_float(system_rows, "raw_repair_actions"),
+            "avg_repair_extra_tool_calls": _mean_float(system_rows, "repair_extra_tool_calls"),
+            "avg_repair_extra_user_turns": _mean_float(system_rows, "repair_extra_user_turns"),
+            "reused_artifact_rate": _mean_float(system_rows, "reused_artifact"),
+            "mean_second_run_improvement": _mean_float(system_rows, "second_run_improvement"),
+            "first_failure_recovered_rate": _mean_float(system_rows, "first_failure_recovered"),
+        }
+
+    delta_pairs = [
+        ("a4_reuse_minus_a3_interaction", "a4_reuse", "a3_interaction"),
+        ("a4_reuse_minus_a0_baseline", "a4_reuse", "a0_baseline"),
+    ]
+    deltas: Dict[str, Dict[str, float]] = {}
+    for name, right, left in delta_pairs:
+        if right not in per_system or left not in per_system:
+            continue
+        deltas[name] = {
+            "avg_tool_calls": per_system[right]["avg_tool_calls"] - per_system[left]["avg_tool_calls"],
+            "repair_trigger_rate": per_system[right]["repair_trigger_rate"] - per_system[left]["repair_trigger_rate"],
+            "avg_repair_actions": per_system[right]["avg_repair_actions"] - per_system[left]["avg_repair_actions"],
+            "avg_repair_extra_tool_calls": per_system[right]["avg_repair_extra_tool_calls"] - per_system[left]["avg_repair_extra_tool_calls"],
+            "avg_repair_extra_user_turns": per_system[right]["avg_repair_extra_user_turns"] - per_system[left]["avg_repair_extra_user_turns"],
+            "reused_artifact_rate": per_system[right]["reused_artifact_rate"] - per_system[left]["reused_artifact_rate"],
+            "mean_second_run_improvement": per_system[right]["mean_second_run_improvement"] - per_system[left]["mean_second_run_improvement"],
+            "first_failure_recovered_rate": per_system[right]["first_failure_recovered_rate"] - per_system[left]["first_failure_recovered_rate"],
+        }
+    return {
+        "reuse_scope": reuse_scope,
+        "asset_registry_root": asset_registry_root,
+        "metrics": metrics,
+        "per_system": per_system,
+        "deltas": deltas,
+    }
+
+
+def _write_reuse_focused_markdown(summary: Dict[str, Any], out_path: Path) -> None:
+    lines = [
+        "# ToolSandbox Reuse Focused Summary",
+        "",
+        f"- reuse_scope: `{summary.get('reuse_scope', 'within_invocation')}`",
+        f"- asset_registry_root: `{summary.get('asset_registry_root') or 'none'}`",
+        "",
+        "| system | rows | avg_tool_calls | repair_trigger_rate | avg_repair_actions | avg_repair_extra_tool_calls | avg_repair_extra_user_turns | reused_artifact_rate | mean_second_run_improvement | first_failure_recovered_rate |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for system, stats in sorted(summary.get("per_system", {}).items()):
+        lines.append(
+            f"| {system} | {int(stats.get('num_rows', 0))} | {float(stats.get('avg_tool_calls', 0.0)):.3f} | {float(stats.get('repair_trigger_rate', 0.0)):.3f} | {float(stats.get('avg_repair_actions', 0.0)):.3f} | {float(stats.get('avg_repair_extra_tool_calls', 0.0)):.3f} | {float(stats.get('avg_repair_extra_user_turns', 0.0)):.3f} | {float(stats.get('reused_artifact_rate', 0.0)):.3f} | {float(stats.get('mean_second_run_improvement', 0.0)):.3f} | {float(stats.get('first_failure_recovered_rate', 0.0)):.3f} |"
+        )
+    if summary.get("deltas"):
+        lines.extend(
+            [
+                "",
+                "## Reuse Deltas",
+                "",
+                "| delta | avg_tool_calls | repair_trigger_rate | avg_repair_actions | avg_repair_extra_tool_calls | avg_repair_extra_user_turns | reused_artifact_rate | mean_second_run_improvement | first_failure_recovered_rate |",
+                "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+            ]
+        )
+        for delta_name, delta in sorted(summary["deltas"].items()):
+            lines.append(
+                f"| {delta_name} | {float(delta.get('avg_tool_calls', 0.0)):+.3f} | {float(delta.get('repair_trigger_rate', 0.0)):+.3f} | {float(delta.get('avg_repair_actions', 0.0)):+.3f} | {float(delta.get('avg_repair_extra_tool_calls', 0.0)):+.3f} | {float(delta.get('avg_repair_extra_user_turns', 0.0)):+.3f} | {float(delta.get('reused_artifact_rate', 0.0)):+.3f} | {float(delta.get('mean_second_run_improvement', 0.0)):+.3f} | {float(delta.get('first_failure_recovered_rate', 0.0)):+.3f} |"
+            )
+    out_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _bootstrap_ci_mean_delta(deltas: List[float], *, rounds: int = 1000, seed: int = 0) -> Dict[str, float]:
+    if not deltas:
+        return {"mean_delta": 0.0, "ci_low": 0.0, "ci_high": 0.0}
+    rng = random.Random(seed)
+    n = len(deltas)
+    sampled_means: List[float] = []
+    for _ in range(rounds):
+        sample = [deltas[rng.randrange(n)] for _ in range(n)]
+        sampled_means.append(sum(sample) / n)
+    sampled_means.sort()
+    low_idx = int(0.025 * (rounds - 1))
+    high_idx = int(0.975 * (rounds - 1))
+    return {
+        "mean_delta": sum(deltas) / n,
+        "ci_low": sampled_means[low_idx],
+        "ci_high": sampled_means[high_idx],
+    }
+
+
+def _task_level_paired_summary(
+    per_system_summary: Dict[str, Any],
+    *,
+    right_system: str,
+    left_system: str,
+    task_filter: Any = None,
+) -> Dict[str, Any]:
+    right = per_system_summary.get(right_system, {}).get("per_sample", {})
+    left = per_system_summary.get(left_system, {}).get("per_sample", {})
+    common_tasks = sorted(set(right).intersection(left))
+    if task_filter is not None:
+        common_tasks = [task_id for task_id in common_tasks if task_filter(task_id)]
+    deltas: List[float] = []
+    wins = 0
+    losses = 0
+    ties = 0
+    for task_id in common_tasks:
+        right_success = float(right[task_id].get("success_rate", 0.0))
+        left_success = float(left[task_id].get("success_rate", 0.0))
+        delta = right_success - left_success
+        deltas.append(delta)
+        if delta > 0:
+            wins += 1
+        elif delta < 0:
+            losses += 1
+        else:
+            ties += 1
+    ci = _bootstrap_ci_mean_delta(deltas)
+    return {
+        "right_system": right_system,
+        "left_system": left_system,
+        "num_tasks": len(common_tasks),
+        "wins": wins,
+        "losses": losses,
+        "ties": ties,
+        "mean_delta": ci["mean_delta"],
+        "ci_low": ci["ci_low"],
+        "ci_high": ci["ci_high"],
+    }
+
+
+def _focused_slice_filters() -> Dict[str, Any]:
+    return {
+        "approval": lambda task_id: "approval" in str(task_id),
+        "state_repair": lambda task_id: "state_failure" in str(task_id),
+        "repeated_reusable": lambda task_id: str(task_id).startswith("toolsandbox_reuse_"),
+        "planner_distractor_hard": lambda task_id: (
+            str(task_id).startswith("toolsandbox_planner_sensitive_")
+            or str(task_id).startswith("toolsandbox_planner_distractor_")
+        ),
+    }
+
+
+def _statistical_robustness_summary(scoreboard: Dict[str, Any]) -> Dict[str, Any]:
+    per_system_summary = dict(scoreboard.get("per_system_summary", {}))
+    paired_overall = [
+        _task_level_paired_summary(per_system_summary, right_system="a2_planner", left_system="a3_interaction"),
+        _task_level_paired_summary(per_system_summary, right_system="a4_reuse", left_system="a3_interaction"),
+        _task_level_paired_summary(per_system_summary, right_system="a4_reuse", left_system="a0_baseline"),
+    ]
+    focused_filters = _focused_slice_filters()
+    paired_focused: Dict[str, List[Dict[str, Any]]] = {}
+    for slice_name, task_filter in focused_filters.items():
+        paired_focused[slice_name] = [
+            _task_level_paired_summary(
+                per_system_summary,
+                right_system="a2_planner",
+                left_system="a3_interaction",
+                task_filter=task_filter,
+            ),
+            _task_level_paired_summary(
+                per_system_summary,
+                right_system="a4_reuse",
+                left_system="a3_interaction",
+                task_filter=task_filter,
+            ),
+            _task_level_paired_summary(
+                per_system_summary,
+                right_system="a4_reuse",
+                left_system="a0_baseline",
+                task_filter=task_filter,
+            ),
+        ]
+    return {
+        "deterministic_warning": "consistency_is_replication_stability_not_uncertainty_estimation",
+        "paired_overall": paired_overall,
+        "paired_focused_slices": paired_focused,
+    }
+
+
+def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse_scope: str, asset_registry_root: str | None) -> None:
+    reuse_summary = _reuse_focused_summary(outdir, reuse_scope=reuse_scope, asset_registry_root=asset_registry_root)
+    (outdir / "reuse_focused_summary.json").write_text(json.dumps(reuse_summary, indent=2), encoding="utf-8")
+    _write_reuse_focused_markdown(reuse_summary, outdir / "reuse_focused_summary.md")
+    robustness_summary = _statistical_robustness_summary(scoreboard)
+    (outdir / "statistical_robustness_summary.json").write_text(json.dumps(robustness_summary, indent=2), encoding="utf-8")
     caution_flags = list(scoreboard.get("benchmark_caution_flags", []))
     lines = [
         "# ToolSandbox Benchmark Report",
@@ -606,11 +856,20 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
         f"- raw_comparison: `{outdir / 'comparison.raw.csv'}`",
         f"- scored_comparison: `{outdir / 'comparison.scored.csv'}`",
         f"- focused_slice_summary: `{outdir / 'focused_slice_summary.md'}`",
+        f"- reuse_focused_summary: `{outdir / 'reuse_focused_summary.md'}`",
+        f"- statistical_robustness_summary: `{outdir / 'statistical_robustness_summary.json'}`",
         f"- failtax_summary: `{outdir / 'per_failtax_summary.json'}`",
         "",
         "## Readiness",
         "",
     ]
+    lines.extend(
+        [
+            f"- reuse_scope: `{reuse_scope}`",
+            f"- asset_registry_root: `{asset_registry_root or 'none'}`",
+            "",
+        ]
+    )
     if caution_flags:
         lines.extend(
             [
@@ -684,6 +943,64 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path) -> None:
     for system, stats in per_system.items():
         for source, count in sorted(dict(stats.get("result_summary_source_breakdown", {})).items()):
             lines.append(f"| {system} | {source} | {int(count)} |")
+
+    lines.extend(
+        [
+            "",
+            "## Reuse Focused",
+            "",
+            "| system | avg_tool_calls | repair_trigger_rate | avg_repair_actions | avg_repair_extra_tool_calls | avg_repair_extra_user_turns | reused_artifact_rate | mean_second_run_improvement | first_failure_recovered_rate |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for system, stats in sorted(reuse_summary.get("per_system", {}).items()):
+        lines.append(
+            f"| {system} | {float(stats.get('avg_tool_calls', 0.0)):.3f} | {float(stats.get('repair_trigger_rate', 0.0)):.3f} | {float(stats.get('avg_repair_actions', 0.0)):.3f} | {float(stats.get('avg_repair_extra_tool_calls', 0.0)):.3f} | {float(stats.get('avg_repair_extra_user_turns', 0.0)):.3f} | {float(stats.get('reused_artifact_rate', 0.0)):.3f} | {float(stats.get('mean_second_run_improvement', 0.0)):.3f} | {float(stats.get('first_failure_recovered_rate', 0.0)):.3f} |"
+        )
+    if reuse_summary.get("deltas"):
+        lines.extend(
+            [
+                "",
+                "| reuse_delta | avg_tool_calls | repair_trigger_rate | avg_repair_actions | avg_repair_extra_tool_calls | avg_repair_extra_user_turns | reused_artifact_rate | mean_second_run_improvement | first_failure_recovered_rate |",
+                "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+            ]
+        )
+        for delta_name, delta in sorted(reuse_summary["deltas"].items()):
+            lines.append(
+                f"| {delta_name} | {float(delta.get('avg_tool_calls', 0.0)):+.3f} | {float(delta.get('repair_trigger_rate', 0.0)):+.3f} | {float(delta.get('avg_repair_actions', 0.0)):+.3f} | {float(delta.get('avg_repair_extra_tool_calls', 0.0)):+.3f} | {float(delta.get('avg_repair_extra_user_turns', 0.0)):+.3f} | {float(delta.get('reused_artifact_rate', 0.0)):+.3f} | {float(delta.get('mean_second_run_improvement', 0.0)):+.3f} | {float(delta.get('first_failure_recovered_rate', 0.0)):+.3f} |"
+            )
+
+    lines.extend(
+        [
+            "",
+            "## Statistical Robustness",
+            "",
+            "- consistency=1.0 here mainly indicates deterministic replication stability across repeats.",
+            "- paired comparison is reported at task level (wins/losses/ties) with bootstrap 95% CI on mean success delta.",
+            "",
+            "| pair | tasks | wins | losses | ties | mean_success_delta | bootstrap_95%_ci |",
+            "|---|---:|---:|---:|---:|---:|---|",
+        ]
+    )
+    for row in robustness_summary.get("paired_overall", []):
+        lines.append(
+            f"| {row['right_system']} vs {row['left_system']} | {int(row['num_tasks'])} | {int(row['wins'])} | {int(row['losses'])} | {int(row['ties'])} | {float(row['mean_delta']):+.3f} | [{float(row['ci_low']):+.3f}, {float(row['ci_high']):+.3f}] |"
+        )
+
+    for slice_name, rows in sorted(dict(robustness_summary.get("paired_focused_slices", {})).items()):
+        lines.extend(
+            [
+                "",
+                f"### Focused Slice: {slice_name}",
+                "",
+                "| pair | tasks | wins | losses | ties | mean_success_delta | bootstrap_95%_ci |",
+                "|---|---:|---:|---:|---:|---:|---|",
+            ]
+        )
+        for row in rows:
+            lines.append(
+                f"| {row['right_system']} vs {row['left_system']} | {int(row['num_tasks'])} | {int(row['wins'])} | {int(row['losses'])} | {int(row['ties'])} | {float(row['mean_delta']):+.3f} | [{float(row['ci_low']):+.3f}, {float(row['ci_high']):+.3f}] |"
+            )
 
     lines.extend(
         [
@@ -910,7 +1227,13 @@ def main() -> None:
         obsolete_path = outdir / obsolete_name
         if obsolete_path.exists():
             obsolete_path.unlink()
-    _write_toolsandbox_report(scoreboard, outdir)
+    reuse_scope = "cross_run_persistent" if args.asset_registry_root else "within_invocation"
+    _write_toolsandbox_report(
+        scoreboard,
+        outdir,
+        reuse_scope=reuse_scope,
+        asset_registry_root=str(Path(args.asset_registry_root).resolve()) if args.asset_registry_root else None,
+    )
     update_experiment_manifest(
         outdir,
         updates={
