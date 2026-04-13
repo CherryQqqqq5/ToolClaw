@@ -375,7 +375,7 @@ def test_execute_system_baseline_uses_planner_workflow(monkeypatch, tmp_path: Pa
     assert row.system == "a0_baseline"
 
 
-def test_execute_system_recovery_executor_uses_planner_workflow(monkeypatch, tmp_path: Path) -> None:
+def test_execute_system_recovery_executor_uses_seed_workflow(monkeypatch, tmp_path: Path) -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_recovery", module_path)
     assert spec is not None and spec.loader is not None
@@ -412,9 +412,26 @@ def test_execute_system_recovery_executor_uses_planner_workflow(monkeypatch, tmp
         runtime=runtime,
     )
 
-    assert build_calls == ["planner"]
+    assert build_calls == ["seed"]
     assert executed["workflow"] is workflow
     assert row["system"] == "a1_recovery"
+
+
+def test_build_runtime_for_spec_detaches_executor_planner_for_non_replan_specs(monkeypatch) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_runtime_specs", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    recovery_runtime = module.build_runtime_for_spec(spec=module.SYSTEM_SPECS["a1_recovery"])
+    planner_runtime = module.build_runtime_for_spec(spec=module.SYSTEM_SPECS["a2_planner"])
+    interaction_runtime = module.build_runtime_for_spec(spec=module.SYSTEM_SPECS["a3_interaction"])
+
+    assert recovery_runtime.executor.planner is None
+    assert planner_runtime.executor.planner is None
+    assert interaction_runtime.executor.planner is not None
 
 
 def test_run_baseline_preserves_toolsandbox_trace_metadata(tmp_path: Path) -> None:
@@ -469,7 +486,7 @@ def test_run_baseline_stops_on_approval_required_policy_gate(tmp_path: Path) -> 
     assert stop_reason == "awaiting_user_interaction"
 
 
-def test_run_eval_script_preserves_failure_injection_for_toolclaw_lite(tmp_path: Path) -> None:
+def test_run_eval_script_separates_recovery_only_and_planner_only_ablation(tmp_path: Path) -> None:
     taskset = [
         {
             "task_id": "task_binding_planner_001",
@@ -510,7 +527,8 @@ def test_run_eval_script_preserves_failure_injection_for_toolclaw_lite(tmp_path:
     rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
     toolclaw_rows = {(row["task_id"], row["system"]): row for row in rows}
     assert int(toolclaw_rows[("task_binding_planner_001", "a1_recovery")]["repair_actions"]) >= 1
-    assert int(toolclaw_rows[("task_env_planner_001", "a2_planner")]["repair_actions"]) >= 1
+    assert toolclaw_rows[("task_binding_planner_001", "a2_planner")]["stop_reason"] == "repair_disabled"
+    assert int(toolclaw_rows[("task_env_planner_001", "a2_planner")]["repair_actions"]) == 0
 
 
 def test_build_shell_supports_configured_llm_backend_without_placeholder_error() -> None:

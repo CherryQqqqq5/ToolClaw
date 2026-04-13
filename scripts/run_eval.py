@@ -42,6 +42,7 @@ from toolclaw.interaction.reply_provider import HumanReplyProvider, LLMReplyProv
 from toolclaw.interaction.repair_updater import RepairUpdater
 from toolclaw.interaction.user_simulator import SimulatedPolicy
 from toolclaw.main import ToolClawRuntime
+from toolclaw.planner.capability_intents import CAPABILITY_PROFILES_BY_ID, infer_capability_from_text
 from toolclaw.planner.htgp import PlanningRequest, build_default_planner
 from toolclaw.registry import AssetRegistry, FileAssetRegistry, InMemoryAssetRegistry
 from toolclaw.schemas.workflow import RiskLevel, TaskConstraints, ToolSpec, Workflow
@@ -56,12 +57,27 @@ class SystemSpec:
     use_reuse: bool = False
     allow_repair: bool = True
     allow_fallback: bool = True
+    allow_suffix_replan: bool = True
 
 
 SYSTEM_SPECS: Dict[str, SystemSpec] = {
     "a0_baseline": SystemSpec(system_id="a0_baseline", workflow_mode="planner", execution_mode="baseline"),
-    "a1_recovery": SystemSpec(system_id="a1_recovery", workflow_mode="planner", execution_mode="executor"),
-    "a2_planner": SystemSpec(system_id="a2_planner", workflow_mode="planner", execution_mode="executor"),
+    "a1_recovery": SystemSpec(
+        system_id="a1_recovery",
+        workflow_mode="seed",
+        execution_mode="executor",
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=False,
+    ),
+    "a2_planner": SystemSpec(
+        system_id="a2_planner",
+        workflow_mode="planner",
+        execution_mode="executor",
+        allow_repair=False,
+        allow_fallback=False,
+        allow_suffix_replan=False,
+    ),
     "a3_interaction": SystemSpec(
         system_id="a3_interaction",
         workflow_mode="planner",
@@ -118,8 +134,9 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         execution_mode="executor",
         compile_on_success=False,
         use_reuse=False,
-        allow_repair=True,
-        allow_fallback=True,
+        allow_repair=False,
+        allow_fallback=False,
+        allow_suffix_replan=False,
     ),
 }
 
@@ -177,7 +194,6 @@ def _planner_goal_from_task(task: Dict[str, Any], fallback: str) -> str:
     is_toolsandbox = isinstance(metadata, dict) and metadata.get("benchmark") == "toolsandbox"
     if not is_toolsandbox or not isinstance(messages, list):
         return fallback
-
     goal_parts: List[str] = []
     for message in messages:
         if not isinstance(message, dict):
@@ -194,6 +210,144 @@ def _planner_goal_from_task(task: Dict[str, Any], fallback: str) -> str:
         if normalized and normalized not in goal_parts:
             goal_parts.append(normalized)
     return "\n".join(goal_parts) if goal_parts else fallback
+
+
+def _seed_capability_for_tool(tool: ToolSpec, *, default: str = "cap_write") -> str:
+    inferred = infer_capability_from_text(f"{tool.tool_id} {tool.description}")
+    return str(inferred or default)
+
+
+def _select_seed_tool(
+    candidate_tools: List[ToolSpec],
+    capability_id: str,
+    *,
+    prefer_primary_write: bool = False,
+) -> Optional[ToolSpec]:
+    matches = [tool for tool in candidate_tools if _seed_capability_for_tool(tool, default="") == capability_id]
+    if not matches:
+        return None
+    if prefer_primary_write and capability_id == "cap_write":
+        non_backup = [tool for tool in matches if "backup" not in tool.tool_id.lower()]
+        if non_backup:
+            return non_backup[0]
+    return matches[0]
+
+
+def _configure_seed_capability_node(node: Any, capability_id: str) -> None:
+    profile = CAPABILITY_PROFILES_BY_ID.get(capability_id)
+    node.capability_id = capability_id
+    if profile is not None:
+        node.description = profile.description
+        node.preconditions = list(profile.preconditions)
+        node.postconditions = list(profile.postconditions)
+
+
+def _configure_seed_single_step_workflow(
+    workflow: Workflow,
+    *,
+    capability_id: str,
+    tool_id: str,
+    inputs: Dict[str, Any],
+    expected_output: str,
+) -> Workflow:
+    _configure_seed_capability_node(workflow.capability_graph.capabilities[0], capability_id)
+    workflow.capability_graph.capabilities = workflow.capability_graph.capabilities[:1]
+    workflow.capability_graph.edges = []
+
+    workflow.tool_bindings[0].capability_id = capability_id
+    workflow.tool_bindings[0].primary_tool = tool_id
+    workflow.tool_bindings = workflow.tool_bindings[:1]
+
+    step = workflow.execution_plan[0]
+    step.capability_id = capability_id
+    step.tool_id = tool_id
+    step.inputs = dict(inputs)
+    step.expected_output = expected_output
+    step.rollback_to = None
+    workflow.execution_plan = workflow.execution_plan[:1]
+
+    node = workflow.workflow_graph.nodes[0]
+    node.capability_id = capability_id
+    node.selected_tool = tool_id
+    node.tool_candidates = [tool_id]
+    node.inputs = dict(inputs)
+    node.expected_output = expected_output
+    node.dependencies = []
+    node.rollback_policy = None
+    workflow.workflow_graph.nodes = workflow.workflow_graph.nodes[:1]
+    workflow.workflow_graph.edges = []
+    workflow.workflow_graph.entry_nodes = ["step_01"]
+    workflow.workflow_graph.exit_nodes = ["step_01"]
+    return workflow
+
+
+def _build_seed_workflow(task: Dict[str, Any], candidate_tools: List[ToolSpec], user_goal: str) -> Workflow:
+    workflow = Workflow.demo()
+    workflow.workflow_id = f"wf_{canonical_task_id(task)}"
+    workflow.task.task_id = canonical_task_id(task)
+    workflow.task.user_goal = user_goal
+    if candidate_tools:
+        workflow.context.candidate_tools = list(candidate_tools)
+
+    allow_list = list(task.get("tool_allow_list", [])) if isinstance(task.get("tool_allow_list"), list) else []
+    scenario = str(task.get("scenario", "success"))
+    low_branching = (
+        len(candidate_tools) <= 1
+        or len(allow_list) == 1
+        or scenario in {"single_tool", "single_user_turn"}
+        or task.get("ideal_tool_calls") == 1
+    )
+
+    retrieve_tool = _select_seed_tool(candidate_tools, "cap_retrieve")
+    write_tool = _select_seed_tool(candidate_tools, "cap_write", prefer_primary_write=True)
+
+    if low_branching:
+        selected_tool = write_tool or retrieve_tool or (candidate_tools[0] if candidate_tools else None)
+        if selected_tool is None:
+            return workflow
+        capability_id = _seed_capability_for_tool(
+            selected_tool,
+            default="cap_write" if task.get("target_path") is not None else "cap_retrieve",
+        )
+        step_inputs = {"target_path": task.get("target_path")} if capability_id == "cap_write" else {"query": str(task.get("query") or user_goal)}
+        expected_output = "report_artifact" if capability_id == "cap_write" else "retrieved_info"
+        return _configure_seed_single_step_workflow(
+            workflow,
+            capability_id=capability_id,
+            tool_id=selected_tool.tool_id,
+            inputs=step_inputs,
+            expected_output=expected_output,
+        )
+
+    if not retrieve_tool and write_tool:
+        return _configure_seed_single_step_workflow(
+            workflow,
+            capability_id="cap_write",
+            tool_id=write_tool.tool_id,
+            inputs={"target_path": task.get("target_path")},
+            expected_output="report_artifact",
+        )
+    if not write_tool and retrieve_tool:
+        return _configure_seed_single_step_workflow(
+            workflow,
+            capability_id="cap_retrieve",
+            tool_id=retrieve_tool.tool_id,
+            inputs={"query": str(task.get("query") or user_goal)},
+            expected_output="retrieved_info",
+        )
+
+    if retrieve_tool is not None:
+        workflow.tool_bindings[0].primary_tool = retrieve_tool.tool_id
+        workflow.execution_plan[0].tool_id = retrieve_tool.tool_id
+        workflow.workflow_graph.nodes[0].selected_tool = retrieve_tool.tool_id
+        workflow.workflow_graph.nodes[0].tool_candidates = [retrieve_tool.tool_id]
+    if write_tool is not None:
+        workflow.tool_bindings[1].primary_tool = write_tool.tool_id
+        workflow.execution_plan[1].tool_id = write_tool.tool_id
+        workflow.workflow_graph.nodes[1].selected_tool = write_tool.tool_id
+        workflow.workflow_graph.nodes[1].tool_candidates = [write_tool.tool_id]
+    workflow.metadata["planner_mode"] = "recovery_seed"
+    return workflow
 
 
 def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, Any]):
@@ -298,6 +452,8 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
             str(task.get("tool_execution_backend") or (raw_metadata or {}).get("tool_execution_backend") or ("semantic_mock" if toolsandbox_metadata else "mock"))
         )
         workflow = planner.plan(request).workflow
+    elif mode == "seed":
+        workflow = _build_seed_workflow(task, candidate_tools, planner_goal)
     else:
         workflow = Workflow.demo()
 
@@ -356,6 +512,7 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
     workflow.metadata["task_family"] = derive_task_family(task, scenario=str(task.get("scenario", "success")), task_id=workflow.task.task_id)
     workflow.metadata["failure_type"] = derive_failure_type(task, scenario=str(task.get("scenario", "success")))
     workflow.metadata["scenario"] = str(task.get("scenario", "success"))
+    workflow.metadata.setdefault("planner_mode", "recovery_seed" if mode == "seed" else "demo")
     if isinstance(task.get("budget_profile"), dict):
         workflow.metadata["budget_profile"] = dict(task.get("budget_profile", {}))
     if isinstance(task.get("simulated_policy"), dict):
@@ -504,7 +661,7 @@ def build_runtime_for_spec(
 ) -> ToolClawRuntime:
     registry = asset_registry or InMemoryAssetRegistry()
     planner = build_default_planner(asset_registry=registry)
-    return ToolClawRuntime(
+    runtime = ToolClawRuntime(
         planner=planner,
         executor=SequentialExecutor(
             recovery_engine=RecoveryEngine(
@@ -516,6 +673,9 @@ def build_runtime_for_spec(
         compiler=SWPCCompiler(),
         asset_registry=registry,
     )
+    if not spec.allow_suffix_replan:
+        runtime.executor.planner = None
+    return runtime
 
 
 def parse_systems(raw_systems: str) -> List[SystemSpec]:
