@@ -358,6 +358,8 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
     workflow.metadata["scenario"] = str(task.get("scenario", "success"))
     if isinstance(task.get("budget_profile"), dict):
         workflow.metadata["budget_profile"] = dict(task.get("budget_profile", {}))
+    if isinstance(task.get("simulated_policy"), dict):
+        workflow.metadata["simulated_policy"] = dict(task.get("simulated_policy", {}))
     if isinstance(task.get("reuse_override_inputs"), dict):
         workflow.metadata["reuse_override_inputs"] = dict(task.get("reuse_override_inputs", {}))
     if task.get("messages") is not None:
@@ -401,6 +403,10 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
                 if workflow.workflow_graph.nodes:
                     workflow.workflow_graph.nodes[0].selected_tool = selected_tool
                     workflow.workflow_graph.nodes[0].tool_candidates = [selected_tool]
+
+    for step in workflow.execution_plan:
+        if not isinstance(step.metadata.get("repair_default_inputs"), dict):
+            step.metadata["repair_default_inputs"] = dict(step.inputs)
 
     scenario = task.get("scenario", "success")
     if scenario == "binding_failure" and len(workflow.execution_plan) > 1:
@@ -539,6 +545,7 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
                 step.step_id: {
                     "inputs": dict(step.inputs),
                     "tool_id": step.tool_id,
+                    "metadata": dict(step.metadata),
                 }
                 for step in workflow.execution_plan
             }

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
+from toolclaw.policy.policy_engine import PolicyEngine
 from toolclaw.schemas.trace import EventType, RunMetadata, RunMode, Trace
 from toolclaw.schemas.workflow import Workflow
 from toolclaw.tools.mock_tools import ToolExecutionError
@@ -14,6 +15,7 @@ from toolclaw.tools.runtime import run_tool
 
 def run_baseline(workflow: Workflow, run_id: str, output_path: Path) -> Tuple[Trace, str]:
     """Run workflow without repair/recovery (first error fails run)."""
+    policy_engine = PolicyEngine()
     trace = Trace(
         run_id=run_id,
         workflow_id=workflow.workflow_id,
@@ -53,8 +55,43 @@ def run_baseline(workflow: Workflow, run_id: str, output_path: Path) -> Tuple[Tr
     trace.metadata.run_manifest["tool_runtime_backend"] = str(workflow.metadata.get("tool_execution_backend", "mock"))
 
     stop_reason = "success_criteria_satisfied"
-    state_values: Dict[str, Any] = {}
+    state_values: Dict[str, Any] = {"__approved_steps__": []}
     for step in workflow.execution_plan:
+        policy_decision = policy_engine.evaluate_before_step(step, workflow, state_values)
+        trace.add_event(
+            event_id=f"evt_policy_before_{step.step_id}",
+            event_type=EventType.POLICY_CHECK,
+            actor="policy_engine",
+            step_id=step.step_id,
+            tool_id=step.tool_id,
+            output={"allow": policy_decision.allow, "reason": policy_decision.reason},
+            metadata={"events": policy_decision.policy_events},
+        )
+        if policy_decision.require_confirmation:
+            stop_reason = "awaiting_user_interaction"
+            trace.add_event(
+                event_id=f"evt_stop_blocked_{step.step_id}",
+                event_type=EventType.STOP,
+                actor="baseline_executor",
+                step_id=step.step_id,
+                output={"status": "failed", "reason": stop_reason},
+            )
+            trace.finalize(success=False, total_steps=len(workflow.execution_plan))
+            _write_trace(trace, output_path)
+            return trace, stop_reason
+        if policy_decision.abort:
+            stop_reason = policy_decision.reason or "policy_abort"
+            trace.add_event(
+                event_id=f"evt_stop_policy_abort_{step.step_id}",
+                event_type=EventType.STOP,
+                actor="baseline_executor",
+                step_id=step.step_id,
+                output={"status": "failed", "reason": stop_reason},
+            )
+            trace.finalize(success=False, total_steps=len(workflow.execution_plan))
+            _write_trace(trace, output_path)
+            return trace, stop_reason
+
         _inject_step_state_failures(step=step, state_values=state_values)
         state_failure = _state_failure_message(step=step, state_values=state_values)
         if state_failure is not None:
@@ -106,6 +143,8 @@ def run_baseline(workflow: Workflow, run_id: str, output_path: Path) -> Tuple[Tr
         )
         state_values[step.expected_output or step.step_id] = result.get("payload")
         _clear_state_slot_flags(state_values, [step.expected_output or step.step_id])
+        after_decision = policy_engine.evaluate_after_step(step, workflow, state_values)
+        policy_engine.apply_policy_patch(state_values, after_decision.state_patch)
 
     trace.add_event(
         event_id="evt_stop_success",

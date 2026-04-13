@@ -455,6 +455,20 @@ def test_run_baseline_preserves_toolsandbox_trace_metadata(tmp_path: Path) -> No
     assert trace.metadata.budget_limits["max_tool_calls"] is None
 
 
+def test_run_baseline_stops_on_approval_required_policy_gate(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    workflow.task.constraints.requires_user_approval = True
+
+    trace, stop_reason = run_baseline(
+        workflow=workflow,
+        run_id="run_baseline_approval_001",
+        output_path=tmp_path / "baseline_approval_trace.json",
+    )
+
+    assert trace.metrics.success is False
+    assert stop_reason == "awaiting_user_interaction"
+
+
 def test_run_eval_script_preserves_failure_injection_for_toolclaw_lite(tmp_path: Path) -> None:
     taskset = [
         {

@@ -921,10 +921,10 @@ class ToolSandboxAdapter:
             return "message"
         if any(token in text for token in state_hints):
             return "state"
-        if any(token in text for token in retrieve_hints):
-            return "retrieve"
         if any(token in text for token in write_hints):
             return "write"
+        if any(token in text for token in retrieve_hints):
+            return "retrieve"
         return ""
 
     def _make_sample(self, raw: Dict[str, Any], idx: int) -> BenchmarkSample:

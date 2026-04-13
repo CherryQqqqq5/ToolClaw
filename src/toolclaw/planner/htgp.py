@@ -1264,6 +1264,12 @@ class HTGPPlanner:
                 if binding is not None and step.tool_id:
                     binding.primary_tool = step.tool_id
 
+            if "metadata" in patch and isinstance(patch["metadata"], dict):
+                step.metadata.update(deepcopy(patch["metadata"]))
+                node = graph_nodes.get(step.step_id)
+                if node is not None:
+                    node.metadata.update(deepcopy(patch["metadata"]))
+
     def _load_reusable_profile(
         self,
         request: PlanningRequest,

@@ -215,3 +215,16 @@ def test_toolsandbox_adapter_preserves_execution_controls_in_eval_task() -> None
     assert eval_task["wrong_target_path"] == "outputs/reports/shadow.txt"
     assert eval_task["reuse_override_inputs"] == {"cap_write": ["target_path"]}
     assert eval_task["tool_execution_backend"] == "semantic_mock"
+
+
+def test_toolsandbox_adapter_proxy_capability_prefers_write_over_retrieval_words_in_writer_description() -> None:
+    adapter = ToolSandboxAdapter()
+    raw = {
+        "candidate_tools": [
+            {"tool_id": "write_tool", "description": "Standard writer used after retrieval once the retrieved summary is available."}
+        ]
+    }
+
+    capability = adapter._infer_proxy_tool_capability(raw, "write_tool")
+
+    assert capability == "write"

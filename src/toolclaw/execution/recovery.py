@@ -86,9 +86,28 @@ class RecoveryEngine:
             inputs=error.evidence.inputs,
             raw_message=error.evidence.raw_message,
         )
+        evidence_metadata = error.evidence.metadata if isinstance(error.evidence.metadata, dict) else {}
+        repair_default_inputs = (
+            dict(evidence_metadata.get("repair_default_inputs", {}))
+            if isinstance(evidence_metadata.get("repair_default_inputs", {}), dict)
+            else {}
+        )
+        simulated_missing_arg_values = (
+            dict(evidence_metadata.get("simulated_missing_arg_values", {}))
+            if isinstance(evidence_metadata.get("simulated_missing_arg_values", {}), dict)
+            else {}
+        )
 
         if error.state_context.missing_assets:
             missing_target = error.state_context.missing_assets[0]
+
+        if not missing_target:
+            for candidate in ("target_path", "retrieved_info", "retrieved_summary"):
+                if candidate not in repaired_inputs and (
+                    candidate in repair_default_inputs or candidate in simulated_missing_arg_values
+                ):
+                    missing_target = candidate
+                    break
 
         target_expr = f"{step_id}.inputs.{missing_target}" if missing_target else f"{step_id}.inputs"
         patch_value: object = missing_target or "auto_filled_value"
@@ -97,6 +116,15 @@ class RecoveryEngine:
             "tool arguments become valid",
             "the failed step can be re-executed",
         ]
+        if missing_target:
+            candidate_value = repair_default_inputs.get(missing_target, simulated_missing_arg_values.get(missing_target))
+            if candidate_value not in (None, ""):
+                patch_value = candidate_value
+                rationale = "Binding failure exposes a missing argument, so the repair restores the known default input before retry."
+                expected_effects = [
+                    f"{missing_target} is restored from benchmark defaults",
+                    "the failed step can be re-executed with a concrete patch",
+                ]
         if repaired_inputs and repaired_inputs != error.evidence.inputs:
             target_expr = f"{step_id}.inputs"
             patch_value = repaired_inputs
@@ -105,6 +133,12 @@ class RecoveryEngine:
                 "invalid optional arguments are removed",
                 "the failed step can be re-executed with sanitized inputs",
             ]
+        elif missing_target and isinstance(patch_value, str) and patch_value == missing_target:
+            patch_value = (
+                repair_default_inputs.get(missing_target)
+                or simulated_missing_arg_values.get(missing_target)
+                or "auto_filled_value"
+            )
 
         repair = Repair(
             repair_id=f"rep_{error.error_id}",

@@ -607,7 +607,7 @@ class SequentialExecutor:
             )
             return StepExecutionResult(ok=True, step_id=step.step_id, tool_id=step.tool_id, output=result)
         except ToolExecutionError as exc:
-            error = self._build_error(step, trace, exc, tool_args)
+            error = self._build_error(workflow, step, trace, exc, tool_args)
             return StepExecutionResult(ok=False, step_id=step.step_id, tool_id=step.tool_id, error=error)
 
     def _apply_repair(
@@ -621,6 +621,7 @@ class SequentialExecutor:
     ) -> RepairApplyResult:
         patched_inputs = dict(step.inputs)
         selected_tool = step.tool_id
+        original_tool_id = step.tool_id
         should_reexecute = False
         extra_state_patch: Dict[str, Any] = {}
 
@@ -644,6 +645,9 @@ class SequentialExecutor:
                     selected_tool = self._resolve_switch_tool_target(step=step, repair=repair, backup_tool_map=backup_tool_map)
                 if selected_tool:
                     step.tool_id = selected_tool
+                    if original_tool_id and selected_tool != original_tool_id:
+                        patched_inputs.pop("force_environment_failure", None)
+                        extra_state_patch["force_environment_failure"] = False
                     for binding in workflow.tool_bindings:
                         if binding.capability_id == step.capability_id:
                             previous_primary = binding.primary_tool
@@ -981,6 +985,7 @@ class SequentialExecutor:
 
     def _build_error(
         self,
+        workflow: Workflow,
         step: WorkflowStep,
         trace: Trace,
         exc: Exception,
@@ -1004,6 +1009,22 @@ class SequentialExecutor:
         else:
             category = ErrorCategory.ENVIRONMENT_FAILURE
 
+        repair_default_inputs = dict(step.metadata.get("repair_default_inputs", {}))
+        simulated_policy = workflow.metadata.get("simulated_policy", {})
+        simulated_missing_arg_values = (
+            dict(simulated_policy.get("missing_arg_values", {}))
+            if isinstance(simulated_policy, dict) and isinstance(simulated_policy.get("missing_arg_values", {}), dict)
+            else {}
+        )
+        inferred_missing_assets: list[str] = []
+        if category == ErrorCategory.BINDING_FAILURE:
+            if step.capability_id == "cap_write" and not tool_args.get("target_path"):
+                inferred_missing_assets.append("target_path")
+            required_slots = [str(item) for item in step.metadata.get("required_state_slots", []) if str(item)]
+            for slot in required_slots:
+                if slot not in inferred_missing_assets and tool_args.get(slot) in {None, ""}:
+                    inferred_missing_assets.append(slot)
+
         return ToolClawError(
             error_id=f"err_{step.step_id}",
             run_id=trace.run_id,
@@ -1019,7 +1040,11 @@ class SequentialExecutor:
                 raw_message=message,
                 related_events=[f"evt_call_{step.step_id}"],
                 inputs=dict(tool_args),
-                metadata={"preflight_state_policy": preflight_policy},
+                metadata={
+                    "preflight_state_policy": preflight_policy,
+                    "repair_default_inputs": repair_default_inputs,
+                    "simulated_missing_arg_values": simulated_missing_arg_values,
+                },
             ),
             root_cause_hypothesis=["tool invocation failed in sequential execution"],
             state_context=StateContext(
@@ -1028,7 +1053,11 @@ class SequentialExecutor:
                 missing_assets=(
                     ["cellular_service_status"]
                     if "cellular service is not enabled" in lowered_message
-                    else (["target_path"] if ("target_path" in message or "write target mismatch" in message) else [])
+                    else (
+                        ["target_path"]
+                        if ("target_path" in message or "write target mismatch" in message)
+                        else inferred_missing_assets
+                    )
                 ),
                 state_values={},
                 policy_flags={"approval_pending": False},

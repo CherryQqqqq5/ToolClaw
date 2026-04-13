@@ -79,6 +79,48 @@ def test_switch_tool_repair_updates_workflow_state(tmp_path: Path) -> None:
     assert "write_tool" in write_binding.backup_tools
 
 
+def test_switch_tool_repair_clears_environment_failure_flag_for_backup_tool(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    workflow.metadata["tool_execution_backend"] = "semantic_mock"
+    workflow.context.candidate_tools = [
+        ToolSpec(tool_id="search_tool", description="Search information."),
+        ToolSpec(tool_id="write_tool", description="Write report to disk."),
+        ToolSpec(tool_id="backup_write_tool", description="Backup write report to disk."),
+    ]
+    workflow.execution_plan[1].inputs["force_environment_failure"] = True
+
+    trace = SequentialExecutor().run(
+        workflow=workflow,
+        run_id="run_switch_clears_flag_001",
+        output_path=str(tmp_path / "run_switch_clears_flag.json"),
+        backup_tool_map={"write_tool": "backup_write_tool"},
+    )
+
+    assert trace.metrics.success is True
+    assert workflow.execution_plan[1].tool_id == "backup_write_tool"
+    assert "force_environment_failure" not in workflow.execution_plan[1].inputs
+
+
+def test_binding_repair_restores_default_target_path_for_write_step(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    workflow.metadata["tool_execution_backend"] = "semantic_mock"
+    workflow.context.candidate_tools = [
+        ToolSpec(tool_id="search_tool", description="Search information."),
+        ToolSpec(tool_id="write_tool", description="Write report to disk."),
+    ]
+    workflow.execution_plan[1].inputs.pop("target_path", None)
+    workflow.execution_plan[1].metadata["repair_default_inputs"] = {"target_path": "outputs/reports/restored.txt"}
+
+    trace = SequentialExecutor().run(
+        workflow=workflow,
+        run_id="run_binding_restore_001",
+        output_path=str(tmp_path / "run_binding_restore.json"),
+    )
+
+    assert trace.metrics.success is True
+    assert workflow.execution_plan[1].inputs["target_path"] == "outputs/reports/restored.txt"
+
+
 def test_executor_rolls_back_and_replans_suffix_when_ordering_failure_occurs(tmp_path: Path) -> None:
     workflow = Workflow.demo()
     workflow.context.candidate_tools.append(type(workflow.context.candidate_tools[1])(tool_id="ordering_write_tool", description="write with wrong order"))

@@ -297,7 +297,14 @@ def test_planner_can_round_trip_request_context_from_workflow_metadata() -> None
             },
         ),
         planner_mode="benchmark_aware",
-        workflow_overrides={"steps": {"step_01": {"inputs": {"target_path": "outputs/custom.txt"}}}},
+        workflow_overrides={
+            "steps": {
+                "step_01": {
+                    "inputs": {"target_path": "outputs/custom.txt"},
+                    "metadata": {"required_state_slots": ["retrieved_info"]},
+                }
+            }
+        },
     )
 
     result = planner.plan(request)
@@ -308,6 +315,7 @@ def test_planner_can_round_trip_request_context_from_workflow_metadata() -> None
     assert restored.hints.prior_failures == ["binding_failure"]
     assert restored.hints.user_style["tool_allow_list"] == ["write_tool"]
     assert restored.workflow_overrides["steps"]["step_01"]["inputs"]["target_path"] == "outputs/custom.txt"
+    assert restored.workflow_overrides["steps"]["step_01"]["metadata"]["required_state_slots"] == ["retrieved_info"]
 
 
 def test_planner_passthrough_metadata_preserves_toolsandbox_annotations() -> None:
