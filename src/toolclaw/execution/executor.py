@@ -669,6 +669,8 @@ class SequentialExecutor:
             should_reexecute = repair.repair_type.value in {"switch_tool", "rebind_args"}
 
         if not should_reexecute:
+            if repair.repair_type.value == "replan_suffix":
+                return RepairApplyResult(applied=False, message="request_suffix_replan")
             return RepairApplyResult(applied=False, message=f"repair not executable: {repair.repair_type.value}")
 
         if not selected_tool:
@@ -778,6 +780,8 @@ class SequentialExecutor:
     ) -> Optional[tuple[Workflow, int]]:
         rollback_step_id = step.rollback_to
         if rollback_step_id is None:
+            rollback_step_id = self._fallback_rollback_step_id(workflow=workflow, step=step, tracker=tracker)
+        if rollback_step_id is None:
             return None
 
         checkpoint_id = self._checkpoint_id_for_step(rollback_step_id)
@@ -823,6 +827,20 @@ class SequentialExecutor:
             },
         )
         return replanned.workflow, self._step_index(replanned.workflow, step.step_id)
+
+    def _fallback_rollback_step_id(
+        self,
+        *,
+        workflow: Workflow,
+        step: WorkflowStep,
+        tracker: StateTracker,
+    ) -> Optional[str]:
+        if tracker.completed_steps:
+            return tracker.completed_steps[-1]
+        current_index = self._step_index(workflow, step.step_id)
+        if current_index <= 0:
+            return None
+        return workflow.execution_plan[current_index - 1].step_id
 
     @staticmethod
     def _checkpoint_id_for_step(step_id: str) -> str:

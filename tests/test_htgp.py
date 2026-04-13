@@ -41,6 +41,8 @@ def test_planner_builds_linear_plan_for_simple_task() -> None:
     assert len(result.workflow.execution_plan) >= 2
     assert result.workflow.execution_plan[0].capability_id == "cap_retrieve"
     assert result.workflow.execution_plan[1].capability_id == "cap_write"
+    assert result.workflow.execution_plan[0].rollback_to is None
+    assert result.workflow.execution_plan[1].rollback_to == "step_01"
 
 
 def test_planner_emits_unresolved_capability_when_no_tool_matches() -> None:
@@ -277,6 +279,21 @@ def test_binder_uses_tool_metadata_to_avoid_lexical_distractors() -> None:
     write_step = next(step for step in result.workflow.execution_plan if step.capability_id == "cap_write")
 
     assert write_step.tool_id == "finalize_artifact_tool"
+
+
+def test_benchmark_preferred_bindings_avoids_allow_list_order_bias_for_multi_match_capability() -> None:
+    candidate_tools = [
+        ToolSpec(tool_id="search_tool", description="Retrieve relevant information."),
+        ToolSpec(tool_id="ordering_write_tool", description="Legacy ordering writer that should not be preferred."),
+        ToolSpec(tool_id="write_tool", description="Compliant primary writer for final report output."),
+    ]
+    preferred = HTGPPlanner._benchmark_preferred_bindings(
+        candidate_tools,
+        {"tool_allow_list": ["search_tool", "ordering_write_tool", "write_tool"]},
+    )
+
+    assert preferred.get("cap_retrieve") == "search_tool"
+    assert "cap_write" not in preferred
 
 
 def test_planner_can_round_trip_request_context_from_workflow_metadata() -> None:

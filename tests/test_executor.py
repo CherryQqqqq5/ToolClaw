@@ -142,6 +142,29 @@ def test_executor_rolls_back_and_replans_suffix_when_ordering_failure_occurs(tmp
     assert EventType.REPLAN_APPLIED.value in event_types
 
 
+def test_executor_suffix_replan_falls_back_to_previous_step_when_rollback_target_missing(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    workflow.context.candidate_tools.append(type(workflow.context.candidate_tools[1])(tool_id="ordering_write_tool", description="write with wrong order"))
+    workflow.execution_plan[1].tool_id = "ordering_write_tool"
+    workflow.execution_plan[1].rollback_to = None
+    write_binding = [b for b in workflow.tool_bindings if b.capability_id == "cap_write"][0]
+    write_binding.primary_tool = "ordering_write_tool"
+
+    trace = SequentialExecutor(planner=build_planner()).run(
+        workflow=workflow,
+        run_id="run_replan_fallback_001",
+        output_path=str(tmp_path / "run_replan_fallback.json"),
+    )
+
+    assert trace.metrics.success is True
+    payload = json.loads((tmp_path / "run_replan_fallback.json").read_text(encoding="utf-8"))
+    rollback_event = next(event for event in payload["events"] if event["event_type"] == EventType.ROLLBACK.value)
+    assert rollback_event["output"]["rollback_to"] == "step_01"
+    event_types = [evt["event_type"] for evt in payload["events"]]
+    assert EventType.REPLAN_TRIGGERED.value in event_types
+    assert EventType.REPLAN_APPLIED.value in event_types
+
+
 def test_executor_suffix_replan_preserves_request_hints_from_workflow_metadata() -> None:
     planner = build_planner()
     request = PlanningRequest(

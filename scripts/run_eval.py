@@ -580,7 +580,7 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
             workflow.workflow_graph.entry_nodes = ["step_01"]
             workflow.workflow_graph.exit_nodes = ["step_01"]
             workflow.metadata["low_branching_fast_path"] = True
-            if allow_list and workflow.execution_plan:
+            if allow_list and workflow.execution_plan and mode != "planner":
                 selected_tool = str(allow_list[0])
                 workflow.execution_plan[0].tool_id = selected_tool
                 if workflow.tool_bindings:

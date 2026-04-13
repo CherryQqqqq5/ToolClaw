@@ -437,6 +437,7 @@ class PolicyInjector:
                     inputs=inputs,
                     expected_output=expected_output,
                     checkpoint=True,
+                    rollback_to=(f"step_{idx - 1:02d}" if idx > 1 else None),
                     requires_user_confirmation=("requires_approval" in capability.preconditions),
                     metadata={
                         "policy_gate": "default_phase1",
@@ -772,14 +773,19 @@ class HTGPPlanner:
         if not allow_order:
             return {}
         tool_by_id = {tool.tool_id: tool for tool in candidate_tools}
-        preferred: Dict[str, str] = {}
+        inferred_by_capability: Dict[str, List[str]] = {}
         for tool_id in allow_order:
             tool = tool_by_id.get(tool_id)
             if tool is None:
                 continue
             inferred = infer_capability_from_text(f"{tool.tool_id} {tool.description}")
-            if inferred and inferred not in preferred:
-                preferred[inferred] = tool.tool_id
+            if inferred:
+                inferred_by_capability.setdefault(inferred, []).append(tool.tool_id)
+        preferred: Dict[str, str] = {}
+        for capability_id, tool_ids in inferred_by_capability.items():
+            # Avoid allow-list order bias when multiple tools match one capability (e.g. planner-sensitive writer distractors).
+            if len(tool_ids) == 1:
+                preferred[capability_id] = tool_ids[0]
         return preferred
 
     @staticmethod
