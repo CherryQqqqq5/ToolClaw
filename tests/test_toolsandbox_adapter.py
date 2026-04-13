@@ -230,6 +230,19 @@ def test_toolsandbox_adapter_proxy_capability_prefers_write_over_retrieval_words
     assert capability == "write"
 
 
+def test_toolsandbox_adapter_proxy_capability_prefers_write_over_state_update_wording() -> None:
+    adapter = ToolSandboxAdapter()
+    raw = {
+        "candidate_tools": [
+            {"tool_id": "write_tool", "description": "Primary writer for board update reports after retrieval."}
+        ]
+    }
+
+    capability = adapter._infer_proxy_tool_capability(raw, "write_tool")
+
+    assert capability == "write"
+
+
 def test_toolsandbox_adapter_rejects_verified_success_when_write_target_path_is_wrong() -> None:
     adapter = ToolSandboxAdapter()
     sample = BenchmarkSample(

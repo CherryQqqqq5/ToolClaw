@@ -499,8 +499,13 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
     if retrieve_query and mode != "planner":
         workflow.execution_plan[0].inputs["query"] = retrieve_query
 
-    if task.get("target_path") is not None and len(workflow.execution_plan) > 1:
-        workflow.execution_plan[1].inputs["target_path"] = task["target_path"]
+    if task.get("target_path") is not None:
+        target_path = task["target_path"]
+        write_steps = [step for step in workflow.execution_plan if step.capability_id == "cap_write"]
+        if write_steps:
+            write_steps[0].inputs["target_path"] = target_path
+        elif len(workflow.execution_plan) > 1:
+            workflow.execution_plan[1].inputs["target_path"] = target_path
 
     raw_constraints = task.get("constraints")
     if isinstance(raw_constraints, dict):

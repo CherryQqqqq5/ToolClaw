@@ -150,6 +150,37 @@ def test_build_workflow_from_task_plans_with_toolsandbox_candidate_tools() -> No
     assert workflow.metadata["tool_execution_backend"] == "semantic_mock"
 
 
+def test_build_workflow_from_task_planner_single_write_respects_target_path() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_single_write_target", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "toolsandbox_planner_sensitive_003",
+            "scenario": "single_tool",
+            "query": "Save the release approval note with the compliant writer.",
+            "target_path": "outputs/toolsandbox/reports/toolsandbox_planner_sensitive_003.txt",
+            "tool_allow_list": ["ordering_write_tool", "write_tool"],
+            "candidate_tools": [
+                {"tool_id": "ordering_write_tool", "description": "Legacy ordering writer that should not be used."},
+                {"tool_id": "write_tool", "description": "Compliant writer for release note output."},
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["single_tool", "single_user_turn"],
+            },
+        },
+        mode="planner",
+    )
+
+    write_step = next(step for step in workflow.execution_plan if step.capability_id == "cap_write")
+    assert write_step.inputs["target_path"] == "outputs/toolsandbox/reports/toolsandbox_planner_sensitive_003.txt"
+
+
 def test_build_workflow_from_task_restores_toolsandbox_goal_from_messages() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_messages", module_path)
