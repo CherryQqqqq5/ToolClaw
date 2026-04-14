@@ -281,3 +281,61 @@ def test_toolsandbox_adapter_rejects_verified_success_when_write_target_path_is_
     assert score.metrics["write_target_verified"] == 0.0
     assert score.diagnostics["expected_target_path"] == "outputs/toolsandbox/reports/toolsandbox_reuse_family_001__pass2.txt"
     assert score.diagnostics["observed_target_path"] == "outputs/toolsandbox/reports/toolsandbox_env_backup_001.txt"
+
+
+def test_proxy_progress_signals_count_distinct_write_tools_for_planner_sensitive_depth() -> None:
+    adapter = ToolSandboxAdapter()
+    raw = {
+        "categories": ["Multiple Tool Call", "State Dependency"],
+        "candidate_tools": [
+            {"tool_id": "search_tool", "description": "Retrieve and summarize the board update details."},
+            {"tool_id": "archive_write_tool", "description": "Read-only archive writer for historical snapshots only."},
+            {"tool_id": "write_tool", "description": "Standard primary writer for the final board update report."},
+        ],
+        "milestones": ["retrieve board update summary", "prune archive writer", "save final board update report"],
+        "ideal_tool_calls": 2,
+    }
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 3},
+        "events": [
+            {"event_type": "tool_call", "tool_id": "search_tool"},
+            {"event_type": "tool_call", "tool_id": "archive_write_tool", "tool_args": {"target_path": "outputs/tmp/archive.txt"}},
+            {"event_type": "tool_call", "tool_id": "write_tool", "tool_args": {"target_path": "outputs/tmp/final.txt"}},
+        ],
+    }
+    signals = adapter._proxy_progress_signals(raw, trace_payload)
+    # retrieve + two distinct write tools + success_bonus (progress_base >= 2)
+    assert signals >= 4
+
+
+def test_write_target_verification_accepts_normalized_relative_paths() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_path_norm_001",
+        raw_payload={
+            "target_path": "outputs/toolsandbox/reports/toolsandbox_path_norm_001.txt",
+            "categories": ["State Dependency"],
+            "milestones": ["write"],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "metadata": {
+            "toolsandbox_result": {
+                "similarity": 1.0,
+                "milestone_mapping": [0],
+                "source": "toolclaw_proxy",
+            }
+        },
+        "events": [
+            {
+                "event_type": "tool_call",
+                "tool_id": "write_tool",
+                "tool_args": {"target_path": "./outputs/toolsandbox/reports/toolsandbox_path_norm_001.txt"},
+            },
+        ],
+    }
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.metrics["write_target_verified"] == 1.0
+    assert score.metrics["execution_verified_success"] == 1.0

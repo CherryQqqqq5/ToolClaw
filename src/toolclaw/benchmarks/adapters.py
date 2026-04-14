@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
 
@@ -892,18 +893,26 @@ class ToolSandboxAdapter:
             for event in trace_events
             if event.get("event_type") in {"tool_call", "tool_result"} and str(event.get("tool_id") or "").strip()
         ]
-        unique_capabilities = {
-            capability
-            for capability in (self._infer_proxy_tool_capability(raw, tool_id) for tool_id in tool_ids)
-            if capability
-        }
+        # Count progress depth: non-write capabilities collapse to one slot each, but distinct
+        # write-capable tools get separate slots so planner-sensitive tasks (e.g. archive vs primary
+        # writer) can match multi-milestone traces without relying on coarse "write" alone.
+        progress_keys: set[tuple[str, ...]] = set()
+        for tool_id in tool_ids:
+            capability = self._infer_proxy_tool_capability(raw, tool_id)
+            if not capability:
+                continue
+            if capability == "write":
+                progress_keys.add(("write", tool_id))
+            else:
+                progress_keys.add((capability,))
+        progress_base = len(progress_keys)
         interaction_bonus = 1 if self._interaction_expected(self._extract_categories(raw)) and any(event.get("event_type") == "user_query" for event in trace_events) else 0
         repair_bonus = 1 if any(event.get("event_type") in {"repair_triggered", "repair_applied"} for event in trace_events) else 0
         success_bonus = 0
         expected_tool_calls = self._expected_tool_calls(raw, self._extract_categories(raw))
-        if bool(trace_metrics.get("success")) and len(unique_capabilities) >= min(max(expected_tool_calls, 1), 2):
+        if bool(trace_metrics.get("success")) and progress_base >= min(max(expected_tool_calls, 1), 2):
             success_bonus = 1
-        return len(unique_capabilities) + interaction_bonus + repair_bonus + success_bonus
+        return progress_base + interaction_bonus + repair_bonus + success_bonus
 
     @staticmethod
     def _proxy_tool_spec(raw: Dict[str, Any], tool_id: str) -> Dict[str, Any]:
@@ -1276,24 +1285,65 @@ class ToolSandboxAdapter:
             if event.get("event_type") != "tool_call":
                 continue
             tool_id = str(event.get("tool_id") or "").strip()
-            if not tool_id or self._infer_proxy_tool_capability(raw, tool_id) != "write":
+            if not tool_id:
                 continue
             tool_args = event.get("tool_args")
             if not isinstance(tool_args, dict):
                 continue
             target_path = tool_args.get("target_path")
-            if target_path is not None:
+            if target_path is None:
+                continue
+            if self._infer_proxy_tool_capability(raw, tool_id) == "write" or self._tool_call_is_write_like_for_benchmark(
+                raw, tool_id
+            ):
                 observed_paths.append(str(target_path))
         if not observed_paths:
             return None
         return observed_paths[-1]
+
+    def _tool_call_is_write_like_for_benchmark(self, raw: Dict[str, Any], tool_id: str) -> bool:
+        """Fallback when descriptions omit write keywords but the tool is a benchmark write endpoint."""
+        if self._infer_proxy_tool_capability(raw, tool_id) == "write":
+            return True
+        if tool_id not in self._tool_allow_list(raw):
+            return False
+        spec = self._proxy_tool_spec(raw, tool_id)
+        blob = " ".join(
+            [
+                tool_id.lower(),
+                str(spec.get("description") or "").lower(),
+                " ".join(str(x) for x in spec.get("semantic_tags", []) if str(x)).lower(),
+            ]
+        )
+        if any(token in blob for token in ("write", "writer", "save", "persist", "archive", "report", "artifact")):
+            return True
+        return any(fragment in tool_id.lower() for fragment in ("write", "archive", "persist", "backup"))
+
+    @staticmethod
+    def _normalize_benchmark_path(path: str) -> str:
+        cleaned = path.strip().replace("\\", "/")
+        return os.path.normpath(cleaned)
+
+    def _paths_match_for_benchmark_write(self, expected: str, observed: str) -> bool:
+        if not expected or not observed:
+            return False
+        e = self._normalize_benchmark_path(expected)
+        o = self._normalize_benchmark_path(observed)
+        if e == o:
+            return True
+        try:
+            return Path(e).expanduser().resolve() == Path(o).expanduser().resolve()
+        except (OSError, RuntimeError):
+            return False
 
     def _write_target_verified(self, *, raw: Dict[str, Any], task_id: str, trace_events: List[Dict[str, Any]]) -> bool:
         expected_target_path = self._expected_write_target_path(raw, task_id)
         if expected_target_path is None:
             return True
         observed_target_path = self._observed_write_target_path(raw, trace_events)
-        return observed_target_path == expected_target_path
+        if observed_target_path is None:
+            return False
+        return self._paths_match_for_benchmark_write(expected_target_path, observed_target_path)
 
     def _task_expects_write(self, raw: Dict[str, Any]) -> bool:
         if raw.get("target_path") is not None:
