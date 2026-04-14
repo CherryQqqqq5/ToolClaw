@@ -516,6 +516,17 @@ def parse_args() -> argparse.Namespace:
         help="Fail if the prepared ToolSandbox source does not include any merged result_summary / toolsandbox_result signal",
     )
     parser.add_argument("--keep-normalized-taskset", action="store_true", help="Keep the normalized taskset JSON file")
+    parser.add_argument(
+        "--interaction-target",
+        choices=["simulator", "user_cli"],
+        default="simulator",
+        help="Interaction responder for interactive systems: simulator (default) or user_cli.",
+    )
+    parser.add_argument(
+        "--cli-prompt-prefix",
+        default="toolclaw",
+        help="Prompt prefix when --interaction-target=user_cli.",
+    )
     return parser.parse_args()
 
 
@@ -1152,6 +1163,12 @@ def main() -> None:
     systems = normalize_systems(args.systems)
 
     normalized_tasks = [adapter.to_eval_task(sample) for sample in samples]
+    if args.interaction_target == "user_cli":
+        for task in normalized_tasks:
+            task["interaction_backend"] = {
+                "type": "human",
+                "prompt_prefix": args.cli_prompt_prefix,
+            }
     normalized_path = prepared_dir / TOOLSANDBOX_CONFIG.normalized_filename
     normalized_path.write_text(json.dumps(normalized_tasks, indent=2), encoding="utf-8")
 
@@ -1230,6 +1247,8 @@ def main() -> None:
             "phase_config": str(Path(args.phase_config).resolve()),
             "official_run_dir": args.official_run_dir,
             "official_data_root": str(Path(args.official_data_root).resolve()),
+            "interaction_target": args.interaction_target,
+            "cli_prompt_prefix": args.cli_prompt_prefix if args.interaction_target == "user_cli" else None,
         },
         archive_files=[
             Path(__file__).resolve(),
