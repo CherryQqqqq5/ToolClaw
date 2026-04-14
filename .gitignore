@@ -15,3 +15,7 @@ data/external/ToolSandbox/.venv/
 
 # Official ToolSandbox run outputs sometimes land under the repo-level data/ root
 data/agent_*/
+
+secrects/
+
+.env
