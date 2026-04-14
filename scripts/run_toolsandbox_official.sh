@@ -84,6 +84,9 @@ Notes:
   - --use-active-env installs into the currently active Python/conda environment instead of creating a venv.
   - If python -m venv fails, the script falls back to python -m virtualenv when possible.
   - API keys still need to be provided via environment variables as required by the selected agent/user roles.
+  - For OpenRouter / OpenAI-compatible proxies, set OPENAI_BASE_URL (or rely on TOOLCLAW_BENCHMARK_PROXY_PROVIDER=openrouter)
+    and set TOOLSANDBOX_OPENAI_MODEL or OPENAI_MODEL to the gateway model slug (e.g. openai/gpt-4o). Patched roles
+    pass that through to chat.completions; --agent/--user still select ToolSandbox prompts unless you override the model env.
 EOF
 }
 
@@ -163,7 +166,9 @@ validate_env() {
       fi
       ;;
     openrouter|router)
-      export TOOLSANDBOX_OPENAI_MODEL="${TOOLSANDBOX_OPENAI_MODEL:-x-ai/grok-3}"
+      # Do not force a default OpenRouter slug (region / account availability varies).
+      # Patched ToolSandbox roles use TOOLSANDBOX_OPENAI_MODEL or OPENAI_MODEL over class model_name.
+      # Example: export TOOLSANDBOX_OPENAI_MODEL=openai/gpt-4o
       ;;
   esac
 }
@@ -178,7 +183,7 @@ from openai import OpenAI
 
 api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_API_BASE")
-model = os.environ.get("TOOLSANDBOX_OPENAI_MODEL", "gpt-5.4")
+model = os.environ.get("TOOLSANDBOX_OPENAI_MODEL") or os.environ.get("OPENAI_MODEL") or "gpt-4o"
 provider = os.environ.get("TOOLCLAW_BENCHMARK_PROXY_PROVIDER", "")
 manifest_path = os.environ.get("TOOLSANDBOX_PREFLIGHT_PATH", "").strip()
 
@@ -435,7 +440,7 @@ if [[ ${#ARGS[@]} -eq 0 ]]; then
 fi
 
 validate_env
-echo "[ToolSandbox] provider=${PROXY_PROVIDER} base_url=${OPENAI_BASE_URL:-${OPENAI_API_BASE:-<unset>}} model=${TOOLSANDBOX_OPENAI_MODEL:-<default>}"
+echo "[ToolSandbox] provider=${PROXY_PROVIDER} base_url=${OPENAI_BASE_URL:-${OPENAI_API_BASE:-<unset>}} model=${TOOLSANDBOX_OPENAI_MODEL:-${OPENAI_MODEL:-gpt-4o}}"
 preflight_model_probe
 
 exec "$RUN_PYTHON" -c 'import sys; from tool_sandbox.cli import main; sys.argv = ["tool_sandbox", *sys.argv[1:]]; main()' "${ARGS[@]}"

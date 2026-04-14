@@ -22,6 +22,14 @@ def test_patch_role_content_rewrites_openai_client_and_adds_import() -> None:
 class Demo:
     def __init__(self) -> None:
         self.openai_client = OpenAI(base_url="https://api.openai.com/v1")
+
+    def model_inference(self, openai_messages, openai_tools):
+        with all_logging_disabled():
+            return self.openai_client.chat.completions.create(
+                model=self.model_name,
+                messages=openai_messages,
+                tools=openai_tools,
+            )
 """
     updated, changed = patch_role_content(original)
 
@@ -31,6 +39,10 @@ class Demo:
     assert 'base_url=os.getenv("OPENAI_BASE_URL")' in updated
     assert 'or os.getenv("OPENAI_API_BASE")' in updated
     assert 'or "https://api.openai.com/v1"' in updated
+    assert 'os.getenv("TOOLSANDBOX_OPENAI_MODEL")' in updated
+    assert "or os.getenv(\"OPENAI_MODEL\")" in updated
+    assert "or self.model_name" in updated
+    assert "\n                model=self.model_name,\n" not in updated
 
 
 def test_patch_role_content_is_idempotent() -> None:
@@ -45,7 +57,65 @@ class Demo:
             or os.getenv("OPENAI_API_BASE")
             or "https://api.openai.com/v1",
         )
+
+    def model_inference(self, openai_messages, openai_tools):
+        with all_logging_disabled():
+            return self.openai_client.chat.completions.create(
+                model=(
+                    os.getenv("TOOLSANDBOX_OPENAI_MODEL")
+                    or os.getenv("OPENAI_MODEL")
+                    or self.model_name
+                ),
+                messages=openai_messages,
+                tools=openai_tools,
+            )
 """
     updated, changed = patch_role_content(patched)
     assert changed is False
     assert updated == patched
+
+
+def test_patch_role_content_handles_typed_openai_client_field() -> None:
+    original = """from openai import OpenAI
+
+class Demo:
+    def __init__(self) -> None:
+        self.openai_client: OpenAI = OpenAI(base_url="https://api.openai.com/v1")
+
+    def model_inference(self, openai_messages, openai_tools):
+        return self.openai_client.chat.completions.create(
+            model=self.model_name,
+            messages=openai_messages,
+            tools=openai_tools,
+        )
+"""
+    updated, changed = patch_role_content(original)
+    assert changed is True
+    assert "self.openai_client: OpenAI = OpenAI(" in updated
+    assert 'os.getenv("TOOLSANDBOX_OPENAI_MODEL")' in updated
+
+
+def test_patch_role_content_adds_model_override_when_client_already_patched() -> None:
+    client_only = """import os
+from openai import OpenAI
+
+class Demo:
+    def __init__(self) -> None:
+        self.openai_client = OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            base_url=os.getenv("OPENAI_BASE_URL")
+            or os.getenv("OPENAI_API_BASE")
+            or "https://api.openai.com/v1",
+        )
+
+    def model_inference(self, openai_messages, openai_tools):
+        return self.openai_client.chat.completions.create(
+            model=self.model_name,
+            messages=openai_messages,
+            tools=openai_tools,
+        )
+"""
+    updated, changed = patch_role_content(client_only)
+    assert changed is True
+    assert 'os.getenv("TOOLSANDBOX_OPENAI_MODEL")' in updated
+    assert "model=self.model_name," not in updated
