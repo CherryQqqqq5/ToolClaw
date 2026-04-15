@@ -1,0 +1,9 @@
+nohup: ignoring input
+[run_eval] start total_jobs=315 tasks=63 systems=5 outdir=outputs/paper_clean_v1/exp01_toolsandbox_official_core_a0_a4_resume
+[run_eval] start job=1/315 task=find_days_till_holiday_wifi_off system=a0_baseline
+[run_eval] done  job=1/315 task=find_days_till_holiday_wifi_off system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=2/315 task=find_days_till_holiday_wifi_off system=a1_recovery
+[run_eval] done  job=2/315 task=find_days_till_holiday_wifi_off system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=3/315 task=find_days_till_holiday_wifi_off system=a2_planner
+[run_eval] done  job=3/315 task=find_days_till_holiday_wifi_off system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=4/315 task=find_days_till_holiday_wifi_off system=a3_interaction
