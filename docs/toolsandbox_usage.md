@@ -33,11 +33,26 @@ That wrapper:
 - falls back to `data/toolsandbox.formal.json` when no official run is available, unless you explicitly disable fallback
 - then runs the benchmark into `outputs/toolsandbox_bench_official_formal`
 
+### Formal benchmark datasets: `toolsandbox.formal.official.json` vs `toolsandbox.formal.json`
+
+These two paths are **not** interchangeable for reporting:
+
+| File | Role in this repo |
+|------|-------------------|
+| `data/toolsandbox.formal.official.json` | **Default dataset path** for `scripts/run_toolsandbox_formal.sh` (`TOOLSANDBOX_FORMAL_DATASET`). **Intended** contents: a frozen JSON built by `scripts/prepare_toolsandbox_formal_dataset.py` from an official ToolSandbox run (default run root: `data/external/ToolSandbox/data`, overridable via `--official-data-root` / `TOOLSANDBOX_OFFICIAL_DATA_ROOT`). That script’s docstring states it builds the formal dataset directly from an official run; default `--out` is this path. |
+| `data/toolsandbox.formal.json` | **Bundled fallback only** (`TOOLSANDBOX_FALLBACK_DATASET`). If the official run is missing or `prepare_toolsandbox_formal_dataset.py` fails, `run_toolsandbox_formal.sh` can **copy** this file to the official path (unless `--require-official-run` or equivalent). The script then warns on stderr that this fallback **is not** an official ToolSandbox run export and **should not** be treated as a full benchmark; with augmentations requested, it may still cover only a **core benchmark slice**. |
+
+**Content note:** The bundled fallback uses ToolClaw-oriented task names (e.g. `toolsandbox_env_backup_001`, `toolsandbox_binding_repair_001`) and simplified tool IDs (`search_tool`, `write_tool`, …), with fields such as `execution_scenario`, `ideal_tool_calls`, and reuse-oriented metadata where applicable. That makes it a practical **core / mechanism-analysis slice** for phase-2 ablations, not a verbatim export of upstream ToolSandbox scenario files.
+
+**When the file at `toolsandbox.formal.official.json` was produced:** If it was **built** from a successful `prepare_toolsandbox_formal_dataset.py` run against real official run artifacts, it is the repo’s **frozen formal benchmark** aligned with that run. If it only exists because the shell script **seeded** it from `toolsandbox.formal.json`, treat it like the bundled fallback for claims (same warning as stderr).
+
+**Paper-style naming:** Prefer **main benchmark** language for results on a dataset actually built from an official run into `toolsandbox.formal.official.json`. Use **bundled formal fallback / core slice** (or **internal ablation set**) for results that only ever used `data/toolsandbox.formal.json` or a seeded copy—avoid calling those “the official ToolSandbox formal benchmark” without qualifying the data source.
+
 Important default semantics:
 
 - default formal runs are **core benchmark** runs because augmentations are excluded unless you pass `--include-augmented` or `--full-benchmark`
 - default `--num-runs` is `1`, so `pass@k` and `consistency` are only single-run statistics unless you raise it
-- fallback-generated `data/toolsandbox.formal.official.json` is convenient for local execution, but it is **not** an official ToolSandbox run export and should not be described as a full official benchmark
+- if `data/toolsandbox.formal.official.json` was **only** created by seeding from the bundled fallback (official build failed), that file is **not** an official ToolSandbox run export for reporting purposes—see the table above
 
 If you already ran the vendored official ToolSandbox CLI, you can auto-discover the latest official run directory and feed it into the current ToolClaw runner directly:
 
