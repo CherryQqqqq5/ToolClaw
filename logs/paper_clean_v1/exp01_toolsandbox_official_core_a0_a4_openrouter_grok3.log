@@ -1,17 +1,259 @@
 nohup: ignoring input
-usage: run_toolsandbox.py [-h] [--source SOURCE]
-                          [--official-run-dir OFFICIAL_RUN_DIR]
-                          [--official-data-root OFFICIAL_DATA_ROOT]
-                          [--result-source RESULT_SOURCE] [--outdir OUTDIR]
-                          [--mode {demo,planner}] [--systems SYSTEMS]
-                          [--limit LIMIT] [--smoke] [--num-runs NUM_RUNS]
-                          [--asset-registry-root ASSET_REGISTRY_ROOT]
-                          [--seed SEED] [--model-version MODEL_VERSION]
-                          [--budget-note BUDGET_NOTE]
-                          [--config-file CONFIG_FILE]
-                          [--phase-config PHASE_CONFIG]
-                          [--require-result-summary]
-                          [--keep-normalized-taskset]
-                          [--interaction-target {simulator,user_cli}]
-                          [--cli-prompt-prefix CLI_PROMPT_PREFIX]
-run_toolsandbox.py: error: argument --interaction-target: invalid choice: 'llm_openrouter' (choose from 'simulator', 'user_cli')
+[run_eval] start total_jobs=440 tasks=88 systems=5 outdir=/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp01_toolsandbox_official_core_a0_a4_openrouter_grok3/runs/run_01
+[run_eval] start job=1/440 task=send_message_with_contact_content_cellular_off_multiple_user_turn system=a0_baseline
+[run_eval] done  job=1/440 task=send_message_with_contact_content_cellular_off_multiple_user_turn system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=2/440 task=send_message_with_contact_content_cellular_off_multiple_user_turn system=a1_recovery
+[run_eval] done  job=2/440 task=send_message_with_contact_content_cellular_off_multiple_user_turn system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=3/440 task=send_message_with_contact_content_cellular_off_multiple_user_turn system=a2_planner
+[run_eval] done  job=3/440 task=send_message_with_contact_content_cellular_off_multiple_user_turn system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=4/440 task=send_message_with_contact_content_cellular_off_multiple_user_turn system=a3_interaction
+[run_eval] done  job=4/440 task=send_message_with_contact_content_cellular_off_multiple_user_turn system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=5/440 task=send_message_with_contact_content_cellular_off_multiple_user_turn system=a4_reuse
+[run_eval] done  job=5/440 task=send_message_with_contact_content_cellular_off_multiple_user_turn system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=6/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information system=a0_baseline
+[run_eval] done  job=6/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=7/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information system=a1_recovery
+[run_eval] done  job=7/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=8/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information system=a2_planner
+[run_eval] done  job=8/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=9/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information system=a3_interaction
+[run_eval] done  job=9/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=10/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information system=a4_reuse
+[run_eval] done  job=10/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=11/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information_alt system=a0_baseline
+[run_eval] done  job=11/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information_alt system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=12/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information_alt system=a1_recovery
+[run_eval] done  job=12/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information_alt system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=13/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information_alt system=a2_planner
+[run_eval] done  job=13/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information_alt system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=14/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information_alt system=a3_interaction
+[run_eval] done  job=14/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information_alt system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=15/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information_alt system=a4_reuse
+[run_eval] done  job=15/440 task=remove_contact_by_phone_no_remove_contact_insufficient_information_alt system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=16/440 task=search_message_with_recency_latest system=a0_baseline
+[run_eval] done  job=16/440 task=search_message_with_recency_latest system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=17/440 task=search_message_with_recency_latest system=a1_recovery
+[run_eval] done  job=17/440 task=search_message_with_recency_latest system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=18/440 task=search_message_with_recency_latest system=a2_planner
+[run_eval] done  job=18/440 task=search_message_with_recency_latest system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=19/440 task=search_message_with_recency_latest system=a3_interaction
+[run_eval] done  job=19/440 task=search_message_with_recency_latest system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=20/440 task=search_message_with_recency_latest system=a4_reuse
+[run_eval] done  job=20/440 task=search_message_with_recency_latest system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=21/440 task=search_message_with_recency_latest_alt system=a0_baseline
+[run_eval] done  job=21/440 task=search_message_with_recency_latest_alt system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=22/440 task=search_message_with_recency_latest_alt system=a1_recovery
+[run_eval] done  job=22/440 task=search_message_with_recency_latest_alt system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=23/440 task=search_message_with_recency_latest_alt system=a2_planner
+[run_eval] done  job=23/440 task=search_message_with_recency_latest_alt system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=24/440 task=search_message_with_recency_latest_alt system=a3_interaction
+[run_eval] done  job=24/440 task=search_message_with_recency_latest_alt system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=25/440 task=search_message_with_recency_latest_alt system=a4_reuse
+[run_eval] done  job=25/440 task=search_message_with_recency_latest_alt system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=26/440 task=search_message_with_recency_oldest system=a0_baseline
+[run_eval] done  job=26/440 task=search_message_with_recency_oldest system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=27/440 task=search_message_with_recency_oldest system=a1_recovery
+[run_eval] done  job=27/440 task=search_message_with_recency_oldest system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=28/440 task=search_message_with_recency_oldest system=a2_planner
+[run_eval] done  job=28/440 task=search_message_with_recency_oldest system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=29/440 task=search_message_with_recency_oldest system=a3_interaction
+[run_eval] done  job=29/440 task=search_message_with_recency_oldest system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=30/440 task=search_message_with_recency_oldest system=a4_reuse
+[run_eval] done  job=30/440 task=search_message_with_recency_oldest system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=31/440 task=search_message_with_recency_oldest_alt system=a0_baseline
+[run_eval] done  job=31/440 task=search_message_with_recency_oldest_alt system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=32/440 task=search_message_with_recency_oldest_alt system=a1_recovery
+[run_eval] done  job=32/440 task=search_message_with_recency_oldest_alt system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=33/440 task=search_message_with_recency_oldest_alt system=a2_planner
+[run_eval] done  job=33/440 task=search_message_with_recency_oldest_alt system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=34/440 task=search_message_with_recency_oldest_alt system=a3_interaction
+[run_eval] done  job=34/440 task=search_message_with_recency_oldest_alt system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=35/440 task=search_message_with_recency_oldest_alt system=a4_reuse
+[run_eval] done  job=35/440 task=search_message_with_recency_oldest_alt system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=36/440 task=modify_contact_with_message_recency system=a0_baseline
+[run_eval] done  job=36/440 task=modify_contact_with_message_recency system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=37/440 task=modify_contact_with_message_recency system=a1_recovery
+[run_eval] done  job=37/440 task=modify_contact_with_message_recency system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=38/440 task=modify_contact_with_message_recency system=a2_planner
+[run_eval] done  job=38/440 task=modify_contact_with_message_recency system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=39/440 task=modify_contact_with_message_recency system=a3_interaction
+[run_eval] done  job=39/440 task=modify_contact_with_message_recency system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=40/440 task=modify_contact_with_message_recency system=a4_reuse
+[run_eval] done  job=40/440 task=modify_contact_with_message_recency system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=41/440 task=modify_contact_with_message_recency_alt system=a0_baseline
+[run_eval] done  job=41/440 task=modify_contact_with_message_recency_alt system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=42/440 task=modify_contact_with_message_recency_alt system=a1_recovery
+[run_eval] done  job=42/440 task=modify_contact_with_message_recency_alt system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=43/440 task=modify_contact_with_message_recency_alt system=a2_planner
+[run_eval] done  job=43/440 task=modify_contact_with_message_recency_alt system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=44/440 task=modify_contact_with_message_recency_alt system=a3_interaction
+[run_eval] done  job=44/440 task=modify_contact_with_message_recency_alt system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=45/440 task=modify_contact_with_message_recency_alt system=a4_reuse
+[run_eval] done  job=45/440 task=modify_contact_with_message_recency_alt system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=46/440 task=remove_contact_by_phone system=a0_baseline
+[run_eval] done  job=46/440 task=remove_contact_by_phone system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=47/440 task=remove_contact_by_phone system=a1_recovery
+[run_eval] done  job=47/440 task=remove_contact_by_phone system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=48/440 task=remove_contact_by_phone system=a2_planner
+[run_eval] done  job=48/440 task=remove_contact_by_phone system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=49/440 task=remove_contact_by_phone system=a3_interaction
+[run_eval] done  job=49/440 task=remove_contact_by_phone system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=50/440 task=remove_contact_by_phone system=a4_reuse
+[run_eval] done  job=50/440 task=remove_contact_by_phone system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=51/440 task=remove_contact_by_phone_alt system=a0_baseline
+[run_eval] done  job=51/440 task=remove_contact_by_phone_alt system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=52/440 task=remove_contact_by_phone_alt system=a1_recovery
+[run_eval] done  job=52/440 task=remove_contact_by_phone_alt system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=53/440 task=remove_contact_by_phone_alt system=a2_planner
+[run_eval] done  job=53/440 task=remove_contact_by_phone_alt system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=54/440 task=remove_contact_by_phone_alt system=a3_interaction
+[run_eval] done  job=54/440 task=remove_contact_by_phone_alt system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=55/440 task=remove_contact_by_phone_alt system=a4_reuse
+[run_eval] done  job=55/440 task=remove_contact_by_phone_alt system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=56/440 task=remove_contact_by_phone_ambiguous system=a0_baseline
+[run_eval] done  job=56/440 task=remove_contact_by_phone_ambiguous system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=57/440 task=remove_contact_by_phone_ambiguous system=a1_recovery
+[run_eval] done  job=57/440 task=remove_contact_by_phone_ambiguous system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=58/440 task=remove_contact_by_phone_ambiguous system=a2_planner
+[run_eval] done  job=58/440 task=remove_contact_by_phone_ambiguous system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=59/440 task=remove_contact_by_phone_ambiguous system=a3_interaction
+[run_eval] done  job=59/440 task=remove_contact_by_phone_ambiguous system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=60/440 task=remove_contact_by_phone_ambiguous system=a4_reuse
+[run_eval] done  job=60/440 task=remove_contact_by_phone_ambiguous system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=61/440 task=remove_contact_by_phone_ambiguous_alt system=a0_baseline
+[run_eval] done  job=61/440 task=remove_contact_by_phone_ambiguous_alt system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=62/440 task=remove_contact_by_phone_ambiguous_alt system=a1_recovery
+[run_eval] done  job=62/440 task=remove_contact_by_phone_ambiguous_alt system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=63/440 task=remove_contact_by_phone_ambiguous_alt system=a2_planner
+[run_eval] done  job=63/440 task=remove_contact_by_phone_ambiguous_alt system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=64/440 task=remove_contact_by_phone_ambiguous_alt system=a3_interaction
+[run_eval] done  job=64/440 task=remove_contact_by_phone_ambiguous_alt system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=65/440 task=remove_contact_by_phone_ambiguous_alt system=a4_reuse
+[run_eval] done  job=65/440 task=remove_contact_by_phone_ambiguous_alt system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=66/440 task=turn_on_wifi_low_battery_mode system=a0_baseline
+[run_eval] done  job=66/440 task=turn_on_wifi_low_battery_mode system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=67/440 task=turn_on_wifi_low_battery_mode system=a1_recovery
+[run_eval] done  job=67/440 task=turn_on_wifi_low_battery_mode system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=68/440 task=turn_on_wifi_low_battery_mode system=a2_planner
+[run_eval] done  job=68/440 task=turn_on_wifi_low_battery_mode system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=69/440 task=turn_on_wifi_low_battery_mode system=a3_interaction
+[run_eval] done  job=69/440 task=turn_on_wifi_low_battery_mode system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=70/440 task=turn_on_wifi_low_battery_mode system=a4_reuse
+[run_eval] done  job=70/440 task=turn_on_wifi_low_battery_mode system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=71/440 task=turn_on_wifi_low_battery_mode_implicit system=a0_baseline
+[run_eval] done  job=71/440 task=turn_on_wifi_low_battery_mode_implicit system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=72/440 task=turn_on_wifi_low_battery_mode_implicit system=a1_recovery
+[run_eval] done  job=72/440 task=turn_on_wifi_low_battery_mode_implicit system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=73/440 task=turn_on_wifi_low_battery_mode_implicit system=a2_planner
+[run_eval] done  job=73/440 task=turn_on_wifi_low_battery_mode_implicit system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=74/440 task=turn_on_wifi_low_battery_mode_implicit system=a3_interaction
+[run_eval] done  job=74/440 task=turn_on_wifi_low_battery_mode_implicit system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=75/440 task=turn_on_wifi_low_battery_mode_implicit system=a4_reuse
+[run_eval] done  job=75/440 task=turn_on_wifi_low_battery_mode_implicit system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=76/440 task=turn_on_cellular_low_battery_mode system=a0_baseline
+[run_eval] done  job=76/440 task=turn_on_cellular_low_battery_mode system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=77/440 task=turn_on_cellular_low_battery_mode system=a1_recovery
+[run_eval] done  job=77/440 task=turn_on_cellular_low_battery_mode system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=78/440 task=turn_on_cellular_low_battery_mode system=a2_planner
+[run_eval] done  job=78/440 task=turn_on_cellular_low_battery_mode system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=79/440 task=turn_on_cellular_low_battery_mode system=a3_interaction
+[run_eval] done  job=79/440 task=turn_on_cellular_low_battery_mode system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=80/440 task=turn_on_cellular_low_battery_mode system=a4_reuse
+[run_eval] done  job=80/440 task=turn_on_cellular_low_battery_mode system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=81/440 task=turn_on_cellular_low_battery_mode_implicit system=a0_baseline
+[run_eval] done  job=81/440 task=turn_on_cellular_low_battery_mode_implicit system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=82/440 task=turn_on_cellular_low_battery_mode_implicit system=a1_recovery
+[run_eval] done  job=82/440 task=turn_on_cellular_low_battery_mode_implicit system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=83/440 task=turn_on_cellular_low_battery_mode_implicit system=a2_planner
+[run_eval] done  job=83/440 task=turn_on_cellular_low_battery_mode_implicit system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=84/440 task=turn_on_cellular_low_battery_mode_implicit system=a3_interaction
+[run_eval] done  job=84/440 task=turn_on_cellular_low_battery_mode_implicit system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=85/440 task=turn_on_cellular_low_battery_mode_implicit system=a4_reuse
+[run_eval] done  job=85/440 task=turn_on_cellular_low_battery_mode_implicit system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=86/440 task=turn_on_location_low_battery_mode system=a0_baseline
+[run_eval] done  job=86/440 task=turn_on_location_low_battery_mode system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=87/440 task=turn_on_location_low_battery_mode system=a1_recovery
+[run_eval] done  job=87/440 task=turn_on_location_low_battery_mode system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=88/440 task=turn_on_location_low_battery_mode system=a2_planner
+[run_eval] done  job=88/440 task=turn_on_location_low_battery_mode system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=89/440 task=turn_on_location_low_battery_mode system=a3_interaction
+[run_eval] done  job=89/440 task=turn_on_location_low_battery_mode system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=90/440 task=turn_on_location_low_battery_mode system=a4_reuse
+[run_eval] done  job=90/440 task=turn_on_location_low_battery_mode system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=91/440 task=turn_on_location_low_battery_mode_implicit system=a0_baseline
+[run_eval] done  job=91/440 task=turn_on_location_low_battery_mode_implicit system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=92/440 task=turn_on_location_low_battery_mode_implicit system=a1_recovery
+[run_eval] done  job=92/440 task=turn_on_location_low_battery_mode_implicit system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=93/440 task=turn_on_location_low_battery_mode_implicit system=a2_planner
+[run_eval] done  job=93/440 task=turn_on_location_low_battery_mode_implicit system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=94/440 task=turn_on_location_low_battery_mode_implicit system=a3_interaction
+[run_eval] done  job=94/440 task=turn_on_location_low_battery_mode_implicit system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=95/440 task=turn_on_location_low_battery_mode_implicit system=a4_reuse
+[run_eval] done  job=95/440 task=turn_on_location_low_battery_mode_implicit system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=96/440 task=send_message_with_contact_content_cellular_off system=a0_baseline
+[run_eval] done  job=96/440 task=send_message_with_contact_content_cellular_off system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=97/440 task=send_message_with_contact_content_cellular_off system=a1_recovery
+[run_eval] done  job=97/440 task=send_message_with_contact_content_cellular_off system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=98/440 task=send_message_with_contact_content_cellular_off system=a2_planner
+[run_eval] done  job=98/440 task=send_message_with_contact_content_cellular_off system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=99/440 task=send_message_with_contact_content_cellular_off system=a3_interaction
+[run_eval] done  job=99/440 task=send_message_with_contact_content_cellular_off system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=100/440 task=send_message_with_contact_content_cellular_off system=a4_reuse
+[run_eval] done  job=100/440 task=send_message_with_contact_content_cellular_off system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=101/440 task=send_message_with_contact_content_cellular_off_alt system=a0_baseline
+[run_eval] done  job=101/440 task=send_message_with_contact_content_cellular_off_alt system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=102/440 task=send_message_with_contact_content_cellular_off_alt system=a1_recovery
+[run_eval] done  job=102/440 task=send_message_with_contact_content_cellular_off_alt system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=103/440 task=send_message_with_contact_content_cellular_off_alt system=a2_planner
+[run_eval] done  job=103/440 task=send_message_with_contact_content_cellular_off_alt system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=104/440 task=send_message_with_contact_content_cellular_off_alt system=a3_interaction
+[run_eval] done  job=104/440 task=send_message_with_contact_content_cellular_off_alt system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=105/440 task=send_message_with_contact_content_cellular_off_alt system=a4_reuse
+[run_eval] done  job=105/440 task=send_message_with_contact_content_cellular_off_alt system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=106/440 task=update_contact_relationship_with_relationship system=a0_baseline
+[run_eval] done  job=106/440 task=update_contact_relationship_with_relationship system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=107/440 task=update_contact_relationship_with_relationship system=a1_recovery
+[run_eval] done  job=107/440 task=update_contact_relationship_with_relationship system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=108/440 task=update_contact_relationship_with_relationship system=a2_planner
+[run_eval] done  job=108/440 task=update_contact_relationship_with_relationship system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=109/440 task=update_contact_relationship_with_relationship system=a3_interaction
+[run_eval] done  job=109/440 task=update_contact_relationship_with_relationship system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=110/440 task=update_contact_relationship_with_relationship system=a4_reuse
+[run_eval] done  job=110/440 task=update_contact_relationship_with_relationship system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=111/440 task=update_contact_relationship_with_relationship_alt system=a0_baseline
+[run_eval] done  job=111/440 task=update_contact_relationship_with_relationship_alt system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=112/440 task=update_contact_relationship_with_relationship_alt system=a1_recovery
+[run_eval] done  job=112/440 task=update_contact_relationship_with_relationship_alt system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=113/440 task=update_contact_relationship_with_relationship_alt system=a2_planner
+[run_eval] done  job=113/440 task=update_contact_relationship_with_relationship_alt system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=114/440 task=update_contact_relationship_with_relationship_alt system=a3_interaction
+[run_eval] done  job=114/440 task=update_contact_relationship_with_relationship_alt system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=115/440 task=update_contact_relationship_with_relationship_alt system=a4_reuse
+[run_eval] done  job=115/440 task=update_contact_relationship_with_relationship_alt system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=116/440 task=find_days_till_holiday system=a0_baseline
+[run_eval] done  job=116/440 task=find_days_till_holiday system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=117/440 task=find_days_till_holiday system=a1_recovery
+[run_eval] done  job=117/440 task=find_days_till_holiday system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=118/440 task=find_days_till_holiday system=a2_planner
+[run_eval] done  job=118/440 task=find_days_till_holiday system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=119/440 task=find_days_till_holiday system=a3_interaction
+[run_eval] done  job=119/440 task=find_days_till_holiday system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=120/440 task=find_days_till_holiday system=a4_reuse
+[run_eval] done  job=120/440 task=find_days_till_holiday system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=121/440 task=find_days_till_holiday_alt system=a0_baseline
+[run_eval] done  job=121/440 task=find_days_till_holiday_alt system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=122/440 task=find_days_till_holiday_alt system=a1_recovery
+[run_eval] done  job=122/440 task=find_days_till_holiday_alt system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=123/440 task=find_days_till_holiday_alt system=a2_planner
+[run_eval] done  job=123/440 task=find_days_till_holiday_alt system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=124/440 task=find_days_till_holiday_alt system=a3_interaction
+[run_eval] done  job=124/440 task=find_days_till_holiday_alt system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=125/440 task=find_days_till_holiday_alt system=a4_reuse
+[run_eval] done  job=125/440 task=find_days_till_holiday_alt system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=126/440 task=find_days_till_holiday_wifi_off system=a0_baseline
+[run_eval] done  job=126/440 task=find_days_till_holiday_wifi_off system=a0_baseline success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=127/440 task=find_days_till_holiday_wifi_off system=a1_recovery
+[run_eval] done  job=127/440 task=find_days_till_holiday_wifi_off system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=128/440 task=find_days_till_holiday_wifi_off system=a2_planner
+[run_eval] done  job=128/440 task=find_days_till_holiday_wifi_off system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=129/440 task=find_days_till_holiday_wifi_off system=a3_interaction
