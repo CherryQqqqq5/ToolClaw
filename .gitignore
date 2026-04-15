@@ -9,6 +9,8 @@ __pycache__/
 # Evaluation artifacts
 outputs/
 
+data/
+
 # Vendored ToolSandbox runtime artifacts
 data/external/ToolSandbox/data/
 data/external/ToolSandbox/.venv/

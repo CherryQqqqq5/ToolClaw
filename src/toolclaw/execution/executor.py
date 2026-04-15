@@ -939,6 +939,9 @@ class SequentialExecutor:
         missing_slots = [slot for slot in required_slots if slot not in state_values or state_values.get(slot) in {None, ""}]
         stale_required = [slot for slot in required_slots if slot in stale_slots]
         preflight_policy = self._preflight_state_policy_for_step(step)
+        simulated_missing_arg_values = step.metadata.get("simulated_missing_arg_values", {})
+        if not isinstance(simulated_missing_arg_values, dict):
+            simulated_missing_arg_values = {}
         unsatisfied_slots: list[str] = []
         state_slot = str(preflight_policy.get("state_slot") or "")
         required_value = preflight_policy.get("required_value")
@@ -983,6 +986,7 @@ class SequentialExecutor:
                 metadata={
                     "required_state_slots": required_slots,
                     "preflight_state_policy": preflight_policy,
+                    "simulated_missing_arg_values": simulated_missing_arg_values,
                 },
             ),
             root_cause_hypothesis=["required state was missing or stale before tool execution"],
