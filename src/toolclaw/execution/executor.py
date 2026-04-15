@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -88,6 +89,8 @@ class RepairApplyResult:
 class ExecutorConfig:
     allow_repair: bool = True
     max_suffix_replans_per_signature: int = 2
+    max_total_suffix_replans: int = 8
+    suffix_replan_timeout_s: float = 6.0
 
 
 class SequentialExecutor:
@@ -819,6 +822,21 @@ class SequentialExecutor:
             step_id=step.step_id,
             output={"error_id": error.error_id, "rollback_to": rollback_step_id},
         )
+        total_replans = int(tracker.state_values.get("__suffix_replan_total__", 0) or 0)
+        if total_replans >= int(self.config.max_total_suffix_replans):
+            trace.add_event(
+                event_id=f"evt_replan_skipped_total_{step.step_id}",
+                event_type=EventType.REPLAN_TRIGGERED,
+                actor="executor",
+                step_id=step.step_id,
+                output={
+                    "skipped": True,
+                    "reason": "suffix_replan_total_limit_reached",
+                    "attempts": total_replans,
+                    "max_attempts": int(self.config.max_total_suffix_replans),
+                },
+            )
+            return None
         replan_counts = tracker.state_values.setdefault("__suffix_replan_counts__", {})
         if not isinstance(replan_counts, dict):
             replan_counts = {}
@@ -847,13 +865,41 @@ class SequentialExecutor:
             )
             return None
         replan_counts[signature] = current_count + 1
+        tracker.state_values["__suffix_replan_total__"] = total_replans + 1
         request = self.planner.request_from_workflow(workflow)
-        replanned = self.planner.replan_from_error(
-            request=request,
-            failed_workflow=workflow,
-            error=error,
-            state_values=dict(tracker.state_values),
-        )
+        pool: concurrent.futures.ThreadPoolExecutor | None = None
+        future: concurrent.futures.Future[Any] | None = None
+        try:
+            pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+            future = pool.submit(
+                self.planner.replan_from_error,
+                request=request,
+                failed_workflow=workflow,
+                error=error,
+                state_values=dict(tracker.state_values),
+            )
+            replanned = future.result(timeout=float(self.config.suffix_replan_timeout_s))
+        except concurrent.futures.TimeoutError:
+            if future is not None:
+                future.cancel()
+            if pool is not None:
+                pool.shutdown(wait=False, cancel_futures=True)
+            trace.add_event(
+                event_id=f"evt_replan_timeout_{step.step_id}",
+                event_type=EventType.REPLAN_TRIGGERED,
+                actor="executor",
+                step_id=step.step_id,
+                output={
+                    "skipped": True,
+                    "reason": "suffix_replan_timeout",
+                    "timeout_s": float(self.config.suffix_replan_timeout_s),
+                    "signature": signature,
+                },
+            )
+            return None
+        finally:
+            if pool is not None:
+                pool.shutdown(wait=False, cancel_futures=True)
         trace.add_event(
             event_id=f"evt_replan_applied_{step.step_id}",
             event_type=EventType.REPLAN_APPLIED,
