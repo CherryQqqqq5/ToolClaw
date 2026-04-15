@@ -8,6 +8,8 @@ import subprocess
 import json
 import re
 import sys
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -389,6 +391,96 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
     provider_mode = str(backend_cfg.get("mode", "scripted")).strip().lower() or "scripted"
     env_payload_key = str(backend_cfg.get("env_payload_var", "TOOLCLAW_LLM_REPLY_PAYLOAD"))
 
+    def _openrouter_completion(request: Any, fallback_payload: Dict[str, Any]) -> Dict[str, Any]:
+        api_key = str(os.environ.get("OPENROUTER_API_KEY", "")).strip()
+        if not api_key:
+            return {
+                "payload": fallback_payload,
+                "status": "accept",
+                "accepted": True,
+                "raw_text": "openrouter_api_key_missing_fallback",
+                "metadata": {"provider_mode": provider_mode, "fallback": True},
+            }
+        endpoint = str(backend_cfg.get("base_url", "https://openrouter.ai/api/v1/chat/completions")).strip()
+        model = str(backend_cfg.get("model", "openai/gpt-4o-mini")).strip()
+        site_url = str(backend_cfg.get("site_url", "")).strip()
+        site_name = str(backend_cfg.get("site_name", "ToolClaw")).strip()
+        schema_hint = request.allowed_response_schema if isinstance(request.allowed_response_schema, dict) else {}
+        prompt_payload = {
+            "question": request.question,
+            "expected_answer_type": request.expected_answer_type,
+            "allowed_response_schema": schema_hint,
+            "metadata": request.metadata if isinstance(request.metadata, dict) else {},
+            "fallback_payload": fallback_payload,
+        }
+        system_prompt = (
+            "You are a strict JSON reply generator for an interaction repair loop. "
+            "Return exactly one JSON object with keys: payload (object), status (string), accepted (boolean), raw_text (string). "
+            "Do not include markdown fences or prose."
+        )
+        user_prompt = json.dumps(prompt_payload, ensure_ascii=True)
+        body = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": float(backend_cfg.get("temperature", 0.0) or 0.0),
+        }
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(body).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                **({"HTTP-Referer": site_url} if site_url else {}),
+                **({"X-Title": site_name} if site_name else {}),
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=float(backend_cfg.get("timeout_s", 60) or 60)) as resp:
+                raw = resp.read().decode("utf-8")
+        except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+            return {
+                "payload": fallback_payload,
+                "status": "accept",
+                "accepted": True,
+                "raw_text": f"openrouter_request_failed_fallback:{exc}",
+                "metadata": {"provider_mode": provider_mode, "fallback": True},
+            }
+        try:
+            parsed = json.loads(raw)
+            content = (
+                parsed.get("choices", [{}])[0]
+                .get("message", {})
+                .get("content", "")
+            )
+            content_json = json.loads(content) if isinstance(content, str) else {}
+            if isinstance(content_json, dict):
+                payload = content_json.get("payload", content_json)
+                status = str(content_json.get("status", "accept"))
+                accepted = bool(content_json.get("accepted", status == "accept"))
+                raw_text = str(content_json.get("raw_text", content if isinstance(content, str) else ""))
+                if not isinstance(payload, dict):
+                    payload = fallback_payload
+                return {
+                    "payload": payload,
+                    "status": status,
+                    "accepted": accepted,
+                    "raw_text": raw_text,
+                    "metadata": {"provider_mode": provider_mode, "model": model},
+                }
+        except (json.JSONDecodeError, IndexError, TypeError, AttributeError):
+            pass
+        return {
+            "payload": fallback_payload,
+            "status": "accept",
+            "accepted": True,
+            "raw_text": "openrouter_response_parse_failed_fallback",
+            "metadata": {"provider_mode": provider_mode, "fallback": True, "model": model},
+        }
+
     def _completion(request: Any) -> Dict[str, Any]:
         env_payload = None
         raw_env_payload = os.environ.get(env_payload_key)
@@ -416,6 +508,9 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
             payload["tool_id"] = request.metadata["recommended_backup_tool"]
         if "approval" in request.expected_answer_type or "approve" in request.question.lower():
             payload.setdefault("approved", bool(policy_approvals.get(request.interaction_id, True)))
+
+        if provider_mode == "openrouter":
+            return _openrouter_completion(request, payload)
 
         return {
             "payload": payload,

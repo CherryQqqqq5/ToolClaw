@@ -518,14 +518,34 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--keep-normalized-taskset", action="store_true", help="Keep the normalized taskset JSON file")
     parser.add_argument(
         "--interaction-target",
-        choices=["simulator", "user_cli"],
+        choices=["simulator", "user_cli", "llm_openrouter"],
         default="simulator",
-        help="Interaction responder for interactive systems: simulator (default) or user_cli.",
+        help="Interaction responder for interactive systems: simulator (default), user_cli, or llm_openrouter.",
     )
     parser.add_argument(
         "--cli-prompt-prefix",
         default="toolclaw",
         help="Prompt prefix when --interaction-target=user_cli.",
+    )
+    parser.add_argument(
+        "--openrouter-model",
+        default="openai/gpt-4o-mini",
+        help="OpenRouter model slug when --interaction-target=llm_openrouter.",
+    )
+    parser.add_argument(
+        "--openrouter-base-url",
+        default="https://openrouter.ai/api/v1/chat/completions",
+        help="OpenRouter chat completions URL when --interaction-target=llm_openrouter.",
+    )
+    parser.add_argument(
+        "--openrouter-site-url",
+        default="",
+        help="Optional HTTP-Referer value sent to OpenRouter.",
+    )
+    parser.add_argument(
+        "--openrouter-site-name",
+        default="ToolClaw",
+        help="Optional X-Title value sent to OpenRouter.",
     )
     return parser.parse_args()
 
@@ -1169,6 +1189,18 @@ def main() -> None:
                 "type": "human",
                 "prompt_prefix": args.cli_prompt_prefix,
             }
+    elif args.interaction_target == "llm_openrouter":
+        for task in normalized_tasks:
+            task["interaction_backend"] = {
+                "type": "llm",
+                "provider_name": "openrouter",
+                "mode": "openrouter",
+                "model": args.openrouter_model,
+                "base_url": args.openrouter_base_url,
+                "site_url": args.openrouter_site_url,
+                "site_name": args.openrouter_site_name,
+                "status": "accept",
+            }
     normalized_path = prepared_dir / TOOLSANDBOX_CONFIG.normalized_filename
     normalized_path.write_text(json.dumps(normalized_tasks, indent=2), encoding="utf-8")
 
@@ -1249,6 +1281,8 @@ def main() -> None:
             "official_data_root": str(Path(args.official_data_root).resolve()),
             "interaction_target": args.interaction_target,
             "cli_prompt_prefix": args.cli_prompt_prefix if args.interaction_target == "user_cli" else None,
+            "openrouter_model": args.openrouter_model if args.interaction_target == "llm_openrouter" else None,
+            "openrouter_base_url": args.openrouter_base_url if args.interaction_target == "llm_openrouter" else None,
         },
         archive_files=[
             Path(__file__).resolve(),
