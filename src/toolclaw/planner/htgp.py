@@ -786,7 +786,29 @@ class HTGPPlanner:
             # Avoid allow-list order bias when multiple tools match one capability (e.g. planner-sensitive writer distractors).
             if len(tool_ids) == 1:
                 preferred[capability_id] = tool_ids[0]
+                continue
+            milestone_preferred = HTGPPlanner._milestone_preferred_tool_id(
+                tool_ids=tool_ids,
+                milestones=[str(item) for item in benchmark_hints.get("milestones", []) if str(item)],
+            )
+            if milestone_preferred:
+                preferred[capability_id] = milestone_preferred
         return preferred
+
+    @staticmethod
+    def _milestone_preferred_tool_id(
+        *,
+        tool_ids: Sequence[str],
+        milestones: Sequence[str],
+    ) -> Optional[str]:
+        if not tool_ids or not milestones:
+            return None
+        milestone_blob = "\n".join(milestones).lower()
+        for tool_id in tool_ids:
+            token = str(tool_id).strip().lower()
+            if token and token in milestone_blob:
+                return tool_id
+        return None
 
     @staticmethod
     def _snapshot_request(request: PlanningRequest) -> Dict[str, Any]:
