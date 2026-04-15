@@ -587,3 +587,111 @@ Phase-1 is considered successful if it establishes all of the following:
 
 If these conditions are not met, Phase-2 training should not be started yet.
 If these conditions are met, Phase-2 can be justified as an extension rather than a substitute for missing system design.
+
+---
+
+## 15. Final Paper Experiment Matrix (Locked)
+
+This section locks the final paper-facing experiment matrix to prevent benchmark and claim drift.
+
+### 15.1 One-sentence strategy
+
+Primary evidence should be anchored on:
+
+- `ToolSandbox formal official core`
+- `Tau-Bench` and `Tau2-Bench`
+
+Supporting and diagnostic evidence should be layered as:
+
+- supporting: `BFCL v4`
+- diagnosis-first: in-repo `FailTax` outputs
+- optional diagnosis extension: `TRAJECT-Bench` (only when time allows)
+- external compatibility check: official ToolSandbox filtered subset validation
+
+The default claim stack remains:
+
+- fixed backbone model
+- scaffold-level comparison
+- primary/supporting/diagnostic evidence layering
+
+### 15.2 Claim-to-benchmark matrix
+
+| Claim | Best benchmark | Key system contrasts | Primary metrics | Current repo readiness | Priority |
+|---|---|---|---|---|---|
+| C1. ToolClaw as workflow-intelligence layer outperforms plain tool-calling scaffold | ToolSandbox formal official core | A0, A1, A2, A3, A4 | verified success, raw success, milestone coverage/similarity | high | P0 |
+| C2. HTGP mitigates selection/binding/ordering/state failures | ToolSandbox focused slices | A1 vs A2; optional `tc_planner_only`, `tc_planner_strict` | slice success, failtax summary, planner-sensitive success | high | P0 |
+| C3. IRC turns interaction into repair action instead of extra dialogue | ToolSandbox interaction slices; Tau2-Bench | A2 vs A3; optional `tc_no_interaction` | interaction efficiency, clarification precision/recall, patch success | high | P0 |
+| C4. SWPC provides second-run gain through reusable successful experience | ToolSandbox reuse-focused slices | A3 vs A4 with persistent registry enabled | reused_artifact, second_run_improvement, reuse-focused success | high | P0 |
+| C5. ToolClaw gains are explainable via FailTax, not only aggregate score deltas | ToolSandbox failtax/focused summaries from main runs | A0-A4 | per-failtax summary, failure_step, observed_error_type | high | P1 |
+| C6. ToolClaw improvements transfer to another benchmark family | Tau-Bench / Tau2-Bench | A0-A4 | pass-like success, consistency, interaction quality, rule following | medium-high | P1 |
+| C7. ToolClaw does not sacrifice baseline function-calling competence | BFCL v4 | plain TC / ReAct / ToolClaw full | overall acc, subtask acc, multi-turn and parallel settings | medium | P2 |
+| C8. ToolClaw remains beneficial under stronger perturbation and tighter budgets | ToolSandbox full/augmented + budget sweep | A0-A4 or key ablations | robustness by slice, budget violation, recovery budget used | medium | P2 |
+| C9. Official chain/API compatibility is real, not local-mock coincidence | official ToolSandbox filtered subset | official scaffold / current wrapper | execution success, compatibility, filtered subset validation | high | P2 |
+
+### 15.3 Claim-to-code anchoring
+
+The following mappings are fixed for paper evidence attribution.
+
+- **C1 overall effectiveness:** runtime closed loop and system definitions
+  - `ToolClawRuntime` pipeline: planner -> executor -> interaction -> compiler -> registry
+  - A0-A4 `SystemSpec` definitions in `scripts/run_eval.py`
+- **C2 HTGP effectiveness:** `src/toolclaw/planner/htgp.py`
+  - capability-first planning
+  - preferred bindings
+  - overplanning objective
+  - benchmark hints
+  - replan-from-error
+  - reusable profile constraints
+- **C3 IRC effectiveness:** execution + repair update state machine
+  - blocking/pending interaction/resume-from-patch path in executor
+  - `src/toolclaw/interaction/repair_updater.py` converting user reply into `ResumePatch` to update state/policy/binding
+- **C4 SWPC effectiveness:** `src/toolclaw/compiler/swpc.py`
+  - compile to `WorkflowSnippet`, `SkillHint`, `PolicySnippet`
+  - compile gate, quality threshold, contamination guard, promotion flow
+- **C5 FailTax explainability:** eval rows + ToolSandbox aggregations
+  - `scripts/run_eval.py` fields: `primary_failtax`, `failtaxes`, `failure_step`, `observed_error_type`
+  - ToolSandbox reports: `per_failtax_summary.json`, `focused_slice_summary.json`
+
+### 15.4 Paper section mapping (final)
+
+Use the following chapter mapping in the writeup:
+
+- **6.1 Experimental Setup**
+  - fixed base model, fixed budget, A0-A4 definitions
+  - `official` / `core` / `full` distinction
+  - formal official dataset freeze process
+  - command/data support: `scripts/run_toolsandbox_formal.sh`, `scripts/prepare_toolsandbox_formal_dataset.py`
+- **6.2 Main Results on Stateful and Interactive Tool Use**
+  - ToolSandbox formal official core
+  - Tau-Bench and Tau2-Bench
+- **6.3 Layer-wise Ablation**
+  - A0 baseline, A1 recovery, A2 planner, A3 interaction, A4 reuse
+  - optional fine ablations: `tc_no_interaction`, `tc_no_reuse`, `tc_planner_only`, `tc_planner_strict`
+- **6.4 Efficiency and Stability**
+  - tool calls, user turns, repair actions, recovery budget used, budget violation, repeated-run consistency
+- **6.5 Standard Function-Calling Competence**
+  - BFCL v4 as competence-preservation evidence (not main claim table)
+- **6.6 Failure Taxonomy Validation**
+  - in-repo FailTax outputs first
+  - TRAJECT-Bench only as optional strengthening when timeline permits
+- **6.7 Official ToolSandbox External Validation**
+  - wording lock: official ToolSandbox filtered subset validation under current API availability
+  - do not over-claim as full official benchmark unless full official conditions are met
+
+### 15.5 Execution priority (anti-drift)
+
+The run order is locked as:
+
+1. ToolSandbox formal official core A0-A4 main table
+2. ToolSandbox failtax/focused/reuse-focused summaries
+3. Tau-Bench or Tau2-Bench A0-A4
+4. BFCL v4
+5. ToolSandbox full/augmented robustness
+6. budget sweep
+7. TRAJECT-Bench (time-permitting diagnostic extension)
+
+Strategic rule:
+
+- complete the `ToolSandbox + Tau/Tau2` primary claim-aligned chain first
+- then add `BFCL v4` as baseline competence support
+- only then spend budget on diagnostic expansion such as `TRAJECT-Bench`

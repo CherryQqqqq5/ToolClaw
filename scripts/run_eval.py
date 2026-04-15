@@ -685,6 +685,11 @@ def parse_args() -> argparse.Namespace:
             "When set, each non-baseline system persists artifacts under <root>/<system_id> so reuse can survive across CLI invocations."
         ),
     )
+    parser.add_argument(
+        "--quiet-progress",
+        action="store_true",
+        help="Disable per-task progress logs.",
+    )
     return parser.parse_args()
 
 
@@ -1212,18 +1217,36 @@ def main() -> None:
     if not isinstance(tasks, list):
         raise ValueError("taskset JSON must be a list of task objects")
     tasks = [annotate_task_payload(task) for task in tasks]
+    total_jobs = len(tasks) * len(system_specs)
+    completed_jobs = 0
+    if not args.quiet_progress:
+        print(
+            f"[run_eval] start total_jobs={total_jobs} tasks={len(tasks)} systems={len(system_specs)} outdir={outdir}",
+            flush=True,
+        )
 
     for idx, task in enumerate(tasks, start=1):
         for spec in system_specs:
-            rows.append(
-                execute_system(
-                    spec=spec,
-                    task=task,
-                    task_index=idx,
-                    traces_dir=traces_dir,
-                    runtime=runtimes.get(spec.system_id),
+            task_id = str(task.get("task_id") or f"{idx:03d}")
+            if not args.quiet_progress:
+                print(
+                    f"[run_eval] start job={completed_jobs + 1}/{total_jobs} task={task_id} system={spec.system_id}",
+                    flush=True,
                 )
+            row = execute_system(
+                spec=spec,
+                task=task,
+                task_index=idx,
+                traces_dir=traces_dir,
+                runtime=runtimes.get(spec.system_id),
             )
+            rows.append(row)
+            completed_jobs += 1
+            if not args.quiet_progress:
+                print(
+                    f"[run_eval] done  job={completed_jobs}/{total_jobs} task={task_id} system={spec.system_id} success={int(row.success)} stop_reason={row.stop_reason}",
+                    flush=True,
+                )
 
     csv_path = outdir / "comparison.csv"
     report_path = outdir / "report.md"

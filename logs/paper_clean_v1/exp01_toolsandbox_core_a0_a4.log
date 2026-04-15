@@ -1,0 +1,61 @@
+Traceback (most recent call last):
+  File "/Users/cherry/Documents/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+    ~~~~^^
+  File "/Users/cherry/Documents/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 205, in main
+    run_dir = resolve_run_dir(args.official_run_dir, Path(args.official_data_root))
+  File "/Users/cherry/Documents/ToolClaw/scripts/prepare_toolsandbox_official_run.py", line 57, in resolve_run_dir
+    raise FileNotFoundError(f"official ToolSandbox data root not found: {data_root}")
+FileNotFoundError: official ToolSandbox data root not found: /Users/cherry/Documents/ToolClaw/data/external/ToolSandbox/data
+official ToolSandbox data unavailable; falling back to bundled formal dataset: /Users/cherry/Documents/ToolClaw/data/toolsandbox.formal.json
+this fallback dataset is not an official ToolSandbox run export and should not be treated as a full benchmark
+seeded ToolSandbox formal dataset from fallback: /Users/cherry/Documents/ToolClaw/data/toolsandbox.formal.json
+running ToolSandbox core benchmark only: augmentations excluded
+[run_eval] start total_jobs=80 tasks=16 systems=5 outdir=outputs/paper_clean_v1/exp01_toolsandbox_core_a0_a4/runs/run_01
+[run_eval] start job=1/80 task=toolsandbox_env_backup_001 system=a0_baseline
+[run_eval] done  job=1/80 task=toolsandbox_env_backup_001 system=a0_baseline success=0 stop_reason=step_failed:step_02:environment unavailable for tool operation
+[run_eval] start job=2/80 task=toolsandbox_env_backup_001 system=a1_recovery
+[run_eval] done  job=2/80 task=toolsandbox_env_backup_001 system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=3/80 task=toolsandbox_env_backup_001 system=a2_planner
+[run_eval] done  job=3/80 task=toolsandbox_env_backup_001 system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=4/80 task=toolsandbox_env_backup_001 system=a3_interaction
+[run_eval] done  job=4/80 task=toolsandbox_env_backup_001 system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=5/80 task=toolsandbox_env_backup_001 system=a4_reuse
+[run_eval] done  job=5/80 task=toolsandbox_env_backup_001 system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=6/80 task=toolsandbox_binding_repair_001 system=a0_baseline
+[run_eval] done  job=6/80 task=toolsandbox_binding_repair_001 system=a0_baseline success=0 stop_reason=step_failed:step_02:missing required field for write-like tool: write_tool
+[run_eval] start job=7/80 task=toolsandbox_binding_repair_001 system=a1_recovery
+[run_eval] done  job=7/80 task=toolsandbox_binding_repair_001 system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=8/80 task=toolsandbox_binding_repair_001 system=a2_planner
+[run_eval] done  job=8/80 task=toolsandbox_binding_repair_001 system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=9/80 task=toolsandbox_binding_repair_001 system=a3_interaction
+[run_eval] done  job=9/80 task=toolsandbox_binding_repair_001 system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=10/80 task=toolsandbox_binding_repair_001 system=a4_reuse
+[run_eval] done  job=10/80 task=toolsandbox_binding_repair_001 system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=11/80 task=toolsandbox_approval_interaction_001 system=a0_baseline
+[run_eval] done  job=11/80 task=toolsandbox_approval_interaction_001 system=a0_baseline success=0 stop_reason=awaiting_user_interaction
+[run_eval] start job=12/80 task=toolsandbox_approval_interaction_001 system=a1_recovery
+[run_eval] done  job=12/80 task=toolsandbox_approval_interaction_001 system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=13/80 task=toolsandbox_approval_interaction_001 system=a2_planner
+[run_eval] done  job=13/80 task=toolsandbox_approval_interaction_001 system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=14/80 task=toolsandbox_approval_interaction_001 system=a3_interaction
+[run_eval] done  job=14/80 task=toolsandbox_approval_interaction_001 system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=15/80 task=toolsandbox_approval_interaction_001 system=a4_reuse
+[run_eval] done  job=15/80 task=toolsandbox_approval_interaction_001 system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=16/80 task=toolsandbox_state_failure_resume_001 system=a0_baseline
+[run_eval] done  job=16/80 task=toolsandbox_state_failure_resume_001 system=a0_baseline success=0 stop_reason=step_failed:step_02:missing required state slot(s): retrieved_info
+[run_eval] start job=17/80 task=toolsandbox_state_failure_resume_001 system=a1_recovery
+[run_eval] done  job=17/80 task=toolsandbox_state_failure_resume_001 system=a1_recovery success=0 stop_reason=awaiting_user_interaction
+[run_eval] start job=18/80 task=toolsandbox_state_failure_resume_001 system=a2_planner
+[run_eval] done  job=18/80 task=toolsandbox_state_failure_resume_001 system=a2_planner success=0 stop_reason=awaiting_user_interaction
+[run_eval] start job=19/80 task=toolsandbox_state_failure_resume_001 system=a3_interaction
+[run_eval] done  job=19/80 task=toolsandbox_state_failure_resume_001 system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=20/80 task=toolsandbox_state_failure_resume_001 system=a4_reuse
+[run_eval] done  job=20/80 task=toolsandbox_state_failure_resume_001 system=a4_reuse success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=21/80 task=toolsandbox_state_failure_target_001 system=a0_baseline
+[run_eval] done  job=21/80 task=toolsandbox_state_failure_target_001 system=a0_baseline success=0 stop_reason=step_failed:step_02:write target mismatch: expected target_path=outputs/reports/toolsandbox_state_failure_target_001.txt
+[run_eval] start job=22/80 task=toolsandbox_state_failure_target_001 system=a1_recovery
+[run_eval] done  job=22/80 task=toolsandbox_state_failure_target_001 system=a1_recovery success=0 stop_reason=awaiting_user_interaction
+[run_eval] start job=23/80 task=toolsandbox_state_failure_target_001 system=a2_planner
+[run_eval] done  job=23/80 task=toolsandbox_state_failure_target_001 system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=24/80 task=toolsandbox_state_failure_target_001 system=a3_interaction

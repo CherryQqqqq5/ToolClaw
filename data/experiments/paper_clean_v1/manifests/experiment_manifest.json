@@ -1,0 +1,92 @@
+{
+  "manifest_version": "paper_clean_v1",
+  "created_for": "paper_experiments",
+  "strategy": {
+    "primary": [
+      "toolsandbox_formal_core",
+      "tau_bench",
+      "tau2_bench"
+    ],
+    "supporting": [
+      "bfcl_v4"
+    ],
+    "diagnostic": [
+      "failtax_first",
+      "traject_bench_optional"
+    ],
+    "validation": [
+      "toolsandbox_official_filtered_subset"
+    ]
+  },
+  "data_policy": {
+    "fixed_backbone_model": true,
+    "scaffold_level_comparison": true,
+    "a0_to_a4_required": true,
+    "default_num_runs": 3,
+    "record_git_commit": true,
+    "record_data_source": true,
+    "official_claim_requires_official_result_summary": true
+  },
+  "datasets": {
+    "toolsandbox_formal_core": {
+      "dataset_path": "data/toolsandbox.formal.official.json",
+      "fallback_dataset_path": "data/toolsandbox.formal.json",
+      "current_source_status": "fallback_or_seeded_core_only",
+      "notes": "No official result_summary.json found under data/external/ToolSandbox/data at planning time."
+    },
+    "tau_bench": {
+      "recommended_source": "data/tau_bench/tau_bench.aligned.jsonl",
+      "generation_hint": "python3 scripts/prepare_tau_bench_source.py --tau-repo-dir data/external/tau-bench --out data/tau_bench/tau_bench.aligned.jsonl --download-if-missing"
+    },
+    "tau2_bench": {
+      "recommended_source": "data/tau2_bench.sample.json"
+    }
+  },
+  "experiments": [
+    {
+      "exp_id": "exp01_toolsandbox_core_a0_a4",
+      "tier": "P0",
+      "claim_focus": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5"
+      ],
+      "benchmark": "toolsandbox_formal_core",
+      "systems": "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "num_runs": 3,
+      "outdir": "outputs/paper_clean_v1/exp01_toolsandbox_core_a0_a4",
+      "asset_registry_root": "outputs/paper_clean_v1/asset_registry/exp01",
+      "status": "ready_to_run"
+    },
+    {
+      "exp_id": "exp02_tau_a0_a4",
+      "tier": "P1",
+      "claim_focus": [
+        "C6"
+      ],
+      "benchmark": "tau_bench",
+      "status": "planned"
+    },
+    {
+      "exp_id": "exp03_tau2_a0_a4",
+      "tier": "P1",
+      "claim_focus": [
+        "C3",
+        "C6"
+      ],
+      "benchmark": "tau2_bench",
+      "status": "planned"
+    },
+    {
+      "exp_id": "exp04_bfcl_v4",
+      "tier": "P2",
+      "claim_focus": [
+        "C7"
+      ],
+      "benchmark": "bfcl_v4",
+      "status": "planned"
+    }
+  ]
+}
