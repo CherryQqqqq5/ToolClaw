@@ -242,6 +242,13 @@ class SequentialExecutor:
                 metadata={"events": policy_decision.policy_events},
             )
             if policy_decision.require_confirmation:
+                if self._auto_approve_from_simulated_policy(
+                    workflow=workflow,
+                    step=step,
+                    trace=trace,
+                    state_values=tracker.state_values,
+                ):
+                    continue
                 tracker.state_values.setdefault("__approval_pending_steps__", [])
                 if step.step_id not in tracker.state_values["__approval_pending_steps__"]:
                     tracker.state_values["__approval_pending_steps__"].append(step.step_id)
@@ -586,6 +593,10 @@ class SequentialExecutor:
     def _execute_step(self, workflow: Workflow, step: WorkflowStep, trace: Trace, state_values: Dict[str, Any]) -> StepExecutionResult:
         trace.metadata.task_annotations["chosen_tool"] = step.tool_id
         tool_args = self._materialize_tool_args(step=step, state_values=state_values)
+        # Persist inferred dependency fills so retries/replans keep consistent inputs.
+        for key in ("target_path", "retrieved_info", "query"):
+            if key in tool_args and key not in step.inputs:
+                step.inputs[key] = tool_args[key]
         trace.add_event(
             event_id=f"evt_call_{step.step_id}",
             event_type=EventType.TOOL_CALL,
@@ -863,11 +874,57 @@ class SequentialExecutor:
             for input_key, state_key in state_bindings.items():
                 if state_key in state_values:
                     tool_args[str(input_key)] = state_values[state_key]
+        # Dependency-driven fallback wiring: carry required slots from previous state
+        # into current step inputs so write-like steps do not execute with empty args.
+        required_slots = [str(item) for item in step.metadata.get("required_state_slots", []) if str(item)]
+        for slot in required_slots:
+            if slot in state_values and slot not in tool_args:
+                tool_args[slot] = state_values[slot]
+        if step.capability_id == "cap_write":
+            if "retrieved_info" in state_values and "retrieved_info" not in tool_args:
+                tool_args["retrieved_info"] = state_values["retrieved_info"]
+            if "query" in state_values and "query" not in tool_args:
+                tool_args["query"] = state_values["query"]
+            if "target_path" not in tool_args:
+                repair_defaults = step.metadata.get("repair_default_inputs", {})
+                if isinstance(repair_defaults, dict):
+                    default_target = repair_defaults.get("target_path")
+                    if default_target not in (None, ""):
+                        tool_args["target_path"] = default_target
         inferred_preflight = SequentialExecutor._preflight_state_policy_for_step(step)
         state_slot = str(inferred_preflight.get("state_slot") or "")
         if state_slot and state_slot in state_values and SequentialExecutor._tool_uses_outbound_cellular(step.tool_id):
             tool_args.setdefault("cellular_on", state_values[state_slot])
         return SequentialExecutor._sanitize_tool_args(step.tool_id, tool_args)
+
+    @staticmethod
+    def _auto_approve_from_simulated_policy(
+        *,
+        workflow: Workflow,
+        step: WorkflowStep,
+        trace: Trace,
+        state_values: Dict[str, Any],
+    ) -> bool:
+        simulated_policy = workflow.metadata.get("simulated_policy", {})
+        if not isinstance(simulated_policy, dict):
+            return False
+        mode = str(simulated_policy.get("mode", "cooperative")).strip().lower()
+        if mode not in {"cooperative", "auto", "approve"}:
+            return False
+        state_values.setdefault("__approved_steps__", [])
+        if step.step_id not in state_values["__approved_steps__"]:
+            state_values["__approved_steps__"].append(step.step_id)
+        state_values["approved"] = True
+        trace.add_event(
+            event_id=f"evt_auto_approval_{step.step_id}",
+            event_type=EventType.APPROVAL_RESPONSE,
+            actor="simulated_policy",
+            step_id=step.step_id,
+            tool_id=step.tool_id,
+            output={"approved": True, "source": "simulated_policy"},
+            metadata={"mode": mode},
+        )
+        return True
 
     def _check_state_failure(
         self,

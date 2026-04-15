@@ -113,3 +113,19 @@ def test_state_failure_with_preflight_policy_patches_required_state_before_retry
     assert repair.interaction.ask_user is False
     assert repair.actions[0].target == "state.cellular_service_status"
     assert repair.actions[0].value is True
+
+
+def test_state_failure_uses_simulated_missing_arg_values_before_asking_user() -> None:
+    engine = RecoveryEngine()
+    error = make_error(ErrorCategory.STATE_FAILURE, error_id="err_state_simulated_001")
+    error.state_context.missing_assets = ["retrieved_info"]
+    error.evidence.metadata["simulated_missing_arg_values"] = {
+        "retrieved_info": "summary for: synthetic state restore"
+    }
+
+    repair = engine.plan_repair(error)
+
+    assert repair.repair_type == RepairType.ACQUIRE_MISSING_ASSET
+    assert repair.interaction.ask_user is False
+    assert repair.actions[0].target == "state.retrieved_info"
+    assert repair.actions[0].value == "summary for: synthetic state restore"

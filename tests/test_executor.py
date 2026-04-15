@@ -291,3 +291,20 @@ def test_executor_supports_semantic_mock_backend_for_non_toy_tools(tmp_path: Pat
     result_event = next(event for event in payload["events"] if event["event_type"] == EventType.TOOL_RESULT.value)
     assert result_event["tool_id"] == "set_wifi_status"
     assert "updated state" in result_event["output"]["payload"]
+
+
+def test_executor_auto_approves_from_simulated_policy_and_continues(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    workflow.task.constraints.requires_user_approval = True
+    workflow.metadata["simulated_policy"] = {"mode": "cooperative"}
+
+    trace = SequentialExecutor().run(
+        workflow=workflow,
+        run_id="run_auto_approval_001",
+        output_path=str(tmp_path / "auto_approval_trace.json"),
+    )
+
+    assert trace.metrics.success is True
+    payload = json.loads((tmp_path / "auto_approval_trace.json").read_text(encoding="utf-8"))
+    event_types = [evt["event_type"] for evt in payload["events"]]
+    assert EventType.APPROVAL_RESPONSE.value in event_types

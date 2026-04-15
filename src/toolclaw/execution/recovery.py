@@ -370,6 +370,9 @@ class RecoveryEngine:
         preflight_policy = error.evidence.metadata.get("preflight_state_policy", {})
         if not isinstance(preflight_policy, dict):
             preflight_policy = {}
+        simulated_missing_arg_values = error.evidence.metadata.get("simulated_missing_arg_values", {})
+        if not isinstance(simulated_missing_arg_values, dict):
+            simulated_missing_arg_values = {}
         repair_target = str(preflight_policy.get("repair_target") or "")
         if (
             preflight_policy.get("auto_repair")
@@ -426,6 +429,56 @@ class RecoveryEngine:
                     "missing_assets": missing_assets,
                     "stale_assets": stale_assets,
                     "preflight_state_policy": preflight_policy,
+                    "phase": "phase1_training_free",
+                },
+            )
+        patchable_slots = [slot for slot in missing_assets if slot in simulated_missing_arg_values and simulated_missing_arg_values.get(slot) not in (None, "")]
+        if patchable_slots:
+            slot = patchable_slots[0]
+            slot_value = simulated_missing_arg_values.get(slot)
+            return Repair(
+                repair_id=f"rep_{error.error_id}",
+                run_id=error.run_id,
+                workflow_id=error.workflow_id,
+                triggered_error_ids=[error.error_id],
+                repair_type=RepairType.ACQUIRE_MISSING_ASSET,
+                decision=RepairDecision(
+                    strategy=RepairStrategy.DIRECT_PATCH,
+                    rationale="State failure has benchmark-provided missing_arg_values, so patch state directly before retry.",
+                    confidence=0.86,
+                ),
+                actions=[
+                    RepairAction(
+                        action_id=f"act_state_patch_{error.error_id}",
+                        action_type=RepairActionType.STATE_PATCH,
+                        target=f"state.{slot}",
+                        value_source="state://simulated_missing_arg_values",
+                        value=slot_value,
+                        metadata={"state_slot": slot},
+                    ),
+                    RepairAction(
+                        action_id=f"act_retry_{error.error_id}",
+                        action_type=RepairActionType.RE_EXECUTE_STEP,
+                        target=step_id,
+                    ),
+                ],
+                interaction=RepairInteraction(
+                    ask_user=False,
+                    question=None,
+                    expected_answer_type=None,
+                    user_response=None,
+                ),
+                workflow_patch=WorkflowPatch(modified_steps=[step_id] if error.step_id else []),
+                post_conditions=RepairPostConditions(
+                    expected_effects=[f"{slot} is patched from simulated policy defaults", "the blocked step can be retried"],
+                    stop_if=["same state_failure repeats twice", "patched value is rejected by tool constraints"],
+                ),
+                result=RepairResult(status=RepairStatus.PENDING, success=None),
+                metadata={
+                    "mapped_from_error_category": error.category.value,
+                    "missing_assets": missing_assets,
+                    "stale_assets": stale_assets,
+                    "simulated_missing_arg_values": simulated_missing_arg_values,
                     "phase": "phase1_training_free",
                 },
             )
