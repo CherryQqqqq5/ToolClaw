@@ -482,10 +482,17 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
             with urllib.request.urlopen(req, timeout=socket_timeout) as resp:
                 return resp.read().decode("utf-8")
 
+        pool: concurrent.futures.ThreadPoolExecutor | None = None
+        future: concurrent.futures.Future[str] | None = None
         try:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                raw = pool.submit(_request_once).result(timeout=hard_timeout)
+            pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+            future = pool.submit(_request_once)
+            raw = future.result(timeout=hard_timeout)
         except concurrent.futures.TimeoutError:
+            if future is not None:
+                future.cancel()
+            if pool is not None:
+                pool.shutdown(wait=False, cancel_futures=True)
             fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
             return {
                 "payload": fallback_payload,
@@ -495,6 +502,8 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
                 "metadata": {"provider_mode": provider_mode, "fallback": True, "timeout_s": socket_timeout, "hard_timeout_s": hard_timeout},
             }
         except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+            if pool is not None:
+                pool.shutdown(wait=False, cancel_futures=True)
             fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
             return {
                 "payload": fallback_payload,
@@ -503,6 +512,9 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
                 "raw_text": f"openrouter_request_failed_fallback:{exc}",
                 "metadata": {"provider_mode": provider_mode, "fallback": True},
             }
+        finally:
+            if pool is not None:
+                pool.shutdown(wait=False, cancel_futures=True)
         try:
             parsed = json.loads(raw)
             content = (
