@@ -87,6 +87,7 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         use_reuse=False,
         allow_repair=True,
         allow_fallback=True,
+        allow_suffix_replan=False,
     ),
     "a4_reuse": SystemSpec(
         system_id="a4_reuse",
@@ -96,6 +97,7 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         use_reuse=True,
         allow_repair=True,
         allow_fallback=True,
+        allow_suffix_replan=False,
     ),
     "tc_full": SystemSpec(
         system_id="tc_full",
