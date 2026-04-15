@@ -810,6 +810,7 @@ class HTGPPlanner:
             "messages",
             "milestones",
             "tool_allow_list",
+            "simulated_policy",
             "branch_options",
             "ideal_tool_calls",
             "ideal_turn_count",

@@ -598,6 +598,14 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         if not isinstance(step.metadata.get("repair_default_inputs"), dict):
             step.metadata["repair_default_inputs"] = dict(step.inputs)
 
+    sim_policy = task.get("simulated_policy")
+    if (
+        isinstance(sim_policy, dict)
+        and isinstance(sim_policy.get("missing_arg_values"), dict)
+        and len(workflow.execution_plan) > 1
+    ):
+        workflow.execution_plan[1].metadata["simulated_missing_arg_values"] = dict(sim_policy["missing_arg_values"])
+
     scenario = task.get("scenario", "success")
     if scenario == "binding_failure" and len(workflow.execution_plan) > 1:
         workflow.execution_plan[1].inputs.pop("target_path", None)

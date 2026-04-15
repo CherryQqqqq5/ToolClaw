@@ -1091,6 +1091,10 @@ class SequentialExecutor:
             if isinstance(simulated_policy, dict) and isinstance(simulated_policy.get("missing_arg_values", {}), dict)
             else {}
         )
+        if not simulated_missing_arg_values:
+            step_level_simulated = step.metadata.get("simulated_missing_arg_values", {})
+            if isinstance(step_level_simulated, dict):
+                simulated_missing_arg_values = dict(step_level_simulated)
         inferred_missing_assets: list[str] = []
         if category == ErrorCategory.BINDING_FAILURE:
             if step.capability_id == "cap_write" and not tool_args.get("target_path"):
