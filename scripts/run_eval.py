@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import os
 import subprocess
 import json
@@ -473,9 +474,26 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
             },
             method="POST",
         )
+
+        socket_timeout = float(backend_cfg.get("timeout_s", 60) or 60)
+        hard_timeout = float(backend_cfg.get("hard_timeout_s", max(socket_timeout + 2.0, 10.0)) or max(socket_timeout + 2.0, 10.0))
+
+        def _request_once() -> str:
+            with urllib.request.urlopen(req, timeout=socket_timeout) as resp:
+                return resp.read().decode("utf-8")
+
         try:
-            with urllib.request.urlopen(req, timeout=float(backend_cfg.get("timeout_s", 60) or 60)) as resp:
-                raw = resp.read().decode("utf-8")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                raw = pool.submit(_request_once).result(timeout=hard_timeout)
+        except concurrent.futures.TimeoutError:
+            fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
+            return {
+                "payload": fallback_payload,
+                "status": "accept",
+                "accepted": True,
+                "raw_text": f"openrouter_hard_timeout_fallback:{hard_timeout}s",
+                "metadata": {"provider_mode": provider_mode, "fallback": True, "timeout_s": socket_timeout, "hard_timeout_s": hard_timeout},
+            }
         except (urllib.error.URLError, TimeoutError, ValueError) as exc:
             fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
             return {
