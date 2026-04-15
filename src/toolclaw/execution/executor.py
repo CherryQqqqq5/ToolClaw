@@ -87,6 +87,7 @@ class RepairApplyResult:
 @dataclass
 class ExecutorConfig:
     allow_repair: bool = True
+    max_suffix_replans_per_signature: int = 2
 
 
 class SequentialExecutor:
@@ -818,6 +819,34 @@ class SequentialExecutor:
             step_id=step.step_id,
             output={"error_id": error.error_id, "rollback_to": rollback_step_id},
         )
+        replan_counts = tracker.state_values.setdefault("__suffix_replan_counts__", {})
+        if not isinstance(replan_counts, dict):
+            replan_counts = {}
+            tracker.state_values["__suffix_replan_counts__"] = replan_counts
+        signature = "::".join(
+            [
+                str(step.step_id or "unknown_step"),
+                str(error.category.value if error.category else "unknown_category"),
+                str(error.subtype or "unknown_subtype"),
+            ]
+        )
+        current_count = int(replan_counts.get(signature, 0) or 0)
+        if current_count >= int(self.config.max_suffix_replans_per_signature):
+            trace.add_event(
+                event_id=f"evt_replan_skipped_{step.step_id}",
+                event_type=EventType.REPLAN_TRIGGERED,
+                actor="executor",
+                step_id=step.step_id,
+                output={
+                    "skipped": True,
+                    "reason": "suffix_replan_limit_reached",
+                    "signature": signature,
+                    "attempts": current_count,
+                    "max_attempts": int(self.config.max_suffix_replans_per_signature),
+                },
+            )
+            return None
+        replan_counts[signature] = current_count + 1
         request = self.planner.request_from_workflow(workflow)
         replanned = self.planner.replan_from_error(
             request=request,
