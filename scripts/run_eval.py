@@ -391,9 +391,44 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
     provider_mode = str(backend_cfg.get("mode", "scripted")).strip().lower() or "scripted"
     env_payload_key = str(backend_cfg.get("env_payload_var", "TOOLCLAW_LLM_REPLY_PAYLOAD"))
 
+    def _schema_tool_id(request: Any) -> str:
+        schema = request.allowed_response_schema if isinstance(request.allowed_response_schema, dict) else {}
+        props = schema.get("properties")
+        if not isinstance(props, dict):
+            return ""
+        tool_field = props.get("tool_id")
+        if not isinstance(tool_field, dict):
+            return ""
+        enum_values = tool_field.get("enum")
+        if isinstance(enum_values, list):
+            for candidate in enum_values:
+                text = str(candidate).strip()
+                if text:
+                    return text
+        return ""
+
+    def _needs_tool_switch(request: Any) -> bool:
+        expected = str(request.expected_answer_type or "").strip().lower()
+        patch_targets = request.metadata.get("patch_targets", {}) if isinstance(request.metadata, dict) else {}
+        return expected in {"tool_switch", "tool_or_asset_hint", "environment_resolution"} or (
+            isinstance(patch_targets, dict) and patch_targets.get("tool_id") == "binding.primary_tool"
+        )
+
+    def _enforce_tool_switch_payload(request: Any, payload: Dict[str, Any]) -> Dict[str, Any]:
+        if not _needs_tool_switch(request):
+            return payload
+        if isinstance(payload.get("tool_id"), str) and payload.get("tool_id"):
+            return payload
+        fallback_tool = _schema_tool_id(request)
+        if fallback_tool:
+            payload["tool_id"] = fallback_tool
+            payload.pop("clear_failure_flag", None)
+        return payload
+
     def _openrouter_completion(request: Any, fallback_payload: Dict[str, Any]) -> Dict[str, Any]:
         api_key = str(os.environ.get("OPENROUTER_API_KEY", "")).strip()
         if not api_key:
+            fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
             return {
                 "payload": fallback_payload,
                 "status": "accept",
@@ -442,6 +477,7 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
             with urllib.request.urlopen(req, timeout=float(backend_cfg.get("timeout_s", 60) or 60)) as resp:
                 raw = resp.read().decode("utf-8")
         except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+            fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
             return {
                 "payload": fallback_payload,
                 "status": "accept",
@@ -464,6 +500,7 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
                 raw_text = str(content_json.get("raw_text", content if isinstance(content, str) else ""))
                 if not isinstance(payload, dict):
                     payload = fallback_payload
+                payload = _enforce_tool_switch_payload(request, payload)
                 return {
                     "payload": payload,
                     "status": status,
@@ -473,6 +510,7 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
                 }
         except (json.JSONDecodeError, IndexError, TypeError, AttributeError):
             pass
+        fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
         return {
             "payload": fallback_payload,
             "status": "accept",
@@ -511,6 +549,8 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
 
         if provider_mode == "openrouter":
             return _openrouter_completion(request, payload)
+
+        payload = _enforce_tool_switch_payload(request, payload)
 
         return {
             "payload": payload,

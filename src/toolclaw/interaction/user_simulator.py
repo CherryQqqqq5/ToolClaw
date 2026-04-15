@@ -53,9 +53,22 @@ class UserSimulator(ReplyProvider):
         payload.update(self.policy.missing_arg_values)
         payload.update(self.policy.constraint_overrides)
         payload.update(self.policy.tool_switch_hints)
+        expected_answer_type = str(request.expected_answer_type or "").strip().lower()
+        schema_tool_id = self._schema_tool_id(request.allowed_response_schema)
+        patch_targets = request.metadata.get("patch_targets", {})
+        needs_tool_switch = (
+            expected_answer_type in {"tool_switch", "tool_or_asset_hint", "environment_resolution"}
+            or (isinstance(patch_targets, dict) and patch_targets.get("tool_id") == "binding.primary_tool")
+        )
         if request.metadata.get("recommended_backup_tool") and "tool_id" not in payload:
             payload["tool_id"] = request.metadata["recommended_backup_tool"]
-        if request.metadata.get("clear_failure_flag_recommended") and "clear_failure_flag" not in payload:
+        if needs_tool_switch and "tool_id" not in payload and schema_tool_id:
+            payload["tool_id"] = schema_tool_id
+        if (
+            request.metadata.get("clear_failure_flag_recommended")
+            and "clear_failure_flag" not in payload
+            and not needs_tool_switch
+        ):
             payload["clear_failure_flag"] = True
         if "approval" in request.expected_answer_type or "approve" in request.question.lower():
             payload["approved"] = self.policy.approval_responses.get(request.interaction_id, True)
@@ -80,3 +93,21 @@ class UserSimulator(ReplyProvider):
                 "escalation_level": int(request.metadata.get("escalation_level", 0)),
             },
         )
+
+    @staticmethod
+    def _schema_tool_id(allowed_response_schema: Dict[str, Any]) -> str:
+        if not isinstance(allowed_response_schema, dict):
+            return ""
+        props = allowed_response_schema.get("properties")
+        if not isinstance(props, dict):
+            return ""
+        tool_field = props.get("tool_id")
+        if not isinstance(tool_field, dict):
+            return ""
+        enum_values = tool_field.get("enum")
+        if isinstance(enum_values, list):
+            for candidate in enum_values:
+                candidate_text = str(candidate).strip()
+                if candidate_text:
+                    return candidate_text
+        return ""

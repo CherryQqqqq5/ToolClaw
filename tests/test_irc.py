@@ -11,6 +11,7 @@ from toolclaw.compiler.swpc import SWPCCompiler
 from toolclaw.planner.htgp import PlanningRequest, build_default_planner
 from toolclaw.registry import InMemoryAssetRegistry
 from toolclaw.schemas.workflow import Workflow
+from toolclaw.interaction.repair_updater import InteractionRequest
 
 
 def test_executor_blocks_on_ask_user_and_returns_pending_interaction(tmp_path: Path) -> None:
@@ -225,3 +226,30 @@ def test_interaction_shell_treats_abortive_reply_as_safe_abort_success(tmp_path:
 
     assert outcome.success is True
     assert outcome.metadata["stopped_reason"] == "safe_abort_success"
+
+
+def test_user_simulator_prefers_tool_id_for_tool_switch_schema() -> None:
+    request = InteractionRequest(
+        interaction_id="int_tool_switch_001",
+        question="Provide replacement tool_id",
+        expected_answer_type="tool_switch",
+        allowed_response_schema={
+            "type": "object",
+            "properties": {
+                "tool_id": {
+                    "type": "string",
+                    "enum": ["get_current_timestamp", "timestamp_diff"],
+                }
+            },
+            "required": ["tool_id"],
+            "additionalProperties": False,
+        },
+        metadata={
+            "patch_targets": {"tool_id": "binding.primary_tool"},
+            "clear_failure_flag_recommended": True,
+        },
+    )
+    reply = UserSimulator(SimulatedPolicy()).reply(request)
+    assert reply.accepted is True
+    assert reply.payload.get("tool_id") == "get_current_timestamp"
+    assert "clear_failure_flag" not in reply.payload
