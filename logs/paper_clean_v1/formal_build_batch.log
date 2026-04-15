@@ -1,0 +1,605 @@
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_11_14 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_11_14
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_11_14.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_13_01 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- find_days_till_holiday_insufficient_information: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_13_33 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- find_days_till_holiday_insufficient_information_alt: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_14_09 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- find_temperature_f_with_location_insufficient_information: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_14_53 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- find_temperature_f_with_location_insufficient_information_alt: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_15_50 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- modify_contact_with_message_recency_insufficient_information: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_16_32 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- modify_contact_with_message_recency_insufficient_information_alt: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_17_17 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_17_17
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_17_17.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_18_10 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_18_10
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_18_10.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_19_08 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- remove_contact_by_phone_no_search_contacts_insufficient_information: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_19_50 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- remove_contact_by_phone_no_search_contacts_insufficient_information_alt: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_20_40 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- send_message_with_contact_content_cellular_off_insufficient_information: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_21_27 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- send_message_with_contact_content_cellular_off_insufficient_information_alt: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_22_18 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- find_distance_with_location_name_insufficient_information: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_23_06 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- find_distance_with_location_name_insufficient_information_alt: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_23_58 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- search_reminder_with_recency_upcoming_insufficient_information: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_24_53 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- search_reminder_with_recency_upcoming_insufficient_information_implicit: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_25_56 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- search_reminder_with_recency_yesterday_insufficient_information: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_26_51 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- search_reminder_with_recency_yesterday_insufficient_information_implicit: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_27_41 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- search_reminder_with_creation_recency_yesterday_insufficient_information: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_28_27 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- search_reminder_with_creation_recency_yesterday_insufficient_information_implicit: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_29_27 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- modify_reminder_with_recency_latest_insufficient_information: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_30_15 ===
+Traceback (most recent call last):
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 250, in <module>
+    main()
+  File "/cephfs/qiuyn/ToolClaw/scripts/prepare_toolsandbox_formal_dataset.py", line 230, in main
+    raise RuntimeError("invalid ToolSandbox rows produced during dataset preparation:\n- " + "\n- ".join(invalid_rows))
+RuntimeError: invalid ToolSandbox rows produced during dataset preparation:
+- remove_reminder_with_recency_latest_insufficient_information: missing_milestones_and_execution_verified_signal
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_31_00 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_31_00
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_31_00.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_31_51 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_31_51
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_31_51.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_32_27 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_32_27
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_32_27.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_33_25 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_33_25
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_33_25.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_34_03 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_34_03
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_34_03.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_34_53 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_34_53
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_34_53.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_35_47 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_35_47
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_35_47.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_36_20 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_36_20
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_36_20.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_36_54 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_36_54
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_36_54.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_37_37 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_37_37
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_37_37.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_38_11 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_38_11
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_38_11.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_38_48 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_38_48
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_38_48.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_39_30 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_39_30
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_39_30.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_40_08 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_40_08
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_40_08.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_40_46 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_40_46
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_40_46.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_41_24 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_41_24
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_41_24.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_42_04 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_42_04
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_42_04.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_42_41 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_42_41
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_42_41.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_43_32 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_43_32
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_43_32.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_44_13 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_44_13
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_44_13.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_44_57 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_44_57
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_44_57.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_45_34 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_45_34
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_45_34.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_46_13 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_46_13
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_46_13.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_47_47 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_47_47
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_47_47.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_49_00 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_49_00
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_49_00.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_49_42 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_49_42
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_49_42.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_50_25 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_50_25
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_50_25.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_51_09 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_51_09
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_51_09.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_51_49 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_51_49
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_51_49.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_52_23 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_52_23
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_52_23.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_53_13 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_53_13
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_53_13.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_53_54 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_53_54
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_53_54.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_55_06 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_55_06
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_55_06.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_56_18 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_56_18
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_56_18.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_57_28 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_57_28
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_57_28.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_58_00 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_58_00
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_58_00.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_58_33 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_58_33
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_58_33.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_59_10 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_59_10
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_59_10.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_59_46 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_59_46
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_11_59_46.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_00_22 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_00_22
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_00_22.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_01_02 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_01_02
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_01_02.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_01_50 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_01_50
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_01_50.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_02_36 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_02_36
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_02_36.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_03_18 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_03_18
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_03_18.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_04_09 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_04_09
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_04_09.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_04_55 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_04_55
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_04_55.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_05_40 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_05_40
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_05_40.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_06_25 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_06_25
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_06_25.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_07_12 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_07_12
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_07_12.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_07_58 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_07_58
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_07_58.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_08_50 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_08_50
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_08_50.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_09_39 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_09_39
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_09_39.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_10_32 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_10_32
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_10_32.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_11_15 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_11_15
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_11_15.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_11_54 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_11_54
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_11_54.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_12_42 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_12_42
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_12_42.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_13_29 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_13_29
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_13_29.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_14_10 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_14_10
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_14_10.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_14_57 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_14_57
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_14_57.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_15_37 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_15_37
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_15_37.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_16_32 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_16_32
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_16_32.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_17_11 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_17_11
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_17_11.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_18_56 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_18_56
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_18_56.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_19_33 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_19_33
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_19_33.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_20_16 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_20_16
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_20_16.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_20_54 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_20_54
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_20_54.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_21_37 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_21_37
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_21_37.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_22_16 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_22_16
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_22_16.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_23_02 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_23_02
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_23_02.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_23_50 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_23_50
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_23_50.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_24_38 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_24_38
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_24_38.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_26_21 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_26_21
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_26_21.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_26_51 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_26_51
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_26_51.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_27_22 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_27_22
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_27_22.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_27_53 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_27_53
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_27_53.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_28_23 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_28_23
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_28_23.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_28_52 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_28_52
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_28_52.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_29_22 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_29_22
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_29_22.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_29_53 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_29_53
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_29_53.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_30_24 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_30_24
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_30_24.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_30_55 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_30_55
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_30_55.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_31_28 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_31_28
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_31_28.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_31_58 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_31_58
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_31_58.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_32_30 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_32_30
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_32_30.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_33_01 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_33_01
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_33_01.json
+total samples: 1
+=== agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_33_45 ===
+warning: the prepared ToolSandbox formal dataset contains 1 or fewer validated samples; this is suitable for a failure case study but not a primary benchmark result.
+official ToolSandbox run: /cephfs/qiuyn/ToolClaw/data/frozen/toolsandbox_official_runs/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_33_45
+wrote formal dataset: outputs/paper_clean_v1/tmp_formal_build/agent_gpt-4o-2024-05-13_user_gpt-4o-2024-05-13_04_15_2026_12_33_45.json
+total samples: 1

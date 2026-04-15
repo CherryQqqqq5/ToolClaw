@@ -1,0 +1,17 @@
+nohup: ignoring input
+usage: run_toolsandbox.py [-h] [--source SOURCE]
+                          [--official-run-dir OFFICIAL_RUN_DIR]
+                          [--official-data-root OFFICIAL_DATA_ROOT]
+                          [--result-source RESULT_SOURCE] [--outdir OUTDIR]
+                          [--mode {demo,planner}] [--systems SYSTEMS]
+                          [--limit LIMIT] [--smoke] [--num-runs NUM_RUNS]
+                          [--asset-registry-root ASSET_REGISTRY_ROOT]
+                          [--seed SEED] [--model-version MODEL_VERSION]
+                          [--budget-note BUDGET_NOTE]
+                          [--config-file CONFIG_FILE]
+                          [--phase-config PHASE_CONFIG]
+                          [--require-result-summary]
+                          [--keep-normalized-taskset]
+                          [--interaction-target {simulator,user_cli}]
+                          [--cli-prompt-prefix CLI_PROMPT_PREFIX]
+run_toolsandbox.py: error: argument --interaction-target: invalid choice: 'llm_openrouter' (choose from 'simulator', 'user_cli')
