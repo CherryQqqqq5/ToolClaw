@@ -167,6 +167,26 @@ def build_scenario_results(
     return best
 
 
+def score_for_bucket(sr: ScenarioResult) -> Optional[float]:
+    """Prefer milestone_similarity; fall back to similarity."""
+    if sr.milestone_similarity is not None:
+        return sr.milestone_similarity
+    if sr.similarity is not None:
+        return sr.similarity
+    return None
+
+
+def bucket_of(score: float) -> str:
+    # Fixed buckets requested for below-threshold diagnostics.
+    if 0.0 <= score < 0.5:
+        return "[0,0.5)"
+    if 0.5 <= score < 0.66:
+        return "[0.5,0.66)"
+    if 0.66 <= score < 0.95:
+        return "[0.66,0.95)"
+    return "[0.95,1]"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Score official ToolSandbox runs restricted to a safe scenario list.",
@@ -218,6 +238,23 @@ def main() -> None:
         action="store_true",
         help="With --out-failures, append one row per missing scenario (pass_reason=not_found).",
     )
+    parser.add_argument(
+        "--print-buckets",
+        action="store_true",
+        help="Print below-threshold bucket summary for found safe scenarios.",
+    )
+    parser.add_argument(
+        "--out-buckets",
+        type=Path,
+        default=None,
+        help="Optional text output for below-threshold bucket summary.",
+    )
+    parser.add_argument(
+        "--bucket-summary-csv",
+        type=Path,
+        default=None,
+        help="Optional CSV with two columns: bucket,count for below-threshold scenarios.",
+    )
     args = parser.parse_args()
 
     ordered_safe = load_safe_scenarios(args.safe_list)
@@ -242,6 +279,28 @@ def main() -> None:
     print(f"pass (on full safe list, missing count as not pass): {passed}/{n}  rate: {passed/n:.4f}" if n else "pass: n/a")
     if scored:
         print(f"pass (among found only): {passed_in_found}/{scored}  rate: {passed_in_found/scored:.4f}")
+
+    bucket_order = ("[0,0.5)", "[0.5,0.66)", "[0.66,0.95)", "[0.95,1]")
+    bucket_rows: Dict[str, List[ScenarioResult]] = {k: [] for k in bucket_order}
+    for name in ordered_safe:
+        sr = best.get(name)
+        if sr is None or sr.pass_ok:
+            continue
+        score = score_for_bucket(sr)
+        if score is None:
+            continue
+        bucket_rows[bucket_of(score)].append(sr)
+
+    if args.print_buckets:
+        total_below = sum(len(v) for v in bucket_rows.values())
+        print(f"below-thresh bucket summary (n={total_below})")
+        for bucket in bucket_order:
+            items = bucket_rows[bucket]
+            print(f"  {bucket}: {len(items)}")
+            for sr in items:
+                score = score_for_bucket(sr)
+                score_str = f"{score:.6g}" if score is not None else "n/a"
+                print(f"    - {sr.scenario}\t{score_str}\t{sr.pass_reason}")
 
     if args.out_missing is not None:
         args.out_missing.parent.mkdir(parents=True, exist_ok=True)
@@ -323,6 +382,32 @@ def main() -> None:
                 for name in missing:
                     w.writerow([name, "not_found", "", "", "", "", ""])
         print(f"wrote failures: {args.out_failures}")
+
+    if args.out_buckets is not None:
+        args.out_buckets.parent.mkdir(parents=True, exist_ok=True)
+        lines: List[str] = []
+        total_below = sum(len(v) for v in bucket_rows.values())
+        lines.append(f"# below-thresh bucket summary (n={total_below})")
+        lines.append("")
+        for bucket in bucket_order:
+            items = bucket_rows[bucket]
+            lines.append(f"{bucket}\tcount={len(items)}")
+            for sr in items:
+                score = score_for_bucket(sr)
+                score_str = f"{score:.6g}" if score is not None else "n/a"
+                lines.append(f"{sr.scenario}\t{score_str}\t{sr.pass_reason}")
+            lines.append("")
+        args.out_buckets.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+        print(f"wrote buckets: {args.out_buckets}")
+
+    if args.bucket_summary_csv is not None:
+        args.bucket_summary_csv.parent.mkdir(parents=True, exist_ok=True)
+        with args.bucket_summary_csv.open("w", encoding="utf-8", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["bucket", "count"])
+            for bucket in bucket_order:
+                w.writerow([bucket, len(bucket_rows[bucket])])
+        print(f"wrote bucket summary csv: {args.bucket_summary_csv}")
 
 
 if __name__ == "__main__":
