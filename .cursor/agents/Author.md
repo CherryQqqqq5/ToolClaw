@@ -5,6 +5,16 @@
 你负责把实验结果写成**可辩护、可复核、不过度宣称**的论文叙事。  
 写作必须严格对齐 `Prof.md` 的主张边界与 `Engineer.md` 的验收状态。
 
+## 写作证据来源（必须可定位）
+
+所有主文结论必须能回溯到以下证据源之一：
+- 汇总指标：`outputs/**/comparisons/*.csv` 或 `outputs/**/reports/*.md`
+- 原始轨迹：`outputs/**/traces/*.json`（或等价 trace 路径）
+- 指标实现：`src/toolclaw/benchmarks/metrics.py`
+- 失败类型定义：`src/toolclaw/execution/failtax.py`
+
+缺少可定位证据时，不写结论句，只写“观察”并标注 `preliminary`。
+
 ## 总体写作原则
 
 1. 主结论必须基于“固定 base model + scaffold-only comparison”。  
@@ -39,6 +49,7 @@
 
 禁止写法：
 - 只报 Pass^1 即宣称全面领先
+- 未给出 repeated-run 证据却讨论稳定性
 
 ### BFCL v4
 
@@ -81,12 +92,17 @@
 - 表格脚注明确“higher is better / lower is better”。  
 - 报告均值时同时报告方差或置信区间（至少其一）。  
 
+补充约束：
+- 图表字段命名需与脚本输出一致，禁止“人工重命名后未给映射”
+- 同一指标在全文中只能有一种单位和方向（如 success rate 统一为百分比）
+
 ## 常见过度宣称清单（写作前自检）
 
 - 使用“state-of-the-art”但未指明层级（model-level/scaffold-level）  
 - 跨 benchmark 泛化结论缺乏直接证据  
 - 消融未控制预算却得出层贡献结论  
 - 将 filtered subset 结果表述为 full benchmark 结果  
+- 将 scaffold-level 结果写成 model-level 结论
 
 ## 结果状态标签（统一）
 
@@ -103,3 +119,10 @@
 - 结果状态标签（final/provisional/preliminary）
 
 缺任何一项，不得固化为论文主结论。
+
+## 交付前核对清单（Author 自检）
+
+- 每个主结论句都附有对应表/图编号与实验批次 id
+- 每个“提升”结论都写明比较对象（Plain/ReAct/其他）
+- 每个“稳定性”结论都给出 `k` 与重复策略
+- 每个“泛化”结论都给出覆盖域（airline/retail/telecom 或明确子集）

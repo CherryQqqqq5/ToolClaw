@@ -5,6 +5,17 @@
 你负责把 `Prof.md` 中锁定的研究目标转成**可复现、可审计、可验收**的实验流水线。  
 你的核心原则是：固定基座模型，严格控制变量，只比较 scaffold 差异。
 
+## 代码与脚本责任边界
+
+优先使用现有脚本与模块，不重复造轮子：
+- ToolSandbox 相关：`scripts/run_toolsandbox.py`、`scripts/run_toolsandbox_bench.py`、`scripts/run_toolsandbox_formal.sh`
+- tau2-bench 相关：`scripts/run_tau2_bench.py`、`scripts/run_tau_bench.py`、`scripts/run_tau_bench_remote.sh`
+- 消融与预算：`scripts/run_ablation.sh`、`scripts/run_toolsandbox_matched_ablation.py`、`scripts/run_budget_sweep.py`
+- 一致性检查：`scripts/check_benchmark_consistency.py`
+- 核心执行链路：`src/toolclaw/execution/executor.py`、`src/toolclaw/execution/recovery.py`、`src/toolclaw/benchmarks/metrics.py`
+
+新增脚本前，先说明现有脚本无法满足的约束，并在批次说明中记录新增原因。
+
 ## 不可违反的硬约束
 
 1. 不得在同一结果表中混用不同 base model。  
@@ -43,6 +54,11 @@
 - seeds: `[s1, s2, s3, ...]`
 - repeats: `k=<...>`（用于 pass^k 与稳定性）
 
+配置来源优先级：
+1. `configs/benchmark_toolsandbox.yaml`
+2. `configs/benchmark_tau2.yaml`
+3. 批次临时覆盖参数（必须写入批次说明）
+
 ## Benchmark 级别验收标准
 
 ### ToolSandbox
@@ -57,6 +73,7 @@
 - 对照组与 full 组均完成同规模样本
 - 每个样本均有可回放 trace
 - 指标计算脚本可复跑并输出一致结果
+- 脚本层测试通过：`tests/test_run_toolsandbox_bench_script.py`、`tests/test_run_toolsandbox_formal_script.py`
 
 ### tau2-bench
 
@@ -69,6 +86,7 @@
 - 每个 domain 至少一次完整 sweep
 - k 次重复可复现（同 seed 结果一致）
 - 报告中区分单次成功与稳定成功
+- 脚本层测试通过：`tests/test_run_tau2_bench_script.py`、`tests/test_run_tau_bench_remote_script.py`
 
 ### BFCL v4
 
@@ -104,6 +122,7 @@
 要求：
 - 与主实验同数据切分、同预算、同 seed
 - 不允许“只在 full 上加预算”
+- 至少一次通过 `scripts/run_toolsandbox_matched_ablation.py` 复现实验矩阵
 
 ## 结果归档规范
 
@@ -117,12 +136,19 @@
 命名建议：
 - `benchmark/scaffold/model/date/run_id`
 
+归档落点建议：
+- 原始轨迹与日志：`outputs/` 或 `logs/`
+- 汇总报告：`outputs/**/reports/`
+- 对比表：`outputs/**/comparisons/`
+
 ## 异常处理流程
 
 1. 发现异常（崩溃、超时、空结果）先记录，不覆盖原日志。  
 2. 判断是否为环境问题；若是，修环境后整批重跑。  
 3. 判断是否为 scaffold 逻辑问题；若是，新建修复批次并显式标注。  
 4. 禁止手工挑选“好看结果”入表。  
+
+若出现“代码与结果不一致”（例如配置显示 budget=A，日志实际 budget=B），该批次直接降级为 `preliminary`，不得进入对外材料。
 
 ## 对外汇报口径（工程侧）
 

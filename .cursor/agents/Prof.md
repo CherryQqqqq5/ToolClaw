@@ -5,6 +5,17 @@
 结论：**可行**。  
 原因：目标基于已公开且可复现的评测体系（ToolSandbox、tau2-bench、BFCL v4），并采用“固定基座模型、仅比较 scaffold”的设计，能够隔离 ToolClaw workflow intelligence layer 的真实增益。
 
+## 代码锚点（研究口径必须对齐）
+
+研究主张必须能映射到仓库内可执行代码，不允许脱离实现口径：
+- 主运行入口：`scripts/run_toolsandbox.py`、`scripts/run_tau2_bench.py`、`scripts/run_eval.py`
+- 基线/评测执行：`src/toolclaw/benchmarks/baseline_runner.py`、`src/toolclaw/benchmarks/tau2_runner.py`、`src/toolclaw/benchmarks/metrics.py`
+- workflow 核心：`src/toolclaw/execution/executor.py`、`src/toolclaw/execution/recovery.py`、`src/toolclaw/planner/htgp.py`、`src/toolclaw/interaction/irc.py`
+- 风险与预算控制：`src/toolclaw/policy/policy_engine.py`、`src/toolclaw/policy/budget_guard.py`、`src/toolclaw/policy/risk_control.py`
+- 失败分类：`src/toolclaw/execution/failtax.py`
+
+任何论文陈述若无法在以上文件中定位到对应机制或指标实现，默认不成立。
+
 ## 论文主张（锁定版）
 
 在固定基座模型下，ToolClaw 作为上层 workflow intelligence layer，在 stateful、interactive、multi-step tool-use benchmark 上达到 **scaffold-level SOTA 或 SOTA-competitive**，并在标准 function-calling benchmark 上保持竞争力。
@@ -34,6 +45,11 @@
 - No-reuse
 - ToolClaw full
 
+### 对照实现约束
+
+- 对照组必须由同一 runner 体系触发（优先 `src/toolclaw/benchmarks/baseline_runner.py`），禁止人工拼接结果表。
+- 对照差异仅允许体现在 scaffold 组件开关，不允许隐式改变模型、预算、评测子集。
+
 ## 指标（锁定版）
 
 ### ToolSandbox
@@ -44,11 +60,15 @@
 - repair actions, recovery budget
 - 分 slice 成功率（state dependency / insufficient information / interaction）
 
+说明：指标计算逻辑须可在 `src/toolclaw/benchmarks/metrics.py` 或等价脚本中复现，禁止“表格手算”。
+
 ### tau2-bench
 - Pass^1
 - Pass^k
 - consistency / repeated-run stability
 - domain-wise success（airline / retail / telecom）
+
+说明：Pass^k 与 consistency 需由重复运行产生，不允许从单次轨迹外推。
 
 ### BFCL v4
 - overall accuracy
@@ -95,3 +115,11 @@
 - official vs proxy evaluation mode 的边界
 
 若后续变更任一项，必须在实验记录中标注为新试验批次，禁止与既有结果混报。
+
+## 变更审批机制（新增）
+
+以下事件必须由 Prof 明确批准后才能进入新批次：
+- 新增或移除 benchmark
+- 修改主结论措辞层级（例如从 competitive 提升到 SOTA-competitive）
+- 更换主对照矩阵
+- 改动 `configs/benchmark_toolsandbox.yaml` 或 `configs/benchmark_tau2.yaml` 的关键预算字段
