@@ -102,6 +102,9 @@ def is_augmented(row: Dict[str, Any]) -> bool:
 
 
 def infer_execution_scenario(row: Dict[str, Any]) -> str | None:
+    explicit = row.get("execution_scenario")
+    if explicit:
+        return str(explicit)
     categories = {str(category).strip().lower().replace("-", " ").replace("_", " ") for category in row.get("categories", [])}
     if "insufficient information" in categories:
         return "environment_failure"
@@ -123,10 +126,18 @@ def aligned_row_to_formal_record(row: Dict[str, Any]) -> Dict[str, Any]:
         "tool_allow_list": list(row.get("tool_allow_list", [])),
         "candidate_tools": list(row.get("candidate_tools", [])),
         "categories": [to_display_category(category) for category in row.get("categories", [])],
+        "normalized_categories": list(row.get("normalized_categories", [])),
         "milestones": list(row.get("milestones", [])),
         "ideal_turn_count": row.get("ideal_turn_count"),
         "ideal_tool_calls": row.get("ideal_tool_calls"),
         "result_summary": dict(row.get("result_summary", {})),
+        "reference_result_summary": dict(row.get("reference_result_summary", {})),
+        "official_milestone_mapping": row.get("official_milestone_mapping"),
+        "official_similarity": row.get("official_similarity"),
+        "official_milestone_similarity": row.get("official_milestone_similarity"),
+        "official_turn_count": row.get("official_turn_count"),
+        "official_exception_type": row.get("official_exception_type"),
+        "official_traceback": row.get("official_traceback"),
         "has_ground_truth_messages": bool(row.get("has_ground_truth_messages")),
         "has_ground_truth_milestones": bool(row.get("has_ground_truth_milestones")),
         "has_ground_truth_tools": bool(row.get("has_ground_truth_tools")),

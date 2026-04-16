@@ -8,7 +8,7 @@ import ast
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_ROOT = Path("data/external/ToolSandbox/data")
@@ -17,7 +17,6 @@ BUNDLED_SOURCE_CANDIDATES = (
     REPO_ROOT / "data/toolsandbox.formal.json",
     REPO_ROOT / "data/toolsandbox.formal.eval.json",
     REPO_ROOT / "data/toolsandbox.formal.train.json",
-    REPO_ROOT / "data/toolsandbox.formal.official.json",
 )
 SCENARIO_EXPORT_CANDIDATES = (
     "scenario_export.json",
@@ -167,16 +166,70 @@ def extract_candidate_tools(scenario_export: Dict[str, Any], tool_allow_list: Li
     return list(tool_allow_list)
 
 
-def extract_milestones(scenario_export: Dict[str, Any], result_row: Dict[str, Any]) -> List[Any]:
+def extract_milestones(scenario_export: Dict[str, Any], result_row: Dict[str, Any], ground_truth: Dict[str, Any]) -> List[Any]:
     milestones = scenario_export.get("milestones")
     if isinstance(milestones, list) and milestones:
         return milestones
+    ground_truth_milestones = ground_truth.get("milestones")
+    if isinstance(ground_truth_milestones, list) and ground_truth_milestones:
+        return list(ground_truth_milestones)
     mapping = result_row.get("milestone_mapping")
     if isinstance(mapping, dict):
         return [f"milestone_{key}" for key in sorted(mapping.keys(), key=lambda x: int(str(x)) if str(x).isdigit() else str(x))]
     if isinstance(mapping, list):
         return [f"milestone_{idx}" for idx, _ in enumerate(mapping)]
     return []
+
+
+def _normalize_category_value(raw_value: Any) -> str:
+    return str(raw_value).strip().lower().replace("-", " ").replace("_", " ")
+
+
+def normalized_categories(categories: Any) -> List[str]:
+    if not isinstance(categories, list):
+        return []
+    values: List[str] = []
+    for category in categories:
+        normalized = " ".join(_normalize_category_value(category).split())
+        if not normalized:
+            continue
+        snake = normalized.replace(" ", "_")
+        if snake not in values:
+            values.append(snake)
+    return values
+
+
+def infer_execution_scenario(scenario_export: Dict[str, Any], result_row: Dict[str, Any]) -> Tuple[str | None, str]:
+    raw_value = scenario_export.get("execution_scenario")
+    if raw_value is not None:
+        normalized = str(raw_value).strip().lower().replace("-", "_").replace(" ", "_")
+        return (normalized or None, "scenario_export")
+    raw_value = (
+        result_row.get("execution_scenario")
+        or result_row.get("scenario")
+        or result_row.get("scenario_type")
+    )
+    if raw_value is not None:
+        normalized = str(raw_value).strip().lower().replace("-", "_").replace(" ", "_")
+        return (normalized or None, "result_row")
+    category_set = set(normalized_categories(result_row.get("categories")))
+    if "insufficient_information" in category_set:
+        return ("insufficient_information", "category_fallback")
+    if "multiple_user_turn" in category_set:
+        return ("multiple_user_turn", "category_fallback")
+    if "state_dependency" in category_set:
+        return ("state_dependency", "category_fallback")
+    if "canonicalization" in category_set:
+        return ("canonicalization", "category_fallback")
+    if "single_user_turn" in category_set:
+        return ("single_user_turn", "category_fallback")
+    return (None, "missing")
+
+
+def build_official_reference_summary(result_row: Dict[str, Any]) -> Dict[str, Any]:
+    summary = dict(result_row)
+    summary["source"] = "official_toolsandbox_run"
+    return summary
 
 
 def _ast_value(node: ast.AST) -> Any:
@@ -327,6 +380,7 @@ def resolve_ground_truth(scenario_name: str) -> Dict[str, Any]:
 
 
 def iter_aligned_rows(run_dir: Path, result_summary: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
+    official_run_git_sha = result_summary.get("git_sha")
     for item in result_summary.get("per_scenario_results", []):
         if not isinstance(item, dict):
             continue
@@ -341,26 +395,38 @@ def iter_aligned_rows(run_dir: Path, result_summary: Dict[str, Any]) -> Iterable
         candidate_tools = extract_candidate_tools(scenario_export, tool_allow_list)
         if not candidate_tools:
             candidate_tools = list(ground_truth["candidate_tools"]) or list(tool_allow_list)
-        milestones = extract_milestones(scenario_export, item) or list(ground_truth["milestones"])
+        milestones = extract_milestones(scenario_export, item, ground_truth)
+        execution_scenario, execution_scenario_source = infer_execution_scenario(scenario_export, item)
+        row_categories = list(item.get("categories", []))
+        official_summary = build_official_reference_summary(item)
         has_ground_truth_messages = bool(messages)
         has_ground_truth_milestones = bool(milestones)
         has_ground_truth_tools = bool(tool_allow_list) or bool(candidate_tools)
-        yield {
+        row = {
             "sample_id": scenario_name,
             "query": extract_query(messages, scenario_name),
             "messages": messages,
             "tool_allow_list": tool_allow_list,
             "candidate_tools": candidate_tools,
-            "categories": list(item.get("categories", [])),
+            "categories": row_categories,
+            "normalized_categories": normalized_categories(row_categories),
             "milestones": milestones,
             "ideal_turn_count": item.get("turn_count"),
             "ideal_tool_calls": scenario_export.get("ideal_tool_calls") or scenario_export.get("expected_tool_calls"),
-            "result_summary": item,
+            "result_summary": official_summary,
+            "reference_result_summary": official_summary,
+            "official_milestone_mapping": item.get("milestone_mapping"),
+            "official_similarity": item.get("similarity"),
+            "official_milestone_similarity": item.get("milestone_similarity"),
+            "official_turn_count": item.get("turn_count"),
+            "official_exception_type": item.get("exception_type") or item.get("error_type"),
+            "official_traceback": item.get("traceback"),
             "has_ground_truth_messages": has_ground_truth_messages,
             "has_ground_truth_milestones": has_ground_truth_milestones,
             "has_ground_truth_tools": has_ground_truth_tools,
             "metadata": {
                 "source": "official_toolsandbox_run",
+                "official_run_git_sha": official_run_git_sha,
                 "official_run_dir": str(run_dir.resolve()),
                 "trajectory_dir": str((run_dir / 'trajectories' / scenario_name).resolve()),
                 "result_summary_path": str((run_dir / 'result_summary.json').resolve()),
@@ -371,8 +437,12 @@ def iter_aligned_rows(run_dir: Path, result_summary: Dict[str, Any]) -> Iterable
                 "has_ground_truth_tools": has_ground_truth_tools,
                 "ground_truth_backfill_source": ground_truth.get("ground_truth_source"),
                 "ground_truth_backfill_path": ground_truth.get("ground_truth_source_path"),
+                "execution_scenario_source": execution_scenario_source,
             },
         }
+        if execution_scenario:
+            row["execution_scenario"] = execution_scenario
+        yield row
 
 
 def main() -> None:

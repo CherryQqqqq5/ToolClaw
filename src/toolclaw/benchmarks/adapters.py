@@ -770,8 +770,9 @@ class ToolSandboxAdapter:
         trace_metrics = trace_payload.get("metrics", {})
         trace_events = trace_payload.get("events", [])
         result_summary = self._extract_current_result_summary(trace_payload)
+        reference_result_summary = self._extract_reference_result_summary(sample.raw_payload)
         if not result_summary:
-            result_summary = self.build_proxy_result_summary(sample, trace_payload)
+            result_summary = reference_result_summary or self.build_proxy_result_summary(sample, trace_payload)
         categories = self._extract_categories(sample.raw_payload)
         similarity = self._extract_similarity(result_summary)
         raw_trace_success = bool(trace_metrics.get("success"))
@@ -790,8 +791,20 @@ class ToolSandboxAdapter:
         expected_turns = self._expected_turn_count(sample.raw_payload, categories)
         expected_tool_calls = self._expected_tool_calls(sample.raw_payload, categories)
         hallucination_free = self._hallucination_avoidance(sample.raw_payload, trace_events)
-        reference_result_summary = self._extract_reference_result_summary(sample.raw_payload)
         result_summary_source = self._result_summary_source(result_summary)
+        if result_summary_source == "toolclaw_proxy" and reference_result_summary:
+            # Keep proxy only as a fallback: prefer reference-style summaries when available.
+            result_summary = reference_result_summary
+            result_summary_source = self._result_summary_source(result_summary)
+            similarity = self._extract_similarity(result_summary)
+            milestone_mapping = self._extract_milestone_mapping(result_summary)
+            total_milestones = self._expected_milestone_count(sample.raw_payload, milestone_mapping)
+            matched_milestones = self._matched_milestones(milestone_mapping, result_summary)
+            has_explicit_milestone_signal = bool(milestone_mapping) or result_summary.get("matched_milestones") is not None
+            if total_milestones > 0 and has_explicit_milestone_signal:
+                milestone_coverage = matched_milestones / total_milestones
+            else:
+                milestone_coverage = 0.0
         if result_summary_source == "toolclaw_proxy" and total_milestones == 0:
             similarity = None
         proxy_summary_success = self._proxy_summary_success(
