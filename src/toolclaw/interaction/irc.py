@@ -5,7 +5,9 @@ from __future__ import annotations
 import concurrent.futures
 from dataclasses import dataclass, field
 import json
+import os
 from pathlib import Path
+import time
 from typing import Any, Dict, Optional
 
 from toolclaw.execution.executor import ExecutionOutcome
@@ -98,6 +100,19 @@ class InteractionShell:
             turns += 1
             repair = outcome.pending_interaction.repair
             failure_signature = self._failure_signature(outcome)
+            # region agent log
+            self._debug_log(
+                "H5",
+                "src/toolclaw/interaction/irc.py:run:loop",
+                "interaction turn start",
+                {
+                    "run_id": run_id,
+                    "turn": turns,
+                    "failure_signature": failure_signature,
+                    "repair_type": repair.repair_type.value,
+                },
+            )
+            # endregion
             repeat_count = failure_counts.get(failure_signature, 0)
             failure_counts[failure_signature] = repeat_count + 1
             report = self.uncertainty_detector.analyze_failure(
@@ -605,6 +620,17 @@ class InteractionShell:
                 return future.result(timeout=timeout_s)
             except concurrent.futures.TimeoutError:
                 future.cancel()
+                # region agent log
+                self._debug_log(
+                    "H1",
+                    "src/toolclaw/interaction/irc.py:_reply_with_timeout:timeout",
+                    "reply provider timeout",
+                    {
+                        "timeout_s": timeout_s,
+                        "expected_answer_type": str(request.expected_answer_type or ""),
+                    },
+                )
+                # endregion
                 return self._timeout_reply(request, timeout_s)
 
     @staticmethod
@@ -622,3 +648,22 @@ class InteractionShell:
                 "reply_timeout_s": timeout_s,
             },
         )
+
+    @staticmethod
+    def _debug_log(hypothesis_id: str, location: str, message: str, data: Dict[str, Any]) -> None:
+        # region agent log
+        try:
+            payload = {
+                "sessionId": "4b188d",
+                "runId": os.environ.get("TOOLCLAW_DEBUG_RUN_ID", "interaction_shell"),
+                "hypothesisId": hypothesis_id,
+                "location": location,
+                "message": message,
+                "data": data,
+                "timestamp": int(time.time() * 1000),
+            }
+            with open("/Users/cherry/Documents/ToolClaw/.cursor/debug-4b188d.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+        except Exception:
+            pass
+        # endregion
