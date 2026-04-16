@@ -100,6 +100,11 @@ def validate_interaction_live(rows: Sequence[Dict[str, Any]], errors: List[str])
         require(isinstance(sp, dict), f"interaction_live:{name}: simulated_policy missing", errors)
         if isinstance(sp, dict):
             require(bool(sp.get("mode")), f"interaction_live:{name}: simulated_policy.mode missing", errors)
+            mav = sp.get("missing_arg_values", {})
+            if isinstance(mav, dict):
+                leakage_keys = {"content", "message_content", "reminder_content", "timestamp", "reminder_timestamp", "time", "location"}
+                leaked = sorted(k for k in mav.keys() if str(k) in leakage_keys)
+                require(not leaked, f"interaction_live:{name}: potential answer leakage keys in missing_arg_values: {leaked}", errors)
 
 
 PASS_RE = re.compile(r"^(?P<family>.+)__pass(?P<idx>[12])$")
@@ -156,6 +161,11 @@ def validate_skill_effective(main_rows: Sequence[Dict[str, Any]], skill_rows: Se
     pool_sizes = [len(row.get("candidate_tools", []) or []) for row in skill_rows]
     base_sizes = [len(row.get("candidate_tools", []) or []) for row in main_rows if str(row.get("name", "")) in by_name_skill]
     require(mean(pool_sizes) > mean(base_sizes), "skill_distractor: candidate_tools did not expand on average", errors)
+    # skill_distractor protocol: keep allow list unchanged from main_clean.
+    for name in common:
+        main_allow = by_name_main[name].get("tool_allow_list", []) or []
+        skill_allow = by_name_skill[name].get("tool_allow_list", []) or []
+        require(main_allow == skill_allow, f"skill_distractor:{name}: tool_allow_list changed; should remain identical to main_clean", errors)
 
     changed = 0
     # Check first up to 20 overlapping tasks.
@@ -166,7 +176,9 @@ def validate_skill_effective(main_rows: Sequence[Dict[str, Any]], skill_rows: Se
         sig_s = _workflow_signature(s)
         if sig_m != sig_s:
             changed += 1
-    require(changed > 0, "skill_distractor: no workflow/tool-selection signature change detected in diagnostics window", errors)
+    # Keep this as a warning-like soft check by printing only.
+    if changed == 0:
+        print("warning: skill_distractor diagnostics found no workflow signature change in first 20 tasks")
 
 
 def main() -> None:

@@ -69,8 +69,8 @@ def strip_to_initial_observation(messages: List[Dict[str, Any]]) -> Tuple[List[D
     return kept, removed
 
 
-PHONE_RE = re.compile(r"\+\d{6,}")
-TIMESTAMP_RE = re.compile(r"^-?\d+(\.\d+)?$")
+APPROVE_RE = re.compile(r"\b(yes|yeah|yep|go ahead|please do|sure|ok)\b", re.I)
+DENY_RE = re.compile(r"\b(no|don't|do not|stop)\b", re.I)
 
 
 def infer_trigger(assistant_text: str) -> Tuple[str, str]:
@@ -92,20 +92,26 @@ def infer_trigger(assistant_text: str) -> Tuple[str, str]:
     return "user_reply", ""
 
 
-def build_oracle_and_policy(removed: List[Dict[str, Any]], base_policy: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def build_oracle_and_policy(
+    removed: List[Dict[str, Any]],
+    base_policy: Dict[str, Any],
+    *,
+    enable_policy_fill: bool,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """
+    Build sidecar oracle and strict (non-leaky) simulated policy.
+
+    IMPORTANT:
+    - Never fill content/time/location slots from removed user replies.
+    - Only fill approval-oriented and tool-switch hints when clearly implied.
+    """
     oracle_replies: List[Dict[str, Any]] = []
-    missing_arg_values: Dict[str, Any] = dict(base_policy.get("missing_arg_values", {})) if isinstance(
-        base_policy.get("missing_arg_values"), dict
-    ) else {}
+    missing_arg_values: Dict[str, Any] = {}
     approval_responses: Dict[str, Any] = dict(base_policy.get("approval_responses", {})) if isinstance(
         base_policy.get("approval_responses"), dict
     ) else {}
-    tool_switch_hints: Dict[str, Any] = dict(base_policy.get("tool_switch_hints", {})) if isinstance(
-        base_policy.get("tool_switch_hints"), dict
-    ) else {}
-    constraint_overrides: Dict[str, Any] = dict(base_policy.get("constraint_overrides", {})) if isinstance(
-        base_policy.get("constraint_overrides"), dict
-    ) else {}
+    tool_switch_hints: Dict[str, Any] = {}
+    constraint_overrides: Dict[str, Any] = {}
 
     for idx, message in enumerate(removed):
         if str(message.get("sender", "")).strip().lower() != "user":
@@ -119,65 +125,82 @@ def build_oracle_and_policy(removed: List[Dict[str, Any]], base_policy: Dict[str
         trigger_type, slot = infer_trigger(prev_assistant)
         oracle_replies.append({"trigger_type": trigger_type, "slot": slot or None, "reply": user_reply})
 
-        lower = user_reply.lower()
-        if "yes" in lower or "yeah" in lower or "go ahead" in lower:
-            constraint_overrides.setdefault("approved", True)
-            missing_arg_values.setdefault("approved", True)
-        if "no" in lower and "know" not in lower:
-            constraint_overrides.setdefault("approved", False)
-            missing_arg_values.setdefault("approved", False)
-
-        phone_match = PHONE_RE.search(user_reply)
-        if phone_match:
-            missing_arg_values.setdefault("phone_number", phone_match.group(0))
-            missing_arg_values.setdefault("recipient_phone_number", phone_match.group(0))
-
-        if user_reply.strip():
-            missing_arg_values.setdefault("content", user_reply.strip())
-            missing_arg_values.setdefault("message_content", user_reply.strip())
-            missing_arg_values.setdefault("reminder_content", user_reply.strip())
-
-    for message in removed:
-        if str(message.get("sender", "")).strip().lower() != "tool":
+        if not enable_policy_fill:
             continue
-        raw = str(message.get("content", "") or "").strip()
-        if TIMESTAMP_RE.fullmatch(raw):
-            value: Any = float(raw) if "." in raw else int(raw)
-            missing_arg_values.setdefault("timestamp", value)
-            missing_arg_values.setdefault("reminder_timestamp", value)
-
-    if any("cellular" in str(item.get("slot") or "") for item in oracle_replies):
-        tool_switch_hints.setdefault("tool_id", "set_cellular_service_status")
-        constraint_overrides.setdefault("enabled", True)
-    if any("wifi" in str(item.get("slot") or "") for item in oracle_replies):
-        tool_switch_hints.setdefault("tool_id", "set_wifi_status")
-        constraint_overrides.setdefault("enabled", True)
-    if any("low_battery_mode" in str(item.get("slot") or "") for item in oracle_replies):
-        tool_switch_hints.setdefault("tool_id", "set_low_battery_mode_status")
-        missing_arg_values.setdefault("enabled", False)
+        # Strict fill: only approval-like state; never content/time/location values.
+        if trigger_type == "permission_query":
+            if APPROVE_RE.search(user_reply):
+                constraint_overrides.setdefault("approved", True)
+                missing_arg_values.setdefault("approved", True)
+            elif DENY_RE.search(user_reply):
+                constraint_overrides.setdefault("approved", False)
+                missing_arg_values.setdefault("approved", False)
+            slot_text = str(slot or "").lower()
+            if "cellular" in slot_text:
+                tool_switch_hints.setdefault("tool_id", "set_cellular_service_status")
+            if "wifi" in slot_text:
+                tool_switch_hints.setdefault("tool_id", "set_wifi_status")
+            if "low_battery_mode" in slot_text:
+                tool_switch_hints.setdefault("tool_id", "set_low_battery_mode_status")
 
     policy = dict(base_policy)
     policy["mode"] = str(policy.get("mode") or "cooperative")
-    policy["missing_arg_values"] = missing_arg_values
-    policy["approval_responses"] = approval_responses
-    policy["tool_switch_hints"] = tool_switch_hints
-    policy["constraint_overrides"] = constraint_overrides
+    if enable_policy_fill:
+        policy["missing_arg_values"] = missing_arg_values
+        policy["approval_responses"] = approval_responses
+        policy["tool_switch_hints"] = tool_switch_hints
+        policy["constraint_overrides"] = constraint_overrides
+    else:
+        policy.pop("missing_arg_values", None)
+        policy.pop("approval_responses", None)
+        policy.pop("tool_switch_hints", None)
+        policy.pop("constraint_overrides", None)
     return oracle_replies, policy
 
 
-def build_interaction_live(sample: Dict[str, Any]) -> Dict[str, Any]:
+def build_interaction_live(
+    sample: Dict[str, Any],
+    *,
+    strip_mode: str,
+    sidecar_flags: Sequence[str],
+) -> Dict[str, Any]:
     out = copy.deepcopy(sample)
     messages = list(out.get("messages", []))
     kept, removed = strip_to_initial_observation(messages)
+    if strip_mode == "keep_until_first_assistant_tool":
+        # Keep first assistant/tool pair after initial user to preserve minimal execution context.
+        first_user_idx = None
+        for idx, message in enumerate(messages):
+            if str(message.get("sender", "")).strip().lower() == "user":
+                first_user_idx = idx
+                break
+        if first_user_idx is not None:
+            end = first_user_idx + 1
+            while end < len(messages):
+                sender = str(messages[end].get("sender", "")).strip().lower()
+                if sender in {"assistant", "tool"}:
+                    end += 1
+                    continue
+                break
+            kept = messages[:end]
+            removed = messages[end:]
     out["messages"] = kept
     base_policy = dict(out.get("simulated_policy", {})) if isinstance(out.get("simulated_policy"), dict) else {"mode": "cooperative"}
-    oracle, policy = build_oracle_and_policy(removed, base_policy)
-    out["oracle_user_replies"] = oracle
+    enable_policy_fill = "simulated_policy_fill" in set(sidecar_flags)
+    oracle, policy = build_oracle_and_policy(removed, base_policy, enable_policy_fill=enable_policy_fill)
+    if "oracle_user_replies" in set(sidecar_flags):
+        out["oracle_user_replies"] = oracle
+    else:
+        out.pop("oracle_user_replies", None)
     out["simulated_policy"] = policy
     return out
 
 
-def build_reuse_pairs(source: Sequence[Dict[str, Any]], max_pairs_per_group: int) -> List[Dict[str, Any]]:
+def build_reuse_pairs(
+    source: Sequence[Dict[str, Any]],
+    normalized_categories: Dict[str, List[str]],
+    max_pairs_per_group: int,
+) -> List[Dict[str, Any]]:
     groups: Dict[str, List[Dict[str, Any]]] = {
         "reminder_date_time": [s for s in source if str(s.get("name", "")).startswith("add_reminder_content_and_date_and_time")],
         "reminder_week_time_location": [s for s in source if "add_reminder_content_and_week_delta_and_time_and_location" in str(s.get("name", ""))],
@@ -191,13 +214,37 @@ def build_reuse_pairs(source: Sequence[Dict[str, Any]], max_pairs_per_group: int
         tasks_sorted = sorted(tasks, key=lambda item: str(item.get("name", "")))
         if len(tasks_sorted) < 2:
             continue
+        # Semantic pairing: prefer pass1 from clean single-turn tasks;
+        # prefer pass2 from similar family but non-identical tasks, with _alt as eval if available.
+        warmup_pool = []
+        eval_pool = []
+        for t in tasks_sorted:
+            name = str(t.get("name", ""))
+            cats = set(normalized_categories.get(name, []))
+            is_multi = "multiple_user_turn" in cats or "insufficient_information" in cats
+            if not is_multi:
+                warmup_pool.append(t)
+            if not is_multi and ("_alt" in name or "implicit" in name):
+                eval_pool.append(t)
+        if not warmup_pool:
+            warmup_pool = [t for t in tasks_sorted if "multiple_user_turn" not in set(normalized_categories.get(str(t.get("name", "")), []))]
+        if not eval_pool:
+            eval_pool = [t for t in tasks_sorted if t not in warmup_pool[:1]] or list(tasks_sorted)
+
         pair_count = 0
-        i = 0
-        while i + 1 < len(tasks_sorted) and pair_count < max_pairs_per_group:
-            warmup = tasks_sorted[i]
-            eval_task = tasks_sorted[i + 1]
-            if str(warmup.get("name", "")) == str(eval_task.get("name", "")):
-                i += 1
+        used_names = set()
+        for warmup in warmup_pool:
+            if pair_count >= max_pairs_per_group:
+                break
+            eval_task = None
+            for candidate in eval_pool:
+                if str(candidate.get("name", "")) == str(warmup.get("name", "")):
+                    continue
+                if str(candidate.get("name", "")) in used_names:
+                    continue
+                eval_task = candidate
+                break
+            if eval_task is None:
                 continue
             family_id = f"{group_name}__pair{pair_count:02d}"
             pass1 = copy.deepcopy(warmup)
@@ -221,7 +268,8 @@ def build_reuse_pairs(source: Sequence[Dict[str, Any]], max_pairs_per_group: int
             out_pass1.append(pass1)
             out_pass2.append(pass2)
             pair_count += 1
-            i += 2
+            used_names.add(str(warmup.get("name", "")))
+            used_names.add(str(eval_task.get("name", "")))
     return out_pass1 + out_pass2
 
 
@@ -250,12 +298,8 @@ def main() -> None:
         for s in frozen
     }
 
-    # Main clean: exclude multi-turn + insufficient-information + bottom-quantile similarity + incomplete ground truth.
-    sims = sorted(float(s.get("official_similarity", 0.0) or 0.0) for s in frozen)
-    bottom_idx = max(0, int(math.floor(len(sims) * args.noisy_bottom_quantile)) - 1)
-    bottom_threshold = sims[bottom_idx] if sims else -1.0
-
-    main_clean: List[Dict[str, Any]] = []
+    # Main clean candidates first, then compute quantile within this candidate set.
+    main_clean_candidates: List[Dict[str, Any]] = []
     for sample in frozen:
         name = str(sample.get("name", ""))
         cats = set(normalized_categories.get(name, []))
@@ -265,19 +309,23 @@ def main() -> None:
             continue
         if not is_ground_truth_complete(sample):
             continue
-        similarity = float(sample.get("official_similarity", 0.0) or 0.0)
-        if similarity <= bottom_threshold:
-            continue
         if not ({"single_user_turn", "state_dependency", "single_tool", "canonicalization", "multiple_tool"} & cats):
             continue
-        main_clean.append(copy.deepcopy(sample))
+        main_clean_candidates.append(copy.deepcopy(sample))
+    candidate_sims = sorted(float(s.get("official_similarity", 0.0) or 0.0) for s in main_clean_candidates)
+    cand_bottom_idx = max(0, int(math.floor(len(candidate_sims) * args.noisy_bottom_quantile)) - 1)
+    cand_bottom_threshold = candidate_sims[cand_bottom_idx] if candidate_sims else -1.0
+    main_clean: List[Dict[str, Any]] = []
+    for sample in main_clean_candidates:
+        similarity = float(sample.get("official_similarity", 0.0) or 0.0)
+        if similarity <= cand_bottom_threshold:
+            continue
+        main_clean.append(sample)
     main_clean.sort(key=lambda s: str(s.get("name", "")))
     if args.max_main_clean_count is not None:
         main_clean = main_clean[: args.max_main_clean_count]
 
-    # Skill distractor from main_clean with expanded candidate pool and expanded allow list.
-    # Reason: planner path filters by tool_allow_list first; candidate_tools-only expansion
-    # may be inert for actual binding/selection behavior.
+    # Skill distractor: expand candidate_tools only; keep execution allow-list unchanged.
     pool: List[str] = []
     for sample in main_clean:
         for tool in sample.get("candidate_tools", []) or []:
@@ -287,7 +335,6 @@ def main() -> None:
     for sample in main_clean:
         out = copy.deepcopy(sample)
         out["candidate_tools"] = list(pool)
-        out["tool_allow_list"] = list(pool)
         skill_distractor.append(out)
     skill_distractor.sort(key=lambda s: str(s.get("name", "")))
 
@@ -298,10 +345,17 @@ def main() -> None:
         cats = set(normalized_categories.get(name, []))
         if "multiple_user_turn" in cats or "insufficient_information" in cats:
             interaction_src.append(sample)
-    interaction_live = [build_interaction_live(sample) for sample in sorted(interaction_src, key=lambda s: str(s.get("name", "")))]
+    interaction_live = [
+        build_interaction_live(
+            sample,
+            strip_mode=args.interaction_strip_mode,
+            sidecar_flags=args.interaction_oracle_sidecar,
+        )
+        for sample in sorted(interaction_src, key=lambda s: str(s.get("name", "")))
+    ]
 
     # Reuse persistent pairs.
-    reuse_persistent = build_reuse_pairs(frozen, args.max_pairs_per_reuse_group)
+    reuse_persistent = build_reuse_pairs(frozen, normalized_categories, args.max_pairs_per_reuse_group)
 
     # Noisy stress: success + low similarity + complete ground truth + exclude protocol-dependent slices.
     noisy_candidates = []
