@@ -94,6 +94,7 @@ class ExecutorConfig:
     max_suffix_replans_per_signature: int = 2
     max_total_suffix_replans: int = 8
     suffix_replan_timeout_s: float = 6.0
+    max_repeat_failures_per_signature: int = 32
 
 
 class SequentialExecutor:
@@ -230,6 +231,7 @@ class SequentialExecutor:
         )
 
         idx = start_step_index
+        repeat_failure_counts: Dict[str, int] = {}
         while idx < len(workflow.execution_plan):
             step = workflow.execution_plan[idx]
             tracker.set_current_step(step.step_id)
@@ -368,6 +370,42 @@ class SequentialExecutor:
                 raise RuntimeError("step execution failed without error object")
 
             tracker.mark_failed(step.step_id)
+            repeat_signature = "::".join(
+                [
+                    str(step.step_id or "unknown_step"),
+                    str(step_result.error.category.value if step_result.error.category else "unknown_category"),
+                    str(step_result.error.subtype or "unknown_subtype"),
+                    str(step.tool_id or "unknown_tool"),
+                ]
+            )
+            current_repeats = int(repeat_failure_counts.get(repeat_signature, 0) or 0) + 1
+            repeat_failure_counts[repeat_signature] = current_repeats
+            if current_repeats > int(self.config.max_repeat_failures_per_signature):
+                trace.add_event(
+                    event_id=f"evt_stop_repeat_failure_{step.step_id}",
+                    event_type=EventType.STOP,
+                    actor="executor",
+                    step_id=step.step_id,
+                    tool_id=step.tool_id,
+                    output={"status": "failed", "reason": "repeat_failure_limit_reached"},
+                    metadata={
+                        "repeat_signature": repeat_signature,
+                        "repeat_count": current_repeats,
+                        "max_repeat_failures_per_signature": int(self.config.max_repeat_failures_per_signature),
+                    },
+                )
+                trace.finalize(success=False, total_steps=len(workflow.execution_plan))
+                self._update_trace_budget_usage(trace, tracker.state_values)
+                self._write_trace(trace, output_path)
+                return ExecutionOutcome(
+                    run_id=run_id,
+                    workflow=workflow,
+                    success=False,
+                    final_state=dict(tracker.state_values),
+                    trace_path=output_path,
+                    last_error_id=step_result.error.error_id,
+                    metadata={"stopped_reason": "repeat_failure_limit_reached"},
+                )
             failure_record = self.failtax_classifier.classify_failure(step_result.error, step=step, state_values=tracker.state_values)
             step_result.error.failtax_label = failure_record.failtax_label.value
             if not self.config.allow_repair:

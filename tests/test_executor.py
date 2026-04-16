@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
+from types import MethodType
 
-from toolclaw.execution.executor import SequentialExecutor
+from toolclaw.execution.executor import SequentialExecutor, StepExecutionResult
 from toolclaw.execution.state_tracker import StateTracker
 from toolclaw.planner.binder import ToolBinder
 from toolclaw.planner.capability_graph import CapabilityTemplateRegistry, RuleBasedCapabilityGraphBuilder
@@ -9,6 +10,12 @@ from toolclaw.planner.htgp import HTGPPlanner, PlanningHints, PlanningRequest, P
 from toolclaw.schemas.error import ErrorCategory, ErrorEvidence, ErrorSeverity, ErrorStage, Recoverability, StateContext, ToolClawError
 from toolclaw.schemas.trace import EventType, Trace
 from toolclaw.schemas.workflow import ActionType, ToolSpec, Workflow, WorkflowStep
+from toolclaw.tools.mock_tools import ToolExecutionError
+
+
+class _NeverRepairEngine:
+    def plan_repair(self, *args, **kwargs):  # pragma: no cover - deterministic test double
+        return None
 
 
 def build_planner() -> HTGPPlanner:
@@ -308,3 +315,44 @@ def test_executor_auto_approves_from_simulated_policy_and_continues(tmp_path: Pa
     payload = json.loads((tmp_path / "auto_approval_trace.json").read_text(encoding="utf-8"))
     event_types = [evt["event_type"] for evt in payload["events"]]
     assert EventType.APPROVAL_RESPONSE.value in event_types
+
+
+def test_executor_stops_on_repeat_failure_limit_instead_of_spinning(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    failing_step = workflow.execution_plan[1]
+    failing_step.rollback_to = "step_01"
+
+    executor = SequentialExecutor()
+    executor.config.max_repeat_failures_per_signature = 2
+    executor.recovery_engine = _NeverRepairEngine()
+    original_execute_step = executor._execute_step
+
+    def _always_fail_second_step(self, workflow, step, trace, state_values):
+        if step.step_id != failing_step.step_id:
+            return original_execute_step(workflow, step, trace, state_values)
+        return StepExecutionResult(
+            ok=False,
+            step_id=step.step_id,
+            tool_id=step.tool_id,
+            error=self._build_error(
+                workflow=workflow,
+                trace=trace,
+                step=step,
+                exc=ToolExecutionError("synthetic repeat failure"),
+                tool_args={"retrieved_info": "cached", "target_path": "outputs/reports/demo_report.txt"},
+            ),
+        )
+
+    executor._execute_step = MethodType(_always_fail_second_step, executor)
+
+    outcome = executor.run_until_blocked(
+        workflow=workflow,
+        run_id="run_repeat_failure_guard_001",
+        output_path=str(tmp_path / "repeat_failure_guard.json"),
+    )
+
+    assert outcome.success is False
+    assert outcome.metadata["stopped_reason"] == "repeat_failure_limit_reached"
+    payload = json.loads((tmp_path / "repeat_failure_guard.json").read_text(encoding="utf-8"))
+    stop_event = next(event for event in payload["events"] if event["event_type"] == EventType.STOP.value)
+    assert stop_event["output"]["reason"] == "repeat_failure_limit_reached"
