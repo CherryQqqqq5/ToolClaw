@@ -5,7 +5,10 @@ from __future__ import annotations
 import concurrent.futures
 import json
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
+import sys
+import time
 from typing import Any, Dict, Optional
 
 from toolclaw.execution.failtax import FailTaxClassifier
@@ -1145,7 +1148,33 @@ class SequentialExecutor:
         exc: Exception,
         tool_args: Dict[str, Any],
     ) -> ToolClawError:
+        # region agent log
+        self._debug_stderr(
+            "H7",
+            "_build_error:entry",
+            {
+                "step_id": step.step_id,
+                "tool_id": step.tool_id,
+                "exc_type": type(exc).__name__,
+            },
+        )
+        # endregion
+        # region agent log
+        _msg_start = time.time()
+        self._debug_stderr("H7", "_build_error:before_str_exc", {"step_id": step.step_id})
+        # endregion
         message = str(exc)
+        # region agent log
+        self._debug_stderr(
+            "H7",
+            "_build_error:after_str_exc",
+            {
+                "step_id": step.step_id,
+                "elapsed_ms": int((time.time() - _msg_start) * 1000),
+                "message_len": len(message),
+            },
+        )
+        # endregion
         preflight_policy = self._preflight_state_policy_for_step(step)
         lowered_message = message.lower()
         if "missing required field" in message:
@@ -1183,7 +1212,18 @@ class SequentialExecutor:
                 if slot not in inferred_missing_assets and tool_args.get(slot) in {None, ""}:
                     inferred_missing_assets.append(slot)
 
-        return ToolClawError(
+        # region agent log
+        self._debug_stderr(
+            "H8",
+            "_build_error:before_construct_toolclaw_error",
+            {
+                "step_id": step.step_id,
+                "category": category.value,
+                "tool_args_keys": sorted(str(k) for k in tool_args.keys()),
+            },
+        )
+        # endregion
+        error_obj = ToolClawError(
             error_id=f"err_{step.step_id}",
             run_id=trace.run_id,
             workflow_id=trace.workflow_id,
@@ -1229,6 +1269,14 @@ class SequentialExecutor:
             ),
             failtax_label=category.value,
         )
+        # region agent log
+        self._debug_stderr(
+            "H8",
+            "_build_error:after_construct_toolclaw_error",
+            {"step_id": step.step_id, "category": category.value},
+        )
+        # endregion
+        return error_obj
 
     @staticmethod
     def run_preflight(workflow: Workflow) -> "PreflightReport":
@@ -1368,6 +1416,25 @@ class SequentialExecutor:
         if constraints.max_recovery_budget is not None and float(state_values.get("__recovery_budget_spent__", 0.0)) > float(constraints.max_recovery_budget):
             return "max_recovery_budget_exceeded"
         return None
+
+    @staticmethod
+    def _debug_stderr(hypothesis_id: str, location: str, data: Dict[str, Any]) -> None:
+        # region agent log
+        try:
+            payload = {
+                "sessionId": "4b188d",
+                "runId": os.environ.get("TOOLCLAW_DEBUG_RUN_ID", "executor"),
+                "hypothesisId": hypothesis_id,
+                "location": f"src/toolclaw/execution/executor.py:{location}",
+                "message": location,
+                "data": data,
+                "timestamp": int(time.time() * 1000),
+            }
+            sys.stderr.write("[toolclaw-debug] " + json.dumps(payload, ensure_ascii=True) + "\n")
+            sys.stderr.flush()
+        except Exception:
+            pass
+        # endregion
 
 
 from toolclaw.interaction.repair_updater import ResumePatch  # noqa: E402
