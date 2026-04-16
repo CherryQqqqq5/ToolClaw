@@ -1854,8 +1854,6 @@
 ├── gpull
 ├── gpush
 ├── logs
-│   ├── delete_done_before_0415_111114.txt
-│   ├── delete_preview_0414_and_before_111114.txt
 │   ├── paper_clean_v1
 │   │   ├── debug_one_llm_probe.log
 │   │   ├── debug_one_llm_pyspy.txt
@@ -18690,199 +18688,6 @@
 │   │   │   │           ├── 010_toolsandbox_single_tool_002_a3_interaction.json
 │   │   │   │           └── 010_toolsandbox_single_tool_002_a4_reuse.json
 │   │   │   └── scoreboard.json
-│   │   ├── toolsandbox_matched_20260406_090111
-│   │   │   ├── archive
-│   │   │   │   ├── benchmark_toolsandbox.yaml
-│   │   │   │   ├── phase1.yaml
-│   │   │   │   └── run_toolsandbox_bench.py
-│   │   │   ├── comparison.raw.csv
-│   │   │   ├── comparison.scored.csv
-│   │   │   ├── experiment_manifest.json
-│   │   │   ├── focused_slice_summary.json
-│   │   │   ├── focused_slice_summary.md
-│   │   │   ├── latest_run_comparison.raw.csv
-│   │   │   ├── latest_run_comparison.scored.csv
-│   │   │   ├── latest_run_report.md
-│   │   │   ├── logs
-│   │   │   │   └── run.log
-│   │   │   ├── per_category_summary.json
-│   │   │   ├── per_category_summary.md
-│   │   │   ├── per_system_summary.json
-│   │   │   ├── per_system_summary.md
-│   │   │   ├── prepared
-│   │   │   │   ├── manifest.json
-│   │   │   │   └── toolsandbox.normalized.json
-│   │   │   ├── report.md
-│   │   │   ├── runs
-│   │   │   │   ├── run_01
-│   │   │   │   │   ├── comparison.csv
-│   │   │   │   │   ├── comparison.raw.csv
-│   │   │   │   │   ├── comparison.scored.csv
-│   │   │   │   │   ├── report.md
-│   │   │   │   │   └── traces
-│   │   │   │   │       ├── 001_toolsandbox_state_dep_001_tc_full.json
-│   │   │   │   │       ├── 001_toolsandbox_state_dep_001_tc_no_fallback.json
-│   │   │   │   │       ├── 001_toolsandbox_state_dep_001_tc_no_repair.json
-│   │   │   │   │       ├── 001_toolsandbox_state_dep_001_tc_no_reuse.json
-│   │   │   │   │       ├── 001_toolsandbox_state_dep_001_tc_planner_only.json
-│   │   │   │   │       ├── 002_toolsandbox_state_dep_002_tc_full.json
-│   │   │   │   │       ├── 002_toolsandbox_state_dep_002_tc_no_fallback.json
-│   │   │   │   │       ├── 002_toolsandbox_state_dep_002_tc_no_repair.json
-│   │   │   │   │       ├── 002_toolsandbox_state_dep_002_tc_no_reuse.json
-│   │   │   │   │       ├── 002_toolsandbox_state_dep_002_tc_planner_only.json
-│   │   │   │   │       ├── 003_toolsandbox_missing_info_001_tc_full.json
-│   │   │   │   │       ├── 003_toolsandbox_missing_info_001_tc_no_fallback.json
-│   │   │   │   │       ├── 003_toolsandbox_missing_info_001_tc_no_repair.json
-│   │   │   │   │       ├── 003_toolsandbox_missing_info_001_tc_no_reuse.json
-│   │   │   │   │       ├── 003_toolsandbox_missing_info_001_tc_planner_only.json
-│   │   │   │   │       ├── 004_toolsandbox_missing_info_002_tc_full.json
-│   │   │   │   │       ├── 004_toolsandbox_missing_info_002_tc_no_fallback.json
-│   │   │   │   │       ├── 004_toolsandbox_missing_info_002_tc_no_repair.json
-│   │   │   │   │       ├── 004_toolsandbox_missing_info_002_tc_no_reuse.json
-│   │   │   │   │       ├── 004_toolsandbox_missing_info_002_tc_planner_only.json
-│   │   │   │   │       ├── 005_toolsandbox_multi_turn_approval_001_tc_full.json
-│   │   │   │   │       ├── 005_toolsandbox_multi_turn_approval_001_tc_no_fallback.json
-│   │   │   │   │       ├── 005_toolsandbox_multi_turn_approval_001_tc_no_repair.json
-│   │   │   │   │       ├── 005_toolsandbox_multi_turn_approval_001_tc_no_reuse.json
-│   │   │   │   │       ├── 005_toolsandbox_multi_turn_approval_001_tc_planner_only.json
-│   │   │   │   │       ├── 006_toolsandbox_multi_turn_approval_002_tc_full.json
-│   │   │   │   │       ├── 006_toolsandbox_multi_turn_approval_002_tc_no_fallback.json
-│   │   │   │   │       ├── 006_toolsandbox_multi_turn_approval_002_tc_no_repair.json
-│   │   │   │   │       ├── 006_toolsandbox_multi_turn_approval_002_tc_no_reuse.json
-│   │   │   │   │       ├── 006_toolsandbox_multi_turn_approval_002_tc_planner_only.json
-│   │   │   │   │       ├── 007_toolsandbox_canonicalization_001_tc_full.json
-│   │   │   │   │       ├── 007_toolsandbox_canonicalization_001_tc_no_fallback.json
-│   │   │   │   │       ├── 007_toolsandbox_canonicalization_001_tc_no_repair.json
-│   │   │   │   │       ├── 007_toolsandbox_canonicalization_001_tc_no_reuse.json
-│   │   │   │   │       ├── 007_toolsandbox_canonicalization_001_tc_planner_only.json
-│   │   │   │   │       ├── 008_toolsandbox_canonicalization_002_tc_full.json
-│   │   │   │   │       ├── 008_toolsandbox_canonicalization_002_tc_no_fallback.json
-│   │   │   │   │       ├── 008_toolsandbox_canonicalization_002_tc_no_repair.json
-│   │   │   │   │       ├── 008_toolsandbox_canonicalization_002_tc_no_reuse.json
-│   │   │   │   │       ├── 008_toolsandbox_canonicalization_002_tc_planner_only.json
-│   │   │   │   │       ├── 009_toolsandbox_single_tool_001_tc_full.json
-│   │   │   │   │       ├── 009_toolsandbox_single_tool_001_tc_no_fallback.json
-│   │   │   │   │       ├── 009_toolsandbox_single_tool_001_tc_no_repair.json
-│   │   │   │   │       ├── 009_toolsandbox_single_tool_001_tc_no_reuse.json
-│   │   │   │   │       ├── 009_toolsandbox_single_tool_001_tc_planner_only.json
-│   │   │   │   │       ├── 010_toolsandbox_single_tool_002_tc_full.json
-│   │   │   │   │       ├── 010_toolsandbox_single_tool_002_tc_no_fallback.json
-│   │   │   │   │       ├── 010_toolsandbox_single_tool_002_tc_no_repair.json
-│   │   │   │   │       ├── 010_toolsandbox_single_tool_002_tc_no_reuse.json
-│   │   │   │   │       └── 010_toolsandbox_single_tool_002_tc_planner_only.json
-│   │   │   │   ├── run_02
-│   │   │   │   │   ├── comparison.csv
-│   │   │   │   │   ├── comparison.raw.csv
-│   │   │   │   │   ├── comparison.scored.csv
-│   │   │   │   │   ├── report.md
-│   │   │   │   │   └── traces
-│   │   │   │   │       ├── 001_toolsandbox_state_dep_001_tc_full.json
-│   │   │   │   │       ├── 001_toolsandbox_state_dep_001_tc_no_fallback.json
-│   │   │   │   │       ├── 001_toolsandbox_state_dep_001_tc_no_repair.json
-│   │   │   │   │       ├── 001_toolsandbox_state_dep_001_tc_no_reuse.json
-│   │   │   │   │       ├── 001_toolsandbox_state_dep_001_tc_planner_only.json
-│   │   │   │   │       ├── 002_toolsandbox_state_dep_002_tc_full.json
-│   │   │   │   │       ├── 002_toolsandbox_state_dep_002_tc_no_fallback.json
-│   │   │   │   │       ├── 002_toolsandbox_state_dep_002_tc_no_repair.json
-│   │   │   │   │       ├── 002_toolsandbox_state_dep_002_tc_no_reuse.json
-│   │   │   │   │       ├── 002_toolsandbox_state_dep_002_tc_planner_only.json
-│   │   │   │   │       ├── 003_toolsandbox_missing_info_001_tc_full.json
-│   │   │   │   │       ├── 003_toolsandbox_missing_info_001_tc_no_fallback.json
-│   │   │   │   │       ├── 003_toolsandbox_missing_info_001_tc_no_repair.json
-│   │   │   │   │       ├── 003_toolsandbox_missing_info_001_tc_no_reuse.json
-│   │   │   │   │       ├── 003_toolsandbox_missing_info_001_tc_planner_only.json
-│   │   │   │   │       ├── 004_toolsandbox_missing_info_002_tc_full.json
-│   │   │   │   │       ├── 004_toolsandbox_missing_info_002_tc_no_fallback.json
-│   │   │   │   │       ├── 004_toolsandbox_missing_info_002_tc_no_repair.json
-│   │   │   │   │       ├── 004_toolsandbox_missing_info_002_tc_no_reuse.json
-│   │   │   │   │       ├── 004_toolsandbox_missing_info_002_tc_planner_only.json
-│   │   │   │   │       ├── 005_toolsandbox_multi_turn_approval_001_tc_full.json
-│   │   │   │   │       ├── 005_toolsandbox_multi_turn_approval_001_tc_no_fallback.json
-│   │   │   │   │       ├── 005_toolsandbox_multi_turn_approval_001_tc_no_repair.json
-│   │   │   │   │       ├── 005_toolsandbox_multi_turn_approval_001_tc_no_reuse.json
-│   │   │   │   │       ├── 005_toolsandbox_multi_turn_approval_001_tc_planner_only.json
-│   │   │   │   │       ├── 006_toolsandbox_multi_turn_approval_002_tc_full.json
-│   │   │   │   │       ├── 006_toolsandbox_multi_turn_approval_002_tc_no_fallback.json
-│   │   │   │   │       ├── 006_toolsandbox_multi_turn_approval_002_tc_no_repair.json
-│   │   │   │   │       ├── 006_toolsandbox_multi_turn_approval_002_tc_no_reuse.json
-│   │   │   │   │       ├── 006_toolsandbox_multi_turn_approval_002_tc_planner_only.json
-│   │   │   │   │       ├── 007_toolsandbox_canonicalization_001_tc_full.json
-│   │   │   │   │       ├── 007_toolsandbox_canonicalization_001_tc_no_fallback.json
-│   │   │   │   │       ├── 007_toolsandbox_canonicalization_001_tc_no_repair.json
-│   │   │   │   │       ├── 007_toolsandbox_canonicalization_001_tc_no_reuse.json
-│   │   │   │   │       ├── 007_toolsandbox_canonicalization_001_tc_planner_only.json
-│   │   │   │   │       ├── 008_toolsandbox_canonicalization_002_tc_full.json
-│   │   │   │   │       ├── 008_toolsandbox_canonicalization_002_tc_no_fallback.json
-│   │   │   │   │       ├── 008_toolsandbox_canonicalization_002_tc_no_repair.json
-│   │   │   │   │       ├── 008_toolsandbox_canonicalization_002_tc_no_reuse.json
-│   │   │   │   │       ├── 008_toolsandbox_canonicalization_002_tc_planner_only.json
-│   │   │   │   │       ├── 009_toolsandbox_single_tool_001_tc_full.json
-│   │   │   │   │       ├── 009_toolsandbox_single_tool_001_tc_no_fallback.json
-│   │   │   │   │       ├── 009_toolsandbox_single_tool_001_tc_no_repair.json
-│   │   │   │   │       ├── 009_toolsandbox_single_tool_001_tc_no_reuse.json
-│   │   │   │   │       ├── 009_toolsandbox_single_tool_001_tc_planner_only.json
-│   │   │   │   │       ├── 010_toolsandbox_single_tool_002_tc_full.json
-│   │   │   │   │       ├── 010_toolsandbox_single_tool_002_tc_no_fallback.json
-│   │   │   │   │       ├── 010_toolsandbox_single_tool_002_tc_no_repair.json
-│   │   │   │   │       ├── 010_toolsandbox_single_tool_002_tc_no_reuse.json
-│   │   │   │   │       └── 010_toolsandbox_single_tool_002_tc_planner_only.json
-│   │   │   │   └── run_03
-│   │   │   │       ├── comparison.csv
-│   │   │   │       ├── comparison.raw.csv
-│   │   │   │       ├── comparison.scored.csv
-│   │   │   │       ├── report.md
-│   │   │   │       └── traces
-│   │   │   │           ├── 001_toolsandbox_state_dep_001_tc_full.json
-│   │   │   │           ├── 001_toolsandbox_state_dep_001_tc_no_fallback.json
-│   │   │   │           ├── 001_toolsandbox_state_dep_001_tc_no_repair.json
-│   │   │   │           ├── 001_toolsandbox_state_dep_001_tc_no_reuse.json
-│   │   │   │           ├── 001_toolsandbox_state_dep_001_tc_planner_only.json
-│   │   │   │           ├── 002_toolsandbox_state_dep_002_tc_full.json
-│   │   │   │           ├── 002_toolsandbox_state_dep_002_tc_no_fallback.json
-│   │   │   │           ├── 002_toolsandbox_state_dep_002_tc_no_repair.json
-│   │   │   │           ├── 002_toolsandbox_state_dep_002_tc_no_reuse.json
-│   │   │   │           ├── 002_toolsandbox_state_dep_002_tc_planner_only.json
-│   │   │   │           ├── 003_toolsandbox_missing_info_001_tc_full.json
-│   │   │   │           ├── 003_toolsandbox_missing_info_001_tc_no_fallback.json
-│   │   │   │           ├── 003_toolsandbox_missing_info_001_tc_no_repair.json
-│   │   │   │           ├── 003_toolsandbox_missing_info_001_tc_no_reuse.json
-│   │   │   │           ├── 003_toolsandbox_missing_info_001_tc_planner_only.json
-│   │   │   │           ├── 004_toolsandbox_missing_info_002_tc_full.json
-│   │   │   │           ├── 004_toolsandbox_missing_info_002_tc_no_fallback.json
-│   │   │   │           ├── 004_toolsandbox_missing_info_002_tc_no_repair.json
-│   │   │   │           ├── 004_toolsandbox_missing_info_002_tc_no_reuse.json
-│   │   │   │           ├── 004_toolsandbox_missing_info_002_tc_planner_only.json
-│   │   │   │           ├── 005_toolsandbox_multi_turn_approval_001_tc_full.json
-│   │   │   │           ├── 005_toolsandbox_multi_turn_approval_001_tc_no_fallback.json
-│   │   │   │           ├── 005_toolsandbox_multi_turn_approval_001_tc_no_repair.json
-│   │   │   │           ├── 005_toolsandbox_multi_turn_approval_001_tc_no_reuse.json
-│   │   │   │           ├── 005_toolsandbox_multi_turn_approval_001_tc_planner_only.json
-│   │   │   │           ├── 006_toolsandbox_multi_turn_approval_002_tc_full.json
-│   │   │   │           ├── 006_toolsandbox_multi_turn_approval_002_tc_no_fallback.json
-│   │   │   │           ├── 006_toolsandbox_multi_turn_approval_002_tc_no_repair.json
-│   │   │   │           ├── 006_toolsandbox_multi_turn_approval_002_tc_no_reuse.json
-│   │   │   │           ├── 006_toolsandbox_multi_turn_approval_002_tc_planner_only.json
-│   │   │   │           ├── 007_toolsandbox_canonicalization_001_tc_full.json
-│   │   │   │           ├── 007_toolsandbox_canonicalization_001_tc_no_fallback.json
-│   │   │   │           ├── 007_toolsandbox_canonicalization_001_tc_no_repair.json
-│   │   │   │           ├── 007_toolsandbox_canonicalization_001_tc_no_reuse.json
-│   │   │   │           ├── 007_toolsandbox_canonicalization_001_tc_planner_only.json
-│   │   │   │           ├── 008_toolsandbox_canonicalization_002_tc_full.json
-│   │   │   │           ├── 008_toolsandbox_canonicalization_002_tc_no_fallback.json
-│   │   │   │           ├── 008_toolsandbox_canonicalization_002_tc_no_repair.json
-│   │   │   │           ├── 008_toolsandbox_canonicalization_002_tc_no_reuse.json
-│   │   │   │           ├── 008_toolsandbox_canonicalization_002_tc_planner_only.json
-│   │   │   │           ├── 009_toolsandbox_single_tool_001_tc_full.json
-│   │   │   │           ├── 009_toolsandbox_single_tool_001_tc_no_fallback.json
-│   │   │   │           ├── 009_toolsandbox_single_tool_001_tc_no_repair.json
-│   │   │   │           ├── 009_toolsandbox_single_tool_001_tc_no_reuse.json
-│   │   │   │           ├── 009_toolsandbox_single_tool_001_tc_planner_only.json
-│   │   │   │           ├── 010_toolsandbox_single_tool_002_tc_full.json
-│   │   │   │           ├── 010_toolsandbox_single_tool_002_tc_no_fallback.json
-│   │   │   │           ├── 010_toolsandbox_single_tool_002_tc_no_repair.json
-│   │   │   │           ├── 010_toolsandbox_single_tool_002_tc_no_reuse.json
-│   │   │   │           └── 010_toolsandbox_single_tool_002_tc_planner_only.json
-│   │   │   └── scoreboard.json
 │   │   ├── toolsandbox_matched_20260406_090111_assets
 │   │   │   ├── run_01
 │   │   │   │   ├── tc_full
@@ -24945,7 +24750,6 @@
 ├── scripts
 │   ├── .DS_Store
 │   ├── analyze_toolsandbox_official_subset.py
-│   ├── check_benchmark_consistency 2.py
 │   ├── check_benchmark_consistency.py
 │   ├── check_openrouter_key.py
 │   ├── find_openrouter_grok3_slug.py
@@ -25092,4 +24896,4 @@
 │   └── __init__.py
 └── toolclaw_tree.txt
 
-1700 directories, 23392 files
+1689 directories, 23207 files
