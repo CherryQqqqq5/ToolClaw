@@ -298,6 +298,12 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "primary_category": str(diagnostics.get("primary_category", raw_row.get("scenario", "toolsandbox"))),
         "categories": json.dumps(categories, ensure_ascii=True),
         "result_summary_source": str(diagnostics.get("result_summary_source", "toolclaw_proxy")),
+        "used_result_summary": _bool_from_value(str(bool(diagnostics.get("used_result_summary", False)))),
+        "milestone_signal_available": _bool_from_value(str(bool(diagnostics.get("milestone_signal_available", False)))),
+        "reference_result_summary_available": _bool_from_value(str(bool(diagnostics.get("reference_result_summary_available", False)))),
+        "expected_target_path": str(diagnostics.get("expected_target_path") or ""),
+        "observed_target_path": str(diagnostics.get("observed_target_path") or ""),
+        "write_target_verified": _bool_from_value(str(bool(metrics.get("write_target_verified", 0.0)))),
         "raw_repair_actions": int(raw_row.get("repair_actions", 0) or 0),
         "raw_repair_triggered": int(raw_row.get("repair_triggered", 0) or 0),
         "raw_total_steps": int(raw_row.get("total_steps", 0) or 0),
@@ -1098,11 +1104,19 @@ def _attach_current_result_summary(
     trace_payload: Dict[str, Any],
 ) -> Dict[str, Any]:
     metadata = trace_payload.setdefault("metadata", {})
-    metadata["toolsandbox_result"] = adapter.build_proxy_result_summary(sample, trace_payload)
-    metadata["toolsandbox_result_source"] = "toolclaw_proxy"
+    proxy_summary = adapter.build_proxy_result_summary(sample, trace_payload)
     reference_summary = adapter._extract_reference_result_summary(sample.raw_payload)
+    metadata["toolsandbox_proxy_result"] = proxy_summary
     if reference_summary:
-        metadata["toolsandbox_reference_result"] = reference_summary
+        normalized_reference_summary = dict(reference_summary)
+        normalized_reference_summary["source"] = "reference_result_summary"
+        # Prefer reference summaries for benchmark scoring when available.
+        metadata["toolsandbox_result"] = normalized_reference_summary
+        metadata["toolsandbox_result_source"] = "reference_result_summary"
+        metadata["toolsandbox_reference_result"] = normalized_reference_summary
+    else:
+        metadata["toolsandbox_result"] = proxy_summary
+        metadata["toolsandbox_result_source"] = "toolclaw_proxy"
     trace_path.write_text(json.dumps(trace_payload, indent=2), encoding="utf-8")
     return trace_payload
 
