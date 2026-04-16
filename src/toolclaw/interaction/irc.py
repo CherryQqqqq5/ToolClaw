@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
@@ -9,7 +10,7 @@ from typing import Any, Dict, Optional
 
 from toolclaw.execution.executor import ExecutionOutcome
 from toolclaw.interaction.query_policy import QueryPolicy
-from toolclaw.interaction.repair_updater import AnswerPatchCompiler, RepairUpdater
+from toolclaw.interaction.repair_updater import AnswerPatchCompiler, RepairUpdater, UserReply
 from toolclaw.interaction.reply_provider import ReplyProvider
 from toolclaw.interaction.uncertainty_detector import UncertaintyDetector
 from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
@@ -21,6 +22,7 @@ from toolclaw.schemas.trace import EventType, utc_now_iso
 @dataclass
 class InteractionLoopConfig:
     max_turns: int = 3
+    reply_timeout_s: float = 45.0
     simulator_policy: SimulatedPolicy = field(default_factory=SimulatedPolicy)
 
 
@@ -159,7 +161,7 @@ class InteractionShell:
                     metadata={"stopped_reason": "repeat_failure_abort"},
                 )
             else:
-                reply = self.reply_provider.reply(query)
+                reply = self._reply_with_timeout(query)
             self._append_interaction_events(combined_trace, query=query, reply=reply, turn_index=turns)
             self._increment_recovery_budget(combined_trace, outcome, turns)
             handled_stop = self._handled_non_accept_reply(combined_trace, output_path, outcome, reply)
@@ -592,3 +594,31 @@ class InteractionShell:
         metrics["unnecessary_question_rate"] = (unnecessary / asked) if asked else 0.0
         metrics["patch_success_rate"] = (patch_successes / patch_attempts) if patch_attempts else 0.0
         metrics["post_answer_retry_count"] = int(interaction_stats.get("post_answer_retry_count", 0))
+
+    def _reply_with_timeout(self, request: Any) -> Any:
+        timeout_s = max(float(self.config.reply_timeout_s or 0.0), 0.0)
+        if timeout_s <= 0.0:
+            return self.reply_provider.reply(request)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(self.reply_provider.reply, request)
+            try:
+                return future.result(timeout=timeout_s)
+            except concurrent.futures.TimeoutError:
+                future.cancel()
+                return self._timeout_reply(request, timeout_s)
+
+    @staticmethod
+    def _timeout_reply(request: Any, timeout_s: float) -> Any:
+        # Timeout is treated as abstain so the loop exits safely
+        # instead of blocking the whole benchmark run.
+        return UserReply(
+            interaction_id=request.interaction_id,
+            payload={"abstain": True, "reason": "reply_timeout"},
+            raw_text=f"interaction_reply_timeout:{timeout_s}s",
+            accepted=False,
+            status="abstain",
+            metadata={
+                "patch_targets": dict(request.metadata.get("patch_targets", {})),
+                "reply_timeout_s": timeout_s,
+            },
+        )

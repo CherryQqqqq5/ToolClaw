@@ -1,4 +1,5 @@
 from pathlib import Path
+import time
 
 from toolclaw.execution.executor import SequentialExecutor
 from toolclaw.interaction.irc import InteractionLoopConfig, InteractionShell
@@ -12,6 +13,15 @@ from toolclaw.planner.htgp import PlanningRequest, build_default_planner
 from toolclaw.registry import InMemoryAssetRegistry
 from toolclaw.schemas.workflow import Workflow
 from toolclaw.interaction.repair_updater import InteractionRequest
+
+
+class SlowReplyProvider:
+    def __init__(self, delay_s: float) -> None:
+        self.delay_s = delay_s
+
+    def reply(self, request: InteractionRequest):
+        time.sleep(self.delay_s)
+        return UserSimulator(SimulatedPolicy()).reply(request)
 
 
 def test_executor_blocks_on_ask_user_and_returns_pending_interaction(tmp_path: Path) -> None:
@@ -253,3 +263,48 @@ def test_user_simulator_prefers_tool_id_for_tool_switch_schema() -> None:
     assert reply.accepted is True
     assert reply.payload.get("tool_id") == "get_current_timestamp"
     assert "clear_failure_flag" not in reply.payload
+
+
+def test_interaction_shell_reply_timeout_abstains_instead_of_hanging(tmp_path: Path) -> None:
+    registry = InMemoryAssetRegistry()
+    runtime = ToolClawRuntime(
+        planner=build_default_planner(asset_registry=registry),
+        executor=SequentialExecutor(),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=registry,
+    )
+    shell = InteractionShell(
+        runtime=runtime,
+        config=InteractionLoopConfig(
+            max_turns=2,
+            reply_timeout_s=0.01,
+            simulator_policy=SimulatedPolicy(),
+        ),
+        reply_provider=SlowReplyProvider(delay_s=0.2),
+    )
+
+    demo = Workflow.demo()
+    overrides = {
+        "steps": {
+            "step_01": {"inputs": dict(demo.execution_plan[0].inputs), "tool_id": demo.execution_plan[0].tool_id},
+            "step_02": {
+                "inputs": {**demo.execution_plan[1].inputs, "force_environment_failure": True},
+                "tool_id": demo.execution_plan[1].tool_id,
+            },
+        }
+    }
+    request = PlanningRequest(
+        task=demo.task,
+        context=demo.context,
+        policy=demo.policy,
+        workflow_overrides=overrides,
+    )
+    outcome = shell.run(
+        request=request,
+        run_id="run_timeout_guard_001",
+        output_path=str(tmp_path / "timeout_guard_trace.json"),
+    )
+
+    assert outcome.success is False
+    assert outcome.metadata.get("stopped_reason") in {"policy_compliant_stop", "repeat_failure_abort", "interaction_turn_limit"}
