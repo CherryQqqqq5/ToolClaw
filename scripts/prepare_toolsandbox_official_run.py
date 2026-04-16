@@ -227,8 +227,50 @@ def infer_execution_scenario(scenario_export: Dict[str, Any], result_row: Dict[s
 
 
 def build_official_reference_summary(result_row: Dict[str, Any]) -> Dict[str, Any]:
+    def _coerce_bool(value: Any) -> Optional[bool]:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"true", "1", "yes", "y"}:
+                return True
+            if normalized in {"false", "0", "no", "n"}:
+                return False
+        return None
+
+    def _infer_success(summary: Dict[str, Any]) -> Optional[bool]:
+        for key in ("success", "is_success", "completed", "solved"):
+            parsed = _coerce_bool(summary.get(key))
+            if parsed is not None:
+                return parsed
+        matched = summary.get("matched_milestones")
+        total = summary.get("total_milestones")
+        try:
+            if total is not None and int(total) > 0:
+                return int(matched or 0) >= int(total)
+        except (TypeError, ValueError):
+            pass
+        mapping = summary.get("milestone_mapping")
+        if isinstance(mapping, list) and mapping:
+            return all(item is not None and item != -1 for item in mapping)
+        if isinstance(mapping, dict) and mapping:
+            return all(value is not None and value != -1 for value in mapping.values())
+        for key in ("similarity", "milestone_similarity"):
+            value = summary.get(key)
+            try:
+                if value is not None:
+                    return float(value) >= 0.999
+            except (TypeError, ValueError):
+                continue
+        return None
+
     summary = dict(result_row)
     summary["source"] = "official_toolsandbox_run"
+    inferred_success = _infer_success(summary)
+    if inferred_success is not None:
+        summary["success"] = inferred_success
     return summary
 
 

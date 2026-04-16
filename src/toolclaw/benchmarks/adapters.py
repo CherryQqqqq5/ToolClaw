@@ -812,6 +812,9 @@ class ToolSandboxAdapter:
             result_summary_source=result_summary_source,
             total_milestones=total_milestones,
         )
+        reference_summary_success = None
+        if result_summary_source != "toolclaw_proxy":
+            reference_summary_success = self._reference_summary_success(result_summary)
         write_target_verified = self._write_target_verified(
             raw=sample.raw_payload,
             task_id=sample.sample_id,
@@ -821,6 +824,7 @@ class ToolSandboxAdapter:
             raw_trace_success=raw_trace_success,
             result_summary_source=result_summary_source,
             proxy_summary_success=proxy_summary_success,
+            reference_summary_success=reference_summary_success,
             matched_milestones=matched_milestones,
             total_milestones=total_milestones,
             write_target_verified=write_target_verified,
@@ -1285,6 +1289,22 @@ class ToolSandboxAdapter:
         except (TypeError, ValueError):
             return False
 
+    @staticmethod
+    def _reference_summary_success(result_summary: Dict[str, Any]) -> Optional[bool]:
+        for key in ("success", "is_success", "completed", "solved"):
+            value = result_summary.get(key)
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, (int, float)):
+                return bool(value)
+            if isinstance(value, str):
+                normalized = value.strip().lower()
+                if normalized in {"true", "1", "yes", "y"}:
+                    return True
+                if normalized in {"false", "0", "no", "n"}:
+                    return False
+        return None
+
     def _expected_write_target_path(self, raw: Dict[str, Any], task_id: str) -> Optional[str]:
         if raw.get("target_path") is not None:
             return str(raw.get("target_path"))
@@ -1376,14 +1396,19 @@ class ToolSandboxAdapter:
         raw_trace_success: bool,
         result_summary_source: str,
         proxy_summary_success: bool,
+        reference_summary_success: Optional[bool],
         matched_milestones: int,
         total_milestones: int,
         write_target_verified: bool,
     ) -> bool:
-        if not raw_trace_success or not proxy_summary_success or not write_target_verified:
+        if not raw_trace_success or not write_target_verified:
             return False
         if result_summary_source != "toolclaw_proxy":
-            return True
+            if reference_summary_success is not None:
+                return reference_summary_success
+            return proxy_summary_success
+        if not proxy_summary_success:
+            return False
         return total_milestones > 0 and matched_milestones == total_milestones
 
 
