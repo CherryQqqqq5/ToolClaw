@@ -9,6 +9,7 @@ import subprocess
 import json
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -179,6 +180,25 @@ SYSTEM_ALIASES: Dict[str, str] = {
     "interactive": "a3_interaction",
     "toolclaw_lite": "a3_interaction",
 }
+
+
+def _debug_log(hypothesis_id: str, location: str, message: str, data: Dict[str, Any]) -> None:
+    # region agent log
+    try:
+        payload = {
+            "sessionId": "4b188d",
+            "runId": os.environ.get("TOOLCLAW_DEBUG_RUN_ID", "run_eval"),
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+        }
+        with open("/Users/cherry/Documents/ToolClaw/.cursor/debug-4b188d.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except Exception:
+        pass
+    # endregion
 
 
 def _build_tool_specs(raw_tools: Any) -> List[ToolSpec]:
@@ -429,9 +449,30 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
         return payload
 
     def _openrouter_completion(request: Any, fallback_payload: Dict[str, Any]) -> Dict[str, Any]:
+        # region agent log
+        _start_ts = time.time()
+        _debug_log(
+            "H1",
+            "scripts/run_eval.py:_openrouter_completion:start",
+            "openrouter request start",
+            {
+                "expected_answer_type": str(request.expected_answer_type or ""),
+                "provider_mode": provider_mode,
+                "has_patch_targets": bool(getattr(request, "metadata", {}).get("patch_targets")),
+            },
+        )
+        # endregion
         api_key = str(os.environ.get("OPENROUTER_API_KEY", "")).strip()
         if not api_key:
             fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
+            # region agent log
+            _debug_log(
+                "H1",
+                "scripts/run_eval.py:_openrouter_completion:no_key",
+                "openrouter key missing fallback",
+                {"elapsed_ms": int((time.time() - _start_ts) * 1000)},
+            )
+            # endregion
             return {
                 "payload": fallback_payload,
                 "status": "accept",
@@ -496,6 +537,18 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
             if pool is not None:
                 pool.shutdown(wait=False, cancel_futures=True)
             fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
+            # region agent log
+            _debug_log(
+                "H1",
+                "scripts/run_eval.py:_openrouter_completion:hard_timeout",
+                "openrouter hard timeout fallback",
+                {
+                    "timeout_s": hard_timeout,
+                    "socket_timeout_s": socket_timeout,
+                    "elapsed_ms": int((time.time() - _start_ts) * 1000),
+                },
+            )
+            # endregion
             return {
                 "payload": fallback_payload,
                 "status": "accept",
@@ -507,6 +560,17 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
             if pool is not None:
                 pool.shutdown(wait=False, cancel_futures=True)
             fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
+            # region agent log
+            _debug_log(
+                "H2",
+                "scripts/run_eval.py:_openrouter_completion:request_failed",
+                "openrouter request failed fallback",
+                {
+                    "error": str(exc),
+                    "elapsed_ms": int((time.time() - _start_ts) * 1000),
+                },
+            )
+            # endregion
             return {
                 "payload": fallback_payload,
                 "status": "accept",
@@ -543,6 +607,14 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
         except (json.JSONDecodeError, IndexError, TypeError, AttributeError):
             pass
         fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
+        # region agent log
+        _debug_log(
+            "H3",
+            "scripts/run_eval.py:_openrouter_completion:parse_failed",
+            "openrouter parse failed fallback",
+            {"elapsed_ms": int((time.time() - _start_ts) * 1000)},
+        )
+        # endregion
         return {
             "payload": fallback_payload,
             "status": "accept",
@@ -962,6 +1034,18 @@ def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any]) -> InteractionSh
     if backend == "human":
         reply_provider = HumanReplyProvider(prompt_prefix=str(backend_cfg.get("prompt_prefix", "toolclaw")))
     elif backend == "llm":
+        # region agent log
+        _debug_log(
+            "H4",
+            "scripts/run_eval.py:build_shell:llm_backend",
+            "building llm reply provider",
+            {
+                "provider_name": str(backend_cfg.get("provider_name", "llm")),
+                "mode": str(backend_cfg.get("mode", "scripted")),
+                "model": str(backend_cfg.get("model", "")),
+            },
+        )
+        # endregion
         reply_provider = LLMReplyProvider(
             completion_fn=_llm_backend_completion(backend_cfg, policy_cfg),
             provider_name=str(backend_cfg.get("provider_name", "llm")),
@@ -1344,6 +1428,19 @@ def execute_system(
         )
         reused_artifact = any(runtime.asset_registry.query(signature) for signature in signature_candidates)
     request = build_planning_request(seed_workflow, allow_reuse=spec.use_reuse)
+    # region agent log
+    _debug_log(
+        "H5",
+        "scripts/run_eval.py:execute_system:interaction_start",
+        "interaction system start",
+        {
+            "system": spec.system_id,
+            "task_id": task_id,
+            "scenario": scenario,
+            "use_reuse": spec.use_reuse,
+        },
+    )
+    # endregion
     build_shell(runtime, task).run(
         request=request,
         run_id=f"{spec.system_id}_{task_id}",
