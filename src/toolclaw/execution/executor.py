@@ -408,6 +408,19 @@ class SequentialExecutor:
                 )
             failure_record = self.failtax_classifier.classify_failure(step_result.error, step=step, state_values=tracker.state_values)
             step_result.error.failtax_label = failure_record.failtax_label.value
+            # region agent log
+            self._debug_stderr(
+                "H11",
+                "run_until_blocked:failure_classified",
+                {
+                    "step_id": step.step_id,
+                    "tool_id": step.tool_id,
+                    "failtax_label": failure_record.failtax_label.value,
+                    "root_cause": failure_record.root_cause,
+                    "repeat_count": current_repeats,
+                },
+            )
+            # endregion
             if not self.config.allow_repair:
                 trace.add_event(
                     event_id="evt_stop_failed",
@@ -435,6 +448,18 @@ class SequentialExecutor:
                 repair = self.recovery_engine.plan_repair(step_result.error, backup_tool_id=backup_tool_id)
             except NotImplementedError:
                 repair = None
+            # region agent log
+            self._debug_stderr(
+                "H12",
+                "run_until_blocked:repair_planned",
+                {
+                    "step_id": step.step_id,
+                    "tool_id": step.tool_id,
+                    "has_repair": repair is not None,
+                    "repair_type": getattr(repair, "repair_type", None) if repair is not None else None,
+                },
+            )
+            # endregion
             if repair is None:
                 replanned = self._attempt_rollback_and_suffix_replan(
                     workflow=workflow,
@@ -443,6 +468,17 @@ class SequentialExecutor:
                     trace=trace,
                     tracker=tracker,
                 )
+                # region agent log
+                self._debug_stderr(
+                    "H13",
+                    "run_until_blocked:repair_none_replan_result",
+                    {
+                        "step_id": step.step_id,
+                        "tool_id": step.tool_id,
+                        "replanned": replanned is not None,
+                    },
+                )
+                # endregion
                 if replanned is not None:
                     workflow, idx = replanned
                     continue
