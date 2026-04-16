@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Optional
 
 from toolclaw.schemas.error import ToolClawError, ErrorCategory
@@ -81,10 +82,11 @@ class RecoveryEngine:
     def _repair_binding_failure(self, error: ToolClawError) -> Repair:
         step_id = error.step_id or "unknown_step"
         missing_target = None
+        raw_message = str(error.evidence.raw_message or "")
         repaired_inputs = self._sanitize_binding_inputs(
             tool_id=error.evidence.tool_id,
             inputs=error.evidence.inputs,
-            raw_message=error.evidence.raw_message,
+            raw_message=raw_message,
         )
         evidence_metadata = error.evidence.metadata if isinstance(error.evidence.metadata, dict) else {}
         repair_default_inputs = (
@@ -97,6 +99,10 @@ class RecoveryEngine:
             if isinstance(evidence_metadata.get("simulated_missing_arg_values", {}), dict)
             else {}
         )
+
+        parsed_missing = self._extract_missing_required_fields(raw_message)
+        if parsed_missing:
+            missing_target = parsed_missing[0]
 
         if error.state_context.missing_assets:
             missing_target = error.state_context.missing_assets[0]
@@ -137,7 +143,7 @@ class RecoveryEngine:
             patch_value = (
                 repair_default_inputs.get(missing_target)
                 or simulated_missing_arg_values.get(missing_target)
-                or "auto_filled_value"
+                or self._default_binding_value_for_slot(missing_target)
             )
 
         repair = Repair(
@@ -195,6 +201,36 @@ class RecoveryEngine:
             },
         )
         return repair
+
+    @staticmethod
+    def _extract_missing_required_fields(raw_message: str) -> list[str]:
+        if not raw_message:
+            return []
+        fields: list[str] = []
+        for pattern in (
+            r"missing required field\(s\):\s*([a-zA-Z0-9_,\s-]+)",
+            r"missing required field:\s*([a-zA-Z0-9_ -]+)",
+        ):
+            match = re.search(pattern, raw_message, flags=re.IGNORECASE)
+            if not match:
+                continue
+            extracted = [part.strip() for part in match.group(1).split(",") if part.strip()]
+            for name in extracted:
+                normalized = name.lower().replace(" ", "_")
+                if normalized not in fields:
+                    fields.append(normalized)
+            if fields:
+                break
+        return fields
+
+    @staticmethod
+    def _default_binding_value_for_slot(slot: str) -> object:
+        lowered = str(slot).lower()
+        if lowered in {"enabled", "is_enabled"}:
+            return False
+        if lowered in {"state", "status", "mode", "value"}:
+            return "updated"
+        return "auto_filled_value"
 
     def _repair_environment_failure(
         self,

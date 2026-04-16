@@ -129,3 +129,18 @@ def test_state_failure_uses_simulated_missing_arg_values_before_asking_user() ->
     assert repair.interaction.ask_user is False
     assert repair.actions[0].target == "state.retrieved_info"
     assert repair.actions[0].value == "summary for: synthetic state restore"
+
+
+def test_binding_failure_uses_missing_required_field_from_error_message() -> None:
+    engine = RecoveryEngine()
+    error = make_error(ErrorCategory.BINDING_FAILURE, error_id="err_binding_state_001")
+    error.evidence.tool_id = "set_wifi_status"
+    error.evidence.raw_message = "missing required field: state"
+    error.evidence.inputs = {"retrieved_info": "x", "target_path": "y"}
+    error.state_context.missing_assets = []
+
+    repair = engine.plan_repair(error)
+
+    assert repair.repair_type == RepairType.REBIND_ARGS
+    assert repair.actions[0].target == "step_01.inputs.state"
+    assert repair.actions[0].value == "updated"
