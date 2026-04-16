@@ -614,30 +614,24 @@ class InteractionShell:
         timeout_s = max(float(self.config.reply_timeout_s or 0.0), 0.0)
         if timeout_s <= 0.0:
             return self.reply_provider.reply(request)
-        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        future = pool.submit(self.reply_provider.reply, request)
-        try:
-            reply = future.result(timeout=timeout_s)
-            pool.shutdown(wait=False, cancel_futures=True)
-            return reply
-        except concurrent.futures.TimeoutError:
-            future.cancel()
-            pool.shutdown(wait=False, cancel_futures=True)
-            # region agent log
-            self._debug_log(
-                "H1",
-                "src/toolclaw/interaction/irc.py:_reply_with_timeout:timeout",
-                "reply provider timeout",
-                {
-                    "timeout_s": timeout_s,
-                    "expected_answer_type": str(request.expected_answer_type or ""),
-                },
-            )
-            # endregion
-            return self._timeout_reply(request, timeout_s)
-        except Exception:
-            pool.shutdown(wait=False, cancel_futures=True)
-            raise
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(self.reply_provider.reply, request)
+            try:
+                return future.result(timeout=timeout_s)
+            except concurrent.futures.TimeoutError:
+                future.cancel()
+                # region agent log
+                self._debug_log(
+                    "H1",
+                    "src/toolclaw/interaction/irc.py:_reply_with_timeout:timeout",
+                    "reply provider timeout",
+                    {
+                        "timeout_s": timeout_s,
+                        "expected_answer_type": str(request.expected_answer_type or ""),
+                    },
+                )
+                # endregion
+                return self._timeout_reply(request, timeout_s)
 
     @staticmethod
     def _timeout_reply(request: Any, timeout_s: float) -> Any:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import faulthandler
 import os
 import subprocess
 import json
@@ -1441,14 +1442,44 @@ def execute_system(
         },
     )
     # endregion
-    build_shell(runtime, task).run(
-        request=request,
-        run_id=f"{spec.system_id}_{task_id}",
-        output_path=str(trace_path),
-        backup_tool_map=backup_tool_map,
-        use_reuse=spec.use_reuse,
-        compile_on_success=spec.compile_on_success,
+    # region agent log
+    _debug_log(
+        "H6",
+        "scripts/run_eval.py:execute_system:before_shell_run",
+        "about to enter interaction shell",
+        {
+            "system": spec.system_id,
+            "task_id": task_id,
+            "trace_path": str(trace_path),
+        },
     )
+    # endregion
+    dump_after_s = float(os.environ.get("TOOLCLAW_DEBUG_DUMP_AFTER_S", "90") or 90)
+    if dump_after_s > 0:
+        faulthandler.dump_traceback_later(dump_after_s, repeat=True, file=sys.stderr)
+    try:
+        build_shell(runtime, task).run(
+            request=request,
+            run_id=f"{spec.system_id}_{task_id}",
+            output_path=str(trace_path),
+            backup_tool_map=backup_tool_map,
+            use_reuse=spec.use_reuse,
+            compile_on_success=spec.compile_on_success,
+        )
+    finally:
+        if dump_after_s > 0:
+            faulthandler.cancel_dump_traceback_later()
+    # region agent log
+    _debug_log(
+        "H6",
+        "scripts/run_eval.py:execute_system:after_shell_run",
+        "interaction shell returned",
+        {
+            "system": spec.system_id,
+            "task_id": task_id,
+        },
+    )
+    # endregion
     if spec.use_reuse:
         reused_artifact = reused_artifact or bool(request.hints.reusable_asset_ids)
     return row_from_trace(
