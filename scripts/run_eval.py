@@ -42,9 +42,9 @@ from toolclaw.compiler.swpc import SWPCCompiler, build_task_signature_candidates
 from toolclaw.execution.executor import ExecutorConfig, SequentialExecutor
 from toolclaw.execution.recovery import RecoveryConfig, RecoveryEngine
 from toolclaw.interaction.irc import InteractionLoopConfig, InteractionShell
-from toolclaw.interaction.reply_provider import HumanReplyProvider, LLMReplyProvider
+from toolclaw.interaction.reply_provider import HumanReplyProvider, LLMReplyProvider, OracleReplayProvider
 from toolclaw.interaction.repair_updater import RepairUpdater
-from toolclaw.interaction.user_simulator import SimulatedPolicy
+from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
 from toolclaw.main import ToolClawRuntime
 from toolclaw.planner.capability_intents import CAPABILITY_PROFILES_BY_ID, infer_capability_from_text
 from toolclaw.planner.htgp import PlanningRequest, build_default_planner
@@ -957,6 +957,14 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
 
 def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any]) -> InteractionShell:
     policy_cfg = task.get("simulated_policy", {})
+    simulator_policy = SimulatedPolicy(
+        mode=policy_cfg.get("mode", "cooperative"),
+        missing_arg_values=policy_cfg.get("missing_arg_values", {}),
+        backup_tool_preferences=policy_cfg.get("backup_tool_preferences", {}),
+        approval_responses=policy_cfg.get("approval_responses", {}),
+        constraint_overrides=policy_cfg.get("constraint_overrides", {}),
+        tool_switch_hints=policy_cfg.get("tool_switch_hints", {}),
+    )
     raw_backend_cfg = task.get("interaction_backend", {})
     backend_cfg = dict(raw_backend_cfg) if isinstance(raw_backend_cfg, dict) else {}
     backend = str((backend_cfg.get("type") if backend_cfg else raw_backend_cfg) or task.get("interaction_backend_type") or "simulator")
@@ -968,17 +976,15 @@ def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any]) -> InteractionSh
             completion_fn=_llm_backend_completion(backend_cfg, policy_cfg),
             provider_name=str(backend_cfg.get("provider_name", "llm")),
         )
+    elif isinstance(task.get("oracle_user_replies"), list) and task.get("oracle_user_replies"):
+        reply_provider = OracleReplayProvider(
+            oracle_replies=list(task.get("oracle_user_replies", [])),
+            fallback_provider=UserSimulator(simulator_policy),
+        )
     return InteractionShell(
         runtime=runtime,
         config=InteractionLoopConfig(
-            simulator_policy=SimulatedPolicy(
-                mode=policy_cfg.get("mode", "cooperative"),
-                missing_arg_values=policy_cfg.get("missing_arg_values", {}),
-                backup_tool_preferences=policy_cfg.get("backup_tool_preferences", {}),
-                approval_responses=policy_cfg.get("approval_responses", {}),
-                constraint_overrides=policy_cfg.get("constraint_overrides", {}),
-                tool_switch_hints=policy_cfg.get("tool_switch_hints", {}),
-            )
+            simulator_policy=simulator_policy
         ),
         reply_provider=reply_provider,
     )

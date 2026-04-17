@@ -829,6 +829,10 @@ class ToolSandboxAdapter:
             total_milestones=total_milestones,
             write_target_verified=write_target_verified,
         )
+        must_interact_expected = self._must_interact_expected(sample.raw_payload, categories)
+        interaction_contract_satisfied = (user_queries > 0) if must_interact_expected else True
+        interaction_gate_blocked = must_interact_expected and not interaction_contract_satisfied
+        execution_verified_success = execution_verified_success and interaction_contract_satisfied
         milestone_similarity = float(similarity) if similarity is not None else 0.0
         expected_target_path = self._expected_write_target_path(sample.raw_payload, sample.sample_id)
         observed_target_path = self._observed_write_target_path(sample.raw_payload, trace_events)
@@ -851,6 +855,10 @@ class ToolSandboxAdapter:
                 ),
                 "hallucination_avoidance": hallucination_free,
                 "execution_verified_success": 1.0 if execution_verified_success else 0.0,
+                "interaction_contract_satisfied": 1.0 if interaction_contract_satisfied else 0.0,
+                "must_interact_query_rate": 1.0 if interaction_contract_satisfied else 0.0 if must_interact_expected else 1.0,
+                "success_given_query": 1.0 if (user_queries > 0 and execution_verified_success) else 0.0,
+                "zero_query_success_count": 1.0 if (must_interact_expected and user_queries == 0 and raw_trace_success) else 0.0,
                 "proxy_summary_success": 1.0 if proxy_summary_success else 0.0,
                 "state_dependency_score": milestone_similarity if "state_dependency" in categories else 1.0,
                 "write_target_verified": 1.0 if write_target_verified else 0.0,
@@ -861,6 +869,9 @@ class ToolSandboxAdapter:
                 "similarity": similarity,
                 "raw_trace_success": raw_trace_success,
                 "execution_verified_success": execution_verified_success,
+                "interaction_contract_satisfied": interaction_contract_satisfied,
+                "interaction_gate_blocked": interaction_gate_blocked,
+                "must_interact_expected": must_interact_expected,
                 "proxy_summary_success": proxy_summary_success,
                 "matched_milestones": matched_milestones,
                 "total_milestones": total_milestones,
@@ -1248,6 +1259,15 @@ class ToolSandboxAdapter:
     @staticmethod
     def _interaction_expected(categories: List[str]) -> bool:
         return "multiple_user_turn" in categories or "insufficient_information" in categories
+
+    def _must_interact_expected(self, raw: Dict[str, Any], categories: List[str]) -> bool:
+        if self._interaction_expected(categories):
+            return True
+        task_family = str(raw.get("task_family") or raw.get("reuse_family_id") or "")
+        metadata = raw.get("metadata", {})
+        if isinstance(metadata, dict):
+            task_family = str(metadata.get("task_family") or task_family)
+        return task_family == "t3_must_interact"
 
     def _interaction_efficiency(
         self,

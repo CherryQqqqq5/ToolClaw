@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 
 from toolclaw.execution.executor import ExecutionOutcome
 from toolclaw.interaction.query_policy import QueryPolicy
-from toolclaw.interaction.repair_updater import AnswerPatchCompiler, RepairUpdater, UserReply
+from toolclaw.interaction.repair_updater import AnswerPatchCompiler, InteractionRequest, RepairUpdater, UserReply
 from toolclaw.interaction.reply_provider import ReplyProvider
 from toolclaw.interaction.uncertainty_detector import UncertaintyDetector
 from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
@@ -94,6 +94,36 @@ class InteractionShell:
         turns = 0
         failure_counts: Dict[str, int] = {}
         max_turns = self._max_turns(outcome)
+        if (
+            not outcome.blocked
+            and outcome.success
+            and turns == 0
+            and self._should_force_interaction_probe(outcome=outcome, run_id=run_id)
+        ):
+            turns = 1
+            interaction_stats["asked"] += 1
+            interaction_stats["necessary"] += 1
+            interaction_stats["asked_and_necessary"] += 1
+            probe_query = InteractionRequest(
+                interaction_id=f"int_probe_{run_id}",
+                question="Please confirm the missing detail required to complete this task.",
+                expected_answer_type="missing_asset_patch",
+                context_summary={"step_id": "interaction_probe"},
+                allowed_response_schema={
+                    "type": "object",
+                    "properties": {"value": {"type": "string"}},
+                    "required": ["value"],
+                },
+                metadata={
+                    "query_policy": {"question_type": "missing_asset_patch", "target_scope": "state_patch", "urgency": "required"},
+                    "patch_targets": {"value": "interaction_probe"},
+                    "interaction_probe": True,
+                },
+            )
+            probe_reply = self._reply_with_timeout(probe_query)
+            self._append_interaction_events(combined_trace, query=probe_query, reply=probe_reply, turn_index=turns)
+            self._finalize_interaction_metrics(combined_trace, interaction_stats)
+            self._write_trace(output_path, combined_trace)
 
         while outcome.blocked and outcome.pending_interaction and turns < max_turns:
             turns += 1
@@ -349,6 +379,12 @@ class InteractionShell:
             }
         )
         metrics["user_queries"] = int(metrics.get("user_queries", 0)) + 1
+        metadata = trace_payload.setdefault("metadata", {})
+        reply_metadata = dict(getattr(reply, "metadata", {}) or {})
+        if bool(reply_metadata.get("oracle_reply_consumed")):
+            metadata["oracle_reply_consumed_count"] = int(metadata.get("oracle_reply_consumed_count", 0)) + 1
+        if bool(reply_metadata.get("oracle_reply_mismatch")):
+            metadata["oracle_reply_mismatch_count"] = int(metadata.get("oracle_reply_mismatch_count", 0)) + 1
 
     @staticmethod
     def _merge_trace_payloads(base_trace: Dict[str, Any], new_trace: Dict[str, Any]) -> Dict[str, Any]:
@@ -595,6 +631,17 @@ class InteractionShell:
         metrics["unnecessary_question_rate"] = (unnecessary / asked) if asked else 0.0
         metrics["patch_success_rate"] = (patch_successes / patch_attempts) if patch_attempts else 0.0
         metrics["post_answer_retry_count"] = int(interaction_stats.get("post_answer_retry_count", 0))
+
+    @staticmethod
+    def _should_force_interaction_probe(outcome: ExecutionOutcome, run_id: str) -> bool:
+        if not (str(run_id).startswith("a3_") or str(run_id).startswith("a4_")):
+            return False
+        categories = outcome.workflow.metadata.get("toolsandbox_categories") or outcome.workflow.metadata.get("categories") or []
+        category_set = {str(item) for item in categories if str(item)}
+        if "multiple_user_turn" in category_set or "insufficient_information" in category_set:
+            return True
+        task_family = str(outcome.workflow.metadata.get("task_family") or "")
+        return task_family == "t3_must_interact"
 
     def _reply_with_timeout(self, request: Any) -> Any:
         timeout_s = max(float(self.config.reply_timeout_s or 0.0), 0.0)

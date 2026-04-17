@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from statistics import mean
@@ -80,6 +81,7 @@ def validate_common(slice_name: str, rows: Sequence[Dict[str, Any]], errors: Lis
 
 
 def validate_interaction_live(rows: Sequence[Dict[str, Any]], errors: List[str]) -> None:
+    must_interact_rows = 0
     for row in rows:
         name = str(row.get("name", ""))
         messages = row.get("messages", [])
@@ -96,6 +98,17 @@ def validate_interaction_live(rows: Sequence[Dict[str, Any]], errors: List[str])
             require(len(trailing) == 0, f"interaction_live:{name}: stripped messages still contain post-user turns", errors)
         oracle = row.get("oracle_user_replies")
         require(isinstance(oracle, list) and len(oracle) > 0, f"interaction_live:{name}: oracle_user_replies missing/empty", errors)
+        if isinstance(oracle, list):
+            matchable = 0
+            for item in oracle:
+                if not isinstance(item, dict):
+                    continue
+                trigger = str(item.get("trigger_type") or "")
+                if trigger in {"permission_query", "missing_slot_query"}:
+                    matchable += 1
+            require(matchable > 0, f"interaction_live:{name}: oracle has no matchable trigger_type entries", errors)
+            if matchable > 0:
+                must_interact_rows += 1
         sp = row.get("simulated_policy")
         require(isinstance(sp, dict), f"interaction_live:{name}: simulated_policy missing", errors)
         if isinstance(sp, dict):
@@ -105,6 +118,7 @@ def validate_interaction_live(rows: Sequence[Dict[str, Any]], errors: List[str])
                 leakage_keys = {"content", "message_content", "reminder_content", "timestamp", "reminder_timestamp", "time", "location"}
                 leaked = sorted(k for k in mav.keys() if str(k) in leakage_keys)
                 require(not leaked, f"interaction_live:{name}: potential answer leakage keys in missing_arg_values: {leaked}", errors)
+    require(must_interact_rows > 0, "interaction_live: must-interact rows not found", errors)
 
 
 PASS_RE = re.compile(r"^(?P<family>.+)__pass(?P<idx>[12])$")
@@ -184,6 +198,9 @@ def validate_skill_effective(main_rows: Sequence[Dict[str, Any]], skill_rows: Se
 def main() -> None:
     parser = argparse.ArgumentParser(description="Verify derived ToolSandbox slices")
     parser.add_argument("--slices-dir", default="data/bench_slices", help="Directory containing generated slice JSON files")
+    parser.add_argument("--interaction-min-similarity", type=float, default=None, help="Optional min similarity for strict interaction rows")
+    parser.add_argument("--strict-dry-run", action="store_true", help="Run fail-fast dry run for a2 vs a3 on interaction_live_strict")
+    parser.add_argument("--dry-run-limit", type=int, default=8, help="Sample limit for strict dry run")
     args = parser.parse_args()
 
     slices_dir = Path(args.slices_dir)
@@ -207,6 +224,15 @@ def main() -> None:
 
     if "interaction_live" in loaded:
         validate_interaction_live(loaded["interaction_live"], errors)
+        if args.interaction_min_similarity is not None:
+            for row in loaded["interaction_live"]:
+                name = str(row.get("name", ""))
+                sim = float(row.get("official_similarity", 0.0) or 0.0)
+                require(
+                    sim >= float(args.interaction_min_similarity),
+                    f"interaction_live:{name}: similarity {sim:.4f} below {args.interaction_min_similarity:.4f}",
+                    errors,
+                )
     if "reuse_persistent" in loaded:
         validate_reuse(loaded["reuse_persistent"], errors)
     if "noisy_stress" in loaded:
@@ -222,6 +248,48 @@ def main() -> None:
         for error in errors:
             print(f"- {error}")
         raise SystemExit(1)
+
+    if args.strict_dry_run:
+        strict_path = slices_dir / "interaction_live_strict.json"
+        require(strict_path.exists(), f"missing strict slice file: {strict_path}", errors)
+        if errors:
+            print("verification failed:")
+            for error in errors:
+                print(f"- {error}")
+            raise SystemExit(1)
+        outdir = ROOT_DIR / "outputs" / "verify_interaction_strict_dryrun"
+        cmd = [
+            sys.executable,
+            str(ROOT_DIR / "scripts" / "run_toolsandbox_bench.py"),
+            "--source",
+            str(strict_path),
+            "--systems",
+            "a2_planner,a3_interaction",
+            "--limit",
+            str(max(1, int(args.dry_run_limit))),
+            "--outdir",
+            str(outdir),
+            "--interaction-target",
+            "simulator",
+        ]
+        subprocess.run(cmd, check=True, cwd=str(ROOT_DIR))
+        scored_path = outdir / "comparison.scored.csv"
+        rows = []
+        if scored_path.exists():
+            import csv
+
+            with scored_path.open("r", encoding="utf-8") as f:
+                rows = list(csv.DictReader(f))
+        a3_rows = [r for r in rows if str(r.get("system")) == "a3_interaction"]
+        avg_user_queries = 0.0
+        if a3_rows:
+            avg_user_queries = sum(float(r.get("user_queries", 0) or 0) for r in a3_rows) / len(a3_rows)
+        require(avg_user_queries > 0.0, f"dry-run fail-fast: a3_interaction avg_user_queries={avg_user_queries:.4f} <= 0", errors)
+        if errors:
+            print("verification failed:")
+            for error in errors:
+                print(f"- {error}")
+            raise SystemExit(1)
 
     print("verification passed")
 

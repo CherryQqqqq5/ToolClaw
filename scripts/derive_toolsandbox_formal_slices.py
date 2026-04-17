@@ -286,6 +286,7 @@ def main() -> None:
     parser.add_argument("--noisy-bottom-quantile", type=float, default=0.2)
     parser.add_argument("--max-main-clean-count", type=int, default=None)
     parser.add_argument("--max-pairs-per-reuse-group", type=int, default=2)
+    parser.add_argument("--interaction-strict-bottom-quantile", type=float, default=0.2)
     args = parser.parse_args()
 
     in_path = Path(args.in_path)
@@ -345,7 +346,7 @@ def main() -> None:
         cats = set(normalized_categories.get(name, []))
         if "multiple_user_turn" in cats or "insufficient_information" in cats:
             interaction_src.append(sample)
-    interaction_live = [
+    interaction_live_extended = [
         build_interaction_live(
             sample,
             strip_mode=args.interaction_strip_mode,
@@ -353,6 +354,25 @@ def main() -> None:
         )
         for sample in sorted(interaction_src, key=lambda s: str(s.get("name", "")))
     ]
+    interaction_sims = sorted(float(s.get("official_similarity", 0.0) or 0.0) for s in interaction_src)
+    interaction_bottom_idx = max(0, int(math.floor(len(interaction_sims) * args.interaction_strict_bottom_quantile)) - 1)
+    interaction_bottom_threshold = interaction_sims[interaction_bottom_idx] if interaction_sims else -1.0
+    interaction_live_strict: List[Dict[str, Any]] = []
+    for sample in interaction_live_extended:
+        similarity = float(sample.get("official_similarity", 0.0) or 0.0)
+        if similarity <= interaction_bottom_threshold:
+            continue
+        oracle = sample.get("oracle_user_replies", [])
+        if not isinstance(oracle, list) or not oracle:
+            continue
+        has_must_interact_trigger = any(
+            str(item.get("trigger_type") or "") in {"permission_query", "missing_slot_query"}
+            for item in oracle
+            if isinstance(item, dict)
+        )
+        if not has_must_interact_trigger:
+            continue
+        interaction_live_strict.append(sample)
 
     # Reuse persistent pairs.
     reuse_persistent = build_reuse_pairs(frozen, normalized_categories, args.max_pairs_per_reuse_group)
@@ -376,14 +396,18 @@ def main() -> None:
 
     dump_samples(outdir / "main_clean.json", main_clean)
     dump_samples(outdir / "skill_distractor.json", skill_distractor)
-    dump_samples(outdir / "interaction_live.json", interaction_live)
+    dump_samples(outdir / "interaction_live.json", interaction_live_strict)
+    dump_samples(outdir / "interaction_live_strict.json", interaction_live_strict)
+    dump_samples(outdir / "interaction_live_extended.json", interaction_live_extended)
     dump_samples(outdir / "reuse_persistent.json", reuse_persistent)
     dump_samples(outdir / "noisy_stress.json", noisy_stress)
 
     print(f"input={in_path} total={len(frozen)}")
     print(f"main_clean={len(main_clean)}")
     print(f"skill_distractor={len(skill_distractor)}")
-    print(f"interaction_live={len(interaction_live)}")
+    print(f"interaction_live={len(interaction_live_strict)}")
+    print(f"interaction_live_strict={len(interaction_live_strict)}")
+    print(f"interaction_live_extended={len(interaction_live_extended)}")
     print(f"reuse_persistent={len(reuse_persistent)}")
     print(f"noisy_stress={len(noisy_stress)}")
 
