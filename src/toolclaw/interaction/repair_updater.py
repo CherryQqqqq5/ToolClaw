@@ -175,6 +175,20 @@ class RepairUpdater:
             return False
         return isinstance(reply.payload, dict)
 
+    @staticmethod
+    def compile_semantic_payload(
+        *,
+        slot_updates: Dict[str, Any] | None = None,
+        approvals: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        """Compatibility helper: semantic signal -> UserReply payload."""
+        payload: Dict[str, Any] = {}
+        if isinstance(slot_updates, dict):
+            payload.update(slot_updates)
+        if isinstance(approvals, dict) and "approved" in approvals:
+            payload["approved"] = bool(approvals.get("approved"))
+        return payload
+
     def apply_reply_to_workflow(self, workflow: Workflow, resume_patch: ResumePatch) -> Workflow:
         workflow.patch_with_resume(resume_patch)
         return workflow

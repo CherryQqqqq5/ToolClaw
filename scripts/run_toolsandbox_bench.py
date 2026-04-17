@@ -524,9 +524,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--keep-normalized-taskset", action="store_true", help="Keep the normalized taskset JSON file")
     parser.add_argument(
         "--interaction-target",
-        choices=["simulator", "user_cli", "llm_openrouter"],
+        choices=["simulator", "user_cli", "llm_openrouter", "cli_cmd"],
         default="simulator",
-        help="Interaction responder for interactive systems: simulator (default), user_cli, or llm_openrouter.",
+        help="Interaction responder for interactive systems: simulator (default), user_cli, llm_openrouter, or cli_cmd.",
     )
     parser.add_argument(
         "--cli-prompt-prefix",
@@ -552,6 +552,17 @@ def parse_args() -> argparse.Namespace:
         "--openrouter-site-name",
         default="ToolClaw",
         help="Optional X-Title value sent to OpenRouter.",
+    )
+    parser.add_argument(
+        "--cli-command",
+        default="",
+        help="Command for --interaction-target=cli_cmd. Receives request JSON via stdin and returns reply via stdout.",
+    )
+    parser.add_argument(
+        "--cli-timeout-s",
+        type=float,
+        default=30.0,
+        help="Timeout in seconds for --interaction-target=cli_cmd.",
     )
     return parser.parse_args()
 
@@ -1215,6 +1226,16 @@ def main() -> None:
                 "site_name": args.openrouter_site_name,
                 "status": "accept",
             }
+    elif args.interaction_target == "cli_cmd":
+        if not str(args.cli_command or "").strip():
+            raise ValueError("--cli-command is required when --interaction-target=cli_cmd")
+        for task in normalized_tasks:
+            task["interaction_backend"] = {
+                "type": "cli",
+                "provider_name": "cli_cmd",
+                "command": args.cli_command,
+                "timeout_s": float(args.cli_timeout_s),
+            }
     normalized_path = prepared_dir / TOOLSANDBOX_CONFIG.normalized_filename
     normalized_path.write_text(json.dumps(normalized_tasks, indent=2), encoding="utf-8")
 
@@ -1295,6 +1316,8 @@ def main() -> None:
             "official_data_root": str(Path(args.official_data_root).resolve()),
             "interaction_target": args.interaction_target,
             "cli_prompt_prefix": args.cli_prompt_prefix if args.interaction_target == "user_cli" else None,
+            "cli_command": args.cli_command if args.interaction_target == "cli_cmd" else None,
+            "cli_timeout_s": args.cli_timeout_s if args.interaction_target == "cli_cmd" else None,
             "openrouter_model": args.openrouter_model if args.interaction_target == "llm_openrouter" else None,
             "openrouter_base_url": args.openrouter_base_url if args.interaction_target == "llm_openrouter" else None,
         },

@@ -4,19 +4,35 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
+import subprocess
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence
+from typing import Any, Callable, Dict, Optional, Protocol, Sequence
 
-from toolclaw.interaction.repair_updater import InteractionRequest, UserReply
+from toolclaw.interaction.repair_updater import InteractionRequest
+
+
+@dataclass
+class RawUserReply:
+    interaction_id: str
+    raw_text: str
+    raw_payload: Dict[str, Any]
+    status: str = "accept"
+    accepted: bool = True
+    metadata: Dict[str, Any] = None
+
+    def __post_init__(self) -> None:
+        if self.metadata is None:
+            self.metadata = {}
 
 
 class ReplyProvider(Protocol):
-    def reply(self, request: InteractionRequest) -> UserReply:
+    def reply(self, request: InteractionRequest) -> RawUserReply:
         ...
 
 
 class SimulatorReplyProvider(ReplyProvider, Protocol):
-    def reply(self, request: InteractionRequest) -> UserReply:
+    def reply(self, request: InteractionRequest) -> RawUserReply:
         ...
 
 
@@ -26,16 +42,16 @@ class HumanStdinProvider:
 
     prompt_prefix: str = "toolclaw"
 
-    def reply(self, request: InteractionRequest) -> UserReply:
+    def reply(self, request: InteractionRequest) -> RawUserReply:
         print(f"[{self.prompt_prefix}] question: {request.question}")
         print(f"[{self.prompt_prefix}] expected_answer_type: {request.expected_answer_type}")
         if request.allowed_response_schema:
             print(f"[{self.prompt_prefix}] schema: {json.dumps(request.allowed_response_schema, ensure_ascii=True)}")
         raw = input(f"[{self.prompt_prefix}] reply json (or empty for abstain): ").strip()
         if not raw:
-            return UserReply(
+            return RawUserReply(
                 interaction_id=request.interaction_id,
-                payload={"abstain": True},
+                raw_payload={"abstain": True},
                 raw_text="",
                 accepted=False,
                 status="abstain",
@@ -44,17 +60,17 @@ class HumanStdinProvider:
         try:
             payload = json.loads(raw)
         except json.JSONDecodeError:
-            return UserReply(
+            return RawUserReply(
                 interaction_id=request.interaction_id,
-                payload={"raw_text": raw},
+                raw_payload={"raw_text": raw},
                 raw_text=raw,
                 accepted=False,
                 status="malformed",
                 metadata={"patch_targets": dict(request.metadata.get("patch_targets", {}))},
             )
-        return UserReply(
+        return RawUserReply(
             interaction_id=request.interaction_id,
-            payload=payload if isinstance(payload, dict) else {"value": payload},
+            raw_payload=payload if isinstance(payload, dict) else {"value": payload},
             raw_text=raw,
             accepted=True,
             status="accept",
@@ -67,19 +83,124 @@ class HumanReplyProvider(HumanStdinProvider):
 
 
 @dataclass
+class CLIReplyProvider:
+    """Invoke external CLI command and capture reply."""
+
+    command: Sequence[str] | str
+    timeout_s: float = 30.0
+    provider_name: str = "cli_reply_provider"
+
+    def _resolve_command(self) -> list[str]:
+        if isinstance(self.command, str):
+            cmd = shlex.split(self.command.strip())
+        else:
+            cmd = [str(part) for part in self.command if str(part)]
+        if not cmd:
+            raise ValueError("CLIReplyProvider requires a non-empty command")
+        return cmd
+
+    def reply(self, request: InteractionRequest) -> RawUserReply:
+        patch_targets = dict(request.metadata.get("patch_targets", {}))
+        req_payload = {
+            "interaction_id": request.interaction_id,
+            "question": request.question,
+            "expected_answer_type": request.expected_answer_type,
+            "allowed_response_schema": dict(request.allowed_response_schema),
+            "context_summary": dict(request.context_summary),
+            "metadata": dict(request.metadata),
+        }
+        cmd = self._resolve_command()
+        try:
+            proc = subprocess.run(
+                cmd,
+                input=json.dumps(req_payload, ensure_ascii=False),
+                capture_output=True,
+                text=True,
+                timeout=max(float(self.timeout_s), 0.0) or None,
+                check=False,
+            )
+        except Exception as exc:
+            return RawUserReply(
+                interaction_id=request.interaction_id,
+                raw_text=str(exc),
+                raw_payload={"error": str(exc)},
+                status="malformed",
+                accepted=False,
+                metadata={
+                    "provider": self.provider_name,
+                    "patch_targets": patch_targets,
+                    "command": cmd,
+                },
+            )
+
+        stdout_text = str(proc.stdout or "").strip()
+        stderr_text = str(proc.stderr or "").strip()
+        if proc.returncode != 0:
+            return RawUserReply(
+                interaction_id=request.interaction_id,
+                raw_text=stdout_text or stderr_text,
+                raw_payload={
+                    "returncode": proc.returncode,
+                    "stderr": stderr_text,
+                    "stdout": stdout_text,
+                },
+                status="malformed",
+                accepted=False,
+                metadata={
+                    "provider": self.provider_name,
+                    "patch_targets": patch_targets,
+                    "command": cmd,
+                    "returncode": proc.returncode,
+                },
+            )
+
+        payload: Dict[str, Any] = {}
+        status = "accept"
+        accepted = True
+        extra_metadata: Dict[str, Any] = {}
+        if stdout_text:
+            try:
+                parsed = json.loads(stdout_text)
+                if isinstance(parsed, dict):
+                    payload = dict(parsed.get("payload", parsed))
+                    status = str(parsed.get("status", "accept"))
+                    accepted = bool(parsed.get("accepted", status == "accept"))
+                    if isinstance(parsed.get("metadata"), dict):
+                        extra_metadata = dict(parsed["metadata"])
+                else:
+                    payload = {"value": parsed}
+            except json.JSONDecodeError:
+                payload = {"value": stdout_text}
+        return RawUserReply(
+            interaction_id=request.interaction_id,
+            raw_text=stdout_text,
+            raw_payload=payload,
+            status=status,
+            accepted=accepted,
+            metadata={
+                "provider": self.provider_name,
+                "patch_targets": patch_targets,
+                "command": cmd,
+                "stderr": stderr_text,
+                **extra_metadata,
+            },
+        )
+
+
+@dataclass
 class LLMReplyProvider:
     """Thin wrapper around an injected LLM callback for reply generation."""
 
     completion_fn: Callable[[InteractionRequest], Dict[str, Any]]
     provider_name: str = "llm_reply_provider"
 
-    def reply(self, request: InteractionRequest) -> UserReply:
+    def reply(self, request: InteractionRequest) -> RawUserReply:
         result = self.completion_fn(request)
         patch_targets = dict(request.metadata.get("patch_targets", {}))
         if not isinstance(result, dict):
-            return UserReply(
+            return RawUserReply(
                 interaction_id=request.interaction_id,
-                payload={"raw_result": result},
+                raw_payload={"raw_result": result},
                 raw_text=str(result),
                 accepted=False,
                 status="malformed",
@@ -89,9 +210,9 @@ class LLMReplyProvider:
         status = str(result.get("status", "accept"))
         accepted = bool(result.get("accepted", status == "accept"))
         extra_metadata = dict(result.get("metadata", {})) if isinstance(result.get("metadata"), dict) else {}
-        return UserReply(
+        return RawUserReply(
             interaction_id=request.interaction_id,
-            payload=payload,
+            raw_payload=payload,
             raw_text=str(result.get("raw_text", "")) or None,
             accepted=accepted,
             status=status,
@@ -112,12 +233,12 @@ class OracleReplayProvider:
     provider_name: str = "oracle_replay"
     _cursor: int = 0
 
-    def reply(self, request: InteractionRequest) -> UserReply:
+    def reply(self, request: InteractionRequest) -> RawUserReply:
         patch_targets = dict(request.metadata.get("patch_targets", {}))
         match = self._consume_matching(request)
         if match is None:
             fallback = self.fallback_provider.reply(request)
-            fallback_metadata = dict(fallback.metadata or {})
+            fallback_metadata = dict(getattr(fallback, "metadata", {}) or {})
             fallback_metadata.update(
                 {
                     "provider": self.provider_name,
@@ -127,18 +248,21 @@ class OracleReplayProvider:
                     "patch_targets": patch_targets,
                 }
             )
-            return UserReply(
-                interaction_id=fallback.interaction_id,
-                payload=dict(fallback.payload),
-                raw_text=fallback.raw_text,
-                accepted=bool(fallback.accepted),
-                status=str(fallback.status),
+            fallback_payload = getattr(fallback, "raw_payload", None)
+            if not isinstance(fallback_payload, dict):
+                fallback_payload = dict(getattr(fallback, "payload", {}) or {})
+            return RawUserReply(
+                interaction_id=getattr(fallback, "interaction_id", request.interaction_id),
+                raw_payload=fallback_payload,
+                raw_text=str(getattr(fallback, "raw_text", "") or ""),
+                accepted=bool(getattr(fallback, "accepted", True)),
+                status=str(getattr(fallback, "status", "accept")),
                 metadata=fallback_metadata,
             )
         payload = self._oracle_payload(request, match)
-        return UserReply(
+        return RawUserReply(
             interaction_id=request.interaction_id,
-            payload=payload,
+            raw_payload=payload,
             raw_text=str(match.get("reply", "")),
             accepted=True,
             status="accept",
@@ -227,10 +351,15 @@ def build_reply_provider(
     *,
     simulator_factory: Callable[[], ReplyProvider],
     llm_completion_fn: Optional[Callable[[InteractionRequest], Dict[str, Any]]] = None,
+    cli_command: Optional[Sequence[str] | str] = None,
 ) -> ReplyProvider:
     normalized = str(backend or "simulator").strip().lower()
     if normalized == "human":
         return HumanReplyProvider()
+    if normalized == "cli":
+        if cli_command is None:
+            raise ValueError("CLIReplyProvider requires cli_command")
+        return CLIReplyProvider(command=cli_command)
     if normalized == "llm":
         if llm_completion_fn is None:
             raise ValueError("LLMReplyProvider requires llm_completion_fn")

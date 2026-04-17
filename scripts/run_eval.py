@@ -42,8 +42,9 @@ from toolclaw.compiler.swpc import SWPCCompiler, build_task_signature_candidates
 from toolclaw.execution.executor import ExecutorConfig, SequentialExecutor
 from toolclaw.execution.recovery import RecoveryConfig, RecoveryEngine
 from toolclaw.interaction.irc import InteractionLoopConfig, InteractionShell
-from toolclaw.interaction.reply_provider import HumanReplyProvider, LLMReplyProvider, OracleReplayProvider
+from toolclaw.interaction.reply_provider import CLIReplyProvider, HumanReplyProvider, LLMReplyProvider, OracleReplayProvider
 from toolclaw.interaction.repair_updater import RepairUpdater
+from toolclaw.interaction.semantic_decoder import SemanticDecoder
 from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
 from toolclaw.main import ToolClawRuntime
 from toolclaw.planner.capability_intents import CAPABILITY_PROFILES_BY_ID, infer_capability_from_text
@@ -971,6 +972,15 @@ def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any]) -> InteractionSh
     reply_provider = None
     if backend == "human":
         reply_provider = HumanReplyProvider(prompt_prefix=str(backend_cfg.get("prompt_prefix", "toolclaw")))
+    elif backend == "cli":
+        cli_command = backend_cfg.get("command") if isinstance(backend_cfg, dict) else None
+        if not cli_command:
+            cli_command = os.getenv("TOOLCLAW_CLI_REPLY_COMMAND", "")
+        reply_provider = CLIReplyProvider(
+            command=cli_command,
+            timeout_s=float(backend_cfg.get("timeout_s", 30.0)) if isinstance(backend_cfg, dict) else 30.0,
+            provider_name=str(backend_cfg.get("provider_name", "cli")) if isinstance(backend_cfg, dict) else "cli",
+        )
     elif backend == "llm":
         reply_provider = LLMReplyProvider(
             completion_fn=_llm_backend_completion(backend_cfg, policy_cfg),
@@ -987,6 +997,7 @@ def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any]) -> InteractionSh
             simulator_policy=simulator_policy
         ),
         reply_provider=reply_provider,
+        semantic_decoder=SemanticDecoder(),
     )
 
 

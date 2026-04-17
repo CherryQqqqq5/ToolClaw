@@ -12,7 +12,8 @@ from typing import Any, Dict, Optional
 from toolclaw.execution.executor import ExecutionOutcome
 from toolclaw.interaction.query_policy import QueryPolicy
 from toolclaw.interaction.repair_updater import AnswerPatchCompiler, InteractionRequest, RepairUpdater, UserReply
-from toolclaw.interaction.reply_provider import ReplyProvider
+from toolclaw.interaction.reply_provider import RawUserReply, ReplyProvider
+from toolclaw.interaction.semantic_decoder import SemanticDecoder, compile_decoded_signal_to_user_reply
 from toolclaw.interaction.uncertainty_detector import UncertaintyDetector
 from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
 from toolclaw.main import ToolClawRuntime
@@ -38,6 +39,7 @@ class InteractionShell:
         uncertainty_detector: Optional[UncertaintyDetector] = None,
         query_policy: Optional[QueryPolicy] = None,
         reply_provider: Optional[ReplyProvider] = None,
+        semantic_decoder: Optional[SemanticDecoder] = None,
     ) -> None:
         self.runtime = runtime
         self.repair_updater = repair_updater or runtime.repair_updater
@@ -48,6 +50,7 @@ class InteractionShell:
         )
         self.config = config or InteractionLoopConfig()
         self.reply_provider = reply_provider or UserSimulator(self.config.simulator_policy)
+        self.semantic_decoder = semantic_decoder or SemanticDecoder()
         self.uncertainty_detector = uncertainty_detector or UncertaintyDetector()
         self.query_policy = query_policy or QueryPolicy()
 
@@ -120,7 +123,7 @@ class InteractionShell:
                     "interaction_probe": True,
                 },
             )
-            probe_reply = self._reply_with_timeout(probe_query)
+            probe_reply = self._decode_to_user_reply(probe_query, self._reply_with_timeout(probe_query))
             self._append_interaction_events(combined_trace, query=probe_query, reply=probe_reply, turn_index=turns)
             self._finalize_interaction_metrics(combined_trace, interaction_stats)
             self._write_trace(output_path, combined_trace)
@@ -192,7 +195,7 @@ class InteractionShell:
                     metadata={"stopped_reason": "repeat_failure_abort"},
                 )
             else:
-                reply = self._reply_with_timeout(query)
+                reply = self._decode_to_user_reply(query, self._reply_with_timeout(query))
             self._append_interaction_events(combined_trace, query=query, reply=reply, turn_index=turns)
             self._increment_recovery_budget(combined_trace, outcome, turns)
             handled_stop = self._handled_non_accept_reply(combined_trace, output_path, outcome, reply)
@@ -654,6 +657,33 @@ class InteractionShell:
             except concurrent.futures.TimeoutError:
                 future.cancel()
                 return self._timeout_reply(request, timeout_s)
+
+    def _decode_to_user_reply(self, request: InteractionRequest, raw: Any) -> UserReply:
+        if isinstance(raw, UserReply):
+            raw_obj = RawUserReply(
+                interaction_id=raw.interaction_id,
+                raw_text=str(raw.raw_text or ""),
+                raw_payload=dict(raw.payload or {}),
+                status=str(raw.status or "accept"),
+                accepted=bool(raw.accepted),
+                metadata=dict(raw.metadata or {}),
+            )
+            decoded = self.semantic_decoder.decode(request, raw_obj)
+            return compile_decoded_signal_to_user_reply(request, raw_obj, decoded)
+        if isinstance(raw, RawUserReply):
+            decoded = self.semantic_decoder.decode(request, raw)
+            return compile_decoded_signal_to_user_reply(request, raw, decoded)
+        # Defensive fallback for legacy provider return types.
+        fallback_raw = RawUserReply(
+            interaction_id=request.interaction_id,
+            raw_text=str(raw),
+            raw_payload={"value": str(raw)},
+            status="malformed",
+            accepted=False,
+            metadata={"patch_targets": dict(request.metadata.get("patch_targets", {}))},
+        )
+        decoded = self.semantic_decoder.decode(request, fallback_raw)
+        return compile_decoded_signal_to_user_reply(request, fallback_raw, decoded)
 
     @staticmethod
     def _timeout_reply(request: Any, timeout_s: float) -> Any:
