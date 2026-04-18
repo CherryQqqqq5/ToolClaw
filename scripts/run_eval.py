@@ -66,20 +66,22 @@ class SystemSpec:
 
 
 SYSTEM_SPECS: Dict[str, SystemSpec] = {
-    "a0_baseline": SystemSpec(system_id="a0_baseline", workflow_mode="demo", execution_mode="baseline"),
+    "a0_baseline": SystemSpec(system_id="a0_baseline", workflow_mode="planner", execution_mode="baseline"),
     "a1_recovery": SystemSpec(
         system_id="a1_recovery",
-        workflow_mode="demo",
+        workflow_mode="seed",
         execution_mode="executor",
         allow_repair=True,
         allow_fallback=True,
+        allow_suffix_replan=False,
     ),
     "a2_planner": SystemSpec(
         system_id="a2_planner",
         workflow_mode="planner",
         execution_mode="executor",
-        allow_repair=True,
-        allow_fallback=True,
+        allow_repair=False,
+        allow_fallback=False,
+        allow_suffix_replan=False,
     ),
     "a3_interaction": SystemSpec(
         system_id="a3_interaction",
@@ -89,7 +91,6 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         use_reuse=False,
         allow_repair=True,
         allow_fallback=True,
-        allow_suffix_replan=False,
     ),
     "a4_reuse": SystemSpec(
         system_id="a4_reuse",
@@ -99,7 +100,6 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         use_reuse=True,
         allow_repair=True,
         allow_fallback=True,
-        allow_suffix_replan=False,
     ),
     "tc_full": SystemSpec(
         system_id="tc_full",
@@ -139,12 +139,13 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
     ),
     "tc_recovery_only": SystemSpec(
         system_id="tc_recovery_only",
-        workflow_mode="demo",
+        workflow_mode="seed",
         execution_mode="executor",
         compile_on_success=False,
         use_reuse=False,
         allow_repair=True,
         allow_fallback=True,
+        allow_suffix_replan=False,
     ),
     "tc_no_interaction": SystemSpec(
         system_id="tc_no_interaction",
@@ -170,8 +171,9 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         execution_mode="executor",
         compile_on_success=False,
         use_reuse=False,
-        allow_repair=True,
-        allow_fallback=True,
+        allow_repair=False,
+        allow_fallback=False,
+        allow_suffix_replan=False,
     ),
 }
 
@@ -877,20 +879,21 @@ def build_runtime_for_spec(
 ) -> ToolClawRuntime:
     registry = asset_registry or InMemoryAssetRegistry()
     planner = build_default_planner(asset_registry=registry)
+    executor_planner = planner if spec.allow_suffix_replan else None
     runtime = ToolClawRuntime(
         planner=planner,
         executor=SequentialExecutor(
             recovery_engine=RecoveryEngine(
                 RecoveryConfig(enable_tool_fallback=spec.allow_fallback)
             ),
+            planner=executor_planner,
             config=ExecutorConfig(allow_repair=spec.allow_repair),
         ),
         repair_updater=RepairUpdater(),
         compiler=SWPCCompiler(),
         asset_registry=registry,
+        wire_executor_planner=spec.allow_suffix_replan,
     )
-    if not spec.allow_suffix_replan:
-        runtime.executor.planner = None
     return runtime
 
 
@@ -1353,7 +1356,7 @@ def execute_system(
             reused_artifact=False,
         )
 
-    seed_workflow = build_workflow_from_task(task, mode="planner")
+    seed_workflow = build_workflow_from_task(task, mode=spec.workflow_mode)
     if spec.use_reuse and runtime is not None and not reused_artifact:
         signature_candidates = task_signature_candidates(
             query=seed_workflow.task.user_goal,

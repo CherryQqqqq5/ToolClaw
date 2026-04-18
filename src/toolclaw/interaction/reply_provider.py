@@ -25,6 +25,10 @@ class RawUserReply:
         if self.metadata is None:
             self.metadata = {}
 
+    @property
+    def payload(self) -> Dict[str, Any]:
+        return self.raw_payload
+
 
 class ReplyProvider(Protocol):
     def reply(self, request: InteractionRequest) -> RawUserReply:

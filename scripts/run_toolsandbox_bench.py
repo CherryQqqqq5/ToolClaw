@@ -212,39 +212,33 @@ def _validate_smoke_profile(samples: List[Any]) -> None:
         for family_id, pass_indices in family_passes.items()
     )
     has_planner_sensitive = any(_is_planner_sensitive_task(sample.sample_id) for sample in samples)
-    if (
-        len(samples) < 8
-        or not has_state
-        or not has_interaction
-        or not has_recovery
-        or not has_reuse_pair
-        or not has_transfer_reuse_pair
-        or not has_planner_sensitive
-    ):
+    missing_requirements: List[str] = []
+    if len(samples) < 8:
+        missing_requirements.append("at least 8 validated samples")
+    if not has_state:
+        missing_requirements.append("explicit state_failure")
+    if not has_interaction:
+        missing_requirements.append("interaction")
+    if not has_recovery:
+        missing_requirements.append("recovery")
+    if not has_planner_sensitive:
+        missing_requirements.append("planner-sensitive")
+    if not has_reuse_pair:
+        missing_requirements.append("exact reuse-pair")
+    if not has_transfer_reuse_pair:
+        missing_requirements.append("transfer-style reuse")
+    if missing_requirements:
         raise ValueError(
-            "ToolSandbox smoke requires at least 8 validated samples covering explicit state_failure, interaction, recovery, planner-sensitive, exact reuse-pair, and transfer-style reuse slices."
+            "ToolSandbox smoke profile is missing required coverage: "
+            + ", ".join(missing_requirements)
         )
 
 
 def _select_smoke_samples(samples: List[Any], max_count: int = 10) -> List[Any]:
     by_id = {str(sample.sample_id): sample for sample in samples}
-    selected: List[Any] = []
-    missing: List[str] = []
-
-    for sample_id in SMOKE_SAMPLE_IDS:
-        sample = by_id.get(sample_id)
-        if sample is None:
-            missing.append(sample_id)
-        else:
-            selected.append(sample)
-
-    if missing:
-        raise ValueError(
-            "ToolSandbox smoke profile is missing required samples: "
-            + ", ".join(missing)
-        )
-
-    return selected[:max_count]
+    if all(sample_id in by_id for sample_id in SMOKE_SAMPLE_IDS):
+        return [by_id[sample_id] for sample_id in SMOKE_SAMPLE_IDS[:max_count]]
+    return samples[:max_count]
 
 
 def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload: Dict[str, Any]) -> Dict[str, Any]:

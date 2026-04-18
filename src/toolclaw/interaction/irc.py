@@ -529,6 +529,7 @@ class InteractionShell:
         )
         metrics = trace_payload.setdefault("metrics", {})
         metrics["success"] = success
+        trace_payload.setdefault("metadata", {})["stopped_reason"] = stop_reason
         self._write_trace(output_path, trace_payload)
 
     @staticmethod
@@ -660,16 +661,16 @@ class InteractionShell:
 
     def _decode_to_user_reply(self, request: InteractionRequest, raw: Any) -> UserReply:
         if isinstance(raw, UserReply):
-            raw_obj = RawUserReply(
+            reply = UserReply(
                 interaction_id=raw.interaction_id,
+                payload=dict(raw.payload or {}),
                 raw_text=str(raw.raw_text or ""),
-                raw_payload=dict(raw.payload or {}),
-                status=str(raw.status or "accept"),
                 accepted=bool(raw.accepted),
+                status=str(raw.status or "accept"),
                 metadata=dict(raw.metadata or {}),
             )
-            decoded = self.semantic_decoder.decode(request, raw_obj)
-            return compile_decoded_signal_to_user_reply(request, raw_obj, decoded)
+            reply.metadata.setdefault("patch_targets", dict(request.metadata.get("patch_targets", {})))
+            return reply
         if isinstance(raw, RawUserReply):
             decoded = self.semantic_decoder.decode(request, raw)
             return compile_decoded_signal_to_user_reply(request, raw, decoded)
@@ -700,4 +701,3 @@ class InteractionShell:
                 "reply_timeout_s": timeout_s,
             },
         )
-

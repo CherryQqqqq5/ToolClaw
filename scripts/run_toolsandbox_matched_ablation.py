@@ -14,7 +14,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 SRC_DIR = ROOT_DIR / "src"
 MATCHED_RUNNER = ROOT_DIR / "scripts" / "run_toolsandbox_bench.py"
 
-MATCHED_SYSTEMS = "tc_recovery_only,tc_no_interaction,tc_planner_strict,tc_no_reuse,tc_full"
+MATCHED_SYSTEMS = "tc_full,tc_no_repair,tc_no_fallback,tc_no_reuse,tc_planner_only"
 
 
 def parse_args() -> argparse.Namespace:

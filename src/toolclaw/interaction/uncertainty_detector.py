@@ -313,4 +313,6 @@ class UncertaintyDetector:
             return False
         if not failed_tool_id:
             return False
+        if error_category == "environment_failure":
+            return bool(backup_tool_id)
         return bool(backup_tool_id or alternative_tool_ids)

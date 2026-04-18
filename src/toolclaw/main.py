@@ -24,9 +24,11 @@ class ToolClawRuntime:
     repair_updater: RepairUpdater
     compiler: SWPCCompiler
     asset_registry: AssetRegistry
+    wire_executor_planner: bool = True
 
     def __post_init__(self) -> None:
-        self.executor.planner = self.planner
+        if self.wire_executor_planner:
+            self.executor.planner = self.planner
 
     def run_task(
         self,

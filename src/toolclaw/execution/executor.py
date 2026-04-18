@@ -191,6 +191,8 @@ class SequentialExecutor:
         if initial_state:
             tracker.state_values.update(initial_state)
         self._apply_resume_state_overrides(workflow, tracker.state_values, resumed=bool(initial_state))
+        if workflow.task.user_goal and "query" not in tracker.state_values:
+            tracker.state_values["query"] = workflow.task.user_goal
         trace = Trace(
             run_id=run_id,
             workflow_id=workflow.workflow_id,
@@ -999,12 +1001,6 @@ class SequentialExecutor:
                 tool_args["retrieved_info"] = state_values["retrieved_info"]
             if "query" in state_values and "query" not in tool_args:
                 tool_args["query"] = state_values["query"]
-            if "target_path" not in tool_args:
-                repair_defaults = step.metadata.get("repair_default_inputs", {})
-                if isinstance(repair_defaults, dict):
-                    default_target = repair_defaults.get("target_path")
-                    if default_target not in (None, ""):
-                        tool_args["target_path"] = default_target
         inferred_preflight = SequentialExecutor._preflight_state_policy_for_step(step)
         state_slot = str(inferred_preflight.get("state_slot") or "")
         if state_slot and state_slot in state_values and SequentialExecutor._tool_uses_outbound_cellular(step.tool_id):
@@ -1019,8 +1015,8 @@ class SequentialExecutor:
         trace: Trace,
         state_values: Dict[str, Any],
     ) -> bool:
-        simulated_policy = workflow.metadata.get("simulated_policy", {})
-        if not isinstance(simulated_policy, dict):
+        simulated_policy = workflow.metadata.get("simulated_policy")
+        if not isinstance(simulated_policy, dict) or not simulated_policy:
             return False
         mode = str(simulated_policy.get("mode", "cooperative")).strip().lower()
         if mode not in {"cooperative", "auto", "approve"}:
