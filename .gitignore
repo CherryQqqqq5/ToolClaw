@@ -6,11 +6,6 @@ __pycache__/
 # Local editor / env state
 .vscode/
 
-# Evaluation artifacts
-outputs/
-
-data/
-
 # Vendored ToolSandbox runtime artifacts
 data/external/ToolSandbox/data/
 data/external/ToolSandbox/.venv/
@@ -21,3 +16,88 @@ data/agent_*/
 secrets/
 
 .env
+
+# Evaluation artifacts
+# Default: ignore generated outputs and data, then selectively unignore
+# the final paper-facing datasets and summaries we want to keep reproducible.
+outputs/*
+data/*
+
+# Keep repo-curated benchmark datasets used in the paper
+!data/toolsandbox.formal.json
+!data/toolsandbox.formal.official.json
+!data/toolsandbox.formal.train.json
+!data/toolsandbox.formal.eval.json
+!data/tau2_bench.formal.json
+!data/tau2_bench.approval_only.json
+!data/tau2_bench.binding_plus_approval_only.json
+
+# Keep the paper-clean experiment subtree, but only selected summaries
+!outputs/paper_clean_v1/
+outputs/paper_clean_v1/*
+
+!outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/
+outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/*
+!outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/report.md
+!outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/scoreboard.json
+!outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/per_system_summary.json
+!outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/comparison.scored.csv
+!outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/prepared/
+outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/prepared/*
+!outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/prepared/toolsandbox.normalized.json
+
+!outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/
+outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/*
+!outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/report.md
+!outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/scoreboard.json
+!outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/per_system_summary.json
+!outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/comparison.scored.csv
+!outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/prepared/
+outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/prepared/*
+!outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/prepared/toolsandbox.normalized.json
+
+!outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/
+outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/*
+!outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/report.md
+!outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/scoreboard.json
+!outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/per_system_summary.json
+!outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/comparison.csv
+!outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/prepared/
+outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/prepared/*
+!outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/prepared/tau2_bench.normalized.json
+
+!outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter/
+outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter/*
+!outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter/scoreboard.json
+!outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter/per_system_summary.json
+!outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter/comparison.csv
+
+!outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/
+outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/*
+!outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/scoreboard.json
+!outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/per_system_summary.json
+!outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/comparison.csv
+
+# Keep mechanism-analysis outputs outside paper_clean_v1
+!outputs/remote/
+outputs/remote/*
+!outputs/remote/toolsandbox_matched_20260406_094138/
+outputs/remote/toolsandbox_matched_20260406_094138/*
+!outputs/remote/toolsandbox_matched_20260406_094138/report.md
+!outputs/remote/toolsandbox_matched_20260406_094138/experiment_manifest.json
+!outputs/remote/toolsandbox_matched_20260406_094138/scoreboard.json
+!outputs/remote/toolsandbox_matched_20260406_094138/per_system_summary.json
+
+!outputs/exp/
+outputs/exp/*
+!outputs/exp/toolsandbox_split_train/
+outputs/exp/toolsandbox_split_train/*
+!outputs/exp/toolsandbox_split_train/report.md
+!outputs/exp/toolsandbox_split_train/scoreboard.json
+!outputs/exp/toolsandbox_split_train/per_system_summary.json
+
+!outputs/exp/toolsandbox_split_eval/
+outputs/exp/toolsandbox_split_eval/*
+!outputs/exp/toolsandbox_split_eval/report.md
+!outputs/exp/toolsandbox_split_eval/scoreboard.json
+!outputs/exp/toolsandbox_split_eval/per_system_summary.json

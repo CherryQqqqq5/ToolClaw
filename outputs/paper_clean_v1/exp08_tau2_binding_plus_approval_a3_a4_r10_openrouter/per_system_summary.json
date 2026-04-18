@@ -1,0 +1,114 @@
+{
+  "a3_interaction": {
+    "num_samples": 1,
+    "num_runs": 10,
+    "mean_success_rate": 0.0,
+    "pass_at_k": 0.0,
+    "consistency": 1.0,
+    "per_sample": {
+      "tau2_binding_plus_approval_001": {
+        "scenario": "binding_failure",
+        "primary_failtax": "selection",
+        "num_runs": 10,
+        "success_rate": 0.0,
+        "pass_at_k": 0.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded"
+        ],
+        "interactive_correction": 2.0,
+        "interaction_efficiency": 1.0,
+        "repair_salvage": 1.0,
+        "repair_efficiency": 1.0,
+        "approval_following": 1.0,
+        "tool_efficiency": 0.9,
+        "safe_abort_rate": 0.0,
+        "policy_compliance_success_rate": 0.0,
+        "state_repair_success_rate": 0.0
+      }
+    },
+    "per_failtax": {
+      "selection": {
+        "num_rows": 1.0,
+        "success_rate": 0.0,
+        "pass_at_k": 0.0,
+        "consistency": 1.0
+      }
+    },
+    "interactive_correction": 2.0,
+    "interaction_efficiency": 1.0,
+    "repair_salvage": 1.0,
+    "repair_efficiency": 1.0,
+    "approval_following": 1.0,
+    "tool_efficiency": 0.9,
+    "safe_abort_rate": 0.0,
+    "policy_compliance_success_rate": 0.0,
+    "state_repair_success_rate": 0.0
+  },
+  "a4_reuse": {
+    "num_samples": 1,
+    "num_runs": 10,
+    "mean_success_rate": 0.0,
+    "pass_at_k": 0.0,
+    "consistency": 1.0,
+    "per_sample": {
+      "tau2_binding_plus_approval_001": {
+        "scenario": "binding_failure",
+        "primary_failtax": "selection",
+        "num_runs": 10,
+        "success_rate": 0.0,
+        "pass_at_k": 0.0,
+        "consistency": 1.0,
+        "distinct_outcomes": 1,
+        "stop_reasons": [
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded",
+          "max_user_turns_exceeded"
+        ],
+        "interactive_correction": 2.0,
+        "interaction_efficiency": 1.0,
+        "repair_salvage": 1.0,
+        "repair_efficiency": 1.0,
+        "approval_following": 1.0,
+        "tool_efficiency": 0.9,
+        "safe_abort_rate": 0.0,
+        "policy_compliance_success_rate": 0.0,
+        "state_repair_success_rate": 0.0
+      }
+    },
+    "per_failtax": {
+      "selection": {
+        "num_rows": 1.0,
+        "success_rate": 0.0,
+        "pass_at_k": 0.0,
+        "consistency": 1.0
+      }
+    },
+    "interactive_correction": 2.0,
+    "interaction_efficiency": 1.0,
+    "repair_salvage": 1.0,
+    "repair_efficiency": 1.0,
+    "approval_following": 1.0,
+    "tool_efficiency": 0.9,
+    "safe_abort_rate": 0.0,
+    "policy_compliance_success_rate": 0.0,
+    "state_repair_success_rate": 0.0
+  }
+}
