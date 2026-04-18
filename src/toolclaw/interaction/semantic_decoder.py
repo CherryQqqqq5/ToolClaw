@@ -29,6 +29,11 @@ class SemanticDecoder:
         q_text = str(request.question or "").lower()
         q_type = str(request.metadata.get("query_policy", {}).get("question_type") or request.expected_answer_type or "").lower()
         text = str(raw_reply.raw_text or "").strip()
+        if bool(request.metadata.get("interaction_probe")):
+            return DecodedInteractionSignal(
+                intent_type="interaction_probe",
+                metadata={"decode_strategy": "probe_passthrough", "decode_confidence": 1.0},
+            )
 
         if raw_reply.status in {"deny", "abstain", "malformed"}:
             return DecodedInteractionSignal(
@@ -58,6 +63,17 @@ class SemanticDecoder:
                 slot_updates=dict(payload.get("input_patch", {})),
                 metadata={"decode_strategy": "payload", "decode_confidence": 1.0},
             )
+        direct_slot_updates = self._direct_slot_updates_from_payload(
+            payload=payload,
+            patch_targets=patch_targets,
+            schema=request.allowed_response_schema,
+        )
+        if direct_slot_updates:
+            return DecodedInteractionSignal(
+                intent_type="slot_fill",
+                slot_updates=direct_slot_updates,
+                metadata={"decode_strategy": "payload", "decode_confidence": 1.0},
+            )
 
         is_permission = ("approval" in q_type) or ("permission" in q_type) or ("approve" in q_text)
         if is_permission:
@@ -75,6 +91,8 @@ class SemanticDecoder:
                 )
 
         candidate_slots = [str(k) for k in patch_targets.keys() if k and k not in {"approved", "tool_id"}]
+        if not candidate_slots:
+            candidate_slots = self._candidate_slots_from_schema(request.allowed_response_schema)
         if text and candidate_slots:
             slot = candidate_slots[0]
             return DecodedInteractionSignal(
@@ -92,6 +110,33 @@ class SemanticDecoder:
             intent_type="unknown",
             metadata={"decode_strategy": "fallback", "decode_confidence": 0.0},
         )
+
+    @staticmethod
+    def _candidate_slots_from_schema(schema: Dict[str, Any]) -> list[str]:
+        if not isinstance(schema, dict):
+            return []
+        properties = schema.get("properties")
+        if not isinstance(properties, dict):
+            return []
+        blocked = {"approved", "tool_id", "abort", "use_backup_tool", "clear_failure_flag", "input_patch"}
+        return [str(key) for key in properties.keys() if str(key) and str(key) not in blocked]
+
+    @classmethod
+    def _direct_slot_updates_from_payload(
+        cls,
+        *,
+        payload: Dict[str, Any],
+        patch_targets: Dict[str, Any],
+        schema: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        candidate_slots = [str(key) for key in patch_targets.keys() if str(key) and str(key) not in {"approved", "tool_id"}]
+        if not candidate_slots:
+            candidate_slots = cls._candidate_slots_from_schema(schema)
+        slot_updates: Dict[str, Any] = {}
+        for slot in candidate_slots:
+            if slot in payload and payload.get(slot) not in (None, ""):
+                slot_updates[slot] = payload.get(slot)
+        return slot_updates
 
 
 def compile_decoded_signal_to_user_reply(

@@ -144,3 +144,23 @@ def test_binding_failure_uses_missing_required_field_from_error_message() -> Non
     assert repair.repair_type == RepairType.REBIND_ARGS
     assert repair.actions[0].target == "step_01.inputs.state"
     assert repair.actions[0].value == "updated"
+
+
+def test_binding_failure_can_prefer_user_mediated_patch_for_user_facing_slot() -> None:
+    engine = RecoveryEngine(config=__import__("toolclaw.execution.recovery", fromlist=["RecoveryConfig"]).RecoveryConfig(
+        prefer_user_mediated_binding_repair=True
+    ))
+    error = make_error(ErrorCategory.BINDING_FAILURE, error_id="err_binding_user_patch_001")
+    error.evidence.tool_id = "write_tool"
+    error.evidence.raw_message = "missing required field: target_path"
+    error.evidence.inputs = {"retrieved_info": "summary"}
+    error.evidence.metadata["repair_default_inputs"] = {"target_path": "outputs/reports/recovered.txt"}
+    error.state_context.missing_assets = []
+
+    repair = engine.plan_repair(error)
+
+    assert repair.repair_type == RepairType.ASK_USER
+    assert repair.interaction.ask_user is True
+    assert repair.interaction.expected_answer_type == "target_path_patch"
+    assert repair.metadata["missing_assets"] == ["target_path"]
+    assert repair.metadata["suggested_values"] == {"target_path": "outputs/reports/recovered.txt"}

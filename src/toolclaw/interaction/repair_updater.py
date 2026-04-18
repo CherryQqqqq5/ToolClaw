@@ -96,6 +96,9 @@ class RepairUpdater:
                 "failed_tool_id": failed_tool_id,
                 "backup_tool_id": repair.metadata.get("backup_tool_id"),
                 "mapped_from_error_category": repair.metadata.get("mapped_from_error_category"),
+                "suggested_values": dict(repair.metadata.get("suggested_values", {}))
+                if isinstance(repair.metadata.get("suggested_values"), dict)
+                else {},
                 "branch_options": branch_options,
                 "missing_assets": missing_assets,
                 "stale_assets": stale_assets,
@@ -226,6 +229,10 @@ class RepairUpdater:
         input_patch = payload.get("input_patch")
         if isinstance(input_patch, dict):
             state_updates.update(input_patch)
+        passthrough_value_key = RepairUpdater._single_value_patch_target_key(schema_targets)
+        if "value" in payload and passthrough_value_key and "input_patch" not in payload:
+            payload = dict(payload)
+            payload.setdefault(passthrough_value_key, payload.pop("value"))
         for key, value in payload.items():
             if key in {"tool_id", "approved", "abort", "use_backup_tool", "clear_failure_flag", "input_patch"}:
                 continue
@@ -249,6 +256,21 @@ class RepairUpdater:
                 continue
             state_updates[key] = value
         return state_updates
+
+    @staticmethod
+    def _single_value_patch_target_key(schema_targets: Dict[str, Any]) -> Optional[str]:
+        candidates = [
+            str(key)
+            for key, target in schema_targets.items()
+            if str(key)
+            and str(key) not in {"tool_id", "approved", "abort", "use_backup_tool", "clear_failure_flag"}
+            and isinstance(target, str)
+            and target not in {"binding.primary_tool", "policy.approved", "interaction_probe", "state.force_environment_failure"}
+        ]
+        deduped = list(dict.fromkeys(candidates))
+        if len(deduped) == 1:
+            return deduped[0]
+        return None
 
     @staticmethod
     def _approval_from_payload(payload: Dict[str, Any], *, patch_targets: Dict[str, Any] | None = None) -> Optional[bool]:

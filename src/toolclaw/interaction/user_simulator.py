@@ -53,6 +53,11 @@ class UserSimulator(ReplyProvider):
         payload.update(self.policy.missing_arg_values)
         payload.update(self.policy.constraint_overrides)
         payload.update(self.policy.tool_switch_hints)
+        suggested_values = request.metadata.get("suggested_values", {})
+        if isinstance(suggested_values, dict):
+            for key, value in suggested_values.items():
+                if key not in payload and value not in (None, ""):
+                    payload[str(key)] = value
         expected_answer_type = str(request.expected_answer_type or "").strip().lower()
         schema_tool_id = self._schema_tool_id(request.allowed_response_schema)
         patch_targets = request.metadata.get("patch_targets", {})

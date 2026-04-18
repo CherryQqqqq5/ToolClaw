@@ -238,6 +238,53 @@ def test_build_workflow_from_task_restores_toolsandbox_goal_from_messages() -> N
     assert "query" not in workflow.execution_plan[0].inputs
 
 
+def test_build_workflow_from_task_preserves_query_when_toolsandbox_messages_are_supplemental() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_goal_fusion", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "toolsandbox_goal_fusion_001",
+            "scenario": "binding_failure",
+            "query": "retrieve and write report",
+            "tool_allow_list": ["search_tool", "write_tool"],
+            "candidate_tools": [
+                {"tool_id": "search_tool", "description": "Search information"},
+                {"tool_id": "write_tool", "description": "Write report"},
+            ],
+            "messages": [
+                {
+                    "sender": "user",
+                    "recipient": "agent",
+                    "content": "Handle approval and incomplete arguments without stopping early.",
+                }
+            ],
+            "constraints": {"requires_user_approval": True, "risk_level": "high"},
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["multiple_user_turn", "canonicalization"],
+            },
+            "milestones": [
+                "retrieve data",
+                "request approval",
+                "repair missing argument",
+                "write artifact",
+            ],
+            "ideal_tool_calls": 2,
+            "ideal_turn_count": 3,
+        },
+        mode="planner",
+    )
+
+    assert "retrieve and write report" in workflow.task.user_goal
+    assert len(workflow.execution_plan) == 2
+    assert [step.capability_id for step in workflow.execution_plan] == ["cap_retrieve", "cap_write"]
+
+
 def test_build_workflow_from_task_rejects_empty_toolsandbox_tool_space() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_empty", module_path)
@@ -301,6 +348,52 @@ def test_build_planning_request_preserves_toolsandbox_metadata() -> None:
     assert request.hints.user_style["primary_failtax"] == "state"
     assert request.hints.user_style["dependency_edges"] == [{"source": "step_01", "target": "step_02", "type": "state"}]
     assert request.hints.user_style["tool_execution_backend"] == "semantic_mock"
+
+
+def test_build_workflow_from_task_applies_tau2_approval_to_failure_step_only() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_tau2_approval", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "tau2_approval_local_001",
+            "scenario": "approval_required",
+            "query": "retrieve and write report",
+            "constraints": {"requires_user_approval": True, "max_user_turns": 1},
+            "metadata": {
+                "benchmark": "tau2_bench",
+                "approval_scope": "failure_step",
+                "approval_target_step": "step_02",
+            },
+        },
+        mode="planner",
+    )
+
+    assert workflow.task.constraints.requires_user_approval is False
+    assert workflow.execution_plan[0].requires_user_confirmation is False
+    assert workflow.execution_plan[1].requires_user_confirmation is True
+    assert workflow.get_node("step_01").approval_gate.required is False
+    assert workflow.get_node("step_02").approval_gate.required is True
+
+
+def test_build_planning_request_preserves_step_local_approval_override() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_tau2_request", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = Workflow.demo()
+    workflow.execution_plan[1].requires_user_confirmation = True
+
+    request = module.build_planning_request(workflow, allow_reuse=False)
+
+    assert request.workflow_overrides["steps"]["step_02"]["requires_user_confirmation"] is True
 
 
 def test_execute_system_planner_executor_skips_second_planner(monkeypatch, tmp_path: Path) -> None:
@@ -517,7 +610,7 @@ def test_run_baseline_stops_on_approval_required_policy_gate(tmp_path: Path) -> 
     assert stop_reason == "awaiting_user_interaction"
 
 
-def test_run_eval_script_separates_recovery_only_and_planner_only_ablation(tmp_path: Path) -> None:
+def test_run_eval_script_separates_recovery_only_and_planner_plus_recovery(tmp_path: Path) -> None:
     taskset = [
         {
             "task_id": "task_binding_planner_001",
@@ -558,8 +651,80 @@ def test_run_eval_script_separates_recovery_only_and_planner_only_ablation(tmp_p
     rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
     toolclaw_rows = {(row["task_id"], row["system"]): row for row in rows}
     assert int(toolclaw_rows[("task_binding_planner_001", "a1_recovery")]["repair_actions"]) >= 1
-    assert toolclaw_rows[("task_binding_planner_001", "a2_planner")]["stop_reason"] == "repair_disabled"
-    assert int(toolclaw_rows[("task_env_planner_001", "a2_planner")]["repair_actions"]) == 0
+    assert int(toolclaw_rows[("task_binding_planner_001", "a2_planner")]["repair_actions"]) >= 1
+    assert toolclaw_rows[("task_binding_planner_001", "a2_planner")]["stop_reason"] == "success_criteria_satisfied"
+    assert int(toolclaw_rows[("task_env_planner_001", "a2_planner")]["repair_actions"]) >= 1
+
+
+def test_a2_planner_inherits_recovery_capabilities_from_a1() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_system_specs", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    a1 = module.SYSTEM_SPECS["a1_recovery"]
+    a2 = module.SYSTEM_SPECS["a2_planner"]
+
+    assert a1.allow_repair is True
+    assert a1.allow_fallback is True
+    assert a2.workflow_mode == "planner"
+    assert a2.execution_mode == "executor"
+    assert a2.allow_repair is True
+    assert a2.allow_fallback is True
+
+
+def test_run_eval_script_uses_real_repair_interaction_for_binding_failure(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "task_id": "task_binding_interaction_001",
+            "scenario": "binding_failure",
+            "query": "retrieve and write report",
+        }
+    ]
+    taskset_path = tmp_path / "taskset_binding_interaction.json"
+    taskset_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    outdir = tmp_path / "eval_out_binding_interaction"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_eval.py",
+            "--taskset",
+            str(taskset_path),
+            "--outdir",
+            str(outdir),
+            "--systems",
+            "a1_recovery,a3_interaction",
+        ],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
+    by_system = {row["system"]: row for row in rows}
+    a1_trace = json.loads(Path(by_system["a1_recovery"]["trace_path"]).read_text(encoding="utf-8"))
+    a3_trace = json.loads(Path(by_system["a3_interaction"]["trace_path"]).read_text(encoding="utf-8"))
+    a1_repair_queries = [
+        event
+        for event in a1_trace.get("events", [])
+        if event.get("event_type") == "user_query"
+        and str((event.get("metadata", {}) or {}).get("interaction_kind") or "") == "repair"
+    ]
+    a3_repair_queries = [
+        event
+        for event in a3_trace.get("events", [])
+        if event.get("event_type") == "user_query"
+        and str((event.get("metadata", {}) or {}).get("interaction_kind") or "") == "repair"
+    ]
+    assert len(a1_repair_queries) == 0
+    assert len(a3_repair_queries) >= 1
+    assert by_system["a3_interaction"]["success"] == "True"
 
 
 def test_build_shell_supports_configured_llm_backend_without_placeholder_error() -> None:

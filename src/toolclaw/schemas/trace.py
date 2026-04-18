@@ -25,6 +25,8 @@ class EventType(str, Enum):
     TOOL_RESULT = "tool_result"
     USER_QUERY = "user_query"
     USER_REPLY = "user_reply"
+    PATCH_COMPILED = "patch_compiled"
+    RESUME_REQUESTED = "resume_requested"
     APPROVAL_REQUEST = "approval_request"
     APPROVAL_RESPONSE = "approval_response"
     REPAIR_TRIGGERED = "repair_triggered"
@@ -120,6 +122,10 @@ class TraceMetrics:
     total_steps: int = 0
     tool_calls: int = 0
     user_queries: int = 0
+    probe_user_queries: int = 0
+    repair_user_queries: int = 0
+    probe_user_replies: int = 0
+    repair_user_replies: int = 0
     repair_actions: int = 0
     success: Optional[bool] = None
     token_cost: Optional[float] = None

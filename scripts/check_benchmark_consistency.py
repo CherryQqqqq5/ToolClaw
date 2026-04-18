@@ -113,10 +113,24 @@ def _check_rows(
     rows_by_system: Dict[str, List[Dict[str, str]]] = defaultdict(list)
     for row in rows:
         rows_by_system[row["system"]].append(row)
+    benchmark_success_by_system: Dict[str, List[float]] = defaultdict(list)
+    raw_runs = scoreboard.get("runs", [])
+    if isinstance(raw_runs, list):
+        for run in raw_runs:
+            if not isinstance(run, dict):
+                continue
+            system = str(run.get("system") or "").strip()
+            score_payload = run.get("score", {})
+            if not system or not isinstance(score_payload, dict) or "success" not in score_payload:
+                continue
+            benchmark_success_by_system[system].append(1.0 if _bool_from_value(score_payload.get("success")) else 0.0)
     for system in systems:
         system_rows = rows_by_system.get(system, [])
-        success_count = sum(1 for row in system_rows if _bool_from_value(row.get("success", "False")))
-        success_rate = success_count / len(system_rows) if system_rows else 0.0
+        if benchmark_success_by_system.get(system):
+            success_rate = sum(benchmark_success_by_system[system]) / len(benchmark_success_by_system[system])
+        else:
+            success_count = sum(1 for row in system_rows if _bool_from_value(row.get("success", "False")))
+            success_rate = success_count / len(system_rows) if system_rows else 0.0
         summary_rate = float(per_system.get(system, {}).get("mean_success_rate", -1.0))
         if abs(success_rate - summary_rate) > 1e-9:
             errors.append(

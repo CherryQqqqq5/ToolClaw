@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import time
 
@@ -149,6 +150,29 @@ def test_query_policy_uses_one_shot_target_path_patch_schema() -> None:
     assert plan.patch_targets == {"target_path": "step.inputs.target_path"}
 
 
+def test_user_simulator_prefers_suggested_values_for_binding_repairs() -> None:
+    request = InteractionRequest(
+        interaction_id="int_binding_001",
+        question="Provide `target_path` so the blocked write step can continue.",
+        expected_answer_type="target_path_patch",
+        allowed_response_schema={
+            "type": "object",
+            "properties": {"target_path": {"type": "string"}},
+            "required": ["target_path"],
+            "additionalProperties": False,
+        },
+        metadata={
+            "patch_targets": {"target_path": "step.inputs.target_path"},
+            "suggested_values": {"target_path": "outputs/reports/recovered.txt"},
+        },
+    )
+
+    reply = UserSimulator(SimulatedPolicy()).reply(request)
+
+    assert reply.accepted is True
+    assert reply.payload["target_path"] == "outputs/reports/recovered.txt"
+
+
 def test_repair_updater_does_not_default_branch_choice_patch_without_branch_options() -> None:
     workflow = Workflow.demo()
     repair = __import__("toolclaw.schemas.repair", fromlist=["Repair"]).Repair.demo()
@@ -265,6 +289,166 @@ def test_user_simulator_prefers_tool_id_for_tool_switch_schema() -> None:
     assert "clear_failure_flag" not in reply.payload
 
 
+def test_interaction_shell_preserves_structured_reply_payload_and_decoded_metadata() -> None:
+    registry = InMemoryAssetRegistry()
+    runtime = ToolClawRuntime(
+        planner=build_default_planner(asset_registry=registry),
+        executor=SequentialExecutor(),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=registry,
+    )
+    shell = InteractionShell(runtime=runtime)
+    request = InteractionRequest(
+        interaction_id="int_tool_switch_002",
+        question="Provide replacement tool_id",
+        expected_answer_type="tool_switch",
+        allowed_response_schema={
+            "type": "object",
+            "properties": {"tool_id": {"type": "string", "enum": ["backup_write_tool"]}},
+            "required": ["tool_id"],
+            "additionalProperties": False,
+        },
+        metadata={"patch_targets": {"tool_id": "binding.primary_tool"}},
+    )
+
+    raw_reply = UserSimulator(SimulatedPolicy()).reply(request)
+    decoded_reply = shell._decode_to_user_reply(request, raw_reply)
+
+    assert decoded_reply.payload == {"tool_id": "backup_write_tool"}
+    assert decoded_reply.metadata["decoded_intent_type"] == "action_confirm"
+    assert decoded_reply.metadata["decoded_slot_updates"] == {"tool_id": "backup_write_tool"}
+
+
+def test_interaction_shell_prefers_structured_slot_payload_over_raw_text_for_trace_metadata() -> None:
+    registry = InMemoryAssetRegistry()
+    runtime = ToolClawRuntime(
+        planner=build_default_planner(asset_registry=registry),
+        executor=SequentialExecutor(),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=registry,
+    )
+    shell = InteractionShell(runtime=runtime)
+    request = InteractionRequest(
+        interaction_id="int_target_path_001",
+        question="Provide target_path",
+        expected_answer_type="target_path_patch",
+        allowed_response_schema={
+            "type": "object",
+            "properties": {"target_path": {"type": "string"}},
+            "required": ["target_path"],
+            "additionalProperties": False,
+        },
+        metadata={"patch_targets": {"target_path": "step.inputs.target_path"}},
+    )
+
+    raw_reply = UserSimulator(SimulatedPolicy(missing_arg_values={"target_path": "outputs/reports/recovered.txt"})).reply(request)
+    decoded_reply = shell._decode_to_user_reply(request, raw_reply)
+
+    assert decoded_reply.payload == {"target_path": "outputs/reports/recovered.txt"}
+    assert decoded_reply.metadata["decoded_intent_type"] == "slot_fill"
+    assert decoded_reply.metadata["decoded_slot_updates"] == {"target_path": "outputs/reports/recovered.txt"}
+
+
+def test_interaction_trace_records_compiled_patch_and_resume_request(tmp_path: Path) -> None:
+    registry = InMemoryAssetRegistry()
+    runtime = ToolClawRuntime(
+        planner=build_default_planner(asset_registry=registry),
+        executor=SequentialExecutor(),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=registry,
+    )
+    shell = InteractionShell(
+        runtime=runtime,
+        config=InteractionLoopConfig(
+            max_turns=2,
+            simulator_policy=SimulatedPolicy(missing_arg_values={"target_path": "outputs/reports/recovered.txt"}),
+        ),
+    )
+
+    demo = Workflow.demo()
+    overrides = {
+        "steps": {
+            "step_01": {"inputs": dict(demo.execution_plan[0].inputs), "tool_id": demo.execution_plan[0].tool_id},
+            "step_02": {
+                "inputs": {**demo.execution_plan[1].inputs, "force_environment_failure": True},
+                "tool_id": demo.execution_plan[1].tool_id,
+            },
+        }
+    }
+    request = PlanningRequest(
+        task=demo.task,
+        context=demo.context,
+        policy=demo.policy,
+        workflow_overrides=overrides,
+    )
+    trace_path = tmp_path / "compiled_patch_trace.json"
+
+    outcome = shell.run(
+        request=request,
+        run_id="a3_compiled_patch_trace_001",
+        output_path=str(trace_path),
+        compile_on_success=False,
+    )
+
+    assert outcome.success is True
+    payload = json.loads(trace_path.read_text(encoding="utf-8"))
+    patch_event = next(event for event in payload["events"] if event["event_type"] == "patch_compiled")
+    resume_event = next(event for event in payload["events"] if event["event_type"] == "resume_requested")
+    final_write_call = next(
+        event
+        for event in reversed(payload["events"])
+        if event["event_type"] == "tool_call" and event.get("tool_id") == "write_tool"
+    )
+
+    assert patch_event["metadata"]["interaction_kind"] == "repair"
+    assert patch_event["metadata"]["decoded_slot_updates"] == {"fallback_execution_path": "auto-reply"}
+    assert patch_event["output"]["state_updates"]["target_path"] == "outputs/reports/recovered.txt"
+    assert resume_event["metadata"]["interaction_kind"] == "repair"
+    assert resume_event["output"]["resume_step_id"] == "step_02"
+    assert final_write_call["tool_args"]["target_path"] == patch_event["output"]["state_updates"]["target_path"]
+
+
+def test_interaction_probe_does_not_emit_placeholder_patch_target(tmp_path: Path) -> None:
+    registry = InMemoryAssetRegistry()
+    runtime = ToolClawRuntime(
+        planner=build_default_planner(asset_registry=registry),
+        executor=SequentialExecutor(),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=registry,
+    )
+    shell = InteractionShell(runtime=runtime, config=InteractionLoopConfig(max_turns=1, simulator_policy=SimulatedPolicy()))
+
+    demo = Workflow.demo()
+    request = PlanningRequest(task=demo.task, context=demo.context, policy=demo.policy)
+    request.hints.user_style["task_family"] = "t3_must_interact"
+    trace_path = tmp_path / "interaction_probe_trace.json"
+
+    outcome = shell.run(
+        request=request,
+        run_id="a3_probe_no_placeholder_001",
+        output_path=str(trace_path),
+        compile_on_success=False,
+    )
+
+    assert outcome.success is True
+    payload = __import__("json").loads(trace_path.read_text(encoding="utf-8"))
+    query_event = next(event for event in payload["events"] if event["event_type"] == "user_query")
+    reply_event = next(event for event in payload["events"] if event["event_type"] == "user_reply")
+    assert query_event["metadata"]["patch_targets"] == {}
+    assert query_event["metadata"]["interaction_kind"] == "probe"
+    assert reply_event["metadata"]["interaction_kind"] == "probe"
+    assert reply_event["metadata"]["reply_metadata"]["decoded_intent_type"] == "interaction_probe"
+    assert reply_event["metadata"]["reply_metadata"]["decoded_slot_updates"] == {}
+    assert payload["metrics"]["probe_user_queries"] == 1
+    assert payload["metrics"]["repair_user_queries"] == 0
+    assert payload["metrics"]["probe_user_replies"] == 1
+    assert payload["metrics"]["repair_user_replies"] == 0
+
+
 def test_interaction_shell_reply_timeout_abstains_instead_of_hanging(tmp_path: Path) -> None:
     registry = InMemoryAssetRegistry()
     runtime = ToolClawRuntime(
@@ -308,3 +492,108 @@ def test_interaction_shell_reply_timeout_abstains_instead_of_hanging(tmp_path: P
 
     assert outcome.success is False
     assert outcome.metadata.get("stopped_reason") in {"policy_compliant_stop", "repeat_failure_abort", "interaction_turn_limit"}
+
+
+def test_interaction_shell_skips_probe_for_single_turn_approval_tasks(tmp_path: Path) -> None:
+    registry = InMemoryAssetRegistry()
+    runtime = ToolClawRuntime(
+        planner=build_default_planner(asset_registry=registry),
+        executor=SequentialExecutor(),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=registry,
+    )
+    shell = InteractionShell(
+        runtime=runtime,
+        config=InteractionLoopConfig(
+            max_turns=2,
+            simulator_policy=SimulatedPolicy(),
+        ),
+    )
+
+    demo = Workflow.demo()
+    demo.task.constraints.max_user_turns = 1
+    overrides = {
+        "steps": {
+            "step_02": {
+                "inputs": dict(demo.execution_plan[1].inputs),
+                "tool_id": demo.execution_plan[1].tool_id,
+                "requires_user_confirmation": True,
+            }
+        }
+    }
+    trace_path = tmp_path / "single_turn_approval_trace.json"
+
+    outcome = shell.run(
+        request=PlanningRequest(
+            task=demo.task,
+            context=demo.context,
+            policy=demo.policy,
+            workflow_overrides=overrides,
+        ),
+        run_id="a3_single_turn_approval_001",
+        output_path=str(trace_path),
+    )
+
+    assert outcome.success is True
+    payload = json.loads(trace_path.read_text(encoding="utf-8"))
+    event_types = [event["event_type"] for event in payload["events"]]
+    assert "approval_request" in event_types
+    assert "approval_response" in event_types
+    assert "interaction_probe" not in event_types
+    assert "user_query" not in event_types
+
+
+def test_interaction_shell_compiles_approval_and_target_path_patch_in_one_turn(tmp_path: Path) -> None:
+    registry = InMemoryAssetRegistry()
+    runtime = ToolClawRuntime(
+        planner=build_default_planner(asset_registry=registry),
+        executor=SequentialExecutor(),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=registry,
+    )
+    shell = InteractionShell(
+        runtime=runtime,
+        config=InteractionLoopConfig(
+            max_turns=2,
+            simulator_policy=SimulatedPolicy(missing_arg_values={"target_path": "outputs/reports/approved_once.txt"}),
+        ),
+    )
+
+    demo = Workflow.demo()
+    demo.task.constraints.max_user_turns = 1
+    overrides = {
+        "steps": {
+            "step_02": {
+                "inputs": {
+                    key: value
+                    for key, value in demo.execution_plan[1].inputs.items()
+                    if key != "target_path"
+                },
+                "tool_id": demo.execution_plan[1].tool_id,
+                "requires_user_confirmation": True,
+            },
+        }
+    }
+    trace_path = tmp_path / "binding_plus_approval_trace.json"
+
+    outcome = shell.run(
+        request=PlanningRequest(task=demo.task, context=demo.context, policy=demo.policy, workflow_overrides=overrides),
+        run_id="a3_binding_plus_approval_001",
+        output_path=str(trace_path),
+        compile_on_success=False,
+    )
+
+    assert outcome.success is True
+    payload = json.loads(trace_path.read_text(encoding="utf-8"))
+    patch_event = next(event for event in payload["events"] if event["event_type"] == "patch_compiled")
+    write_call = next(
+        event
+        for event in reversed(payload["events"])
+        if event["event_type"] == "tool_call" and event.get("tool_id") == "write_tool"
+    )
+
+    assert patch_event["output"]["policy_updates"] == {"approved": True}
+    assert patch_event["output"]["state_updates"]["target_path"] == "outputs/reports/approved_once.txt"
+    assert write_call["tool_args"]["target_path"] == "outputs/reports/approved_once.txt"

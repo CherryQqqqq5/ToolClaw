@@ -694,6 +694,16 @@ class SequentialExecutor:
                     state_key = target.split("state.", 1)[1]
                     if state_key:
                         extra_state_patch[state_key] = action.value
+                        # Some state repairs, such as wrong write targets, need to
+                        # override the concrete tool input on the immediate retry.
+                        # Otherwise the stale step input wins over the patched state
+                        # and the executor loops on the same failure signature.
+                        if (
+                            state_key in patched_inputs
+                            or state_key in {str(item) for item in step.metadata.get("required_state_slots", []) if str(item)}
+                            or (step.capability_id == "cap_write" and state_key == "target_path")
+                        ):
+                            patched_inputs[state_key] = action.value
             elif action_type == "switch_tool":
                 if isinstance(action.value, str):
                     selected_tool = action.value

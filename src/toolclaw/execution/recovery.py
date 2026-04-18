@@ -40,6 +40,7 @@ class RecoveryConfig:
     ask_user_on_environment_failure_without_backup: bool = True
     default_binding_patch_source: str = "state://auto_bound_value"
     enable_tool_fallback: bool = True
+    prefer_user_mediated_binding_repair: bool = False
 
 
 class RecoveryEngine:
@@ -115,6 +116,62 @@ class RecoveryEngine:
                     missing_target = candidate
                     break
 
+        candidate_value = None
+        if missing_target:
+            candidate_value = repair_default_inputs.get(missing_target, simulated_missing_arg_values.get(missing_target))
+
+        if (
+            self.config.prefer_user_mediated_binding_repair
+            and missing_target
+            and repaired_inputs == error.evidence.inputs
+            and self._binding_slot_prefers_user_input(missing_target)
+        ):
+            suggested_values = {missing_target: candidate_value} if candidate_value not in (None, "") else {}
+            return Repair(
+                repair_id=f"rep_{error.error_id}",
+                run_id=error.run_id,
+                workflow_id=error.workflow_id,
+                triggered_error_ids=[error.error_id],
+                repair_type=RepairType.ASK_USER,
+                decision=RepairDecision(
+                    strategy=RepairStrategy.USER_IN_THE_LOOP,
+                    rationale="Binding failure is missing a user-facing argument, so execution asks for an explicit patch before retry.",
+                    confidence=0.82,
+                ),
+                actions=[
+                    RepairAction(
+                        action_id=f"act_ask_{error.error_id}",
+                        action_type=RepairActionType.ASK_USER,
+                        target=step_id,
+                        metadata={"missing_target": missing_target},
+                    )
+                ],
+                interaction=RepairInteraction(
+                    ask_user=True,
+                    question=f"Provide `{missing_target}` so step {step_id} can continue.",
+                    expected_answer_type="target_path_patch" if missing_target == "target_path" else "missing_asset_patch",
+                    user_response=None,
+                ),
+                workflow_patch=WorkflowPatch(modified_steps=[step_id] if error.step_id else []),
+                post_conditions=RepairPostConditions(
+                    expected_effects=[
+                        f"{missing_target} is explicitly confirmed or supplied",
+                        "the failed step can be retried with a user-mediated patch",
+                    ],
+                    stop_if=[
+                        "same binding_failure repeats twice",
+                        "patched value is still rejected by tool constraints",
+                    ],
+                ),
+                result=RepairResult(status=RepairStatus.PENDING, success=None),
+                metadata={
+                    "mapped_from_error_category": error.category.value,
+                    "missing_assets": [missing_target],
+                    "suggested_values": suggested_values,
+                    "phase": "phase1_training_free",
+                },
+            )
+
         target_expr = f"{step_id}.inputs.{missing_target}" if missing_target else f"{step_id}.inputs"
         patch_value: object = missing_target or "auto_filled_value"
         rationale = "Binding failure is treated as an argument-mapping error and patched by rebinding inputs."
@@ -123,7 +180,6 @@ class RecoveryEngine:
             "the failed step can be re-executed",
         ]
         if missing_target:
-            candidate_value = repair_default_inputs.get(missing_target, simulated_missing_arg_values.get(missing_target))
             if candidate_value not in (None, ""):
                 patch_value = candidate_value
                 rationale = "Binding failure exposes a missing argument, so the repair restores the known default input before retry."
@@ -231,6 +287,12 @@ class RecoveryEngine:
         if lowered in {"state", "status", "mode", "value"}:
             return "updated"
         return "auto_filled_value"
+
+    @staticmethod
+    def _binding_slot_prefers_user_input(slot: str) -> bool:
+        lowered = str(slot).strip().lower()
+        auto_patchable = {"enabled", "is_enabled", "state", "status", "mode", "value"}
+        return bool(lowered) and lowered not in auto_patchable
 
     def _repair_environment_failure(
         self,

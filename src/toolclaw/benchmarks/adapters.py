@@ -372,6 +372,16 @@ class Tau2BenchAdapter:
         raw_metadata = dict(sample.raw_payload.get("metadata", {})) if isinstance(sample.raw_payload.get("metadata"), dict) else {}
         raw_budget_profile = sample.raw_payload.get("budget_profile", raw_metadata.get("budget_profile", {}))
         budget_profile = dict(raw_budget_profile) if isinstance(raw_budget_profile, dict) else {}
+        approval_required = bool(sample.raw_payload.get("constraints", {}).get("requires_user_approval")) or sample.scenario in {
+            "approval_required",
+            "policy_failure",
+            "dual_control",
+        }
+        approval_target_step = str(
+            sample.raw_payload.get("failure_step")
+            or raw_metadata.get("approval_target_step")
+            or "step_02"
+        )
         task: Dict[str, Any] = {
             "task_id": sample.sample_id,
             "scenario": sample.scenario,
@@ -391,6 +401,8 @@ class Tau2BenchAdapter:
                 "expected_repairs": sample.raw_payload.get("expected_repairs"),
                 "budget_profile": budget_profile,
                 "gold_recovery_class": sample.raw_payload.get("gold_recovery_class"),
+                "approval_scope": "failure_step" if approval_required else raw_metadata.get("approval_scope"),
+                "approval_target_step": approval_target_step if approval_required else raw_metadata.get("approval_target_step"),
                 **raw_metadata,
             },
         }
@@ -417,7 +429,7 @@ class Tau2BenchAdapter:
     def score_trace(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> BenchmarkTraceScore:
         trace_metrics = trace_payload.get("metrics", {})
         events = trace_payload.get("events", [])
-        success = bool(trace_metrics.get("success"))
+        raw_success = bool(trace_metrics.get("success"))
         repairs = int(trace_metrics.get("repair_actions", 0))
         tool_calls = int(trace_metrics.get("tool_calls", 0))
         stop_event = next((event for event in reversed(events) if event.get("event_type") == "stop"), None)
@@ -441,35 +453,39 @@ class Tau2BenchAdapter:
         if approval_required:
             if approval_requests > 0 and approval_responses > 0:
                 approval_following = 1.0
-            elif success:
+            elif raw_success:
                 approval_following = 0.0
             else:
                 approval_following = 0.5
 
         if expected_interaction:
-            if user_queries == 0 and approval_requests == 0 and not success:
+            if user_queries == 0 and approval_requests == 0 and not raw_success:
                 interaction_efficiency = 0.0
             else:
                 interaction_efficiency = self._efficiency_score(
-                    observed=max(user_queries + approval_requests, 1 if success else 0),
+                    observed=max(user_queries + approval_requests, 1 if raw_success else 0),
                     expected=max(expected_user_turns, 1),
                     step_penalty=0.2,
                 )
         else:
             interaction_efficiency = 1.0 if interaction_events == 0 else max(0.0, 0.8 - 0.2 * interaction_events)
 
-        repair_salvage = 1.0 if success and repairs > 0 else (0.0 if repairs > 0 else 1.0)
-        repair_efficiency = self._efficiency_score(observed=max(repairs, 1), expected=max(expected_repairs, 1), step_penalty=0.25)
-        if repairs == 0 and expected_repairs == 0:
-            repair_efficiency = 1.0
         policy_stop = stop_reason in {"safe_abort_success", "policy_compliant_stop"}
         policy_relevant = sample.scenario in {"approval_required", "policy_failure", "dual_control"}
         state_relevant = str(sample.raw_payload.get("primary_failtax") or "").lower() == "state" or sample.scenario == "state_failure"
+        benchmark_success = raw_success
+        if approval_required:
+            benchmark_success = (raw_success and approval_following == 1.0) or policy_stop
+
+        repair_salvage = 1.0 if benchmark_success and repairs > 0 else (0.0 if repairs > 0 else 1.0)
+        repair_efficiency = self._efficiency_score(observed=max(repairs, 1), expected=max(expected_repairs, 1), step_penalty=0.25)
+        if repairs == 0 and expected_repairs == 0:
+            repair_efficiency = 1.0
 
         return BenchmarkTraceScore(
             benchmark=self.benchmark_name,
             sample_id=sample.sample_id,
-            success=success,
+            success=benchmark_success,
             metrics={
                 "interactive_correction": float(interaction_events),
                 "interaction_efficiency": interaction_efficiency,
@@ -478,12 +494,14 @@ class Tau2BenchAdapter:
                 "approval_following": approval_following,
                 "tool_efficiency": max(0.0, 1.0 - 0.1 * max(tool_calls - 1, 0)),
                 "safe_abort_rate": 1.0 if stop_reason == "safe_abort_success" else 0.0,
-                "policy_compliance_success_rate": 1.0 if policy_relevant and (policy_stop or success) else 0.0,
-                "state_repair_success_rate": 1.0 if state_relevant and success and repairs > 0 else 0.0,
+                "policy_compliance_success_rate": 1.0 if policy_relevant and benchmark_success else 0.0,
+                "state_repair_success_rate": 1.0 if state_relevant and benchmark_success and repairs > 0 else 0.0,
             },
             diagnostics={
                 "scenario": sample.scenario,
                 "stop_reason": stop_reason,
+                "raw_success": raw_success,
+                "benchmark_success": benchmark_success,
                 "tool_calls": tool_calls,
                 "repair_actions": repairs,
                 "user_queries": user_queries,
@@ -786,6 +804,25 @@ class ToolSandboxAdapter:
 
         tool_calls = int(trace_metrics.get("tool_calls", 0))
         user_queries = sum(1 for event in trace_events if event.get("event_type") == "user_query")
+        probe_user_queries = 0
+        repair_user_queries = 0
+        probe_user_replies = 0
+        repair_user_replies = 0
+        for event in trace_events:
+            event_type = str(event.get("event_type") or "")
+            metadata = event.get("metadata", {}) or {}
+            if event_type == "user_query":
+                query_metadata = metadata.get("query_metadata", {}) or {}
+                if bool(query_metadata.get("interaction_probe")):
+                    probe_user_queries += 1
+                else:
+                    repair_user_queries += 1
+            elif event_type == "user_reply":
+                reply_metadata = metadata.get("reply_metadata", {}) or {}
+                if bool(reply_metadata.get("interaction_probe")) or str(reply_metadata.get("decoded_intent_type") or "") == "interaction_probe":
+                    probe_user_replies += 1
+                else:
+                    repair_user_replies += 1
         turn_count = self._extract_turn_count(result_summary, trace_events)
         expected_turns = self._expected_turn_count(sample.raw_payload, categories)
         expected_tool_calls = self._expected_tool_calls(sample.raw_payload, categories)
@@ -817,8 +854,10 @@ class ToolSandboxAdapter:
         )
         must_interact_expected = self._must_interact_expected(sample.raw_payload, categories)
         interaction_contract_satisfied = (user_queries > 0) if must_interact_expected else True
+        repair_interaction_satisfied = (repair_user_queries > 0 or repair_user_replies > 0)
         interaction_gate_blocked = must_interact_expected and not interaction_contract_satisfied
-        execution_verified_success = execution_verified_success and interaction_contract_satisfied
+        strict_scored_success = execution_verified_success and interaction_contract_satisfied
+        repair_scored_success = strict_scored_success and repair_interaction_satisfied
         milestone_similarity = float(similarity) if similarity is not None else 0.0
         expected_target_path = self._expected_write_target_path(sample.raw_payload, sample.sample_id)
         observed_target_path = self._observed_write_target_path(sample.raw_payload, trace_events)
@@ -826,24 +865,29 @@ class ToolSandboxAdapter:
         return BenchmarkTraceScore(
             benchmark=self.benchmark_name,
             sample_id=sample.sample_id,
-            success=execution_verified_success,
+            success=strict_scored_success,
             metrics={
                 "milestone_similarity": milestone_similarity,
                 "milestone_coverage": milestone_coverage,
                 "tool_efficiency": self._efficiency_score(tool_calls, expected_tool_calls, step_penalty=0.15),
                 "turn_efficiency": self._efficiency_score(turn_count, expected_turns, step_penalty=0.2),
                 "interaction_efficiency": self._interaction_efficiency(
-                    success=execution_verified_success,
+                    success=strict_scored_success,
                     categories=categories,
                     user_queries=user_queries,
                     turn_count=turn_count,
                     expected_turns=expected_turns,
                 ),
                 "hallucination_avoidance": hallucination_free,
-                "execution_verified_success": 1.0 if execution_verified_success else 0.0,
+                "execution_verified_success": 1.0 if strict_scored_success else 0.0,
+                "strict_scored_success": 1.0 if strict_scored_success else 0.0,
+                "repair_scored_success": 1.0 if repair_scored_success else 0.0,
+                "raw_execution_success": 1.0 if raw_trace_success else 0.0,
                 "interaction_contract_satisfied": 1.0 if interaction_contract_satisfied else 0.0,
+                "repair_interaction_satisfied": 1.0 if repair_interaction_satisfied else 0.0,
                 "must_interact_query_rate": 1.0 if interaction_contract_satisfied else 0.0 if must_interact_expected else 1.0,
-                "success_given_query": 1.0 if (user_queries > 0 and execution_verified_success) else 0.0,
+                "success_given_query": 1.0 if (user_queries > 0 and strict_scored_success) else 0.0,
+                "success_given_repair_query": 1.0 if (repair_interaction_satisfied and repair_scored_success) else 0.0,
                 "zero_query_success_count": 1.0 if (must_interact_expected and user_queries == 0 and raw_trace_success) else 0.0,
                 "proxy_summary_success": 1.0 if proxy_summary_success else 0.0,
                 "state_dependency_score": milestone_similarity if "state_dependency" in categories else 1.0,
@@ -854,8 +898,12 @@ class ToolSandboxAdapter:
                 "primary_category": categories[0] if categories else "toolsandbox",
                 "similarity": similarity,
                 "raw_trace_success": raw_trace_success,
-                "execution_verified_success": execution_verified_success,
+                "raw_execution_success": raw_trace_success,
+                "execution_verified_success": strict_scored_success,
+                "strict_scored_success": strict_scored_success,
+                "repair_scored_success": repair_scored_success,
                 "interaction_contract_satisfied": interaction_contract_satisfied,
+                "repair_interaction_satisfied": repair_interaction_satisfied,
                 "interaction_gate_blocked": interaction_gate_blocked,
                 "must_interact_expected": must_interact_expected,
                 "proxy_summary_success": proxy_summary_success,
@@ -866,6 +914,10 @@ class ToolSandboxAdapter:
                 "expected_tool_calls": expected_tool_calls,
                 "tool_calls": tool_calls,
                 "user_queries": user_queries,
+                "probe_user_queries": probe_user_queries,
+                "repair_user_queries": repair_user_queries,
+                "probe_user_replies": probe_user_replies,
+                "repair_user_replies": repair_user_replies,
                 "milestone_signal_available": total_milestones > 0 and has_explicit_milestone_signal,
                 "used_result_summary": bool(result_summary),
                 "result_summary_source": result_summary_source,

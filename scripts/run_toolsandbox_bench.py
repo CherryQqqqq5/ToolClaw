@@ -263,14 +263,23 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "state_slots": raw_row.get("state_slots", "[]"),
         "dependency_edges": raw_row.get("dependency_edges", "[]"),
         "success": bool(score_payload.get("success")),
+        "strict_scored_success": bool(metrics.get("strict_scored_success", metrics.get("execution_verified_success", 0.0))),
+        "repair_scored_success": bool(metrics.get("repair_scored_success", 0.0)),
         "execution_verified_success": bool(metrics.get("execution_verified_success", 0.0)),
         "proxy_summary_success": bool(metrics.get("proxy_summary_success", 0.0)),
         "raw_trace_success": _bool_from_value(raw_row.get("success", "False")),
+        "raw_execution_success": _bool_from_value(str(bool(diagnostics.get("raw_execution_success", raw_row.get("success", "False"))))),
         "raw_success": _bool_from_value(raw_row.get("success", "False")),
         "stop_reason": raw_row.get("stop_reason", "unknown"),
         "trace_path": raw_row.get("trace_path", ""),
         "tool_calls": int(diagnostics.get("tool_calls", raw_row.get("tool_calls", 0) or 0)),
         "user_queries": int(diagnostics.get("user_queries", raw_row.get("user_turns", 0) or 0)),
+        "probe_user_queries": int(diagnostics.get("probe_user_queries", 0) or 0),
+        "repair_user_queries": int(diagnostics.get("repair_user_queries", 0) or 0),
+        "probe_user_replies": int(diagnostics.get("probe_user_replies", 0) or 0),
+        "repair_user_replies": int(diagnostics.get("repair_user_replies", 0) or 0),
+        "interaction_contract_satisfied": bool(metrics.get("interaction_contract_satisfied", 0.0)),
+        "repair_interaction_satisfied": bool(metrics.get("repair_interaction_satisfied", 0.0)),
         "turn_count": int(diagnostics.get("turn_count", 0) or 0),
         "expected_turn_count": int(diagnostics.get("expected_turn_count", 0) or 0),
         "expected_tool_calls": int(diagnostics.get("expected_tool_calls", 0) or 0),
@@ -280,8 +289,11 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "milestone_coverage": float(metrics.get("milestone_coverage", 0.0) or 0.0),
         "milestone_signal_coverage": 1.0 if diagnostics.get("milestone_signal_available") else 0.0,
         "execution_verified_success_rate": float(metrics.get("execution_verified_success", 0.0) or 0.0),
+        "strict_scored_success_rate": float(metrics.get("strict_scored_success", metrics.get("execution_verified_success", 0.0)) or 0.0),
+        "repair_scored_success_rate": float(metrics.get("repair_scored_success", 0.0) or 0.0),
         "proxy_summary_success_rate": float(metrics.get("proxy_summary_success", 0.0) or 0.0),
         "raw_trace_success_rate": 1.0 if diagnostics.get("raw_trace_success") else 0.0,
+        "raw_execution_success_rate": 1.0 if diagnostics.get("raw_execution_success", diagnostics.get("raw_trace_success")) else 0.0,
         "interaction_efficiency": float(metrics.get("interaction_efficiency", 0.0) or 0.0),
         "tool_efficiency": float(metrics.get("tool_efficiency", 0.0) or 0.0),
         "turn_efficiency": float(metrics.get("turn_efficiency", 0.0) or 0.0),
@@ -340,8 +352,13 @@ def _category_breakdown(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, fl
             "num_rows": float(len(category_records)),
             "success_rate": mean_or_zero([float(record["row"].get("execution_verified_success_rate", 0.0)) for record in category_records]),
             "execution_verified_success": mean_or_zero([float(record["row"].get("execution_verified_success_rate", 0.0)) for record in category_records]),
+            "strict_scored_success": mean_or_zero([float(record["row"].get("strict_scored_success_rate", 0.0)) for record in category_records]),
+            "repair_scored_success": mean_or_zero([float(record["row"].get("repair_scored_success_rate", 0.0)) for record in category_records]),
+            "interaction_contract_satisfied": mean_or_zero([_float_cell(record["row"].get("interaction_contract_satisfied", 0.0)) for record in category_records]),
+            "repair_interaction_satisfied": mean_or_zero([_float_cell(record["row"].get("repair_interaction_satisfied", 0.0)) for record in category_records]),
             "proxy_summary_success": mean_or_zero([float(record["row"].get("proxy_summary_success_rate", 0.0)) for record in category_records]),
             "raw_trace_success_rate": mean_or_zero([float(record["row"].get("raw_trace_success_rate", 0.0)) for record in category_records]),
+            "raw_execution_success_rate": mean_or_zero([float(record["row"].get("raw_execution_success_rate", 0.0)) for record in category_records]),
             "milestone_similarity": mean_or_zero([float(record["row"].get("milestone_similarity", 0.0)) for record in category_records]),
             "milestone_coverage": mean_or_zero([float(record["row"].get("milestone_coverage", 0.0)) for record in category_records]),
             "milestone_signal_coverage": mean_or_zero([float(record["row"].get("milestone_signal_coverage", 0.0)) for record in category_records]),
@@ -401,8 +418,13 @@ def _toolsandbox_benchmark_caution_flags(scoreboard: Dict[str, Any]) -> List[str
 
 TOOLSANDBOX_GROUP_METRICS = [
     AggregateMetric("execution_verified_success"),
+    AggregateMetric("strict_scored_success"),
+    AggregateMetric("repair_scored_success"),
+    AggregateMetric("interaction_contract_satisfied"),
+    AggregateMetric("repair_interaction_satisfied"),
     AggregateMetric("proxy_summary_success"),
     AggregateMetric("raw_trace_success", source="diagnostics", label="raw_trace_success_rate"),
+    AggregateMetric("raw_execution_success", source="diagnostics", label="raw_execution_success_rate"),
     AggregateMetric("milestone_similarity"),
     AggregateMetric("milestone_coverage"),
     AggregateMetric("milestone_signal_available", source="diagnostics", label="milestone_signal_coverage"),
@@ -433,8 +455,13 @@ TOOLSANDBOX_CONFIG = BenchmarkScriptConfig(
     system_summary_title="ToolSandbox Per-System Summary",
     aggregate_metrics=[
         AggregateMetric("execution_verified_success"),
+        AggregateMetric("strict_scored_success"),
+        AggregateMetric("repair_scored_success"),
+        AggregateMetric("interaction_contract_satisfied"),
+        AggregateMetric("repair_interaction_satisfied"),
         AggregateMetric("proxy_summary_success"),
         AggregateMetric("raw_trace_success", source="diagnostics", label="raw_trace_success_rate"),
+        AggregateMetric("raw_execution_success", source="diagnostics", label="raw_execution_success_rate"),
         AggregateMetric("milestone_similarity"),
         AggregateMetric("milestone_coverage"),
         AggregateMetric("milestone_signal_available", source="diagnostics", label="milestone_signal_coverage"),
@@ -677,6 +704,203 @@ def _load_scored_rows(outdir: Path) -> List[Dict[str, Any]]:
         return []
     with scored_path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
+
+
+def _load_trace_payload(trace_path: str) -> Dict[str, Any]:
+    if not trace_path:
+        return {}
+    path = Path(trace_path)
+    if not path.is_absolute():
+        path = ROOT_DIR / path
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _trace_repair_loop_flags(trace_payload: Dict[str, Any]) -> Dict[str, float]:
+    events = trace_payload.get("events", [])
+    patch_compiled_count = 0
+    resume_requested_count = 0
+    state_patch_count = 0
+    policy_patch_count = 0
+    binding_patch_count = 0
+    for event in events:
+        event_type = str(event.get("event_type") or "")
+        if event_type == "patch_compiled":
+            patch_compiled_count += 1
+            output = dict(event.get("output") or {})
+            if output.get("state_updates"):
+                state_patch_count += 1
+            if output.get("policy_updates"):
+                policy_patch_count += 1
+            if output.get("binding_patch"):
+                binding_patch_count += 1
+        elif event_type == "resume_requested":
+            resume_requested_count += 1
+    return {
+        "has_patch_compiled": 1.0 if patch_compiled_count > 0 else 0.0,
+        "has_resume_requested": 1.0 if resume_requested_count > 0 else 0.0,
+        "patch_compiled_count": float(patch_compiled_count),
+        "resume_requested_count": float(resume_requested_count),
+        "state_patch_count": float(state_patch_count),
+        "policy_patch_count": float(policy_patch_count),
+        "binding_patch_count": float(binding_patch_count),
+    }
+
+
+def _group_scored_rows(rows: List[Dict[str, Any]], *, group_key: str) -> Dict[str, Dict[str, List[Dict[str, Any]]]]:
+    grouped: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+    for row in rows:
+        system = str(row.get("system") or "unknown")
+        group_name = str(row.get(group_key) or "unknown")
+        grouped.setdefault(system, {}).setdefault(group_name, []).append(row)
+    return grouped
+
+
+def _summarize_failure_type_rows(rows: List[Dict[str, Any]]) -> Dict[str, float]:
+    return {
+        "num_rows": float(len(rows)),
+        "raw_execution_success": _mean_float(rows, "raw_execution_success"),
+        "strict_scored_success": _mean_float(rows, "strict_scored_success"),
+        "repair_scored_success": _mean_float(rows, "repair_scored_success"),
+        "interaction_contract_satisfied": _mean_float(rows, "interaction_contract_satisfied"),
+        "repair_interaction_satisfied": _mean_float(rows, "repair_interaction_satisfied"),
+        "probe_user_queries": _mean_float(rows, "probe_user_queries"),
+        "repair_user_queries": _mean_float(rows, "repair_user_queries"),
+        "patch_success_rate": _mean_float(rows, "patch_success_rate"),
+        "tool_calls": _mean_float(rows, "tool_calls"),
+        "turn_count": _mean_float(rows, "turn_count"),
+    }
+
+
+def _failure_type_summary(outdir: Path) -> Dict[str, Dict[str, Dict[str, float]]]:
+    rows = _load_scored_rows(outdir)
+    grouped = _group_scored_rows(rows, group_key="failure_type")
+    return {
+        system: {
+            failure_type: _summarize_failure_type_rows(group_rows)
+            for failure_type, group_rows in sorted(system_groups.items())
+        }
+        for system, system_groups in sorted(grouped.items())
+    }
+
+
+def _write_failure_type_markdown(summary: Dict[str, Dict[str, Dict[str, float]]], out_path: Path) -> None:
+    lines = [
+        "# ToolSandbox Failure-Type Summary",
+        "",
+        "| system | failure_type | rows | raw_execution_success | strict_scored_success | repair_scored_success | interaction_contract_satisfied | repair_interaction_satisfied | probe_user_queries | repair_user_queries | patch_success_rate | tool_calls | turn_count |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for system, failure_types in sorted(summary.items()):
+        for failure_type, stats in sorted(failure_types.items()):
+            lines.append(
+                f"| {system} | {failure_type} | {int(stats.get('num_rows', 0))} | {float(stats.get('raw_execution_success', 0.0)):.3f} | {float(stats.get('strict_scored_success', 0.0)):.3f} | {float(stats.get('repair_scored_success', 0.0)):.3f} | {float(stats.get('interaction_contract_satisfied', 0.0)):.3f} | {float(stats.get('repair_interaction_satisfied', 0.0)):.3f} | {float(stats.get('probe_user_queries', 0.0)):.3f} | {float(stats.get('repair_user_queries', 0.0)):.3f} | {float(stats.get('patch_success_rate', 0.0)):.3f} | {float(stats.get('tool_calls', 0.0)):.3f} | {float(stats.get('turn_count', 0.0)):.3f} |"
+            )
+    out_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _repair_loop_summary(outdir: Path) -> Dict[str, Any]:
+    rows = _load_scored_rows(outdir)
+    trace_cache: Dict[str, Dict[str, float]] = {}
+    for row in rows:
+        trace_path = str(row.get("trace_path") or "")
+        if trace_path not in trace_cache:
+            trace_cache[trace_path] = _trace_repair_loop_flags(_load_trace_payload(trace_path))
+
+    per_system: Dict[str, Dict[str, float]] = {}
+    per_failure_type: Dict[str, Dict[str, Dict[str, float]]] = {}
+    grouped_by_system = _group_scored_rows(rows, group_key="system")
+    for system, system_rows_map in grouped_by_system.items():
+        system_rows = system_rows_map.get(system, [])
+        per_system[system] = _summarize_repair_loop_rows(system_rows, trace_cache)
+
+    grouped_by_failure_type = _group_scored_rows(rows, group_key="failure_type")
+    for system, failure_type_map in sorted(grouped_by_failure_type.items()):
+        per_failure_type[system] = {
+            failure_type: _summarize_repair_loop_rows(group_rows, trace_cache)
+            for failure_type, group_rows in sorted(failure_type_map.items())
+        }
+
+    return {
+        "per_system": per_system,
+        "per_failure_type": per_failure_type,
+    }
+
+
+def _summarize_repair_loop_rows(rows: List[Dict[str, Any]], trace_cache: Dict[str, Dict[str, float]]) -> Dict[str, float]:
+    if not rows:
+        return {
+            "num_rows": 0.0,
+            "repair_rows": 0.0,
+            "repair_scored_success": 0.0,
+            "repair_user_queries": 0.0,
+            "probe_user_queries": 0.0,
+            "patch_success_rate": 0.0,
+            "has_patch_compiled": 0.0,
+            "has_resume_requested": 0.0,
+            "patch_compiled_count": 0.0,
+            "resume_requested_count": 0.0,
+            "state_patch_count": 0.0,
+            "policy_patch_count": 0.0,
+            "binding_patch_count": 0.0,
+        }
+    overlays = [trace_cache.get(str(row.get("trace_path") or ""), {}) for row in rows]
+    repair_rows = [
+        row for row in rows
+        if _float_cell(row.get("repair_user_queries", 0.0)) > 0.0
+        or _float_cell(row.get("repair_user_replies", 0.0)) > 0.0
+    ]
+    def overlay_mean(key: str) -> float:
+        return mean_or_zero([float(overlay.get(key, 0.0)) for overlay in overlays])
+    return {
+        "num_rows": float(len(rows)),
+        "repair_rows": float(len(repair_rows)),
+        "repair_scored_success": _mean_float(rows, "repair_scored_success"),
+        "repair_user_queries": _mean_float(rows, "repair_user_queries"),
+        "probe_user_queries": _mean_float(rows, "probe_user_queries"),
+        "patch_success_rate": _mean_float(rows, "patch_success_rate"),
+        "has_patch_compiled": overlay_mean("has_patch_compiled"),
+        "has_resume_requested": overlay_mean("has_resume_requested"),
+        "patch_compiled_count": overlay_mean("patch_compiled_count"),
+        "resume_requested_count": overlay_mean("resume_requested_count"),
+        "state_patch_count": overlay_mean("state_patch_count"),
+        "policy_patch_count": overlay_mean("policy_patch_count"),
+        "binding_patch_count": overlay_mean("binding_patch_count"),
+    }
+
+
+def _write_repair_loop_markdown(summary: Dict[str, Any], out_path: Path) -> None:
+    lines = [
+        "# ToolSandbox Repair Loop Summary",
+        "",
+        "## Per System",
+        "",
+        "| system | rows | repair_rows | repair_scored_success | repair_user_queries | probe_user_queries | patch_success_rate | has_patch_compiled | has_resume_requested | patch_compiled_count | resume_requested_count | state_patch_count | policy_patch_count | binding_patch_count |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for system, stats in sorted(summary.get("per_system", {}).items()):
+        lines.append(
+            f"| {system} | {int(stats.get('num_rows', 0))} | {int(stats.get('repair_rows', 0))} | {float(stats.get('repair_scored_success', 0.0)):.3f} | {float(stats.get('repair_user_queries', 0.0)):.3f} | {float(stats.get('probe_user_queries', 0.0)):.3f} | {float(stats.get('patch_success_rate', 0.0)):.3f} | {float(stats.get('has_patch_compiled', 0.0)):.3f} | {float(stats.get('has_resume_requested', 0.0)):.3f} | {float(stats.get('patch_compiled_count', 0.0)):.3f} | {float(stats.get('resume_requested_count', 0.0)):.3f} | {float(stats.get('state_patch_count', 0.0)):.3f} | {float(stats.get('policy_patch_count', 0.0)):.3f} | {float(stats.get('binding_patch_count', 0.0)):.3f} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Per Failure Type",
+            "",
+            "| system | failure_type | rows | repair_rows | repair_scored_success | repair_user_queries | probe_user_queries | patch_success_rate | has_patch_compiled | has_resume_requested | state_patch_count | policy_patch_count | binding_patch_count |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for system, failure_types in sorted(summary.get("per_failure_type", {}).items()):
+        for failure_type, stats in sorted(failure_types.items()):
+            lines.append(
+                f"| {system} | {failure_type} | {int(stats.get('num_rows', 0))} | {int(stats.get('repair_rows', 0))} | {float(stats.get('repair_scored_success', 0.0)):.3f} | {float(stats.get('repair_user_queries', 0.0)):.3f} | {float(stats.get('probe_user_queries', 0.0)):.3f} | {float(stats.get('patch_success_rate', 0.0)):.3f} | {float(stats.get('has_patch_compiled', 0.0)):.3f} | {float(stats.get('has_resume_requested', 0.0)):.3f} | {float(stats.get('state_patch_count', 0.0)):.3f} | {float(stats.get('policy_patch_count', 0.0)):.3f} | {float(stats.get('binding_patch_count', 0.0)):.3f} |"
+            )
+    out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def _mean_float(rows: List[Dict[str, Any]], key: str) -> float:
@@ -932,6 +1156,8 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
         f"- scored_comparison: `{outdir / 'comparison.scored.csv'}`",
         f"- focused_slice_summary: `{outdir / 'focused_slice_summary.md'}`",
         f"- reuse_focused_summary: `{outdir / 'reuse_focused_summary.md'}`",
+        f"- per_failure_type_summary: `{outdir / 'per_failure_type_summary.md'}`",
+        f"- repair_loop_summary: `{outdir / 'repair_loop_summary.md'}`",
         f"- statistical_robustness_summary: `{outdir / 'statistical_robustness_summary.json'}`",
         f"- failtax_summary: `{outdir / 'per_failtax_summary.json'}`",
         "",
@@ -967,13 +1193,13 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
         [
         "## Aggregate",
         "",
-        "| system | mean_success_rate | execution_verified_success | proxy_summary_success | raw_trace_success_rate | consistency | milestone_similarity | milestone_coverage | milestone_signal_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | budget_violation_rate | result_summary_coverage | reference_summary_coverage | dominant_result_summary_source |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        "| system | mean_success_rate | strict_scored_success | repair_scored_success | interaction_contract_satisfied | repair_interaction_satisfied | proxy_summary_success | raw_trace_success_rate | raw_execution_success_rate | consistency | milestone_similarity | milestone_coverage | milestone_signal_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | budget_violation_rate | result_summary_coverage | reference_summary_coverage | dominant_result_summary_source |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ])
     per_system = scoreboard["per_system_summary"]
     for system, stats in per_system.items():
         lines.append(
-            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('execution_verified_success', 0.0)):.3f} | {float(stats.get('proxy_summary_success', 0.0)):.3f} | {float(stats.get('raw_trace_success_rate', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('milestone_signal_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('budget_violation_rate', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} | {float(stats.get('reference_result_summary_available', 0.0)):.3f} | {stats.get('dominant_result_summary_source', 'unknown')} |"
+            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('strict_scored_success', stats.get('execution_verified_success', 0.0))):.3f} | {float(stats.get('repair_scored_success', 0.0)):.3f} | {float(stats.get('interaction_contract_satisfied', 0.0)):.3f} | {float(stats.get('repair_interaction_satisfied', 0.0)):.3f} | {float(stats.get('proxy_summary_success', 0.0)):.3f} | {float(stats.get('raw_trace_success_rate', 0.0)):.3f} | {float(stats.get('raw_execution_success_rate', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('milestone_signal_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('budget_violation_rate', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} | {float(stats.get('reference_result_summary_available', 0.0)):.3f} | {stats.get('dominant_result_summary_source', 'unknown')} |"
         )
 
     lines.extend(
@@ -996,14 +1222,14 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
             "",
             "## Category Breakdown",
             "",
-            "| system | category | rows | success_rate | execution_verified_success | proxy_summary_success | raw_trace_success_rate | milestone_similarity | milestone_coverage | milestone_signal_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage | reference_summary_coverage | dominant_result_summary_source |",
-            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+            "| system | category | rows | success_rate | strict_scored_success | repair_scored_success | interaction_contract_satisfied | repair_interaction_satisfied | proxy_summary_success | raw_trace_success_rate | raw_execution_success_rate | milestone_similarity | milestone_coverage | milestone_signal_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage | reference_summary_coverage | dominant_result_summary_source |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
         ]
     )
     for system, stats in per_system.items():
         for category, category_stats in sorted(stats.get("per_category", {}).items()):
             lines.append(
-                f"| {system} | {category} | {int(category_stats.get('num_rows', 0))} | {float(category_stats.get('success_rate', 0.0)):.3f} | {float(category_stats.get('execution_verified_success', 0.0)):.3f} | {float(category_stats.get('proxy_summary_success', 0.0)):.3f} | {float(category_stats.get('raw_trace_success_rate', 0.0)):.3f} | {float(category_stats.get('milestone_similarity', 0.0)):.3f} | {float(category_stats.get('milestone_coverage', 0.0)):.3f} | {float(category_stats.get('milestone_signal_coverage', 0.0)):.3f} | {float(category_stats.get('state_dependency_score', 0.0)):.3f} | {float(category_stats.get('hallucination_avoidance', 0.0)):.3f} | {float(category_stats.get('tool_efficiency', 0.0)):.3f} | {float(category_stats.get('turn_efficiency', 0.0)):.3f} | {float(category_stats.get('result_summary_coverage', 0.0)):.3f} | {float(category_stats.get('reference_summary_coverage', 0.0)):.3f} | {category_stats.get('dominant_result_summary_source', 'unknown')} |"
+                f"| {system} | {category} | {int(category_stats.get('num_rows', 0))} | {float(category_stats.get('success_rate', 0.0)):.3f} | {float(category_stats.get('strict_scored_success', category_stats.get('execution_verified_success', 0.0))):.3f} | {float(category_stats.get('repair_scored_success', 0.0)):.3f} | {float(category_stats.get('interaction_contract_satisfied', 0.0)):.3f} | {float(category_stats.get('repair_interaction_satisfied', 0.0)):.3f} | {float(category_stats.get('proxy_summary_success', 0.0)):.3f} | {float(category_stats.get('raw_trace_success_rate', 0.0)):.3f} | {float(category_stats.get('raw_execution_success_rate', 0.0)):.3f} | {float(category_stats.get('milestone_similarity', 0.0)):.3f} | {float(category_stats.get('milestone_coverage', 0.0)):.3f} | {float(category_stats.get('milestone_signal_coverage', 0.0)):.3f} | {float(category_stats.get('state_dependency_score', 0.0)):.3f} | {float(category_stats.get('hallucination_avoidance', 0.0)):.3f} | {float(category_stats.get('tool_efficiency', 0.0)):.3f} | {float(category_stats.get('turn_efficiency', 0.0)):.3f} | {float(category_stats.get('result_summary_coverage', 0.0)):.3f} | {float(category_stats.get('reference_summary_coverage', 0.0)):.3f} | {category_stats.get('dominant_result_summary_source', 'unknown')} |"
             )
 
     lines.extend(
@@ -1018,6 +1244,37 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
     for system, stats in per_system.items():
         for source, count in sorted(dict(stats.get("result_summary_source_breakdown", {})).items()):
             lines.append(f"| {system} | {source} | {int(count)} |")
+
+    failure_type_summary = _failure_type_summary(outdir)
+    lines.extend(
+        [
+            "",
+            "## Failure Type Summary",
+            "",
+            "| system | failure_type | rows | raw_execution_success | strict_scored_success | repair_scored_success | interaction_contract_satisfied | repair_interaction_satisfied | probe_user_queries | repair_user_queries | patch_success_rate | tool_calls | turn_count |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for system, failure_types in sorted(failure_type_summary.items()):
+        for failure_type, stats in sorted(failure_types.items()):
+            lines.append(
+                f"| {system} | {failure_type} | {int(stats.get('num_rows', 0))} | {float(stats.get('raw_execution_success', 0.0)):.3f} | {float(stats.get('strict_scored_success', 0.0)):.3f} | {float(stats.get('repair_scored_success', 0.0)):.3f} | {float(stats.get('interaction_contract_satisfied', 0.0)):.3f} | {float(stats.get('repair_interaction_satisfied', 0.0)):.3f} | {float(stats.get('probe_user_queries', 0.0)):.3f} | {float(stats.get('repair_user_queries', 0.0)):.3f} | {float(stats.get('patch_success_rate', 0.0)):.3f} | {float(stats.get('tool_calls', 0.0)):.3f} | {float(stats.get('turn_count', 0.0)):.3f} |"
+            )
+
+    repair_loop_summary = _repair_loop_summary(outdir)
+    lines.extend(
+        [
+            "",
+            "## Repair Loop Summary",
+            "",
+            "| system | rows | repair_rows | repair_scored_success | repair_user_queries | probe_user_queries | patch_success_rate | has_patch_compiled | has_resume_requested | patch_compiled_count | resume_requested_count | state_patch_count | policy_patch_count | binding_patch_count |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for system, stats in sorted(repair_loop_summary.get("per_system", {}).items()):
+        lines.append(
+            f"| {system} | {int(stats.get('num_rows', 0))} | {int(stats.get('repair_rows', 0))} | {float(stats.get('repair_scored_success', 0.0)):.3f} | {float(stats.get('repair_user_queries', 0.0)):.3f} | {float(stats.get('probe_user_queries', 0.0)):.3f} | {float(stats.get('patch_success_rate', 0.0)):.3f} | {float(stats.get('has_patch_compiled', 0.0)):.3f} | {float(stats.get('has_resume_requested', 0.0)):.3f} | {float(stats.get('patch_compiled_count', 0.0)):.3f} | {float(stats.get('resume_requested_count', 0.0)):.3f} | {float(stats.get('state_patch_count', 0.0)):.3f} | {float(stats.get('policy_patch_count', 0.0)):.3f} | {float(stats.get('binding_patch_count', 0.0)):.3f} |"
+        )
 
     lines.extend(
         [
@@ -1082,8 +1339,11 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
             "",
             "## Interpretation",
             "",
-            "- `mean_success_rate` is computed from `execution_verified_success`, not from proxy summaries alone.",
-            "- `raw_trace_success_rate` is reported separately because executor success and benchmark-verified success can diverge.",
+            "- `mean_success_rate` is computed from strict scored success, not from proxy summaries alone.",
+            "- `strict_scored_success` is the benchmark-facing success after the must-interact gate is applied.",
+            "- `repair_scored_success` is stricter: it only counts runs that both score successfully and include at least one non-probe repair interaction.",
+            "- `interaction_contract_satisfied` can be lifted by an interaction probe; `repair_interaction_satisfied` cannot.",
+            "- `raw_trace_success_rate` / `raw_execution_success_rate` are reported separately because executor success and benchmark-verified success can diverge.",
             "- `proxy_summary_success` tracks runs that looked successful under the attached ToolClaw proxy summary path.",
             "- `milestone_signal_coverage` shows whether the trace carried an explicit milestone verification signal; low coverage weakens benchmark claims even if proxy summaries exist.",
             "- `result_summary_source` is reported explicitly so proxy-derived runs are visible in the main report.",
@@ -1323,6 +1583,18 @@ def main() -> None:
     )
     write_csv_rows(raw_run_rows, outdir / "comparison.raw.csv")
     write_csv_rows(scored_run_rows, outdir / "comparison.scored.csv")
+    failure_type_summary = _failure_type_summary(outdir)
+    (outdir / "per_failure_type_summary.json").write_text(
+        json.dumps(failure_type_summary, indent=2),
+        encoding="utf-8",
+    )
+    _write_failure_type_markdown(failure_type_summary, outdir / "per_failure_type_summary.md")
+    repair_loop_summary = _repair_loop_summary(outdir)
+    (outdir / "repair_loop_summary.json").write_text(
+        json.dumps(repair_loop_summary, indent=2),
+        encoding="utf-8",
+    )
+    _write_repair_loop_markdown(repair_loop_summary, outdir / "repair_loop_summary.md")
     latest_run_index = args.num_runs
     write_csv_rows([row for row in raw_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.raw.csv")
     write_csv_rows([row for row in scored_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.scored.csv")

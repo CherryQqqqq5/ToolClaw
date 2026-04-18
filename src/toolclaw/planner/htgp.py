@@ -1293,6 +1293,12 @@ class HTGPPlanner:
                 if binding is not None and step.tool_id:
                     binding.primary_tool = step.tool_id
 
+            if "requires_user_confirmation" in patch:
+                step.requires_user_confirmation = bool(patch["requires_user_confirmation"])
+                node = graph_nodes.get(step.step_id)
+                if node is not None:
+                    node.approval_gate.required = step.requires_user_confirmation
+
             if "metadata" in patch and isinstance(patch["metadata"], dict):
                 step.metadata.update(deepcopy(patch["metadata"]))
                 node = graph_nodes.get(step.step_id)

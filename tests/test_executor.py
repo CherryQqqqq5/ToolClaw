@@ -128,6 +128,29 @@ def test_binding_repair_restores_default_target_path_for_write_step(tmp_path: Pa
     assert workflow.execution_plan[1].inputs["target_path"] == "outputs/reports/restored.txt"
 
 
+def test_state_failure_repair_overrides_wrong_write_target_for_retry(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    workflow.metadata["tool_execution_backend"] = "semantic_mock"
+    workflow.context.candidate_tools = [
+        ToolSpec(tool_id="search_tool", description="Search information."),
+        ToolSpec(tool_id="write_tool", description="Write report to disk."),
+    ]
+    workflow.execution_plan[1].inputs["target_path"] = "outputs/reports/demo_report.shadow.txt"
+    workflow.execution_plan[1].inputs["expected_target_path"] = "outputs/reports/demo_report.txt"
+    workflow.execution_plan[1].metadata["simulated_missing_arg_values"] = {
+        "target_path": "outputs/reports/demo_report.txt"
+    }
+
+    trace = SequentialExecutor().run(
+        workflow=workflow,
+        run_id="run_state_wrong_target_001",
+        output_path=str(tmp_path / "run_state_wrong_target.json"),
+    )
+
+    assert trace.metrics.success is True
+    assert workflow.execution_plan[1].inputs["target_path"] == "outputs/reports/demo_report.txt"
+
+
 def test_executor_rolls_back_and_replans_suffix_when_ordering_failure_occurs(tmp_path: Path) -> None:
     workflow = Workflow.demo()
     workflow.context.candidate_tools.append(type(workflow.context.candidate_tools[1])(tool_id="ordering_write_tool", description="write with wrong order"))

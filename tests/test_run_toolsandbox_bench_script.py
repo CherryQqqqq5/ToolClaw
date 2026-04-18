@@ -127,8 +127,13 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "state_dependency" in per_system["a0_baseline"]["per_category"]
     assert "used_result_summary" in per_system["a0_baseline"]
     assert "execution_verified_success" in per_system["a0_baseline"]
+    assert "strict_scored_success" in per_system["a0_baseline"]
+    assert "repair_scored_success" in per_system["a0_baseline"]
+    assert "interaction_contract_satisfied" in per_system["a0_baseline"]
+    assert "repair_interaction_satisfied" in per_system["a0_baseline"]
     assert "proxy_summary_success" in per_system["a0_baseline"]
     assert "raw_trace_success_rate" in per_system["a0_baseline"]
+    assert "raw_execution_success_rate" in per_system["a0_baseline"]
     assert "milestone_signal_coverage" in per_system["a0_baseline"]
     assert "dominant_result_summary_source" in per_system["a0_baseline"]
     assert "benchmark_caution_flags" in scoreboard
@@ -145,9 +150,12 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "ToolSandbox Category Summary" in per_category_md
     assert "state_dependency" in per_category_md
     assert "result_summary_coverage" in per_category_md
-    assert "execution_verified_success" in per_category_md
+    assert "strict_scored_success" in per_category_md
+    assert "repair_scored_success" in per_category_md
+    assert "interaction_contract_satisfied" in per_category_md
     assert "proxy_summary_success" in per_category_md
     assert "raw_trace_success_rate" in per_category_md
+    assert "raw_execution_success_rate" in per_category_md
     assert "milestone_signal_coverage" in per_category_md
     assert "| a0_baseline | state_dependency | 1 | 1.000" in per_category_md
     per_category_json = json.loads(per_category_json_path.read_text(encoding="utf-8"))
@@ -159,9 +167,12 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     report = report_path.read_text(encoding="utf-8")
     assert "ToolSandbox Benchmark Report" in report
     assert "raw_execution_report" in report
-    assert "execution_verified_success" in report
+    assert "strict_scored_success" in report
+    assert "repair_scored_success" in report
+    assert "interaction_contract_satisfied" in report
     assert "proxy_summary_success" in report
     assert "raw_trace_success_rate" in report
+    assert "raw_execution_success_rate" in report
     assert "milestone_signal_coverage" in report
     assert "dominant_result_summary_source" in report
     assert "Result Summary Sources" in report
@@ -181,6 +192,7 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "Focused Slice: approval" in report
     assert "reuse_scope: `within_invocation`" in report
     assert "asset_registry_root: `none`" in report
+    assert "`repair_scored_success` is stricter" in report
     assert "avg_tool_calls" in report
     assert "reused_artifact_rate" in report
     assert "first_failure_recovered_rate" in report

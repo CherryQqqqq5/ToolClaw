@@ -79,8 +79,8 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         system_id="a2_planner",
         workflow_mode="planner",
         execution_mode="executor",
-        allow_repair=False,
-        allow_fallback=False,
+        allow_repair=True,
+        allow_fallback=True,
         allow_suffix_replan=False,
     ),
     "a3_interaction": SystemSpec(
@@ -225,6 +225,26 @@ def _recover_toolsandbox_message_content(content: Any) -> str:
     return stripped.strip('"').strip()
 
 
+def _goal_tokens(text: str) -> set[str]:
+    return {token for token in re.findall(r"[a-z0-9]+", text.lower()) if len(token) >= 3}
+
+
+def _goal_fragment_is_redundant(fragment: str, existing_parts: List[str]) -> bool:
+    normalized_fragment = fragment.strip()
+    if not normalized_fragment:
+        return True
+    lowered_fragment = normalized_fragment.lower()
+    if any(lowered_fragment == existing.strip().lower() for existing in existing_parts):
+        return True
+    fragment_tokens = _goal_tokens(normalized_fragment)
+    if not fragment_tokens:
+        return False
+    combined_tokens: set[str] = set()
+    for existing in existing_parts:
+        combined_tokens.update(_goal_tokens(existing))
+    return fragment_tokens.issubset(combined_tokens)
+
+
 def _planner_goal_from_task(task: Dict[str, Any], fallback: str) -> str:
     messages = task.get("messages")
     metadata = task.get("metadata")
@@ -246,6 +266,9 @@ def _planner_goal_from_task(task: Dict[str, Any], fallback: str) -> str:
         )
         if normalized and normalized not in goal_parts:
             goal_parts.append(normalized)
+    fallback_text = str(fallback or "").strip()
+    if fallback_text and not _goal_fragment_is_redundant(fallback_text, goal_parts):
+        goal_parts.insert(0, fallback_text)
     return "\n".join(goal_parts) if goal_parts else fallback
 
 
@@ -816,6 +839,28 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
             workflow.metadata["resume_state_stale_slots"] = ["retrieved_info"] if state_mode == "recovery_not_committed" else []
         workflow.metadata["state_failure_mode"] = state_mode
 
+    raw_constraints_map = raw_constraints if isinstance(raw_constraints, dict) else {}
+    benchmark_name = str(workflow.metadata.get("benchmark") or task.get("benchmark") or "").strip().lower()
+    if benchmark_name == "tau2_bench" and bool(raw_constraints_map.get("requires_user_approval")):
+        approval_target_step = str(
+            workflow.metadata.get("approval_target_step")
+            or task.get("failure_step")
+            or workflow.metadata.get("failure_step")
+            or "step_02"
+        )
+        target_step = workflow.get_step(approval_target_step)
+        if target_step is None and len(workflow.execution_plan) > 1:
+            target_step = workflow.execution_plan[1]
+        if target_step is not None:
+            workflow.task.constraints.requires_user_approval = False
+            target_step.requires_user_confirmation = True
+            target_step.metadata["requires_approval"] = True
+            target_node = workflow.get_node(target_step.step_id)
+            if target_node is not None:
+                target_node.approval_gate.required = True
+                target_node.approval_gate.reason = "tau2_failure_step_approval"
+                target_node.metadata["requires_approval"] = True
+
     return workflow
 
 
@@ -884,7 +929,10 @@ def build_runtime_for_spec(
         planner=planner,
         executor=SequentialExecutor(
             recovery_engine=RecoveryEngine(
-                RecoveryConfig(enable_tool_fallback=spec.allow_fallback)
+                RecoveryConfig(
+                    enable_tool_fallback=spec.allow_fallback,
+                    prefer_user_mediated_binding_repair=spec.execution_mode == "interaction",
+                )
             ),
             planner=executor_planner,
             config=ExecutorConfig(allow_repair=spec.allow_repair),
@@ -924,6 +972,7 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
                 step.step_id: {
                     "inputs": dict(step.inputs),
                     "tool_id": step.tool_id,
+                    "requires_user_confirmation": step.requires_user_confirmation,
                     "metadata": dict(step.metadata),
                 }
                 for step in workflow.execution_plan

@@ -339,3 +339,94 @@ def test_write_target_verification_accepts_normalized_relative_paths() -> None:
 
     assert score.metrics["write_target_verified"] == 1.0
     assert score.metrics["execution_verified_success"] == 1.0
+
+
+def test_toolsandbox_adapter_distinguishes_probe_only_interaction_from_repair_interaction() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_probe_only_001",
+        raw_payload={
+            "categories": ["Multiple User Turn", "Insufficient Information"],
+            "milestones": ["ask", "complete"],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "metadata": {
+            "toolsandbox_result": {
+                "similarity": 1.0,
+                "milestone_mapping": [0, 1],
+                "source": "toolclaw_proxy",
+            }
+        },
+        "events": [
+            {
+                "event_type": "user_query",
+                "metadata": {
+                    "query_metadata": {"interaction_probe": True},
+                },
+            },
+            {
+                "event_type": "user_reply",
+                "metadata": {
+                    "reply_metadata": {"interaction_probe": True, "decoded_intent_type": "interaction_probe"},
+                },
+            },
+        ],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.metrics["execution_verified_success"] == 1.0
+    assert score.metrics["strict_scored_success"] == 1.0
+    assert score.metrics["interaction_contract_satisfied"] == 1.0
+    assert score.metrics["repair_interaction_satisfied"] == 0.0
+    assert score.metrics["repair_scored_success"] == 0.0
+    assert score.diagnostics["probe_user_queries"] == 1
+    assert score.diagnostics["repair_user_queries"] == 0
+    assert score.diagnostics["probe_user_replies"] == 1
+    assert score.diagnostics["repair_user_replies"] == 0
+
+
+def test_toolsandbox_adapter_counts_non_probe_interaction_as_repair_success() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_repair_only_001",
+        raw_payload={
+            "categories": ["Multiple User Turn", "Insufficient Information"],
+            "milestones": ["ask", "complete"],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "metadata": {
+            "toolsandbox_result": {
+                "similarity": 1.0,
+                "milestone_mapping": [0, 1],
+                "source": "toolclaw_proxy",
+            }
+        },
+        "events": [
+            {
+                "event_type": "user_query",
+                "metadata": {
+                    "query_metadata": {"patch_targets": {"time": "step.inputs.time"}},
+                },
+            },
+            {
+                "event_type": "user_reply",
+                "metadata": {
+                    "reply_metadata": {"decoded_intent_type": "slot_fill", "decoded_slot_updates": {"time": "tomorrow 9am"}},
+                },
+            },
+        ],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.metrics["execution_verified_success"] == 1.0
+    assert score.metrics["interaction_contract_satisfied"] == 1.0
+    assert score.metrics["repair_interaction_satisfied"] == 1.0
+    assert score.metrics["repair_scored_success"] == 1.0
+    assert score.diagnostics["probe_user_queries"] == 0
+    assert score.diagnostics["repair_user_queries"] == 1

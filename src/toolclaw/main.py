@@ -84,13 +84,15 @@ class ToolClawRuntime:
         backup_tool_map: Optional[Dict[str, str]] = None,
         state_values: Optional[Dict[str, object]] = None,
         compile_on_success: bool = True,
+        resume_patch: Optional[object] = None,
     ) -> ExecutionOutcome:
-        resume_patch = self.repair_updater.ingest_reply(
-            workflow=workflow,
-            repair=repair,
-            reply=reply,
-            state_values=dict(state_values or {}),
-        )
+        if resume_patch is None:
+            resume_patch = self.repair_updater.ingest_reply(
+                workflow=workflow,
+                repair=repair,
+                reply=reply,
+                state_values=dict(state_values or {}),
+            )
         outcome = self.executor.resume_from_patch(
             workflow=workflow,
             run_id=run_id,
@@ -135,6 +137,10 @@ class ToolClawRuntime:
         trace.metrics.success = bool(metrics.get("success"))
         trace.metrics.tool_calls = int(metrics.get("tool_calls", 0) or 0)
         trace.metrics.user_queries = int(metrics.get("user_queries", 0) or 0)
+        trace.metrics.probe_user_queries = int(metrics.get("probe_user_queries", 0) or 0)
+        trace.metrics.repair_user_queries = int(metrics.get("repair_user_queries", 0) or 0)
+        trace.metrics.probe_user_replies = int(metrics.get("probe_user_replies", 0) or 0)
+        trace.metrics.repair_user_replies = int(metrics.get("repair_user_replies", 0) or 0)
         trace.metrics.repair_actions = int(metrics.get("repair_actions", 0) or 0)
         trace.metrics.total_steps = int(metrics.get("total_steps", 0) or 0)
         for event in payload.get("events", []):
@@ -155,6 +161,10 @@ class ToolClawRuntime:
         trace.metrics.success = bool(metrics.get("success"))
         trace.metrics.tool_calls = int(metrics.get("tool_calls", 0) or 0)
         trace.metrics.user_queries = int(metrics.get("user_queries", 0) or 0)
+        trace.metrics.probe_user_queries = int(metrics.get("probe_user_queries", 0) or 0)
+        trace.metrics.repair_user_queries = int(metrics.get("repair_user_queries", 0) or 0)
+        trace.metrics.probe_user_replies = int(metrics.get("probe_user_replies", 0) or 0)
+        trace.metrics.repair_user_replies = int(metrics.get("repair_user_replies", 0) or 0)
         trace.metrics.repair_actions = int(metrics.get("repair_actions", 0) or 0)
         trace.metrics.total_steps = int(metrics.get("total_steps", 0) or 0)
         return trace
