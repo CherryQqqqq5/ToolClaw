@@ -76,3 +76,43 @@ def test_file_asset_registry_rejects_state_slot_incompatible_reuse(tmp_path) -> 
     )
 
     assert matches == []
+
+
+def test_file_asset_registry_prefers_higher_utility_execution_prior(tmp_path) -> None:
+    registry = FileAssetRegistry(str(tmp_path / "assets"))
+    registry.upsert(
+        SimpleNamespace(
+            snippet_id="ws_low_utility_001",
+            task_signature="phase1::family=t0_general::caps=cap_retrieve+cap_write::fail=none::goal=retrieve_and_write_report",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "write_tool"},
+            recommended_inputs={"cap_retrieve": {"result_key": "cached_result"}},
+            metadata={
+                "reuse_application_hint": "binding_prior",
+                "utility_gain_score": 0.0,
+            },
+        )
+    )
+    high_id = registry.upsert(
+        SimpleNamespace(
+            snippet_id="ws_high_utility_001",
+            task_signature="phase1::family=t0_general::caps=cap_retrieve+cap_write::fail=none::goal=retrieve_and_write_report",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "write_tool"},
+            recommended_inputs={"cap_retrieve": {"result_key": "cached_result"}},
+            metadata={
+                "reuse_application_hint": "execution_prior",
+                "utility_gain_score": 0.4,
+            },
+        )
+    )
+
+    matches = registry.query(
+        "phase1::family=t0_general::caps=cap_retrieve+cap_write::fail=none::goal=retrieve_and_write_report",
+        required_capability_skeleton=["cap_retrieve", "cap_write"],
+        failure_context="none",
+    )
+
+    assert matches[0].asset_id == high_id
+    assert matches[0].metadata["reuse_application_hint"] == "execution_prior"
+    assert matches[0].metadata["utility_gain_score"] == 0.4

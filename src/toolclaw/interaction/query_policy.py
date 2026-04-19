@@ -26,6 +26,7 @@ class QueryPolicy:
         stale_assets = [str(item) for item in report.metadata.get("stale_assets", []) if str(item)]
         error_category = str(report.metadata.get("error_category") or "unknown")
         backup_tool_id = str(report.metadata.get("backup_tool_id") or "")
+        continuation_backup_tool_id = str(report.metadata.get("continuation_backup_tool_id") or "")
         alternative_tool_ids = [
             str(item) for item in report.metadata.get("alternative_tool_ids", []) if str(item)
         ]
@@ -53,13 +54,14 @@ class QueryPolicy:
                 stale_assets=stale_assets,
                 error_category=error_category,
                 branch_options=branch_options,
+                continuation_backup_tool_id=continuation_backup_tool_id or backup_tool_id,
             ):
                 repair_plan = self._repair_component_plan(
                     missing_input_keys=missing_input_keys,
                     missing_assets=missing_assets,
                     stale_assets=stale_assets,
                     error_category=error_category,
-                    backup_tool_id=backup_tool_id,
+                    backup_tool_id=continuation_backup_tool_id or backup_tool_id,
                     alternative_tool_ids=alternative_tool_ids,
                     branch_options=branch_options,
                 )
@@ -379,8 +381,11 @@ class QueryPolicy:
         stale_assets: list[str],
         error_category: str,
         branch_options: list[str],
+        continuation_backup_tool_id: str,
     ) -> bool:
         if missing_input_keys or missing_assets or stale_assets or branch_options:
+            return True
+        if continuation_backup_tool_id:
             return True
         return error_category == "environment_failure"
 

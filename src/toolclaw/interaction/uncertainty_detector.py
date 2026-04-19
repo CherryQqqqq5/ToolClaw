@@ -42,6 +42,10 @@ class UncertaintyDetector:
         step = workflow.get_step(step_id)
         error_category = str(repair.metadata.get("mapped_from_error_category") or "unknown")
         missing_input_keys = self._infer_missing_input_keys(step)
+        continuation_missing_input_keys = self._continuation_missing_input_keys(step)
+        for input_key in continuation_missing_input_keys:
+            if input_key not in missing_input_keys:
+                missing_input_keys.append(input_key)
         missing_assets = self._collect_missing_assets(
             workflow=workflow,
             step=step,
@@ -60,7 +64,8 @@ class UncertaintyDetector:
                 if asset and asset not in missing_assets:
                     missing_assets.append(asset)
         failed_tool_id = str(repair.metadata.get("failed_tool_id") or (step.tool_id if step else "") or "")
-        backup_tool_id = str(repair.metadata.get("backup_tool_id") or "")
+        continuation_backup_tool_id = self._continuation_backup_tool_id(step)
+        backup_tool_id = str(repair.metadata.get("backup_tool_id") or continuation_backup_tool_id or "")
         available_tool_ids = [tool.tool_id for tool in workflow.context.candidate_tools]
         alternative_tool_ids = [
             tool_id for tool_id in available_tool_ids if tool_id and tool_id != failed_tool_id
@@ -99,6 +104,7 @@ class UncertaintyDetector:
                     "alternative_tool_ids": alternative_tool_ids,
                     "branch_options": branch_options,
                     "error_category": error_category,
+                    "continuation_backup_tool_id": continuation_backup_tool_id or None,
                     "patch_targets": {"approved": "policy.approved"},
                     "constraint_source": "policy",
                     "constraint_requires_approval": True,
@@ -355,6 +361,47 @@ class UncertaintyDetector:
                 if option and option not in branch_options:
                     branch_options.append(option)
         return branch_options
+
+    @staticmethod
+    def _continuation_missing_input_keys(step: Any) -> List[str]:
+        if step is None:
+            return []
+        continuation_hints = step.metadata.get("continuation_hints", [])
+        if not isinstance(continuation_hints, list):
+            continuation_hints = []
+        missing_input_keys: List[str] = []
+        for hint in continuation_hints:
+            if not isinstance(hint, dict):
+                continue
+            for item in hint.get("patched_input_keys", []):
+                key = str(item).strip()
+                if key and key not in missing_input_keys:
+                    missing_input_keys.append(key)
+        metadata_keys = step.metadata.get("continuation_missing_input_keys", [])
+        if isinstance(metadata_keys, list):
+            for item in metadata_keys:
+                key = str(item).strip()
+                if key and key not in missing_input_keys:
+                    missing_input_keys.append(key)
+        return missing_input_keys
+
+    @staticmethod
+    def _continuation_backup_tool_id(step: Any) -> str:
+        if step is None:
+            return ""
+        metadata_backup_tool_id = str(step.metadata.get("continuation_backup_tool_id") or "").strip()
+        if metadata_backup_tool_id:
+            return metadata_backup_tool_id
+        continuation_hints = step.metadata.get("continuation_hints", [])
+        if not isinstance(continuation_hints, list):
+            return ""
+        for hint in continuation_hints:
+            if not isinstance(hint, dict):
+                continue
+            backup_tool_id = str(hint.get("backup_tool_id") or "").strip()
+            if backup_tool_id:
+                return backup_tool_id
+        return ""
 
     @staticmethod
     def _is_constraint_conflict(

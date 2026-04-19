@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 import re
 from typing import Any, Dict, List
 
-from toolclaw.schemas.trace import Trace
+from toolclaw.schemas.trace import EventType, Trace
 from toolclaw.schemas.workflow import Workflow
 
 
@@ -17,6 +17,7 @@ class WorkflowSnippet:
     capability_skeleton: List[str]
     recommended_bindings: Dict[str, str] = field(default_factory=dict)
     recommended_inputs: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    continuation_hints: List[Dict[str, Any]] = field(default_factory=list)
     version: int = 1
     applicability_conditions: List[str] = field(default_factory=list)
     quality_score: float = 0.0
@@ -114,6 +115,7 @@ def collect_required_state_slots(workflow: Workflow) -> List[str]:
 
 _PAIR_SUFFIX_RE = re.compile(r"__pair\d+$")
 _NUMERIC_SUFFIX_RE = re.compile(r"_\d+$")
+_LOW_VALUE_REUSE_INPUT_KEYS = {"query", "messages", "approved"}
 
 
 def _semantic_reuse_family(value: Any) -> str:
@@ -125,7 +127,19 @@ def _semantic_reuse_family(value: Any) -> str:
     return family
 
 
+def _derive_reuse_family_id(workflow: Workflow) -> str:
+    explicit = str(workflow.metadata.get("reuse_family_id") or "").strip()
+    if explicit:
+        return explicit
+    task_id = str(workflow.task.task_id or "").strip()
+    if "__pass" in task_id:
+        return task_id.rsplit("__pass", 1)[0]
+    return ""
+
+
 class SWPCCompiler:
+    _CONTINUATION_VALUE_BLOCKLIST = {"query", "messages", "approved"}
+
     @staticmethod
     def _signature_metadata(workflow: Workflow) -> tuple[str, List[str]]:
         task_family = workflow.metadata.get("task_family")
@@ -156,7 +170,10 @@ class SWPCCompiler:
             or "none"
         ).strip()
         task_family = str(workflow.metadata.get("task_family") or "t0_general").strip()
-        reuse_family_id = str(workflow.metadata.get("reuse_family_id") or "").strip()
+        reuse_family_id = _derive_reuse_family_id(workflow)
+        semantic_reuse_family = str(workflow.metadata.get("semantic_reuse_family") or "").strip()
+        if not semantic_reuse_family:
+            semantic_reuse_family = _semantic_reuse_family(reuse_family_id)
         return {
             "source_task_id": str(workflow.task.task_id or "").strip(),
             "task_family": task_family or "t0_general",
@@ -164,8 +181,181 @@ class SWPCCompiler:
             "capability_skeleton": capability_skeleton,
             "required_state_slots": collect_required_state_slots(workflow),
             "reuse_family_id": reuse_family_id,
-            "semantic_reuse_family": _semantic_reuse_family(reuse_family_id),
+            "semantic_reuse_family": semantic_reuse_family,
         }
+
+    @staticmethod
+    def _compile_recommended_inputs(workflow: Workflow) -> Dict[str, Dict[str, Any]]:
+        compiled: Dict[str, Dict[str, Any]] = {}
+        for step in workflow.execution_plan:
+            filtered_inputs: Dict[str, Any] = {}
+            for key, value in dict(step.inputs).items():
+                normalized_key = str(key).strip()
+                if not normalized_key or normalized_key in _LOW_VALUE_REUSE_INPUT_KEYS:
+                    continue
+                if value in (None, "", [], {}):
+                    continue
+                filtered_inputs[normalized_key] = value
+            if filtered_inputs:
+                compiled[step.capability_id] = filtered_inputs
+        return compiled
+
+    @staticmethod
+    def _utility_profile(workflow: Workflow, compile_gate: Dict[str, Any]) -> Dict[str, Any]:
+        observed_tool_calls = int(compile_gate.get("tool_calls", 0) or 0)
+        observed_user_queries = int(compile_gate.get("user_queries", 0) or 0)
+        observed_repair_actions = int(compile_gate.get("repair_actions", 0) or 0)
+        expected_tool_calls = int(compile_gate.get("expected_tool_calls", 0) or 0)
+        expected_turns = int(compile_gate.get("expected_turns", 0) or 0)
+        baseline_steps = max(len(workflow.execution_plan), 1)
+        baseline_confirmation_turns = sum(1 for step in workflow.execution_plan if step.requires_user_confirmation)
+        step_saving = max(0.0, (baseline_steps - observed_tool_calls) / baseline_steps)
+        turn_saving = 0.0
+        if baseline_confirmation_turns > 0 and observed_user_queries < baseline_confirmation_turns:
+            turn_saving = max(0.0, (baseline_confirmation_turns - observed_user_queries) / baseline_confirmation_turns)
+        auto_repair_replay_eligible = observed_repair_actions > 0 and observed_user_queries == 0
+        utility_gain_score = round(0.7 * step_saving + 0.3 * turn_saving, 4)
+        reuse_application_hint = "execution_prior" if utility_gain_score > 0.0 else "binding_prior"
+        return {
+            "observed_tool_calls": observed_tool_calls,
+            "observed_user_queries": observed_user_queries,
+            "observed_repair_actions": observed_repair_actions,
+            "auto_repair_replay_eligible": auto_repair_replay_eligible,
+            "expected_tool_calls": expected_tool_calls,
+            "expected_turns": expected_turns,
+            "tool_efficiency": round(float(compile_gate.get("tool_efficiency", 0.0) or 0.0), 4),
+            "turn_efficiency": round(float(compile_gate.get("turn_efficiency", 0.0) or 0.0), 4),
+            "repair_score": round(float(compile_gate.get("repair_score", 0.0) or 0.0), 4),
+            "baseline_step_count": baseline_steps,
+            "baseline_confirmation_turns": baseline_confirmation_turns,
+            "step_saving": round(step_saving, 4),
+            "turn_saving": round(turn_saving, 4),
+            "utility_gain_score": utility_gain_score,
+            "utility_gain_signature": (
+                f"steps_saved={step_saving:.3f}|turns_saved={turn_saving:.3f}|"
+                f"repair_score={float(compile_gate.get('repair_score', 0.0) or 0.0):.3f}"
+            ),
+            "reuse_application_hint": reuse_application_hint,
+        }
+
+    @classmethod
+    def _compile_continuation_hints(
+        cls,
+        workflow: Workflow,
+        trace: Trace,
+    ) -> List[Dict[str, Any]]:
+        hints: List[Dict[str, Any]] = []
+        seen: set[tuple[Any, ...]] = set()
+        step_by_id = {step.step_id: step for step in workflow.execution_plan}
+
+        for event in trace.events:
+            if event.event_type != EventType.REPAIR_TRIGGERED or not isinstance(event.output, dict):
+                continue
+            repair_payload = dict(event.output)
+            repair_type = str(repair_payload.get("repair_type") or "").strip()
+            if not repair_type:
+                continue
+            step_id = str(event.step_id or "").strip()
+            step = step_by_id.get(step_id)
+            if step is None:
+                continue
+
+            if repair_type == "request_approval":
+                hint = {
+                    "kind": "approved_then_resume_same_step",
+                    "trigger_repair_type": repair_type,
+                    "capability_id": step.capability_id,
+                    "tool_id": str(event.tool_id or step.tool_id or "").strip(),
+                    "resume_policy": "same_step",
+                }
+                key = (
+                    hint["kind"],
+                    hint["trigger_repair_type"],
+                    hint["capability_id"],
+                    hint["tool_id"],
+                )
+                if key not in seen:
+                    seen.add(key)
+                    hints.append(hint)
+                continue
+
+            if repair_type == "rebind_args":
+                patched_input_keys: List[str] = []
+                for action in repair_payload.get("actions", []):
+                    if not isinstance(action, dict):
+                        continue
+                    if str(action.get("action_type") or "").strip() != "state_patch":
+                        continue
+                    target = str(action.get("target") or "").strip()
+                    if ".inputs." in target:
+                        input_key = target.split(".inputs.", 1)[1].strip()
+                        if input_key and input_key not in cls._CONTINUATION_VALUE_BLOCKLIST and input_key not in patched_input_keys:
+                            patched_input_keys.append(input_key)
+                        continue
+                    if target.endswith(".inputs") and isinstance(action.get("value"), dict):
+                        for input_key, input_value in dict(action["value"]).items():
+                            normalized_key = str(input_key).strip()
+                            if not normalized_key or normalized_key in cls._CONTINUATION_VALUE_BLOCKLIST:
+                                continue
+                            if input_value in (None, "", [], {}):
+                                continue
+                            if normalized_key not in patched_input_keys:
+                                patched_input_keys.append(normalized_key)
+                if not patched_input_keys:
+                    continue
+                hint = {
+                    "kind": "patch_then_retry_same_step",
+                    "trigger_repair_type": repair_type,
+                    "capability_id": step.capability_id,
+                    "tool_id": str(event.tool_id or step.tool_id or "").strip(),
+                    "patched_input_keys": patched_input_keys,
+                    "resume_policy": "retry_same_step",
+                }
+                key = (
+                    hint["kind"],
+                    hint["trigger_repair_type"],
+                    hint["capability_id"],
+                    hint["tool_id"],
+                    tuple(patched_input_keys),
+                )
+                if key not in seen:
+                    seen.add(key)
+                    hints.append(hint)
+                continue
+
+            if repair_type in {"switch_tool", "switch_backup_path"}:
+                backup_tool_id = ""
+                for action in repair_payload.get("actions", []):
+                    if not isinstance(action, dict):
+                        continue
+                    if str(action.get("action_type") or "").strip() != "switch_tool":
+                        continue
+                    candidate_tool_id = str(action.get("value") or "").strip()
+                    if candidate_tool_id:
+                        backup_tool_id = candidate_tool_id
+                        break
+                if not backup_tool_id:
+                    continue
+                hint = {
+                    "kind": "fallback_to_backup_then_resume",
+                    "trigger_repair_type": repair_type,
+                    "capability_id": step.capability_id,
+                    "tool_id": str(event.tool_id or step.tool_id or "").strip(),
+                    "backup_tool_id": backup_tool_id,
+                    "resume_policy": "retry_same_step",
+                }
+                key = (
+                    hint["kind"],
+                    hint["trigger_repair_type"],
+                    hint["capability_id"],
+                    hint["tool_id"],
+                    hint["backup_tool_id"],
+                )
+                if key not in seen:
+                    seen.add(key)
+                    hints.append(hint)
+
+        return hints
 
     def compile_from_trace(
         self,
@@ -203,12 +393,17 @@ class SWPCCompiler:
     ) -> WorkflowSnippet:
         primary_signature, alias_signatures = self._signature_metadata(workflow)
         reuse_metadata = self._reuse_metadata(workflow)
+        continuation_hints = self._compile_continuation_hints(workflow, trace)
+        utility_profile = self._utility_profile(workflow, compile_gate)
+        if continuation_hints and utility_profile["utility_gain_score"] > 0.0:
+            utility_profile["reuse_application_hint"] = "continuation_prior"
         return WorkflowSnippet(
             snippet_id=f"ws_{workflow.workflow_id}",
             task_signature=primary_signature,
             capability_skeleton=[step.capability_id for step in workflow.execution_plan],
             recommended_bindings={binding.capability_id: binding.primary_tool for binding in workflow.tool_bindings},
-            recommended_inputs={step.capability_id: dict(step.inputs) for step in workflow.execution_plan},
+            recommended_inputs=self._compile_recommended_inputs(workflow),
+            continuation_hints=continuation_hints,
             applicability_conditions=["phase1_training_free"],
             quality_score=quality_score,
             metadata={
@@ -219,6 +414,11 @@ class SWPCCompiler:
                 "promotion_mode": compile_gate.get("promotion_mode"),
                 "verifier_backed": bool(compile_gate.get("verifier_backed")),
                 "promotion_version": "phase1.v1",
+                "utility_profile": utility_profile,
+                "utility_gain_score": utility_profile["utility_gain_score"],
+                "utility_gain_signature": utility_profile["utility_gain_signature"],
+                "reuse_application_hint": utility_profile["reuse_application_hint"],
+                "continuation_hints": continuation_hints,
                 **reuse_metadata,
             },
         )

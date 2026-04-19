@@ -958,6 +958,8 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
     request.hints.user_style["gold_tool"] = workflow.metadata.get("gold_tool")
     request.hints.user_style["state_slots"] = list(workflow.metadata.get("state_slots", []))
     request.hints.user_style["dependency_edges"] = list(workflow.metadata.get("dependency_edges", []))
+    request.hints.user_style["reuse_family_id"] = workflow.metadata.get("reuse_family_id")
+    request.hints.user_style["semantic_reuse_family"] = workflow.metadata.get("semantic_reuse_family")
     request.hints.user_style["reuse_override_inputs"] = dict(workflow.metadata.get("reuse_override_inputs", {}))
     request.hints.user_style["tool_execution_backend"] = workflow.metadata.get("tool_execution_backend")
     if not allow_reuse:

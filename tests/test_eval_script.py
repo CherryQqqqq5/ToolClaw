@@ -287,6 +287,8 @@ def test_build_planning_request_preserves_toolsandbox_metadata() -> None:
             "messages": [{"sender": "system", "content": "full instruction"}],
             "tool_allow_list": ["search_contacts", "send_message_with_phone_number"],
             "backup_tool_map": {"send_message_with_phone_number": "backup_send_message_with_phone_number"},
+            "reuse_family_id": "message_send_001",
+            "semantic_reuse_family": "message_send",
             "milestones": ["retrieve contact", "send message"],
             "primary_failtax": "state",
             "failtaxes": ["state", "ordering"],
@@ -308,6 +310,8 @@ def test_build_planning_request_preserves_toolsandbox_metadata() -> None:
     assert request.hints.user_style["backup_tool_map"] == {
         "send_message_with_phone_number": "backup_send_message_with_phone_number"
     }
+    assert request.hints.user_style["reuse_family_id"] == "message_send_001"
+    assert request.hints.user_style["semantic_reuse_family"] == "message_send"
     assert request.hints.user_style["tool_execution_backend"] == "semantic_mock"
 
 

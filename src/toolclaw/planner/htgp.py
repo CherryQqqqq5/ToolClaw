@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 import re
 from typing import Any, Dict, List, Optional, Sequence
 
-from toolclaw.compiler.swpc import build_task_signature_candidates
+from toolclaw.compiler.swpc import _semantic_reuse_family, build_task_signature_candidates
 from toolclaw.planner.binder import ToolBinder
 from toolclaw.planner.capability_intents import (
     CAPABILITY_PROFILES_BY_ID,
@@ -843,6 +843,8 @@ class HTGPPlanner:
                     "resolved_asset_ids": list(request.hints.reusable_asset_ids),
                     "profile_loaded": bool(resolved_reusable_asset_ids),
                     "reuse_mode": str(reusable_profile.get("reuse_mode", "none")),
+                    "reuse_application": str(reusable_profile.get("reuse_application", "none")),
+                    "utility_gain_score": float(reusable_profile.get("utility_gain_score", 0.0) or 0.0),
                     "selected_match": deepcopy(reusable_profile.get("selected_match", {})),
                 },
                 "reuse_override_inputs": deepcopy(request.hints.user_style.get("reuse_override_inputs", {})),
@@ -851,6 +853,7 @@ class HTGPPlanner:
         )
         workflow.metadata.update(self._passthrough_workflow_metadata(request))
         self._apply_request_overrides(workflow, request.workflow_overrides)
+        self._apply_reusable_continuation_hints(workflow, reusable_profile)
         self._apply_reusable_hints(workflow, reusable_profile)
 
         artifact = PlanningArtifact(
@@ -1565,8 +1568,13 @@ class HTGPPlanner:
             "capability_order": [],
             "recommended_bindings": {},
             "recommended_inputs": {},
+            "continuation_hints": [],
+            "auto_patch_input_keys": {},
             "asset_ids": [],
             "reuse_mode": "none",
+            "reuse_application": "none",
+            "utility_gain_score": 0.0,
+            "auto_continuation_replay": False,
             "selected_match": {},
         }
         reuse_enabled = bool(request.hints.allow_reuse or request.hints.reusable_asset_ids)
@@ -1577,6 +1585,14 @@ class HTGPPlanner:
         capability_skeleton = [capability.capability_id for capability in graph.capabilities] if graph else []
         required_state_slots = self._required_state_slots(request)
         failure_context = str(request.hints.user_style.get("failure_type") or "").strip() or None
+        target_reuse_family_id = str(request.hints.user_style.get("reuse_family_id") or "").strip()
+        if not target_reuse_family_id:
+            target_reuse_family_id = str(request.task.task_id or "").rsplit("__pass", 1)[0]
+        target_semantic_reuse_family = str(request.hints.user_style.get("semantic_reuse_family") or "").strip()
+        if not target_semantic_reuse_family and target_reuse_family_id:
+            target_semantic_reuse_family = _semantic_reuse_family(target_reuse_family_id)
+        if not target_semantic_reuse_family:
+            target_semantic_reuse_family = _semantic_reuse_family(request.hints.user_style.get("task_family"))
         selected_match: Dict[str, Any] = {}
         if not asset_ids and self.asset_registry:
             signatures = build_task_signature_candidates(
@@ -1623,11 +1639,13 @@ class HTGPPlanner:
             asset_capability_skeleton = getattr(asset, "capability_skeleton", None)
             recommended_bindings = getattr(asset, "recommended_bindings", None)
             recommended_inputs = getattr(asset, "recommended_inputs", None)
+            continuation_hints = getattr(asset, "continuation_hints", None)
+            reuse_application, utility_gain_score = self._asset_reuse_utility(asset)
             if asset_capability_skeleton:
                 profile["capability_order"] = list(asset_capability_skeleton)
             if recommended_bindings:
                 profile["recommended_bindings"].update(dict(recommended_bindings))
-            if recommended_inputs:
+            if recommended_inputs and reuse_application in {"execution_prior", "continuation_prior"}:
                 profile["recommended_inputs"].update(
                     {
                         capability_id: dict(inputs)
@@ -1635,11 +1653,54 @@ class HTGPPlanner:
                         if isinstance(inputs, dict)
                     }
                 )
+            asset_metadata = getattr(asset, "metadata", {})
+            if not isinstance(asset_metadata, dict):
+                asset_metadata = {}
+            exact_reuse_match = str(selected_match.get("reuse_mode") or "") == "exact_reuse"
+            source_reuse_family_id = str(
+                selected_match.get("source_reuse_family_id")
+                or asset_metadata.get("reuse_family_id", "")
+            ).strip()
+            source_semantic_reuse_family = str(
+                selected_match.get("source_semantic_reuse_family")
+                or asset_metadata.get("semantic_reuse_family", "")
+            ).strip()
+            if not source_semantic_reuse_family and source_reuse_family_id:
+                source_semantic_reuse_family = _semantic_reuse_family(source_reuse_family_id)
+            continuation_reuse_compatible = bool(
+                continuation_hints
+                and self._continuation_reuse_compatible(
+                    source_semantic_reuse_family=source_semantic_reuse_family,
+                    target_semantic_reuse_family=target_semantic_reuse_family,
+                )
+            )
+            auto_continuation_replay = bool(
+                continuation_reuse_compatible
+                and exact_reuse_match
+                and self._asset_auto_repair_replay_eligible(asset_metadata)
+            )
+            if recommended_inputs and (
+                reuse_application in {"execution_prior", "continuation_prior"} or auto_continuation_replay
+            ):
+                profile["recommended_inputs"].update(
+                    {
+                        capability_id: dict(inputs)
+                        for capability_id, inputs in dict(recommended_inputs).items()
+                        if isinstance(inputs, dict)
+                    }
+                )
+            if continuation_reuse_compatible:
+                continuation_hint_dicts = [dict(item) for item in continuation_hints if isinstance(item, dict)]
+                profile["continuation_hints"].extend(continuation_hint_dicts)
+            if auto_continuation_replay:
+                self._promote_exact_match_auto_replay(
+                    profile,
+                    continuation_hints=continuation_hint_dicts,
+                )
+                selected_match["auto_continuation_replay"] = True
+                selected_match["reuse_application_hint"] = "continuation_prior"
             admitted_asset_ids.append(str(asset_id))
             if not selected_match:
-                asset_metadata = getattr(asset, "metadata", {})
-                if not isinstance(asset_metadata, dict):
-                    asset_metadata = {}
                 selected_match = {
                     "reuse_mode": "explicit_asset",
                     "asset_id": str(asset_id),
@@ -1647,12 +1708,32 @@ class HTGPPlanner:
                     "asset_failure_context": str(asset_metadata.get("failure_context", "")),
                     "asset_required_state_slots": list(asset_metadata.get("required_state_slots", [])),
                     "source_task_id": str(asset_metadata.get("source_task_id", "")),
-                    "source_reuse_family_id": str(asset_metadata.get("reuse_family_id", "")),
-                    "source_semantic_reuse_family": str(asset_metadata.get("semantic_reuse_family", "")),
+                    "source_reuse_family_id": source_reuse_family_id,
+                    "source_semantic_reuse_family": source_semantic_reuse_family,
+                    "reuse_application_hint": reuse_application,
+                    "utility_gain_score": utility_gain_score,
+                    "auto_continuation_replay": auto_continuation_replay,
                 }
+            profile["reuse_application"] = reuse_application
+            profile["utility_gain_score"] = utility_gain_score
+            profile["auto_continuation_replay"] = auto_continuation_replay
             break
         profile["asset_ids"] = admitted_asset_ids
         profile["reuse_mode"] = str(selected_match.get("reuse_mode") or "none")
+        profile["reuse_application"] = str(
+            selected_match.get("reuse_application_hint")
+            or profile.get("reuse_application")
+            or "none"
+        )
+        profile["utility_gain_score"] = float(
+            selected_match.get("utility_gain_score")
+            if selected_match.get("utility_gain_score") not in (None, "")
+            else profile.get("utility_gain_score", 0.0)
+        )
+        profile["auto_continuation_replay"] = bool(
+            selected_match.get("auto_continuation_replay")
+            or profile.get("auto_continuation_replay")
+        )
         profile["selected_match"] = selected_match
         return self._constrain_reusable_profile(
             profile,
@@ -1712,7 +1793,189 @@ class HTGPPlanner:
         return True
 
     @staticmethod
+    def _asset_reuse_utility(asset: Any) -> tuple[str, float]:
+        asset_metadata = getattr(asset, "metadata", {})
+        if not isinstance(asset_metadata, dict):
+            asset_metadata = {}
+        raw_profile = asset_metadata.get("utility_profile", {})
+        utility_profile = raw_profile if isinstance(raw_profile, dict) else {}
+        reuse_application = str(
+            utility_profile.get("reuse_application_hint")
+            or asset_metadata.get("reuse_application_hint")
+            or ""
+        ).strip()
+        if not reuse_application:
+            recommended_inputs = getattr(asset, "recommended_inputs", None)
+            continuation_hints = getattr(asset, "continuation_hints", None)
+            if isinstance(continuation_hints, list) and continuation_hints and utility_profile.get("utility_gain_score", 0.0):
+                reuse_application = "continuation_prior"
+            else:
+                reuse_application = "execution_prior" if isinstance(recommended_inputs, dict) and recommended_inputs else "binding_prior"
+        utility_gain_score = utility_profile.get("utility_gain_score", asset_metadata.get("utility_gain_score", 0.0))
+        try:
+            return reuse_application, float(utility_gain_score or 0.0)
+        except (TypeError, ValueError):
+            return reuse_application, 0.0
+
+    @staticmethod
+    def _asset_auto_repair_replay_eligible(asset_metadata: Dict[str, Any]) -> bool:
+        raw_profile = asset_metadata.get("utility_profile", {})
+        utility_profile = raw_profile if isinstance(raw_profile, dict) else {}
+        return bool(utility_profile.get("auto_repair_replay_eligible"))
+
+    @staticmethod
+    def _promote_exact_match_auto_replay(
+        profile: Dict[str, Any],
+        *,
+        continuation_hints: Sequence[Dict[str, Any]],
+    ) -> None:
+        auto_patch_keys = profile.setdefault("auto_patch_input_keys", {})
+        if not isinstance(auto_patch_keys, dict):
+            auto_patch_keys = {}
+            profile["auto_patch_input_keys"] = auto_patch_keys
+        for hint in continuation_hints:
+            if not isinstance(hint, dict):
+                continue
+            capability_id = str(hint.get("capability_id") or "").strip()
+            if not capability_id:
+                continue
+            kind = str(hint.get("kind") or "").strip()
+            if kind == "fallback_to_backup_then_resume":
+                backup_tool_id = str(hint.get("backup_tool_id") or "").strip()
+                if backup_tool_id:
+                    profile["recommended_bindings"][capability_id] = backup_tool_id
+                    profile["reuse_application"] = "continuation_prior"
+            elif kind == "patch_then_retry_same_step":
+                patched_input_keys = [
+                    str(item).strip()
+                    for item in hint.get("patched_input_keys", [])
+                    if str(item).strip()
+                ]
+                if patched_input_keys:
+                    existing_keys = auto_patch_keys.setdefault(capability_id, [])
+                    for key in patched_input_keys:
+                        if key not in existing_keys:
+                            existing_keys.append(key)
+                    profile["reuse_application"] = "continuation_prior"
+
+    @staticmethod
+    def _continuation_reuse_compatible(
+        *, source_semantic_reuse_family: str, target_semantic_reuse_family: str
+    ) -> bool:
+        if not source_semantic_reuse_family or not target_semantic_reuse_family:
+            return False
+        return source_semantic_reuse_family == target_semantic_reuse_family
+
+    @staticmethod
+    def _apply_reusable_continuation_hints(workflow: Workflow, reusable_profile: Dict[str, Any]) -> None:
+        continuation_hints = reusable_profile.get("continuation_hints", [])
+        if not isinstance(continuation_hints, list) or not continuation_hints:
+            return
+        reusable_context = workflow.metadata.setdefault("reusable_context", {})
+        if not isinstance(reusable_context, dict):
+            reusable_context = {}
+            workflow.metadata["reusable_context"] = reusable_context
+        reusable_context["continuation_hints"] = [dict(item) for item in continuation_hints if isinstance(item, dict)]
+
+        graph_nodes = {node.node_id: node for node in workflow.workflow_graph.nodes}
+        for step in workflow.execution_plan:
+            matched_hints = HTGPPlanner._matched_continuation_hints(step, continuation_hints)
+            if not matched_hints:
+                continue
+            step_hints = step.metadata.setdefault("continuation_hints", [])
+            if not isinstance(step_hints, list):
+                step_hints = []
+                step.metadata["continuation_hints"] = step_hints
+            auto_continuation_replay = bool(reusable_profile.get("auto_continuation_replay"))
+            current_tool_id = str(step.tool_id or "").strip()
+            for hint in matched_hints:
+                if hint not in step_hints:
+                    step_hints.append(hint)
+                HTGPPlanner._apply_continuation_step_metadata(step.metadata, hint)
+                if auto_continuation_replay:
+                    rewritten_tool_id = HTGPPlanner._continuation_replay_tool_override(
+                        current_tool_id=current_tool_id,
+                        hint=hint,
+                    )
+                    if rewritten_tool_id:
+                        step.tool_id = rewritten_tool_id
+                        current_tool_id = rewritten_tool_id
+
+            node = graph_nodes.get(step.step_id)
+            if node is not None:
+                node_hints = node.metadata.setdefault("continuation_hints", [])
+                if not isinstance(node_hints, list):
+                    node_hints = []
+                    node.metadata["continuation_hints"] = node_hints
+                for hint in matched_hints:
+                    if hint not in node_hints:
+                        node_hints.append(hint)
+                    HTGPPlanner._apply_continuation_step_metadata(node.metadata, hint)
+                if auto_continuation_replay and step.tool_id:
+                    node.selected_tool = step.tool_id
+                    node.tool_candidates = [step.tool_id]
+
+        if not bool(reusable_profile.get("auto_continuation_replay")):
+            return
+        bindings_by_capability = {binding.capability_id: binding for binding in workflow.tool_bindings}
+        for step in workflow.execution_plan:
+            binding = bindings_by_capability.get(step.capability_id)
+            if binding is not None and step.tool_id:
+                binding.primary_tool = step.tool_id
+
+    @staticmethod
+    def _matched_continuation_hints(
+        step: WorkflowStep,
+        continuation_hints: Sequence[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        matched: List[Dict[str, Any]] = []
+        current_tool_id = str(step.tool_id or "").strip()
+        for raw_hint in continuation_hints:
+            if not isinstance(raw_hint, dict):
+                continue
+            capability_id = str(raw_hint.get("capability_id") or "").strip()
+            if capability_id and capability_id != step.capability_id:
+                continue
+            source_tool_id = str(raw_hint.get("tool_id") or "").strip()
+            if source_tool_id and current_tool_id and source_tool_id != current_tool_id:
+                continue
+            matched.append(dict(raw_hint))
+        return matched
+
+    @staticmethod
+    def _apply_continuation_step_metadata(step_metadata: Dict[str, Any], hint: Dict[str, Any]) -> None:
+        kind = str(hint.get("kind") or "").strip()
+        if kind == "patch_then_retry_same_step":
+            patched_input_keys = [str(item) for item in hint.get("patched_input_keys", []) if str(item)]
+            existing = step_metadata.setdefault("continuation_missing_input_keys", [])
+            if not isinstance(existing, list):
+                existing = []
+                step_metadata["continuation_missing_input_keys"] = existing
+            for key in patched_input_keys:
+                if key not in existing:
+                    existing.append(key)
+        elif kind == "fallback_to_backup_then_resume":
+            backup_tool_id = str(hint.get("backup_tool_id") or "").strip()
+            if backup_tool_id:
+                step_metadata.setdefault("continuation_backup_tool_id", backup_tool_id)
+        elif kind == "approved_then_resume_same_step":
+            step_metadata.setdefault("continuation_resume_policy", "same_step")
+
+    @staticmethod
+    def _continuation_replay_tool_override(*, current_tool_id: str, hint: Dict[str, Any]) -> str:
+        kind = str(hint.get("kind") or "").strip()
+        if kind != "fallback_to_backup_then_resume":
+            return ""
+        source_tool_id = str(hint.get("tool_id") or "").strip()
+        if source_tool_id and current_tool_id and source_tool_id != current_tool_id:
+            return ""
+        return str(hint.get("backup_tool_id") or "").strip()
+
+    @staticmethod
     def _apply_reusable_hints(workflow: Workflow, reusable_profile: Dict[str, Any]) -> None:
+        reuse_application = str(reusable_profile.get("reuse_application") or "execution_prior")
+        if reuse_application not in {"execution_prior", "continuation_prior"}:
+            return
         recommended_inputs = reusable_profile.get("recommended_inputs", {})
         if not isinstance(recommended_inputs, dict):
             return
@@ -1725,12 +1988,27 @@ class HTGPPlanner:
         existing_suppressed = reusable_context.get("suppressed_inputs", [])
         suppressed_inputs = existing_suppressed if isinstance(existing_suppressed, list) else []
         reusable_context["suppressed_inputs"] = suppressed_inputs
+        raw_auto_patch_input_keys = reusable_profile.get("auto_patch_input_keys", {})
+        auto_patch_input_keys = raw_auto_patch_input_keys if isinstance(raw_auto_patch_input_keys, dict) else {}
+        reusable_context["auto_continuation_replay"] = bool(
+            reusable_profile.get("auto_continuation_replay")
+        )
+        reusable_context["auto_patch_input_keys"] = {
+            capability_id: list(keys)
+            for capability_id, keys in auto_patch_input_keys.items()
+            if isinstance(keys, list)
+        }
 
         graph_nodes = {node.node_id: node for node in workflow.workflow_graph.nodes}
         for step in workflow.execution_plan:
             suggested_inputs = recommended_inputs.get(step.capability_id)
             if not isinstance(suggested_inputs, dict):
                 continue
+            auto_patch_keys = {
+                str(item)
+                for item in auto_patch_input_keys.get(step.capability_id, [])
+                if str(item)
+            }
             override_keys = {
                 str(item)
                 for item in override_map.get(step.capability_id, override_map.get("*", []))
@@ -1752,6 +2030,7 @@ class HTGPPlanner:
                     override_keys=override_keys,
                     task_scoped_keys=task_scoped_keys,
                     deferred_inputs=deferred_inputs,
+                    auto_patch_keys=auto_patch_keys,
                 )
                 if suppression_reason is not None:
                     suppressed_inputs.append(
@@ -1781,6 +2060,7 @@ class HTGPPlanner:
                         override_keys=override_keys,
                         task_scoped_keys=task_scoped_keys,
                         deferred_inputs=deferred_inputs,
+                        auto_patch_keys=auto_patch_keys,
                     ) is not None:
                         continue
                     if key not in node.inputs or key in override_keys:
@@ -1828,16 +2108,22 @@ class HTGPPlanner:
         override_keys: set[str],
         task_scoped_keys: set[str],
         deferred_inputs: set[str],
+        auto_patch_keys: set[str],
     ) -> Optional[str]:
         normalized_key = str(key)
         input_missing = step.inputs.get(normalized_key) in (None, "")
+        auto_patch_allowed = normalized_key in auto_patch_keys and input_missing
         if normalized_key in deferred_inputs and input_missing:
+            if auto_patch_allowed:
+                return None
             return "repair_sensitive_missing_input"
         if (
             normalized_key in task_scoped_keys
             and input_missing
             and cls._workflow_requires_failure_materialization(workflow)
         ):
+            if auto_patch_allowed:
+                return None
             return "task_scoped_input_deferred_until_failure_materializes"
         return None
 
@@ -1880,8 +2166,21 @@ class HTGPPlanner:
                 for capability_id, inputs in dict(profile.get("recommended_inputs", {})).items()
                 if isinstance(inputs, dict)
             },
+            "continuation_hints": [
+                dict(item)
+                for item in profile.get("continuation_hints", [])
+                if isinstance(item, dict)
+            ],
+            "auto_patch_input_keys": {
+                capability_id: list(keys)
+                for capability_id, keys in dict(profile.get("auto_patch_input_keys", {})).items()
+                if isinstance(keys, list)
+            },
             "asset_ids": list(profile.get("asset_ids", [])),
             "reuse_mode": str(profile.get("reuse_mode", "none")),
+            "reuse_application": str(profile.get("reuse_application", "none")),
+            "utility_gain_score": float(profile.get("utility_gain_score", 0.0) or 0.0),
+            "auto_continuation_replay": bool(profile.get("auto_continuation_replay")),
             "selected_match": dict(profile.get("selected_match", {}))
             if isinstance(profile.get("selected_match", {}), dict)
             else {},
@@ -1910,12 +2209,29 @@ class HTGPPlanner:
                 for capability_id, inputs in constrained["recommended_inputs"].items()
                 if capability_id in allowed_capabilities
             }
+            constrained["auto_patch_input_keys"] = {
+                capability_id: keys
+                for capability_id, keys in constrained["auto_patch_input_keys"].items()
+                if capability_id in allowed_capabilities
+            }
+            constrained["continuation_hints"] = [
+                hint
+                for hint in constrained["continuation_hints"]
+                if not str(hint.get("capability_id") or "").strip()
+                or str(hint.get("capability_id") or "").strip() in allowed_capabilities
+            ]
         elif allowed_tools:
             constrained["recommended_bindings"] = {
                 capability_id: tool_id
                 for capability_id, tool_id in constrained["recommended_bindings"].items()
                 if tool_id in allowed_tools
             }
+            constrained["continuation_hints"] = [
+                hint
+                for hint in constrained["continuation_hints"]
+                if not str(hint.get("tool_id") or "").strip()
+                or str(hint.get("tool_id") or "").strip() in allowed_tools
+            ]
         return constrained
 
 

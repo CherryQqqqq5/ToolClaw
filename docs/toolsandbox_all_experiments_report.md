@@ -13,6 +13,38 @@ Reporting rules:
    - the repo-bundled 14-sample **fallback/core slice** in `data/toolsandbox.formal.json`
 4. Any experiment that still depends on the pre-fix `a2` definition is either superseded or explicitly excluded.
 
+### 1.1 Update note (2026-04-19)
+
+Since the main report below was written, the repo has added two targeted follow-ups relevant to reuse and interaction:
+
+1. historical reuse-failure diagnosis on `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_persist_pass2`
+2. post-fix targeted 3-run gatefix bench on `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_gatefix_bench`
+
+These follow-ups do not change the archived 88-sample official headline result. They do change how the repository should interpret the earlier core-slice reuse regression:
+
+- the earlier core regression is now best read as historical evidence of a premature-reuse bug
+- the post-fix targeted bench no longer shows `a4 < a3`
+- the post-fix targeted bench still does not show `a4 > a3`
+- transfer-style reuse is observed after the fix, but no stable success gain is established
+
+This means the repository can now support "reuse is safer than before on the targeted follow-up slice", but it still cannot support "reuse improves over interaction on ToolSandbox".
+
+Since that note, the repo has added a second-stage exact-match continuation follow-up on:
+
+- `/cephfs/qiuyn/ToolClaw/outputs/remote/reuse_strata_tau2_auto_replay_v4`
+
+This newer follow-up does not change the archived 88-sample headline result either. It does refine the reuse claim boundary:
+
+- exact-match reuse now shows a narrow cost benefit on high-headroom Tau2 recovery cases
+- the observed gain is in downstream `tool_calls` and `repair_actions`, not in benchmark headline success
+- approval-heavy exact-match cases still do not reduce `user_turns`
+- transfer-style reuse still does not show stable gains
+
+Therefore the strongest current reuse claim is now:
+
+- safe reusable execution prior under matched task signatures
+- with narrow repair/tool-cost reduction on some exact-match high-headroom recovery cases
+
 ## 2. Datasets and provenance
 
 The repo contains two ToolSandbox dataset paths with different roles. Their intended meanings are documented in [docs/toolsandbox_usage.md](/Users/cherry/.codex/worktrees/1bba/ToolClaw/docs/toolsandbox_usage.md:36).
@@ -41,13 +73,15 @@ The repo contains two ToolSandbox dataset paths with different roles. Their inte
 
 ## 3. Included experiments
 
-This report includes five final experiment groups:
+This report includes five archived experiment groups plus two targeted post-fix follow-ups:
 
 1. ToolSandbox official frozen benchmark
 2. ToolSandbox explicit bundled core-slice benchmark
 3. Matched ToolSandbox ablation
 4. ToolSandbox reuse split train/eval
 5. Tau2 approval / recovery stress tests
+6. Post-fix targeted reuse-regression follow-up
+7. Post-fix exact-match continuation reuse follow-up
 
 ## 4. System ladder after the `a2` fix
 
@@ -65,8 +99,9 @@ Important interpretation rule:
 - this is a **design property**, not a guarantee of strictly monotonic success on every slice
 - in the current final results:
   - `a2 = a1` on the official benchmark
-  - `a2 > a1` on the bundled core slice
-  - `a4 < a3` on the bundled core slice
+  - `a2 > a1` on the historical bundled core slice
+  - `a4 < a3` on the historical bundled core slice
+  - `a4 = a3` on the later targeted gatefix follow-up bench
 
 Therefore the paper should claim **incremental mechanism addition**, not universal monotonic improvement.
 
@@ -156,7 +191,7 @@ Paper-safe claim:
 
 - ToolClaw's interaction-enabled variants (`a3`, `a4`) solve the restored 88-sample ToolSandbox benchmark perfectly, while non-interaction variants remain in the `0.659` to `0.693` range.
 
-## 6. Experiment B: ToolSandbox explicit bundled core-slice benchmark
+## 6. Experiment B: ToolSandbox explicit bundled core-slice benchmark (historical pre-gatefix mechanism slice)
 
 ### 6.1 Purpose
 
@@ -222,18 +257,143 @@ Validation status:
 
 ### 6.6 Conclusion
 
-This slice should be used as mechanism evidence, not as the headline ToolSandbox benchmark.
+This slice should be used as historical mechanism evidence, not as the headline ToolSandbox benchmark.
 
 Supported conclusions:
 
 - interaction is still the dominant mechanism
 - adding planner on top of recovery helps on this slice (`a2 > a1`)
-- on this slice, `a3_interaction` is slightly stronger than `a4_reuse`
+- on this historical slice, `a3_interaction` is slightly stronger than `a4_reuse`
 - repair-enabled interaction is more important than reuse on this slice
 
 Paper-safe claim:
 
 - The bundled core slice strengthens the mechanism interpretation that planner-on-top-of-recovery helps on failure-heavy tasks, but interaction-driven recovery remains the dominant gain and reuse is not universally beneficial.
+- This historical result should now be read together with the later targeted gatefix follow-up rather than treated as the last word on the current reuse implementation.
+
+## 9.5 Post-fix targeted reuse-regression follow-up
+
+### 9.5.1 Purpose
+
+Check whether the earlier `a4 < a3` reuse regression still appears after the stricter reuse admission and approval-query fixes.
+
+### 9.5.2 Inputs and outputs
+
+- Historical regression-diagnosis outdir:
+  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_persist_pass2`
+- Post-fix targeted bench outdir:
+  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_gatefix_bench`
+- Historical diagnosis:
+  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_persist_pass2/a3_vs_a4_reuse_failure_analysis.json`
+- Post-fix diagnosis:
+  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_gatefix_bench/a3_vs_a4_reuse_failure_analysis.json`
+- Post-fix raw comparison:
+  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_gatefix_bench/comparison.raw.csv`
+- Post-fix scored comparison:
+  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_gatefix_bench/comparison.scored.csv`
+- Post-fix per-system summary:
+  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_gatefix_bench/per_system_summary.json`
+
+### 9.5.3 Historical diagnosis result
+
+On the pre-fix targeted core run:
+
+- paired cases: `30`
+- regressed cases: `6`
+- regressed tasks: `2`
+- all regression cases were classified as `artifact_used_too_early`
+
+This is the strongest repo-local evidence that the old reuse issue was admission/timing, not artifact inventory size.
+
+### 9.5.4 Post-fix result
+
+On the post-fix targeted 3-run gatefix bench:
+
+- paired cases: `30`
+- regressed cases: `0`
+- regressed tasks: `0`
+- `a3_interaction` and `a4_reuse` both achieve `mean_success_rate = 1.0`
+- the key summary metrics in `per_system_summary.json` are identical between `a3_interaction` and `a4_reuse`
+
+Important nuance:
+
+- `a4_reuse` is not simply bypassing reuse
+- `comparison.raw.csv` shows `12/30` `a4_reuse` rows with `reused_artifact = True`
+- those reuse hits are all transfer-style:
+  - `reuse_mode = transfer_reuse`
+  - `reuse_tier = unresolved_transfer_reuse`
+- these reuse events produce neither visible gain nor visible regression relative to `a3_interaction`
+
+### 9.5.5 Conclusion
+
+Supported conclusion:
+
+- the specific reuse-timing regression identified in the historical targeted analysis no longer appears on the post-fix targeted bench
+
+Not supported:
+
+- a new claim that reuse now improves over interaction
+- a new claim that transfer reuse yields stable gains
+
+## 9.6 Post-fix exact-match continuation reuse follow-up
+
+### 9.6.1 Purpose
+
+Check whether the repaired reuse pipeline can do more than avoid harm, specifically on repeated exact-match cases that still have measurable repair or interaction headroom.
+
+### 9.6.2 Inputs and outputs
+
+- Tau2 repeated taskset:
+  - `/cephfs/qiuyn/ToolClaw/outputs/reuse_experiment_tau2/prepared/repeated_taskset.json`
+- Outdir:
+  - `/cephfs/qiuyn/ToolClaw/outputs/remote/reuse_strata_tau2_auto_replay_v4`
+- Tier analysis:
+  - `/cephfs/qiuyn/ToolClaw/outputs/remote/reuse_strata_tau2_auto_replay_v4/reuse_strata_analysis.json`
+- Headroom analysis:
+  - `/cephfs/qiuyn/ToolClaw/outputs/remote/reuse_strata_tau2_auto_replay_v4/reuse_headroom_analysis.json`
+- Raw comparison:
+  - `/cephfs/qiuyn/ToolClaw/outputs/remote/reuse_strata_tau2_auto_replay_v4/comparison.csv`
+
+### 9.6.3 Result
+
+Tier summary:
+
+- `exact_match_reuse`
+  - `paired_cases = 5`
+  - `a3_success = 1.0`
+  - `a4_success = 1.0`
+  - `delta_tool_calls = -0.4`
+  - `delta_repair_actions = -0.4`
+  - `delta_user_turns = 0.0`
+- `cross_family_transfer_reuse`
+  - all tracked deltas remain `0.0`
+
+Headroom-sensitive breakdown:
+
+- candidate exact-match high-headroom cases: `5`
+- two exact-match recovery cases account for the observed cost gain:
+  - `tau2_binding_auto_001__pass2`
+    - `a3: tool_calls=3, repair_actions=1`
+    - `a4: tool_calls=2, repair_actions=0`
+  - `tau2_env_backup_001__pass2`
+    - `a3: tool_calls=3, repair_actions=1`
+    - `a4: tool_calls=2, repair_actions=0`
+- approval-heavy exact-match cases remain unchanged:
+  - `tau2_approval_gate_001__pass2`
+  - `tau2_dual_control_001__pass2`
+  - `tau2_policy_abort_001__pass2`
+
+### 9.6.4 Conclusion
+
+Supported conclusion:
+
+- reuse now shows a narrow exact-match benefit on high-headroom recovery cases by reducing downstream repair/tool cost
+
+Not supported:
+
+- a claim that reuse broadly improves benchmark success
+- a claim that transfer reuse yields stable gains
+- a claim that reuse already compresses approval-heavy interaction turns
 
 ## 7. Experiment C: Matched ToolSandbox ablation
 
@@ -448,31 +608,47 @@ Not supported:
    - this slice sharpens recovery differences more than the official benchmark
    - it also shows that planner-on-top-of-recovery helps, but does not dominate interaction
 
-4. **Repair matters on the mechanism slice.**
+4. **The historical reuse regression has a clearer post-fix interpretation.**
+   - pre-fix targeted analysis: `6/30` regressed cases, all `artifact_used_too_early`
+   - post-fix targeted gatefix bench: `0/30` reuse-specific regressions
+   - therefore the earlier reuse issue is better read as a historical admission/timing bug than as evidence that reuse must remain harmful
+
+5. **Reuse now has a narrow exact-match cost-reduction result.**
+   - Tau2 exact-match continuation follow-up: `delta_tool_calls = -0.4`
+   - Tau2 exact-match continuation follow-up: `delta_repair_actions = -0.4`
+   - the observed gain is concentrated in exact-match `binding_failure` and `environment_failure` recovery cases
+   - transfer-style reuse still shows no stable gain
+
+6. **Repair matters on the mechanism slice.**
    - matched ablation: `tc_full=1.0`, `tc_no_repair=0.7`
 
-5. **Fallback and reuse do not improve success on the current ToolSandbox mechanism slice.**
+7. **Fallback and reuse do not improve success on the current ToolSandbox mechanism slice.**
    - `tc_no_fallback=1.0`
    - `tc_no_reuse=1.0`
 
-6. **The reuse split does not currently show held-out success gains.**
+8. **The reuse split does not currently show held-out success gains.**
    - `a3=1.0`, `a4=1.0` on eval
 
-7. **Tau2 supports approval-semantic claims but not compound cold-start approval+repair claims.**
+9. **Tau2 supports approval-semantic claims but not compound cold-start approval+repair claims.**
 
-8. **The `a0-a4` ladder is now implementation-correct from `a1` onward, but not numerically monotonic on every slice.**
+10. **The `a0-a4` ladder is now implementation-correct from `a1` onward, but not numerically monotonic on every slice.**
    - `a2 = a1 + planner`
    - `a3 = a2 + interaction`
    - `a4 = a3 + reuse/compiler`
-   - `a4` is below `a3` on the bundled core slice, so the paper should claim incremental mechanism addition, not guaranteed monotonic improvement on every benchmark slice
+   - historical bundled core slice: `a4 < a3`
+   - post-fix targeted gatefix bench: `a4 = a3`
+   - Tau2 exact-match continuation follow-up: `a4 = a3` on success, but `a4` reduces repair/tool cost on a narrow exact-match subset
+   - the paper should claim incremental mechanism addition, not guaranteed monotonic improvement on every benchmark slice
 
 ### 10.2 Not supported
 
 1. A strong claim that reuse improves success on the official ToolSandbox benchmark
-2. A strong claim that reuse improves success on the explicit 14-sample core slice
+2. A strong claim that reuse improves success on the explicit 14-sample historical core slice
 3. A strong claim that reuse improves held-out ToolSandbox success under the current split
 4. A strong claim that reuse robustly solves compound Tau2 approval + repair from cold start
 5. A strong claim that every layer in `a0-a4` strictly outperforms the previous layer on every benchmark slice
+6. A strong claim that transfer reuse now yields positive gains after the gate fix
+7. A strong claim that reuse broadly reduces interaction turns
 
 ## 11. Excluded experiments
 
@@ -492,6 +668,11 @@ The following are intentionally excluded from the main evidence:
 - `outputs/remote/toolsandbox_core_r3_control`
 - `outputs/remote/toolsandbox_core_r3_persist_pass1`
 - `outputs/remote/toolsandbox_core_r3_persist_pass2`
+
+Additional note:
+
+- `outputs/remote/toolsandbox_core_r3_persist_pass2` remains excluded from the main headline path
+- it is still retained as historical diagnosis evidence for the pre-fix reuse regression
 
 ### 11.3 Derived `bench_slices` outputs
 
@@ -533,7 +714,11 @@ The safest current paper-facing structure is:
 1. Use the restored **ToolSandbox official frozen benchmark** as the headline benchmark result.
 2. Use the explicit `toolsandbox.formal.json` rerun plus the matched ablation as the mechanism section.
 3. Use the split experiment only as a sanity check, not as positive reuse evidence.
-4. Omit Tau-bench unless it is rerun post-`a2` fix.
-5. Use Tau2 for approval-specific claims:
+4. Use the Tau2 exact-match continuation follow-up as the positive reuse evidence section:
+   - exact-match only
+   - high-headroom recovery cases
+   - repair/tool-cost reduction, not benchmark-success lift
+5. Omit Tau-bench unless it is rerun post-`a2` fix.
+6. Use Tau2 for approval-specific claims:
    - positive on pure approval recovery
    - negative / unresolved on compound cold-start approval+repair

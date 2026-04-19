@@ -56,6 +56,7 @@ class RunMetadata:
     budget_usage: Dict[str, Any] = field(default_factory=dict)
     interaction_modules: List[str] = field(default_factory=list)
     run_manifest: Dict[str, Any] = field(default_factory=dict)
+    reusable_context: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

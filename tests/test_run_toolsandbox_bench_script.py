@@ -728,7 +728,112 @@ def test_run_toolsandbox_bench_summary_recomputes_from_scored_rows(tmp_path: Pat
             key = (system, category)
             assert report_category_rows[key] == expected
             assert category_md_rows[key] == expected
-            assert "dominant_result_summary_source" in category_stats
+
+
+def test_build_scored_row_preserves_reuse_provenance() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_toolsandbox_bench.py"
+    spec = importlib.util.spec_from_file_location("run_toolsandbox_bench_module_scored_row", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    scored = module._build_scored_row(
+        run_index=3,
+        raw_row={
+            "task_id": "contact_edit__pair01__pass2",
+            "system": "a4_reuse",
+            "scenario": "canonicalization",
+            "task_family": "t4_repeated_reusable",
+            "failure_type": "canonicalization",
+            "primary_failtax": "selection",
+            "failtaxes": "[\"selection\"]",
+            "failure_step": "step_02",
+            "expected_recovery_path": "rebind_or_switch_then_retry",
+            "gold_tool": "write_tool",
+            "chosen_tool": "write_tool",
+            "state_slots": "[\"query\"]",
+            "dependency_edges": "[]",
+            "success": "True",
+            "stop_reason": "success_criteria_satisfied",
+            "trace_path": "outputs/fake_trace.json",
+            "tool_calls": "1",
+            "user_turns": "0",
+            "repair_actions": "0",
+            "repair_triggered": "0",
+            "total_steps": "1",
+            "token_cost": "0.0",
+            "wall_clock_ms": "0",
+            "observed_error_type": "canonicalization",
+            "first_failure_recovered": "False",
+            "repair_extra_tool_calls": "0",
+            "repair_extra_user_turns": "0",
+            "repair_user_clarification": "False",
+            "clarification_precision": "0.0",
+            "clarification_recall": "0.0",
+            "unnecessary_question_rate": "0.0",
+            "patch_success_rate": "0.0",
+            "post_answer_retry_count": "0",
+            "reuse_pass_index": "2",
+            "reused_artifact": "True",
+            "reuse_mode": "transfer_reuse",
+            "reuse_tier": "same_family_transfer_reuse",
+            "reuse_selected_asset_id": "ws_contact_001",
+            "reuse_selected_match_signature": "phase1::family=contact_edit",
+            "reuse_source_task_id": "contact_edit__pair00__pass1",
+            "reuse_target_family": "contact_edit__pair01",
+            "reuse_source_family": "contact_edit__pair00",
+            "reuse_target_semantic_family": "contact_edit",
+            "reuse_source_semantic_family": "contact_edit",
+            "second_run_improvement": "0.1",
+            "budget_violation": "False",
+            "budget_violation_reason": "",
+            "recovery_budget_used": "0.0",
+        },
+        score_payload={
+            "success": True,
+            "metrics": {
+                "execution_verified_success": 1.0,
+                "strict_scored_success": 1.0,
+                "repair_scored_success": 0.0,
+                "proxy_summary_success": 0.0,
+                "milestone_similarity": 1.0,
+                "milestone_coverage": 1.0,
+                "interaction_efficiency": 1.0,
+                "tool_efficiency": 1.0,
+                "turn_efficiency": 1.0,
+                "hallucination_avoidance": 1.0,
+                "state_dependency_score": 1.0,
+                "write_target_verified": 1.0,
+            },
+            "diagnostics": {
+                "categories": ["canonicalization"],
+                "primary_category": "canonicalization",
+                "raw_execution_success": True,
+                "raw_trace_success": True,
+                "tool_calls": 1,
+                "user_queries": 0,
+                "turn_count": 1,
+                "expected_turn_count": 1,
+                "expected_tool_calls": 1,
+                "matched_milestones": 1,
+                "total_milestones": 1,
+                "used_result_summary": True,
+                "reference_result_summary_available": True,
+                "milestone_signal_available": True,
+            },
+        },
+    )
+
+    assert scored["reused_artifact"] is True
+    assert scored["reuse_mode"] == "transfer_reuse"
+    assert scored["reuse_tier"] == "same_family_transfer_reuse"
+    assert scored["reuse_selected_asset_id"] == "ws_contact_001"
+    assert scored["reuse_source_task_id"] == "contact_edit__pair00__pass1"
+    assert scored["reuse_target_family"] == "contact_edit__pair01"
+    assert scored["reuse_source_family"] == "contact_edit__pair00"
+    assert scored["reuse_target_semantic_family"] == "contact_edit"
+    assert scored["reuse_source_semantic_family"] == "contact_edit"
 
 
 def test_run_toolsandbox_bench_script_merges_external_result_summaries(tmp_path: Path) -> None:

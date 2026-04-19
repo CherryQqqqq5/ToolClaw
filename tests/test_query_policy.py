@@ -144,6 +144,25 @@ def test_query_policy_keeps_approval_only_when_no_concrete_repair_payload_exists
     assert plan.patch_targets == {"approved": "policy.approved"}
 
 
+def test_query_policy_builds_compound_approval_with_continuation_tool_switch_hint() -> None:
+    plan = QueryPolicy().decide_query(
+        UncertaintyReport(
+            primary_label="policy_approval",
+            confidence=0.95,
+            metadata={
+                "continuation_backup_tool_id": "backup_write_tool",
+                "constraint_requires_approval": True,
+            },
+        )
+    )
+
+    assert plan.ask is True
+    assert plan.question_type == "approval_and_patch"
+    assert "approved" in plan.response_schema["required"]
+    assert "tool_id" in plan.response_schema["properties"]
+    assert plan.patch_targets["approved"] == "policy.approved"
+
+
 def test_query_policy_wraps_tool_switch_with_approval_when_required() -> None:
     plan = QueryPolicy().decide_query(
         UncertaintyReport(

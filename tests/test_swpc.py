@@ -14,7 +14,7 @@ from toolclaw.planner.binder import ToolBinder
 from toolclaw.planner.capability_graph import CapabilityTemplateRegistry, RuleBasedCapabilityGraphBuilder
 from toolclaw.registry import InMemoryAssetRegistry
 from toolclaw.interaction.repair_updater import RepairUpdater
-from toolclaw.schemas.trace import Trace
+from toolclaw.schemas.trace import EventType, Trace
 from toolclaw.schemas.workflow import TaskConstraints, TaskSpec, ToolSpec, Workflow, WorkflowContext
 
 
@@ -52,6 +52,120 @@ def test_compiler_extracts_workflow_snippet_from_success_trace(tmp_path: Path) -
     assert "family=" in artifacts.workflow_snippets[0].task_signature
     assert "caps=" in artifacts.workflow_snippets[0].task_signature
     assert "fail=" in artifacts.workflow_snippets[0].task_signature
+    utility_profile = artifacts.workflow_snippets[0].metadata["utility_profile"]
+    assert utility_profile["baseline_step_count"] == len(workflow.execution_plan)
+    assert "utility_gain_score" in utility_profile
+    assert artifacts.workflow_snippets[0].metadata["reuse_application_hint"] in {"binding_prior", "execution_prior"}
+    assert "query" not in artifacts.workflow_snippets[0].recommended_inputs.get("cap_retrieve", {})
+    assert "query" not in artifacts.workflow_snippets[0].recommended_inputs.get("cap_write", {})
+
+
+def test_utility_profile_uses_baseline_confirmation_turns_instead_of_expected_turn_hint() -> None:
+    workflow = Workflow.demo()
+
+    utility_profile = SWPCCompiler._utility_profile(
+        workflow,
+        {
+            "tool_calls": len(workflow.execution_plan),
+            "user_queries": 0,
+            "repair_actions": 0,
+            "expected_tool_calls": len(workflow.execution_plan),
+            "expected_turns": 11,
+            "tool_efficiency": 1.0,
+            "turn_efficiency": 1.0,
+            "repair_score": 1.0,
+        },
+    )
+
+    assert utility_profile["baseline_confirmation_turns"] == 0
+    assert utility_profile["turn_saving"] == 0.0
+    assert utility_profile["utility_gain_score"] == 0.0
+    assert utility_profile["reuse_application_hint"] == "binding_prior"
+
+
+def test_utility_profile_marks_exact_match_auto_repair_replay_candidates() -> None:
+    workflow = Workflow.demo()
+
+    utility_profile = SWPCCompiler._utility_profile(
+        workflow,
+        {
+            "tool_calls": len(workflow.execution_plan) + 1,
+            "user_queries": 0,
+            "repair_actions": 1,
+            "expected_tool_calls": len(workflow.execution_plan),
+            "expected_turns": 0,
+            "tool_efficiency": 0.8,
+            "turn_efficiency": 1.0,
+            "repair_score": 1.0,
+        },
+    )
+
+    assert utility_profile["auto_repair_replay_eligible"] is True
+    assert utility_profile["reuse_application_hint"] == "binding_prior"
+
+
+def test_compiler_extracts_continuation_hints_from_success_trace() -> None:
+    workflow = Workflow.demo()
+    workflow.execution_plan[1].requires_user_confirmation = True
+    workflow.execution_plan[1].tool_id = "write_tool"
+    trace = Trace(run_id="run_continuation_001", workflow_id=workflow.workflow_id, task_id=workflow.task.task_id)
+    trace.metrics.success = True
+    trace.metrics.tool_calls = len(workflow.execution_plan)
+    trace.metrics.user_queries = 1
+    trace.add_event(
+        event_id="evt_repair_triggered_step_02",
+        event_type=EventType.REPAIR_TRIGGERED,
+        actor="recovery_engine",
+        step_id="step_02",
+        tool_id="write_tool",
+        output={
+            "repair_type": "request_approval",
+            "actions": [{"action_type": "request_approval", "target": "step_02"}],
+        },
+    )
+    trace.add_event(
+        event_id="evt_repair_triggered_step_02_retry",
+        event_type=EventType.REPAIR_TRIGGERED,
+        actor="recovery_engine",
+        step_id="step_02",
+        tool_id="write_tool",
+        output={
+            "repair_type": "rebind_args",
+            "actions": [
+                {
+                    "action_type": "state_patch",
+                    "target": "step_02.inputs.target_path",
+                    "value": "outputs/reports/demo_report.txt",
+                }
+            ],
+        },
+    )
+
+    snippet = SWPCCompiler().compile_workflow(
+        workflow,
+        trace,
+        quality_score=0.9,
+        compile_gate={
+            "promotion_status": "promoted",
+            "promotion_mode": "heuristic_only",
+            "verifier_backed": False,
+            "tool_calls": len(workflow.execution_plan),
+            "user_queries": 1,
+            "repair_actions": 1,
+            "expected_tool_calls": len(workflow.execution_plan),
+            "expected_turns": 1,
+            "tool_efficiency": 1.0,
+            "turn_efficiency": 1.0,
+            "repair_score": 1.0,
+            "quality_score": 0.9,
+        },
+    )
+
+    kinds = {hint["kind"] for hint in snippet.continuation_hints}
+    assert "approved_then_resume_same_step" in kinds
+    assert "patch_then_retry_same_step" in kinds
+    patch_hint = next(hint for hint in snippet.continuation_hints if hint["kind"] == "patch_then_retry_same_step")
+    assert patch_hint["patched_input_keys"] == ["target_path"]
 
 
 def test_registry_retrieval_feeds_planner_hints() -> None:
@@ -202,6 +316,22 @@ def test_compiler_indexes_signature_aliases_for_structural_reuse() -> None:
     assert snippet.metadata["source_task_id"] == "contact_edit__pair01__pass2"
     assert snippet.metadata["reuse_family_id"] == "contact_edit__pair01"
     assert snippet.metadata["semantic_reuse_family"] == "contact_edit"
+
+
+def test_compiler_derives_reuse_family_from_pass_task_id_when_metadata_is_missing() -> None:
+    workflow = Workflow.demo()
+    workflow.task.task_id = "tau2_env_backup_001__pass1"
+    workflow.task.user_goal = "retrieve and write report"
+    workflow.metadata["task_family"] = "t4_repeated_reusable"
+    workflow.metadata["failure_type"] = "environment_failure"
+    workflow.metadata.pop("reuse_family_id", None)
+    workflow.metadata.pop("semantic_reuse_family", None)
+
+    artifacts = SWPCCompiler().compile_from_trace(workflow=workflow, trace=Trace.demo(), final_state={})
+    snippet = artifacts.workflow_snippets[0]
+
+    assert snippet.metadata["reuse_family_id"] == "tau2_env_backup_001"
+    assert snippet.metadata["semantic_reuse_family"] == "tau2_env_backup"
 
 
 def test_structural_signature_candidates_support_query_variation() -> None:

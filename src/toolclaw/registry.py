@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from pathlib import Path
 import re
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Protocol
 
@@ -190,7 +190,15 @@ def _asset_source_reuse_family(asset: Any) -> str:
 
 def _asset_source_semantic_reuse_family(asset: Any) -> str:
     metadata = _asset_metadata(asset)
-    return str(metadata.get("semantic_reuse_family") or "").strip()
+    semantic_family = str(metadata.get("semantic_reuse_family") or "").strip()
+    if semantic_family:
+        return semantic_family
+    reuse_family_id = _asset_source_reuse_family(asset)
+    if not reuse_family_id:
+        return ""
+    family = re.sub(r"__pair\d+$", "", reuse_family_id)
+    family = re.sub(r"_\d+$", "", family)
+    return family
 
 
 def _quality_score(asset: Any) -> float:
@@ -198,6 +206,55 @@ def _quality_score(asset: Any) -> float:
         return float(getattr(asset, "quality_score", 0.0) or 0.0)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _coerce_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _asset_utility_profile(asset: Any) -> Dict[str, Any]:
+    metadata = _asset_metadata(asset)
+    raw_profile = metadata.get("utility_profile")
+    profile = dict(raw_profile) if isinstance(raw_profile, dict) else {}
+    recommended_inputs = getattr(asset, "recommended_inputs", None)
+    continuation_hints = getattr(asset, "continuation_hints", None)
+    gain = round(
+        _coerce_float(
+            profile.get("utility_gain_score", metadata.get("utility_gain_score", 0.0)),
+            0.0,
+        ),
+        4,
+    )
+    application = str(
+        profile.get("reuse_application_hint")
+        or metadata.get("reuse_application_hint")
+        or ""
+    ).strip()
+    if not application:
+        if isinstance(continuation_hints, list) and continuation_hints and gain > 0.0:
+            application = "continuation_prior"
+        else:
+            application = "execution_prior" if isinstance(recommended_inputs, dict) and recommended_inputs else "binding_prior"
+    return {
+        "reuse_application_hint": application,
+        "utility_gain_score": gain,
+        "observed_tool_calls": int(profile.get("observed_tool_calls", metadata.get("observed_tool_calls", 0)) or 0),
+        "observed_user_queries": int(profile.get("observed_user_queries", metadata.get("observed_user_queries", 0)) or 0),
+        "observed_repair_actions": int(profile.get("observed_repair_actions", metadata.get("observed_repair_actions", 0)) or 0),
+        "expected_tool_calls": int(profile.get("expected_tool_calls", metadata.get("expected_tool_calls", 0)) or 0),
+        "expected_turns": int(profile.get("expected_turns", metadata.get("expected_turns", 0)) or 0),
+        "tool_efficiency": round(_coerce_float(profile.get("tool_efficiency", metadata.get("tool_efficiency", 0.0)), 0.0), 4),
+        "turn_efficiency": round(_coerce_float(profile.get("turn_efficiency", metadata.get("turn_efficiency", 0.0)), 0.0), 4),
+        "repair_score": round(_coerce_float(profile.get("repair_score", metadata.get("repair_score", 0.0)), 0.0), 4),
+        "utility_gain_signature": str(
+            profile.get("utility_gain_signature")
+            or metadata.get("utility_gain_signature")
+            or ""
+        ).strip(),
+    }
 
 
 def _compatibility_rejections(
@@ -272,6 +329,7 @@ def _ranked_match_for_asset(
             "source_task_id": _asset_source_task_id(asset),
             "source_reuse_family_id": _asset_source_reuse_family(asset),
             "source_semantic_reuse_family": _asset_source_semantic_reuse_family(asset),
+            **_asset_utility_profile(asset),
             "query_required_capability_skeleton": _normalize_str_list(required_capability_skeleton),
             "query_failure_context": _normalize_field(failure_context, default="none") if failure_context else "",
             "query_required_state_slots": _normalize_str_list(required_state_slots),
@@ -280,12 +338,22 @@ def _ranked_match_for_asset(
     )
 
 
-def _match_sort_key(match: AssetMatch) -> tuple[int, float, float, int, str]:
+def _match_sort_key(match: AssetMatch) -> tuple[int, float, int, float, float, int, str]:
     reuse_mode = str(match.metadata.get("reuse_mode") or "")
+    reuse_application = str(match.metadata.get("reuse_application_hint") or "binding_prior")
+    if reuse_application == "continuation_prior":
+        application_rank = 0
+    elif reuse_application == "execution_prior":
+        application_rank = 1
+    elif reuse_application == "binding_prior":
+        application_rank = 2
+    else:
+        application_rank = 3
+    utility_gain_score = _coerce_float(match.metadata.get("utility_gain_score", 0.0), 0.0)
     mode_rank = 0 if reuse_mode == "exact_reuse" else 1
     quality_score = float(match.metadata.get("quality_score", 0.0) or 0.0)
     asset_type_rank = _ASSET_TYPE_PRIORITY.get(match.asset_type, _ASSET_TYPE_PRIORITY.get(match.asset_type.lower(), 9))
-    return (mode_rank, -match.score, -quality_score, asset_type_rank, match.asset_id)
+    return (application_rank, -utility_gain_score, mode_rank, -match.score, -quality_score, asset_type_rank, match.asset_id)
 
 
 class InMemoryAssetRegistry:

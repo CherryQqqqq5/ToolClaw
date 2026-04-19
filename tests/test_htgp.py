@@ -11,6 +11,7 @@ from toolclaw.planner.binder import ToolBinder
 from toolclaw.planner.capability_graph import CapabilityTemplateRegistry, RuleBasedCapabilityGraphBuilder
 from toolclaw.registry import InMemoryAssetRegistry
 from toolclaw.schemas.error import ErrorCategory, ErrorEvidence, ErrorSeverity, ErrorStage, Recoverability, StateContext, ToolClawError
+from toolclaw.compiler.swpc import WorkflowSnippet
 from toolclaw.schemas.workflow import PolicyRule, RiskLevel, TaskConstraints, TaskSpec, ToolSpec, WorkflowContext, WorkflowPolicy
 
 
@@ -563,6 +564,324 @@ def test_reusable_hints_can_still_apply_safe_nonrepair_input() -> None:
     assert retrieve_step.inputs["result_key"] == "cached_result"
 
 
+def test_exact_match_auto_repair_replay_can_prefill_missing_target_path() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_auto_patch_reuse_001", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+            ]
+        ),
+        hints=PlanningHints(
+            user_style={
+                "benchmark": "toolsandbox",
+                "categories": ["insufficient_information", "single_user_turn"],
+                "expected_recovery_path": "patch_then_retry",
+            }
+        ),
+    )
+
+    workflow = planner.plan(request).workflow
+    workflow.metadata["benchmark"] = "toolsandbox"
+    workflow.metadata["toolsandbox_categories"] = ["insufficient_information", "single_user_turn"]
+    workflow.metadata["expected_recovery_path"] = "patch_then_retry"
+    write_step = next(step for step in workflow.execution_plan if step.capability_id == "cap_write")
+    write_step.metadata["repair_default_inputs"] = {"target_path": "outputs/toolsandbox/reports/task_auto_patch_reuse_001.txt"}
+    write_step.inputs.pop("target_path", None)
+
+    HTGPPlanner._apply_reusable_hints(
+        workflow,
+        {
+            "reuse_application": "continuation_prior",
+            "auto_continuation_replay": True,
+            "auto_patch_input_keys": {"cap_write": ["target_path"]},
+            "recommended_inputs": {
+                "cap_write": {"target_path": "outputs/toolsandbox/reports/foreign_task.txt"}
+            },
+        },
+    )
+
+    assert write_step.inputs["target_path"] == "outputs/toolsandbox/reports/task_auto_patch_reuse_001.txt"
+    assert workflow.metadata["reusable_context"]["auto_continuation_replay"] is True
+    assert workflow.metadata["reusable_context"]["suppressed_inputs"] == []
+
+
+def test_exact_match_auto_repair_replay_promotes_backup_tool_to_primary_binding() -> None:
+    asset_registry = InMemoryAssetRegistry()
+    asset_registry.upsert(
+        SimpleNamespace(
+            snippet_id="asset_ws_auto_replay_backup_001",
+            task_signature="phase1::family=tau2_env_backup_001::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "write_tool"},
+            recommended_inputs={},
+            continuation_hints=[
+                {
+                    "kind": "fallback_to_backup_then_resume",
+                    "trigger_repair_type": "switch_tool",
+                    "capability_id": "cap_write",
+                    "tool_id": "write_tool",
+                    "backup_tool_id": "backup_write_tool",
+                }
+            ],
+            metadata={
+                "failure_context": "environment_failure",
+                "required_state_slots": [],
+                "task_family": "tau2_env_backup_001",
+                "reuse_family_id": "tau2_env_backup_001",
+                "semantic_reuse_family": "tau2_env_backup",
+                "utility_profile": {
+                    "observed_tool_calls": 3,
+                    "observed_user_queries": 0,
+                    "observed_repair_actions": 1,
+                    "auto_repair_replay_eligible": True,
+                    "utility_gain_score": 0.0,
+                    "reuse_application_hint": "binding_prior",
+                },
+                "reuse_application_hint": "binding_prior",
+                "utility_gain_score": 0.0,
+            },
+        )
+    )
+    planner = build_planner(asset_registry=asset_registry)
+    request = PlanningRequest(
+        task=TaskSpec(task_id="tau2_env_backup_001__pass2", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+                ToolSpec(tool_id="backup_write_tool", description="backup writer"),
+            ]
+        ),
+        hints=PlanningHints(
+            allow_reuse=True,
+            user_style={
+                "task_family": "tau2_env_backup_001",
+                "failure_type": "environment_failure",
+                "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool"],
+                "ideal_tool_calls": 2,
+            },
+        ),
+    )
+
+    result = planner.plan(request)
+
+    write_step = next(step for step in result.workflow.execution_plan if step.capability_id == "cap_write")
+    assert write_step.tool_id == "backup_write_tool"
+    assert result.workflow.metadata["reusable_context"]["reuse_application"] == "continuation_prior"
+    assert result.workflow.metadata["reusable_context"]["auto_continuation_replay"] is True
+
+
+def test_exact_match_auto_repair_replay_loads_recommended_inputs_from_binding_prior_asset() -> None:
+    asset_registry = InMemoryAssetRegistry()
+    asset_registry.upsert(
+        SimpleNamespace(
+            snippet_id="asset_ws_auto_replay_patch_001",
+            task_signature="phase1::family=tau2_binding_auto_001::caps=cap_retrieve+cap_write::fail=binding_failure::goal=retrieve_and_write_report",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "write_tool"},
+            recommended_inputs={
+                "cap_write": {
+                    "target_path": "outputs/reports/planned_report.txt",
+                    "retrieved_info": "summary for: retrieve and write report",
+                }
+            },
+            continuation_hints=[
+                {
+                    "kind": "patch_then_retry_same_step",
+                    "trigger_repair_type": "rebind_args",
+                    "capability_id": "cap_write",
+                    "tool_id": "write_tool",
+                    "patched_input_keys": ["target_path"],
+                }
+            ],
+            metadata={
+                "failure_context": "binding_failure",
+                "required_state_slots": [],
+                "task_family": "tau2_binding_auto_001",
+                "reuse_family_id": "tau2_binding_auto_001",
+                "semantic_reuse_family": "tau2_binding_auto",
+                "utility_profile": {
+                    "observed_tool_calls": 3,
+                    "observed_user_queries": 0,
+                    "observed_repair_actions": 1,
+                    "auto_repair_replay_eligible": True,
+                    "utility_gain_score": 0.0,
+                    "reuse_application_hint": "binding_prior",
+                },
+                "reuse_application_hint": "binding_prior",
+                "utility_gain_score": 0.0,
+            },
+        )
+    )
+    planner = build_planner(asset_registry=asset_registry)
+    request = PlanningRequest(
+        task=TaskSpec(task_id="tau2_binding_auto_001__pass2", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+            ]
+        ),
+        hints=PlanningHints(
+            allow_reuse=True,
+            user_style={
+                "task_family": "tau2_binding_auto_001",
+                "failure_type": "binding_failure",
+                "tool_allow_list": ["search_tool", "write_tool"],
+                "ideal_tool_calls": 2,
+            },
+        ),
+    )
+
+    result = planner.plan(request)
+
+    write_step = next(step for step in result.workflow.execution_plan if step.capability_id == "cap_write")
+    assert write_step.inputs["target_path"] == "outputs/reports/planned_report.txt"
+    assert result.workflow.metadata["reusable_context"]["reuse_application"] == "continuation_prior"
+    assert result.workflow.metadata["reusable_context"]["auto_continuation_replay"] is True
+
+
+def test_exact_match_auto_repair_replay_derives_semantic_family_from_reuse_family_id() -> None:
+    asset_registry = InMemoryAssetRegistry()
+    asset_registry.upsert(
+        SimpleNamespace(
+            snippet_id="asset_ws_auto_replay_fallback_family_001",
+            task_signature="phase1::family=tau2_env_backup_001::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "write_tool"},
+            recommended_inputs={},
+            continuation_hints=[
+                {
+                    "kind": "fallback_to_backup_then_resume",
+                    "trigger_repair_type": "switch_tool",
+                    "capability_id": "cap_write",
+                    "tool_id": "write_tool",
+                    "backup_tool_id": "backup_write_tool",
+                }
+            ],
+            metadata={
+                "failure_context": "environment_failure",
+                "required_state_slots": [],
+                "task_family": "tau2_env_backup_001",
+                "reuse_family_id": "tau2_env_backup_001",
+                "semantic_reuse_family": "",
+                "utility_profile": {
+                    "observed_tool_calls": 3,
+                    "observed_user_queries": 0,
+                    "observed_repair_actions": 1,
+                    "auto_repair_replay_eligible": True,
+                    "utility_gain_score": 0.0,
+                    "reuse_application_hint": "binding_prior",
+                },
+                "reuse_application_hint": "binding_prior",
+                "utility_gain_score": 0.0,
+            },
+        )
+    )
+    planner = build_planner(asset_registry=asset_registry)
+    request = PlanningRequest(
+        task=TaskSpec(task_id="tau2_env_backup_001__pass2", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+                ToolSpec(tool_id="backup_write_tool", description="backup writer"),
+            ]
+        ),
+        hints=PlanningHints(
+            allow_reuse=True,
+            user_style={
+                "task_family": "tau2_env_backup_001",
+                "failure_type": "environment_failure",
+                "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool"],
+                "ideal_tool_calls": 2,
+            },
+        ),
+    )
+
+    result = planner.plan(request)
+
+    write_step = next(step for step in result.workflow.execution_plan if step.capability_id == "cap_write")
+    assert write_step.tool_id == "backup_write_tool"
+    assert (
+        result.workflow.metadata["reusable_context"]["selected_match"]["source_semantic_reuse_family"]
+        == "tau2_env_backup"
+    )
+    assert result.workflow.metadata["reusable_context"]["reuse_application"] == "continuation_prior"
+
+
+def test_exact_match_auto_repair_replay_uses_target_reuse_family_not_generic_task_family() -> None:
+    asset_registry = InMemoryAssetRegistry()
+    asset_registry.upsert(
+        WorkflowSnippet(
+            snippet_id="ws_env_backup_exact",
+            task_signature="phase1::family=t4_repeated_reusable::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "backup_write_tool"},
+            recommended_inputs={
+                "cap_write": {
+                    "target_path": "outputs/reports/planned_report.txt",
+                    "retrieved_info": "summary for: retrieve and write report",
+                }
+            },
+            continuation_hints=[
+                {
+                    "kind": "fallback_to_backup_then_resume",
+                    "trigger_repair_type": "switch_tool",
+                    "capability_id": "cap_write",
+                    "tool_id": "write_tool",
+                    "backup_tool_id": "backup_write_tool",
+                    "resume_policy": "retry_same_step",
+                }
+            ],
+            quality_score=0.95,
+            metadata={
+                "utility_profile": {
+                    "utility_gain_score": 0.0,
+                    "reuse_application_hint": "binding_prior",
+                    "auto_repair_replay_eligible": True,
+                },
+                "source_task_id": "tau2_env_backup_001__pass1",
+                "reuse_family_id": "tau2_env_backup_001",
+                "semantic_reuse_family": "tau2_env_backup",
+                "failure_context": "environment_failure",
+                "required_state_slots": ["query", "retrieved_info"],
+            },
+        )
+    )
+    planner = build_planner(asset_registry=asset_registry)
+    request = PlanningRequest(
+        task=TaskSpec(task_id="tau2_env_backup_001__pass2", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+                ToolSpec(tool_id="backup_write_tool", description="backup writer"),
+            ]
+        ),
+        hints=PlanningHints(
+            allow_reuse=True,
+            user_style={
+                "task_family": "t4_repeated_reusable",
+                "reuse_family_id": "tau2_env_backup_001",
+                "semantic_reuse_family": "tau2_env_backup",
+                "failure_type": "environment_failure",
+                "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool"],
+                "ideal_tool_calls": 2,
+            },
+        ),
+    )
+
+    result = planner.plan(request)
+
+    write_step = next(step for step in result.workflow.execution_plan if step.capability_id == "cap_write")
+    assert write_step.tool_id == "backup_write_tool"
+    assert result.workflow.metadata["reusable_context"]["reuse_application"] == "continuation_prior"
+
+
 def test_replan_from_error_inherits_workflow_request_context_when_request_is_sparse() -> None:
     planner = build_planner()
     original_request = PlanningRequest(
@@ -889,3 +1208,167 @@ def test_binder_uses_objective_constrained_reusable_binding_as_preference() -> N
     result = planner.plan(request)
 
     assert result.workflow.execution_plan[0].tool_id == "writer_tool"
+
+
+def test_binding_prior_reuse_keeps_binding_preference_without_injecting_inputs() -> None:
+    asset_registry = InMemoryAssetRegistry()
+    asset_registry.upsert(
+        SimpleNamespace(
+            snippet_id="asset_ws_binding_prior_001",
+            task_signature="phase1::family=t0_general::caps=cap_retrieve+cap_write::fail=none::goal=retrieve_and_write_report",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "writer_tool"},
+            recommended_inputs={"cap_retrieve": {"result_key": "cached_result"}},
+            metadata={
+                "failure_context": "none",
+                "required_state_slots": [],
+                "reuse_application_hint": "binding_prior",
+                "utility_gain_score": 0.0,
+            },
+        )
+    )
+    planner = build_planner(asset_registry=asset_registry)
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_binding_prior_001", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+                ToolSpec(tool_id="writer_tool", description="writer"),
+            ]
+        ),
+        hints=PlanningHints(
+            allow_reuse=True,
+            user_style={
+                "tool_allow_list": ["search_tool", "write_tool", "writer_tool"],
+                "ideal_tool_calls": 2,
+            },
+        ),
+    )
+
+    result = planner.plan(request)
+
+    assert next(step for step in result.workflow.execution_plan if step.capability_id == "cap_write").tool_id == "writer_tool"
+    assert "result_key" not in next(step for step in result.workflow.execution_plan if step.capability_id == "cap_retrieve").inputs
+    assert result.workflow.metadata["reusable_context"]["reuse_application"] == "binding_prior"
+    assert result.workflow.metadata["reusable_context"]["utility_gain_score"] == 0.0
+
+
+def test_continuation_prior_reuse_attaches_structured_step_hints() -> None:
+    asset_registry = InMemoryAssetRegistry()
+    asset_registry.upsert(
+        SimpleNamespace(
+            snippet_id="asset_ws_continuation_prior_001",
+            task_signature="phase1::family=t0_general::caps=cap_retrieve+cap_write::fail=none::goal=retrieve_and_write_report",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "write_tool"},
+            recommended_inputs={},
+            continuation_hints=[
+                {
+                    "kind": "patch_then_retry_same_step",
+                    "trigger_repair_type": "rebind_args",
+                    "capability_id": "cap_write",
+                    "tool_id": "write_tool",
+                    "patched_input_keys": ["target_path"],
+                },
+                {
+                    "kind": "fallback_to_backup_then_resume",
+                    "trigger_repair_type": "switch_tool",
+                    "capability_id": "cap_write",
+                    "tool_id": "write_tool",
+                    "backup_tool_id": "backup_write_tool",
+                },
+            ],
+            metadata={
+                "failure_context": "none",
+                "required_state_slots": [],
+                "semantic_reuse_family": "contact_edit",
+                "reuse_application_hint": "continuation_prior",
+                "utility_gain_score": 0.3,
+            },
+        )
+    )
+    planner = build_planner(asset_registry=asset_registry)
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_continuation_prior_001", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+                ToolSpec(tool_id="backup_write_tool", description="backup writer"),
+            ]
+        ),
+        hints=PlanningHints(
+            allow_reuse=True,
+            reusable_asset_ids=["asset_ws_continuation_prior_001"],
+            user_style={
+                "task_family": "contact_edit__pair00",
+                "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool"],
+                "ideal_tool_calls": 2,
+            },
+        ),
+    )
+
+    result = planner.plan(request)
+
+    write_step = next(step for step in result.workflow.execution_plan if step.capability_id == "cap_write")
+    assert result.workflow.metadata["reusable_context"]["reuse_application"] == "continuation_prior"
+    assert write_step.metadata["continuation_missing_input_keys"] == ["target_path"]
+    assert write_step.metadata["continuation_backup_tool_id"] == "backup_write_tool"
+    assert len(write_step.metadata["continuation_hints"]) == 2
+
+
+def test_cross_family_transfer_reuse_does_not_attach_continuation_hints() -> None:
+    asset_registry = InMemoryAssetRegistry()
+    asset_registry.upsert(
+        SimpleNamespace(
+            snippet_id="asset_ws_continuation_cross_family_001",
+            task_signature="phase1::family=t0_general::caps=cap_retrieve+cap_write::fail=none::goal=retrieve_and_write_report",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "write_tool"},
+            recommended_inputs={},
+            continuation_hints=[
+                {
+                    "kind": "fallback_to_backup_then_resume",
+                    "trigger_repair_type": "switch_tool",
+                    "capability_id": "cap_write",
+                    "tool_id": "write_tool",
+                    "backup_tool_id": "backup_write_tool",
+                }
+            ],
+            metadata={
+                "failure_context": "none",
+                "required_state_slots": [],
+                "semantic_reuse_family": "contact_edit",
+                "reuse_application_hint": "continuation_prior",
+                "utility_gain_score": 0.3,
+            },
+        )
+    )
+    planner = build_planner(asset_registry=asset_registry)
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_cross_family_continuation_001", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+                ToolSpec(tool_id="backup_write_tool", description="backup writer"),
+            ]
+        ),
+        hints=PlanningHints(
+            allow_reuse=True,
+            reusable_asset_ids=["asset_ws_continuation_cross_family_001"],
+            user_style={
+                "task_family": "holiday_time__pair00",
+                "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool"],
+                "ideal_tool_calls": 2,
+            },
+        ),
+    )
+
+    result = planner.plan(request)
+
+    write_step = next(step for step in result.workflow.execution_plan if step.capability_id == "cap_write")
+    assert "continuation_hints" not in write_step.metadata
+    reusable_context = result.workflow.metadata.get("reusable_context", {})
+    assert reusable_context.get("continuation_hints", []) == []

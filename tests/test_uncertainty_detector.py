@@ -25,6 +25,30 @@ def test_uncertainty_detector_exposes_missing_required_state_slots_during_approv
     assert report.metadata["constraint_requires_approval"] is True
 
 
+def test_uncertainty_detector_exposes_continuation_repair_shape_during_approval() -> None:
+    workflow = Workflow.demo()
+    workflow.task.constraints.requires_user_approval = True
+    workflow.execution_plan[1].metadata["continuation_hints"] = [
+        {
+            "kind": "patch_then_retry_same_step",
+            "patched_input_keys": ["target_path"],
+        },
+        {
+            "kind": "fallback_to_backup_then_resume",
+            "backup_tool_id": "backup_write_tool",
+        },
+    ]
+    repair = Repair.demo()
+    repair.repair_type = RepairType.REQUEST_APPROVAL
+
+    report = UncertaintyDetector().analyze_failure(workflow, repair, {})
+
+    assert report.primary_label == "policy_approval"
+    assert "target_path" in report.metadata["missing_input_keys"]
+    assert report.metadata["backup_tool_id"] == "backup_write_tool"
+    assert report.metadata["continuation_backup_tool_id"] == "backup_write_tool"
+
+
 def test_uncertainty_detector_marks_missing_asset_for_ask_user() -> None:
     workflow = Workflow.demo()
     repair = Repair.demo()

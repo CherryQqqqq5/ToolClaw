@@ -204,6 +204,7 @@ class SequentialExecutor:
         trace.metadata.failtaxes = list(workflow.metadata.get("failtaxes", []))
         trace.metadata.budget_profile = dict(workflow.metadata.get("budget_profile", {}))
         trace.metadata.budget_limits = self._budget_limits(workflow)
+        trace.metadata.reusable_context = dict(workflow.metadata.get("reusable_context", {}))
         trace.metadata.interaction_modules = [
             "uncertainty_detector",
             "query_policy",
