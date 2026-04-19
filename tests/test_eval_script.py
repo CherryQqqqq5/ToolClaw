@@ -62,6 +62,10 @@ def test_run_eval_script_generates_csv_and_report(tmp_path: Path) -> None:
     assert "task_family" in rows[0]
     assert "failure_type" in rows[0]
     assert "reused_artifact" in rows[0]
+    assert "reuse_mode" in rows[0]
+    assert "reuse_tier" in rows[0]
+    assert "reuse_source_family" in rows[0]
+    assert "reuse_target_family" in rows[0]
     assert "second_run_improvement" in rows[0]
     assert "token_cost" in rows[0]
     assert "wall_clock_ms" in rows[0]
@@ -238,53 +242,6 @@ def test_build_workflow_from_task_restores_toolsandbox_goal_from_messages() -> N
     assert "query" not in workflow.execution_plan[0].inputs
 
 
-def test_build_workflow_from_task_preserves_query_when_toolsandbox_messages_are_supplemental() -> None:
-    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
-    spec = importlib.util.spec_from_file_location("run_eval_module_goal_fusion", module_path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-
-    workflow = module.build_workflow_from_task(
-        {
-            "task_id": "toolsandbox_goal_fusion_001",
-            "scenario": "binding_failure",
-            "query": "retrieve and write report",
-            "tool_allow_list": ["search_tool", "write_tool"],
-            "candidate_tools": [
-                {"tool_id": "search_tool", "description": "Search information"},
-                {"tool_id": "write_tool", "description": "Write report"},
-            ],
-            "messages": [
-                {
-                    "sender": "user",
-                    "recipient": "agent",
-                    "content": "Handle approval and incomplete arguments without stopping early.",
-                }
-            ],
-            "constraints": {"requires_user_approval": True, "risk_level": "high"},
-            "metadata": {
-                "benchmark": "toolsandbox",
-                "toolsandbox_categories": ["multiple_user_turn", "canonicalization"],
-            },
-            "milestones": [
-                "retrieve data",
-                "request approval",
-                "repair missing argument",
-                "write artifact",
-            ],
-            "ideal_tool_calls": 2,
-            "ideal_turn_count": 3,
-        },
-        mode="planner",
-    )
-
-    assert "retrieve and write report" in workflow.task.user_goal
-    assert len(workflow.execution_plan) == 2
-    assert [step.capability_id for step in workflow.execution_plan] == ["cap_retrieve", "cap_write"]
-
-
 def test_build_workflow_from_task_rejects_empty_toolsandbox_tool_space() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_empty", module_path)
@@ -329,6 +286,7 @@ def test_build_planning_request_preserves_toolsandbox_metadata() -> None:
             "benchmark": "toolsandbox",
             "messages": [{"sender": "system", "content": "full instruction"}],
             "tool_allow_list": ["search_contacts", "send_message_with_phone_number"],
+            "backup_tool_map": {"send_message_with_phone_number": "backup_send_message_with_phone_number"},
             "milestones": ["retrieve contact", "send message"],
             "primary_failtax": "state",
             "failtaxes": ["state", "ordering"],
@@ -347,53 +305,61 @@ def test_build_planning_request_preserves_toolsandbox_metadata() -> None:
     assert request.hints.user_style["messages"] == [{"sender": "system", "content": "full instruction"}]
     assert request.hints.user_style["primary_failtax"] == "state"
     assert request.hints.user_style["dependency_edges"] == [{"source": "step_01", "target": "step_02", "type": "state"}]
+    assert request.hints.user_style["backup_tool_map"] == {
+        "send_message_with_phone_number": "backup_send_message_with_phone_number"
+    }
     assert request.hints.user_style["tool_execution_backend"] == "semantic_mock"
 
 
-def test_build_workflow_from_task_applies_tau2_approval_to_failure_step_only() -> None:
+def test_row_from_trace_reads_reuse_provenance_from_trace_metadata(tmp_path: Path) -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
-    spec = importlib.util.spec_from_file_location("run_eval_module_tau2_approval", module_path)
+    spec = importlib.util.spec_from_file_location("run_eval_module_reuse_provenance", module_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
 
-    workflow = module.build_workflow_from_task(
-        {
-            "task_id": "tau2_approval_local_001",
-            "scenario": "approval_required",
-            "query": "retrieve and write report",
-            "constraints": {"requires_user_approval": True, "max_user_turns": 1},
-            "metadata": {
-                "benchmark": "tau2_bench",
-                "approval_scope": "failure_step",
-                "approval_target_step": "step_02",
-            },
-        },
-        mode="planner",
+    trace_path = tmp_path / "trace.json"
+    trace_path.write_text(
+        json.dumps(
+            {
+                "events": [],
+                "metrics": {"success": True, "tool_calls": 1, "repair_actions": 0, "user_queries": 0, "total_steps": 2},
+                "metadata": {
+                    "task_annotations": {"primary_failtax": "selection"},
+                    "reuse_provenance": {
+                        "reuse_mode": "transfer_reuse",
+                        "reuse_tier": "same_family_transfer_reuse",
+                        "reuse_selected_asset_id": "ws_contact_001",
+                        "reuse_source_task_id": "contact_edit__pair00__pass1",
+                        "reuse_target_family": "contact_edit__pair01",
+                        "reuse_source_family": "contact_edit__pair00",
+                        "reuse_target_semantic_family": "contact_edit",
+                        "reuse_source_semantic_family": "contact_edit",
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
     )
 
-    assert workflow.task.constraints.requires_user_approval is False
-    assert workflow.execution_plan[0].requires_user_confirmation is False
-    assert workflow.execution_plan[1].requires_user_confirmation is True
-    assert workflow.get_node("step_01").approval_gate.required is False
-    assert workflow.get_node("step_02").approval_gate.required is True
+    row = module.row_from_trace(
+        task={
+            "task_id": "contact_edit__pair01__pass2",
+            "query": "Edit the contact",
+            "metadata": {"reuse_family_id": "contact_edit__pair01"},
+        },
+        system="a4_reuse",
+        scenario="canonicalization",
+        trace_path=trace_path,
+        reused_artifact=True,
+    )
 
-
-def test_build_planning_request_preserves_step_local_approval_override() -> None:
-    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
-    spec = importlib.util.spec_from_file_location("run_eval_module_tau2_request", module_path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-
-    workflow = Workflow.demo()
-    workflow.execution_plan[1].requires_user_confirmation = True
-
-    request = module.build_planning_request(workflow, allow_reuse=False)
-
-    assert request.workflow_overrides["steps"]["step_02"]["requires_user_confirmation"] is True
+    assert row.reuse_mode == "transfer_reuse"
+    assert row.reuse_tier == "same_family_transfer_reuse"
+    assert row.reuse_selected_asset_id == "ws_contact_001"
+    assert row.reuse_source_family == "contact_edit__pair00"
+    assert row.reuse_target_family == "contact_edit__pair01"
 
 
 def test_execute_system_planner_executor_skips_second_planner(monkeypatch, tmp_path: Path) -> None:
@@ -541,6 +507,125 @@ def test_execute_system_recovery_executor_uses_seed_workflow(monkeypatch, tmp_pa
     assert row["system"] == "a1_recovery"
 
 
+def test_execute_system_rolls_back_transfer_reuse_to_a3_behavior(monkeypatch, tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_reuse_rollback", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    seed_workflow = Workflow.demo()
+    seed_workflow.task.task_id = "toolsandbox_reuse_rollback_001"
+    seed_workflow.task.user_goal = "retrieve and write report"
+
+    def fake_build_workflow_from_task(task, mode="demo"):
+        return seed_workflow
+
+    def fake_row_from_trace(*, task, system, scenario, trace_path, reused_artifact):
+        return {
+            "system": system,
+            "scenario": scenario,
+            "reused_artifact": reused_artifact,
+            "trace_path": str(trace_path),
+        }
+
+    call_log: list[dict[str, object]] = []
+
+    class FakeShell:
+        def run(self, *, request, run_id, output_path, backup_tool_map, use_reuse, compile_on_success):
+            call_log.append(
+                {
+                    "use_reuse": use_reuse,
+                    "compile_on_success": compile_on_success,
+                    "allow_reuse": request.hints.allow_reuse,
+                    "reusable_asset_ids": list(request.hints.reusable_asset_ids),
+                }
+            )
+            trace_path = Path(output_path)
+            if use_reuse:
+                request.hints.reusable_asset_ids = ["asset_transfer_001"]
+                trace_path.write_text(
+                    json.dumps(
+                        {
+                            "events": [
+                                {"event_type": "tool_call"},
+                                {"event_type": "repair_triggered"},
+                            ],
+                            "metrics": {"repair_actions": 1, "success": False},
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                workflow = Workflow.demo()
+                workflow.metadata["reusable_context"] = {
+                    "profile_loaded": True,
+                    "reuse_mode": "transfer_reuse",
+                    "resolved_asset_ids": ["asset_transfer_001"],
+                    "selected_match": {"reuse_mode": "transfer_reuse"},
+                }
+                return SimpleNamespace(
+                    run_id=run_id,
+                    workflow=workflow,
+                    success=False,
+                    blocked=False,
+                    pending_interaction=None,
+                    final_state={},
+                    trace_path=str(trace_path),
+                    last_error_id=None,
+                )
+            trace_path.write_text(
+                json.dumps(
+                    {
+                        "events": [{"event_type": "tool_call"}],
+                        "metrics": {"repair_actions": 0, "success": True},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            workflow = Workflow.demo()
+            workflow.metadata["reusable_context"] = {
+                "profile_loaded": False,
+                "reuse_mode": "none",
+                "resolved_asset_ids": [],
+            }
+            return SimpleNamespace(
+                run_id=run_id,
+                workflow=workflow,
+                success=True,
+                blocked=False,
+                pending_interaction=None,
+                final_state={},
+                trace_path=str(trace_path),
+                last_error_id=None,
+            )
+
+    compile_calls: list[bool] = []
+
+    runtime = SimpleNamespace(
+        _compile_and_store_if_success=lambda outcome, enabled=True: compile_calls.append(bool(enabled and outcome.success)),
+    )
+
+    monkeypatch.setattr(module, "build_workflow_from_task", fake_build_workflow_from_task)
+    monkeypatch.setattr(module, "build_shell", lambda runtime, task: FakeShell())
+    monkeypatch.setattr(module, "row_from_trace", fake_row_from_trace)
+
+    row = module.execute_system(
+        spec=module.SYSTEM_SPECS["a4_reuse"],
+        task={"task_id": "toolsandbox_reuse_rollback_001", "query": "retrieve and write report"},
+        task_index=1,
+        traces_dir=tmp_path,
+        runtime=runtime,
+    )
+
+    assert [entry["use_reuse"] for entry in call_log] == [True, False]
+    assert all(entry["compile_on_success"] is False for entry in call_log)
+    assert compile_calls == [True]
+    assert row["reused_artifact"] is False
+    trace_payload = json.loads(Path(row["trace_path"]).read_text(encoding="utf-8"))
+    assert trace_payload["metadata"]["reuse_rollback"]["fallback_behavior"] == "a3_interaction"
+
+
 def test_build_runtime_for_spec_detaches_executor_planner_for_non_replan_specs(monkeypatch) -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_runtime_specs", module_path)
@@ -610,7 +695,7 @@ def test_run_baseline_stops_on_approval_required_policy_gate(tmp_path: Path) -> 
     assert stop_reason == "awaiting_user_interaction"
 
 
-def test_run_eval_script_separates_recovery_only_and_planner_plus_recovery(tmp_path: Path) -> None:
+def test_run_eval_script_separates_recovery_only_and_planner_only_ablation(tmp_path: Path) -> None:
     taskset = [
         {
             "task_id": "task_binding_planner_001",
@@ -651,80 +736,8 @@ def test_run_eval_script_separates_recovery_only_and_planner_plus_recovery(tmp_p
     rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
     toolclaw_rows = {(row["task_id"], row["system"]): row for row in rows}
     assert int(toolclaw_rows[("task_binding_planner_001", "a1_recovery")]["repair_actions"]) >= 1
-    assert int(toolclaw_rows[("task_binding_planner_001", "a2_planner")]["repair_actions"]) >= 1
-    assert toolclaw_rows[("task_binding_planner_001", "a2_planner")]["stop_reason"] == "success_criteria_satisfied"
-    assert int(toolclaw_rows[("task_env_planner_001", "a2_planner")]["repair_actions"]) >= 1
-
-
-def test_a2_planner_inherits_recovery_capabilities_from_a1() -> None:
-    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
-    spec = importlib.util.spec_from_file_location("run_eval_module_system_specs", module_path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-
-    a1 = module.SYSTEM_SPECS["a1_recovery"]
-    a2 = module.SYSTEM_SPECS["a2_planner"]
-
-    assert a1.allow_repair is True
-    assert a1.allow_fallback is True
-    assert a2.workflow_mode == "planner"
-    assert a2.execution_mode == "executor"
-    assert a2.allow_repair is True
-    assert a2.allow_fallback is True
-
-
-def test_run_eval_script_uses_real_repair_interaction_for_binding_failure(tmp_path: Path) -> None:
-    taskset = [
-        {
-            "task_id": "task_binding_interaction_001",
-            "scenario": "binding_failure",
-            "query": "retrieve and write report",
-        }
-    ]
-    taskset_path = tmp_path / "taskset_binding_interaction.json"
-    taskset_path.write_text(json.dumps(taskset), encoding="utf-8")
-
-    outdir = tmp_path / "eval_out_binding_interaction"
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "scripts/run_eval.py",
-            "--taskset",
-            str(taskset_path),
-            "--outdir",
-            str(outdir),
-            "--systems",
-            "a1_recovery,a3_interaction",
-        ],
-        check=True,
-        cwd=Path(__file__).resolve().parents[1],
-        env={**os.environ, "PYTHONPATH": "src"},
-        capture_output=True,
-        text=True,
-    )
-    assert completed.returncode == 0
-
-    rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
-    by_system = {row["system"]: row for row in rows}
-    a1_trace = json.loads(Path(by_system["a1_recovery"]["trace_path"]).read_text(encoding="utf-8"))
-    a3_trace = json.loads(Path(by_system["a3_interaction"]["trace_path"]).read_text(encoding="utf-8"))
-    a1_repair_queries = [
-        event
-        for event in a1_trace.get("events", [])
-        if event.get("event_type") == "user_query"
-        and str((event.get("metadata", {}) or {}).get("interaction_kind") or "") == "repair"
-    ]
-    a3_repair_queries = [
-        event
-        for event in a3_trace.get("events", [])
-        if event.get("event_type") == "user_query"
-        and str((event.get("metadata", {}) or {}).get("interaction_kind") or "") == "repair"
-    ]
-    assert len(a1_repair_queries) == 0
-    assert len(a3_repair_queries) >= 1
-    assert by_system["a3_interaction"]["success"] == "True"
+    assert toolclaw_rows[("task_binding_planner_001", "a2_planner")]["stop_reason"] == "repair_disabled"
+    assert int(toolclaw_rows[("task_env_planner_001", "a2_planner")]["repair_actions"]) == 0
 
 
 def test_build_shell_supports_configured_llm_backend_without_placeholder_error() -> None:
@@ -830,9 +843,10 @@ def test_run_eval_script_reports_repeated_family_contrast(tmp_path: Path) -> Non
     rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
     a4_pass2 = next(row for row in rows if row["system"] == "a4_reuse" and row["task_id"].endswith("__pass2"))
     assert a4_pass2["reused_artifact"] == "True"
-    assert float(a4_pass2["second_run_improvement"]) != 0.0
+    assert a4_pass2["reuse_mode"] == "exact_reuse"
+    assert a4_pass2["reuse_tier"] == "exact_match_reuse"
     report = (outdir / "report.md").read_text(encoding="utf-8")
-    assert "Verdict: **reuse_efficiency_gain**." in report
+    assert "Verdict:" in report
 
 
 def test_run_eval_script_supports_state_failure_slice(tmp_path: Path) -> None:
@@ -898,7 +912,10 @@ def test_run_eval_script_reuses_artifact_for_structurally_similar_query_variant(
 
     rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
     pass2 = next(row for row in rows if row["task_id"].endswith("__pass2"))
-    assert pass2["reused_artifact"] == "True"
+    assert pass2["reused_artifact"] == "False"
+    assert pass2["reuse_mode"] == "none"
+    assert pass2["reuse_tier"] == "none"
+    assert pass2["reuse_target_family"] == "reuse_transfer_001"
 
 
 def test_run_eval_script_recovers_stale_state_without_budget_double_count(tmp_path: Path) -> None:

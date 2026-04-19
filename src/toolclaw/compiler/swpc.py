@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import re
 from typing import Any, Dict, List
 
 from toolclaw.schemas.trace import Trace
@@ -97,6 +98,33 @@ def build_task_signature_candidates(
     return deduped
 
 
+def collect_required_state_slots(workflow: Workflow) -> List[str]:
+    slots: List[str] = []
+    for slot in workflow.metadata.get("state_slots", []):
+        text = str(slot).strip()
+        if text and text not in slots:
+            slots.append(text)
+    for step in workflow.execution_plan:
+        for slot in step.metadata.get("required_state_slots", []):
+            text = str(slot).strip()
+            if text and text not in slots:
+                slots.append(text)
+    return slots
+
+
+_PAIR_SUFFIX_RE = re.compile(r"__pair\d+$")
+_NUMERIC_SUFFIX_RE = re.compile(r"_\d+$")
+
+
+def _semantic_reuse_family(value: Any) -> str:
+    family = str(value or "").strip()
+    if not family:
+        return ""
+    family = _PAIR_SUFFIX_RE.sub("", family)
+    family = _NUMERIC_SUFFIX_RE.sub("", family)
+    return family
+
+
 class SWPCCompiler:
     @staticmethod
     def _signature_metadata(workflow: Workflow) -> tuple[str, List[str]]:
@@ -118,6 +146,26 @@ class SWPCCompiler:
         merged = dict(rule.metadata)
         merged.update({"trigger": rule.trigger, "action": rule.action})
         return merged
+
+    @staticmethod
+    def _reuse_metadata(workflow: Workflow) -> Dict[str, Any]:
+        capability_skeleton = [step.capability_id for step in workflow.execution_plan]
+        failure_context = str(
+            workflow.metadata.get("failure_type")
+            or workflow.metadata.get("scenario")
+            or "none"
+        ).strip()
+        task_family = str(workflow.metadata.get("task_family") or "t0_general").strip()
+        reuse_family_id = str(workflow.metadata.get("reuse_family_id") or "").strip()
+        return {
+            "source_task_id": str(workflow.task.task_id or "").strip(),
+            "task_family": task_family or "t0_general",
+            "failure_context": failure_context or "none",
+            "capability_skeleton": capability_skeleton,
+            "required_state_slots": collect_required_state_slots(workflow),
+            "reuse_family_id": reuse_family_id,
+            "semantic_reuse_family": _semantic_reuse_family(reuse_family_id),
+        }
 
     def compile_from_trace(
         self,
@@ -154,6 +202,7 @@ class SWPCCompiler:
         compile_gate: Dict[str, Any],
     ) -> WorkflowSnippet:
         primary_signature, alias_signatures = self._signature_metadata(workflow)
+        reuse_metadata = self._reuse_metadata(workflow)
         return WorkflowSnippet(
             snippet_id=f"ws_{workflow.workflow_id}",
             task_signature=primary_signature,
@@ -170,6 +219,7 @@ class SWPCCompiler:
                 "promotion_mode": compile_gate.get("promotion_mode"),
                 "verifier_backed": bool(compile_gate.get("verifier_backed")),
                 "promotion_version": "phase1.v1",
+                **reuse_metadata,
             },
         )
 
@@ -182,6 +232,7 @@ class SWPCCompiler:
         compile_gate: Dict[str, Any],
     ) -> SkillHint:
         primary_signature, alias_signatures = self._signature_metadata(workflow)
+        reuse_metadata = self._reuse_metadata(workflow)
         return SkillHint(
             hint_id=f"sh_{workflow.workflow_id}",
             task_signature=primary_signature,
@@ -196,6 +247,7 @@ class SWPCCompiler:
                 "promotion_mode": compile_gate.get("promotion_mode"),
                 "verifier_backed": bool(compile_gate.get("verifier_backed")),
                 "promotion_version": "phase1.v1",
+                **reuse_metadata,
             },
         )
 
@@ -207,6 +259,7 @@ class SWPCCompiler:
         compile_gate: Dict[str, Any],
     ) -> PolicySnippet:
         primary_signature, alias_signatures = self._signature_metadata(workflow)
+        reuse_metadata = self._reuse_metadata(workflow)
         return PolicySnippet(
             policy_id=f"ps_{workflow.workflow_id}",
             task_signature=primary_signature,
@@ -221,6 +274,7 @@ class SWPCCompiler:
                 "promotion_mode": compile_gate.get("promotion_mode"),
                 "verifier_backed": bool(compile_gate.get("verifier_backed")),
                 "promotion_version": "phase1.v1",
+                **reuse_metadata,
             },
         )
 

@@ -66,14 +66,13 @@ class SystemSpec:
 
 
 SYSTEM_SPECS: Dict[str, SystemSpec] = {
-    "a0_baseline": SystemSpec(system_id="a0_baseline", workflow_mode="planner", execution_mode="baseline"),
+    "a0_baseline": SystemSpec(system_id="a0_baseline", workflow_mode="demo", execution_mode="baseline"),
     "a1_recovery": SystemSpec(
         system_id="a1_recovery",
-        workflow_mode="seed",
+        workflow_mode="demo",
         execution_mode="executor",
         allow_repair=True,
         allow_fallback=True,
-        allow_suffix_replan=False,
     ),
     "a2_planner": SystemSpec(
         system_id="a2_planner",
@@ -81,7 +80,6 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         execution_mode="executor",
         allow_repair=True,
         allow_fallback=True,
-        allow_suffix_replan=False,
     ),
     "a3_interaction": SystemSpec(
         system_id="a3_interaction",
@@ -91,6 +89,7 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         use_reuse=False,
         allow_repair=True,
         allow_fallback=True,
+        allow_suffix_replan=False,
     ),
     "a4_reuse": SystemSpec(
         system_id="a4_reuse",
@@ -100,6 +99,7 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         use_reuse=True,
         allow_repair=True,
         allow_fallback=True,
+        allow_suffix_replan=False,
     ),
     "tc_full": SystemSpec(
         system_id="tc_full",
@@ -139,13 +139,12 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
     ),
     "tc_recovery_only": SystemSpec(
         system_id="tc_recovery_only",
-        workflow_mode="seed",
+        workflow_mode="demo",
         execution_mode="executor",
         compile_on_success=False,
         use_reuse=False,
         allow_repair=True,
         allow_fallback=True,
-        allow_suffix_replan=False,
     ),
     "tc_no_interaction": SystemSpec(
         system_id="tc_no_interaction",
@@ -171,9 +170,8 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         execution_mode="executor",
         compile_on_success=False,
         use_reuse=False,
-        allow_repair=False,
-        allow_fallback=False,
-        allow_suffix_replan=False,
+        allow_repair=True,
+        allow_fallback=True,
     ),
 }
 
@@ -225,26 +223,6 @@ def _recover_toolsandbox_message_content(content: Any) -> str:
     return stripped.strip('"').strip()
 
 
-def _goal_tokens(text: str) -> set[str]:
-    return {token for token in re.findall(r"[a-z0-9]+", text.lower()) if len(token) >= 3}
-
-
-def _goal_fragment_is_redundant(fragment: str, existing_parts: List[str]) -> bool:
-    normalized_fragment = fragment.strip()
-    if not normalized_fragment:
-        return True
-    lowered_fragment = normalized_fragment.lower()
-    if any(lowered_fragment == existing.strip().lower() for existing in existing_parts):
-        return True
-    fragment_tokens = _goal_tokens(normalized_fragment)
-    if not fragment_tokens:
-        return False
-    combined_tokens: set[str] = set()
-    for existing in existing_parts:
-        combined_tokens.update(_goal_tokens(existing))
-    return fragment_tokens.issubset(combined_tokens)
-
-
 def _planner_goal_from_task(task: Dict[str, Any], fallback: str) -> str:
     messages = task.get("messages")
     metadata = task.get("metadata")
@@ -266,9 +244,6 @@ def _planner_goal_from_task(task: Dict[str, Any], fallback: str) -> str:
         )
         if normalized and normalized not in goal_parts:
             goal_parts.append(normalized)
-    fallback_text = str(fallback or "").strip()
-    if fallback_text and not _goal_fragment_is_redundant(fallback_text, goal_parts):
-        goal_parts.insert(0, fallback_text)
     return "\n".join(goal_parts) if goal_parts else fallback
 
 
@@ -662,6 +637,7 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         request.hints.user_style["messages"] = list(task.get("messages", []))
         request.hints.user_style["milestones"] = list(task.get("milestones", []))
         request.hints.user_style["branch_options"] = list(task.get("branch_options", []))
+        request.hints.user_style["backup_tool_map"] = dict(task.get("backup_tool_map", {}))
         request.hints.user_style["primary_failtax"] = task.get("primary_failtax")
         request.hints.user_style["failtaxes"] = list(task.get("failtaxes", []))
         request.hints.user_style["failure_step"] = task.get("failure_step")
@@ -740,6 +716,10 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
     workflow.metadata["task_family"] = derive_task_family(task, scenario=str(task.get("scenario", "success")), task_id=workflow.task.task_id)
     workflow.metadata["failure_type"] = derive_failure_type(task, scenario=str(task.get("scenario", "success")))
     workflow.metadata["scenario"] = str(task.get("scenario", "success"))
+    reuse_family_id = derive_reuse_family_id(workflow.task.task_id, task)
+    if reuse_family_id:
+        workflow.metadata["reuse_family_id"] = reuse_family_id
+        workflow.metadata["semantic_reuse_family"] = derive_semantic_reuse_family(reuse_family_id)
     workflow.metadata.setdefault("planner_mode", "recovery_seed" if mode == "seed" else "demo")
     if isinstance(task.get("budget_profile"), dict):
         workflow.metadata["budget_profile"] = dict(task.get("budget_profile", {}))
@@ -753,6 +733,8 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         workflow.metadata["milestones"] = list(task.get("milestones", []))
     if task.get("tool_allow_list") is not None:
         workflow.metadata["tool_allow_list"] = list(task.get("tool_allow_list", []))
+    if isinstance(task.get("backup_tool_map"), dict):
+        workflow.metadata["backup_tool_map"] = dict(task.get("backup_tool_map", {}))
     if task.get("branch_options") is not None:
         workflow.metadata["branch_options"] = list(task.get("branch_options", []))
     if task.get("reference_result_summary") is not None:
@@ -839,28 +821,6 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
             workflow.metadata["resume_state_stale_slots"] = ["retrieved_info"] if state_mode == "recovery_not_committed" else []
         workflow.metadata["state_failure_mode"] = state_mode
 
-    raw_constraints_map = raw_constraints if isinstance(raw_constraints, dict) else {}
-    benchmark_name = str(workflow.metadata.get("benchmark") or task.get("benchmark") or "").strip().lower()
-    if benchmark_name == "tau2_bench" and bool(raw_constraints_map.get("requires_user_approval")):
-        approval_target_step = str(
-            workflow.metadata.get("approval_target_step")
-            or task.get("failure_step")
-            or workflow.metadata.get("failure_step")
-            or "step_02"
-        )
-        target_step = workflow.get_step(approval_target_step)
-        if target_step is None and len(workflow.execution_plan) > 1:
-            target_step = workflow.execution_plan[1]
-        if target_step is not None:
-            workflow.task.constraints.requires_user_approval = False
-            target_step.requires_user_confirmation = True
-            target_step.metadata["requires_approval"] = True
-            target_node = workflow.get_node(target_step.step_id)
-            if target_node is not None:
-                target_node.approval_gate.required = True
-                target_node.approval_gate.reason = "tau2_failure_step_approval"
-                target_node.metadata["requires_approval"] = True
-
     return workflow
 
 
@@ -924,24 +884,20 @@ def build_runtime_for_spec(
 ) -> ToolClawRuntime:
     registry = asset_registry or InMemoryAssetRegistry()
     planner = build_default_planner(asset_registry=registry)
-    executor_planner = planner if spec.allow_suffix_replan else None
     runtime = ToolClawRuntime(
         planner=planner,
         executor=SequentialExecutor(
             recovery_engine=RecoveryEngine(
-                RecoveryConfig(
-                    enable_tool_fallback=spec.allow_fallback,
-                    prefer_user_mediated_binding_repair=spec.execution_mode == "interaction",
-                )
+                RecoveryConfig(enable_tool_fallback=spec.allow_fallback)
             ),
-            planner=executor_planner,
             config=ExecutorConfig(allow_repair=spec.allow_repair),
         ),
         repair_updater=RepairUpdater(),
         compiler=SWPCCompiler(),
         asset_registry=registry,
-        wire_executor_planner=spec.allow_suffix_replan,
     )
+    if not spec.allow_suffix_replan:
+        runtime.executor.planner = None
     return runtime
 
 
@@ -972,13 +928,13 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
                 step.step_id: {
                     "inputs": dict(step.inputs),
                     "tool_id": step.tool_id,
-                    "requires_user_confirmation": step.requires_user_confirmation,
                     "metadata": dict(step.metadata),
                 }
                 for step in workflow.execution_plan
             }
         },
     )
+    request.hints.allow_reuse = allow_reuse
     request.hints.user_style["task_family"] = str(workflow.metadata.get("task_family", "t0_general"))
     request.hints.user_style["failure_type"] = str(workflow.metadata.get("failure_type", "none"))
     request.hints.user_style["scenario"] = str(workflow.metadata.get("scenario", "success"))
@@ -990,6 +946,7 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
     request.hints.user_style["benchmark"] = workflow.metadata.get("benchmark")
     request.hints.user_style["messages"] = list(workflow.metadata.get("messages", []))
     request.hints.user_style["tool_allow_list"] = list(workflow.metadata.get("tool_allow_list", []))
+    request.hints.user_style["backup_tool_map"] = dict(workflow.metadata.get("backup_tool_map", {}))
     request.hints.user_style["branch_options"] = list(workflow.metadata.get("branch_options", []))
     request.hints.user_style["ideal_tool_calls"] = workflow.metadata.get("ideal_tool_calls")
     request.hints.user_style["ideal_turn_count"] = workflow.metadata.get("ideal_turn_count")
@@ -1006,6 +963,57 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
     if not allow_reuse:
         request.hints.reusable_asset_ids = []
     return request
+
+
+def _load_trace_payload(trace_path: Path) -> Dict[str, Any]:
+    if not trace_path.exists():
+        return {}
+    return json.loads(trace_path.read_text(encoding="utf-8"))
+
+
+def _write_trace_payload(trace_path: Path, payload: Dict[str, Any]) -> None:
+    trace_path.parent.mkdir(parents=True, exist_ok=True)
+    trace_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _reuse_rollback_decision(outcome: Any, trace_payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    reusable_context = dict(outcome.workflow.metadata.get("reusable_context", {}))
+    reuse_mode = str(reusable_context.get("reuse_mode") or "")
+    if reuse_mode not in {"transfer_reuse", "exact_reuse"}:
+        return None
+    events = list(trace_payload.get("events", []))
+    first_repair_index = next(
+        (idx for idx, event in enumerate(events) if event.get("event_type") == "repair_triggered"),
+        None,
+    )
+    if first_repair_index is None:
+        return None
+    tool_calls_before_repair = sum(
+        1 for event in events[:first_repair_index] if event.get("event_type") == "tool_call"
+    )
+    benchmark_hints = dict(outcome.workflow.metadata.get("benchmark_hints", {}))
+    expected_tool_calls = int(benchmark_hints.get("ideal_tool_calls") or len(outcome.workflow.execution_plan) or 1)
+    repair_actions = int(trace_payload.get("metrics", {}).get("repair_actions", 0) or 0)
+    repair_budget = max(1, expected_tool_calls - 1)
+    early_repair = tool_calls_before_repair <= max(1, min(2, expected_tool_calls))
+    repair_overflow = repair_actions > repair_budget
+    if reuse_mode == "transfer_reuse" and not (early_repair or repair_overflow):
+        return None
+    if reuse_mode == "exact_reuse" and not repair_overflow:
+        return None
+    return {
+        "applied": True,
+        "reason": "early_transfer_repair" if early_repair else "repair_budget_overflow",
+        "reuse_mode": reuse_mode,
+        "repair_actions": repair_actions,
+        "repair_budget": repair_budget,
+        "tool_calls_before_repair": tool_calls_before_repair,
+        "resolved_asset_ids": list(reusable_context.get("resolved_asset_ids", [])),
+        "selected_match": dict(reusable_context.get("selected_match", {}))
+        if isinstance(reusable_context.get("selected_match", {}), dict)
+        else {},
+        "fallback_behavior": "a3_interaction",
+    }
 
 
 def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any]) -> InteractionShell:
@@ -1103,6 +1111,113 @@ def repeat_family_key_from_task_id(task_id: str) -> str:
     return task_id
 
 
+def derive_reuse_family_id(task_id: str, task: Dict[str, Any]) -> str:
+    metadata = task.get("metadata", {})
+    if isinstance(metadata, dict) and metadata.get("reuse_family_id"):
+        return str(metadata["reuse_family_id"]).strip()
+    if task.get("reuse_family_id"):
+        return str(task["reuse_family_id"]).strip()
+    if "__pass" in task_id:
+        return task_id.rsplit("__pass", 1)[0]
+    return ""
+
+
+def derive_semantic_reuse_family(reuse_family_id: str) -> str:
+    family = str(reuse_family_id or "").strip()
+    if not family:
+        return ""
+    family = re.sub(r"__pair\d+$", "", family)
+    family = re.sub(r"_\d+$", "", family)
+    return family
+
+
+def classify_reuse_tier(
+    *,
+    reused_artifact: bool,
+    reuse_mode: str,
+    target_family: str,
+    source_family: str,
+    target_semantic_family: str,
+    source_semantic_family: str,
+) -> str:
+    if not reused_artifact:
+        return "none"
+    mode = str(reuse_mode or "").strip()
+    if source_family and target_family:
+        if source_family == target_family:
+            return "exact_match_reuse"
+        if source_semantic_family and target_semantic_family and source_semantic_family == target_semantic_family:
+            return "same_family_transfer_reuse"
+        return "cross_family_transfer_reuse"
+    if mode == "exact_reuse":
+        return "exact_match_reuse"
+    if mode in {"transfer_reuse", "explicit_asset"}:
+        return "unresolved_transfer_reuse"
+    return "none"
+
+
+def build_reuse_provenance(
+    *,
+    task: Dict[str, Any],
+    workflow: Workflow,
+    reused_artifact: bool,
+) -> Dict[str, Any]:
+    task_id = canonical_task_id(task)
+    target_family = derive_reuse_family_id(task_id, task)
+    target_semantic_family = derive_semantic_reuse_family(target_family)
+    reusable_context = workflow.metadata.get("reusable_context", {})
+    if not isinstance(reusable_context, dict):
+        reusable_context = {}
+    selected_match = reusable_context.get("selected_match", {})
+    if not isinstance(selected_match, dict):
+        selected_match = {}
+    reuse_mode = str(reusable_context.get("reuse_mode") or selected_match.get("reuse_mode") or "none")
+    selected_asset_id = str(
+        selected_match.get("asset_id")
+        or next(iter(reusable_context.get("resolved_asset_ids", [])), "")
+        or ""
+    ).strip()
+    source_task_id = str(selected_match.get("source_task_id") or "").strip()
+    source_family = str(
+        selected_match.get("source_reuse_family_id")
+        or selected_match.get("reuse_family_id")
+        or ""
+    ).strip()
+    if not source_family and source_task_id:
+        source_family = repeat_family_key_from_task_id(source_task_id)
+    source_semantic_family = str(
+        selected_match.get("source_semantic_reuse_family")
+        or selected_match.get("semantic_reuse_family")
+        or derive_semantic_reuse_family(source_family)
+    ).strip()
+    return {
+        "reused_artifact": bool(reused_artifact),
+        "reuse_mode": reuse_mode,
+        "reuse_selected_asset_id": selected_asset_id,
+        "reuse_selected_match_signature": str(selected_match.get("matched_signature") or ""),
+        "reuse_source_task_id": source_task_id,
+        "reuse_target_family": target_family,
+        "reuse_source_family": source_family,
+        "reuse_target_semantic_family": target_semantic_family,
+        "reuse_source_semantic_family": source_semantic_family,
+        "reuse_tier": classify_reuse_tier(
+            reused_artifact=bool(reused_artifact),
+            reuse_mode=reuse_mode,
+            target_family=target_family,
+            source_family=source_family,
+            target_semantic_family=target_semantic_family,
+            source_semantic_family=source_semantic_family,
+        ),
+    }
+
+
+def _persist_reuse_provenance(trace_path: Path, provenance: Dict[str, Any]) -> None:
+    trace_payload = _load_trace_payload(trace_path)
+    trace_payload.setdefault("metadata", {})
+    trace_payload["metadata"]["reuse_provenance"] = dict(provenance)
+    _write_trace_payload(trace_path, trace_payload)
+
+
 def current_git_commit() -> str | None:
     try:
         completed = subprocess.run(
@@ -1175,6 +1290,9 @@ def row_from_trace(
     metrics = trace_payload.get("metrics", {})
     metadata = trace_payload.get("metadata", {})
     task_annotations = dict(metadata.get("task_annotations", {}))
+    reuse_provenance = metadata.get("reuse_provenance", {})
+    if not isinstance(reuse_provenance, dict):
+        reuse_provenance = {}
     chosen_tool = str(task_annotations.get("chosen_tool") or "") or _chosen_tool_from_trace(events, task_annotations.get("failure_step"))
     stop_event = next((event for event in reversed(events) if event.get("event_type") == "stop"), None)
     stop_reason = stop_event.get("output", {}).get("reason", "unknown") if isinstance(stop_event, dict) else "unknown"
@@ -1201,6 +1319,26 @@ def row_from_trace(
     if derive_failure_type(task, scenario) in {"approval_required", "policy_failure", "dual_control"}:
         policy_compliance_success = safe_abort or stop_reason == "policy_compliant_stop" or bool(metrics.get("success"))
     state_repair_success = map_failtax_bucket(primary_failtax) == "state" and repair_triggered > 0 and bool(metrics.get("success"))
+    target_family = str(reuse_provenance.get("reuse_target_family") or derive_reuse_family_id(task_id, task) or "")
+    target_semantic_family = str(
+        reuse_provenance.get("reuse_target_semantic_family") or derive_semantic_reuse_family(target_family)
+    )
+    source_family = str(reuse_provenance.get("reuse_source_family") or "")
+    source_semantic_family = str(
+        reuse_provenance.get("reuse_source_semantic_family") or derive_semantic_reuse_family(source_family)
+    )
+    reuse_mode = str(reuse_provenance.get("reuse_mode") or ("unknown_reuse" if reused_artifact else "none"))
+    reuse_tier = str(
+        reuse_provenance.get("reuse_tier")
+        or classify_reuse_tier(
+            reused_artifact=reused_artifact,
+            reuse_mode=reuse_mode,
+            target_family=target_family,
+            source_family=source_family,
+            target_semantic_family=target_semantic_family,
+            source_semantic_family=source_semantic_family,
+        )
+    )
     return EvalRow(
         task_id=task_id,
         system=system,
@@ -1238,6 +1376,15 @@ def row_from_trace(
         state_repair_success=state_repair_success,
         reuse_pass_index=parse_reuse_pass_index(task_id, task),
         reused_artifact=reused_artifact,
+        reuse_mode=reuse_mode,
+        reuse_tier=reuse_tier,
+        reuse_selected_asset_id=str(reuse_provenance.get("reuse_selected_asset_id") or ""),
+        reuse_selected_match_signature=str(reuse_provenance.get("reuse_selected_match_signature") or ""),
+        reuse_source_task_id=str(reuse_provenance.get("reuse_source_task_id") or ""),
+        reuse_target_family=target_family,
+        reuse_source_family=source_family,
+        reuse_target_semantic_family=target_semantic_family,
+        reuse_source_semantic_family=source_semantic_family,
         second_run_improvement=0.0,
         budget_violation=bool(metrics.get("budget_violation", False)),
         budget_violation_reason=str(metrics.get("budget_violation_reason") or ""),
@@ -1324,15 +1471,6 @@ def execute_system(
     task_family = derive_task_family(task, scenario, task_id)
     failure_type = derive_failure_type(task, scenario)
     reused_artifact = False
-    if spec.use_reuse and runtime is not None:
-        query = str(task.get("query") or "")
-        if query:
-            signature_candidates = task_signature_candidates(
-                query=query,
-                task_family=task_family,
-                failure_type=failure_type,
-            )
-            reused_artifact = any(runtime.asset_registry.query(signature) for signature in signature_candidates)
 
     if spec.execution_mode == "baseline":
         workflow = build_workflow_from_task(task, mode=spec.workflow_mode)
@@ -1405,26 +1543,49 @@ def execute_system(
             reused_artifact=False,
         )
 
-    seed_workflow = build_workflow_from_task(task, mode=spec.workflow_mode)
-    if spec.use_reuse and runtime is not None and not reused_artifact:
-        signature_candidates = task_signature_candidates(
-            query=seed_workflow.task.user_goal,
-            task_family=str(seed_workflow.metadata.get("task_family", task_family)),
-            failure_type=str(seed_workflow.metadata.get("failure_type", failure_type)),
-            capability_skeleton=[step.capability_id for step in seed_workflow.execution_plan],
-        )
-        reused_artifact = any(runtime.asset_registry.query(signature) for signature in signature_candidates)
+    seed_workflow = build_workflow_from_task(task, mode="planner")
     request = build_planning_request(seed_workflow, allow_reuse=spec.use_reuse)
-    build_shell(runtime, task).run(
+    shell = build_shell(runtime, task)
+    outcome = shell.run(
         request=request,
         run_id=f"{spec.system_id}_{task_id}",
         output_path=str(trace_path),
         backup_tool_map=backup_tool_map,
         use_reuse=spec.use_reuse,
-        compile_on_success=spec.compile_on_success,
+        compile_on_success=False if spec.use_reuse else spec.compile_on_success,
     )
     if spec.use_reuse:
-        reused_artifact = reused_artifact or bool(request.hints.reusable_asset_ids)
+        rollback = _reuse_rollback_decision(outcome, _load_trace_payload(trace_path))
+        if rollback is not None:
+            request.hints.allow_reuse = False
+            request.hints.reusable_asset_ids = []
+            request.hints.user_style["reuse_fallback_applied"] = True
+            request.hints.user_style["reuse_fallback_reason"] = rollback["reason"]
+            outcome = shell.run(
+                request=request,
+                run_id=f"{spec.system_id}_{task_id}",
+                output_path=str(trace_path),
+                backup_tool_map=backup_tool_map,
+                use_reuse=False,
+                compile_on_success=False,
+            )
+            trace_payload = _load_trace_payload(trace_path)
+            trace_payload.setdefault("metadata", {})
+            trace_payload["metadata"]["reuse_rollback"] = rollback
+            _write_trace_payload(trace_path, trace_payload)
+        reused_artifact = bool(request.hints.reusable_asset_ids) and not bool(
+            request.hints.user_style.get("reuse_fallback_applied")
+        )
+        if spec.compile_on_success:
+            runtime._compile_and_store_if_success(outcome, enabled=True)
+    _persist_reuse_provenance(
+        trace_path,
+        build_reuse_provenance(
+            task=task,
+            workflow=outcome.workflow,
+            reused_artifact=reused_artifact,
+        ),
+    )
     return row_from_trace(
         task=task,
         system=spec.system_id,

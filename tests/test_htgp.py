@@ -188,6 +188,8 @@ def test_planner_preserves_retrieve_then_send_chain_for_toolsandbox_message_stat
                     "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.MESSAGING, snapshot_constraint=addition_similarity, target_dataframe=pl.DataFrame({'recipient_phone_number': '+12453344098', 'content': \"How's the new album coming along\"}), reference_milestone_node_index=0)], guardrail_database_exclusion_list=[DatabaseNamespace.SETTING])",
                     "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SANDBOX, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'sender': RoleType.AGENT, 'recipient': RoleType.USER, 'content': \"Your message to Fredrik Thordendal has been sent saying: How's the new album coming along\"}))])",
                 ],
+                "state_slots": ["messages", "cellular_service_status"],
+                "dependency_edges": [{"source": "step_01", "target": "step_02", "type": "state"}],
                 "ideal_turn_count": 30,
                 "ideal_tool_calls": None,
             }
@@ -205,6 +207,12 @@ def test_planner_preserves_retrieve_then_send_chain_for_toolsandbox_message_stat
     assert result.workflow.execution_plan[1].inputs["content"] == "How's the new album coming along"
     assert result.workflow.execution_plan[1].inputs["recipient"] == "Fredrik Thordendal"
     assert "set_cellular_service_status" in result.workflow.execution_plan[1].metadata["allowed_tools"]
+    assert result.workflow.execution_plan[1].metadata["required_state_slots"] == ["retrieved_info", "cellular_service_status"]
+    assert result.workflow.execution_plan[1].metadata["ordering_sensitive"] is True
+    assert result.workflow.execution_plan[1].metadata["preflight_state_policy"]["state_slot"] == "cellular_service_status"
+    write_node = next(node for node in result.workflow.workflow_graph.nodes if node.node_id == "step_02")
+    assert write_node.dependencies == ["step_01"]
+    assert sorted(req.asset_key for req in write_node.preflight_requirements) == ["cellular_service_status", "retrieved_info"]
 
 
 def test_planner_records_overplanning_risk_when_steps_exceed_ideal() -> None:
@@ -253,6 +261,81 @@ def test_binder_prefers_primary_writer_over_backup_and_ordering_distractors() ->
     assert write_step.tool_id == "write_tool"
     assert write_binding.primary_tool == "write_tool"
     assert "ordering_write_tool" in write_binding.backup_tools
+
+
+def test_planner_ranks_declared_backup_tool_below_primary_during_binding() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_backup_rank_001", user_goal="write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="write_tool", description="Write the final artifact."),
+                ToolSpec(tool_id="backup_write_tool", description="Primary standard approved writer for the final artifact."),
+            ]
+        ),
+        hints=PlanningHints(
+            user_style={
+                "categories": ["single_tool"],
+                "tool_allow_list": ["write_tool", "backup_write_tool"],
+                "backup_tool_map": {"write_tool": "backup_write_tool"},
+                "ideal_tool_calls": 1,
+                "milestones": ["write report"],
+            }
+        ),
+    )
+
+    result = planner.plan(request)
+
+    assert result.workflow.execution_plan[0].tool_id == "write_tool"
+    binding = next(binding for binding in result.workflow.tool_bindings if binding.capability_id == "cap_write")
+    assert binding.primary_tool == "write_tool"
+    assert binding.backup_tools[0] == "backup_write_tool"
+
+
+def test_binder_uses_state_preconditions_to_penalize_state_admin_writer_distractor() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_state_admin_001", user_goal="Send a message", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_contacts", description="Search contacts by name."),
+                ToolSpec(tool_id="send_message_with_phone_number", description="Send a message to a phone number."),
+                ToolSpec(
+                    tool_id="update_message_delivery_status",
+                    description="Update cellular service status for outbound message delivery.",
+                    metadata={"affordances": ["update", "status", "cellular"]},
+                ),
+                ToolSpec(
+                    tool_id="get_cellular_service_status",
+                    description="Get the current cellular service status.",
+                    metadata={"affordances": ["get", "status", "retrieve"]},
+                ),
+            ]
+        ),
+        hints=PlanningHints(
+            user_style={
+                "benchmark": "toolsandbox",
+                "categories": ["state_dependency", "multiple_user_turn"],
+                "tool_allow_list": [
+                    "search_contacts",
+                    "send_message_with_phone_number",
+                    "update_message_delivery_status",
+                    "get_cellular_service_status",
+                ],
+                "milestones": ["retrieve contact", "send message"],
+                "primary_failtax": "state",
+                "state_slots": ["messages", "cellular_service_status"],
+                "dependency_edges": [{"source": "step_01", "target": "step_02", "type": "state"}],
+            }
+        ),
+    )
+
+    result = planner.plan(request)
+
+    write_step = next(step for step in result.workflow.execution_plan if step.capability_id == "cap_write")
+    write_binding = next(binding for binding in result.workflow.tool_bindings if binding.capability_id == "cap_write")
+    assert write_step.tool_id == "send_message_with_phone_number"
+    assert write_binding.primary_tool == "send_message_with_phone_number"
 
 
 def test_binder_uses_tool_metadata_to_avoid_lexical_distractors() -> None:
@@ -374,7 +457,7 @@ def test_planner_passthrough_metadata_preserves_toolsandbox_annotations() -> Non
     assert result.workflow.metadata["tool_execution_backend"] == "semantic_mock"
 
 
-def test_reusable_hints_do_not_leak_foreign_toolsandbox_target_path() -> None:
+def test_reusable_hints_do_not_leak_foreign_toolsandbox_target_path_when_overriding_existing_value() -> None:
     planner = build_planner()
     request = PlanningRequest(
         task=TaskSpec(task_id="toolsandbox_reuse_001", user_goal="retrieve and write report", constraints=TaskConstraints()),
@@ -390,7 +473,7 @@ def test_reusable_hints_do_not_leak_foreign_toolsandbox_target_path() -> None:
     workflow.metadata["benchmark"] = "toolsandbox"
     workflow.metadata["reuse_override_inputs"] = {"cap_write": ["target_path"]}
     write_step = next(step for step in workflow.execution_plan if step.capability_id == "cap_write")
-    write_step.inputs.pop("target_path", None)
+    write_step.inputs["target_path"] = "outputs/toolsandbox/reports/foreign_task.txt"
     write_step.metadata["repair_default_inputs"] = {"target_path": "outputs/toolsandbox/reports/toolsandbox_reuse_001.txt"}
 
     HTGPPlanner._apply_reusable_hints(
@@ -403,6 +486,81 @@ def test_reusable_hints_do_not_leak_foreign_toolsandbox_target_path() -> None:
     )
 
     assert write_step.inputs["target_path"] == "outputs/toolsandbox/reports/toolsandbox_reuse_001.txt"
+
+
+def test_reusable_hints_do_not_prefill_repair_sensitive_target_path() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(task_id="toolsandbox_reuse_002", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+            ]
+        ),
+        hints=PlanningHints(
+            user_style={
+                "benchmark": "toolsandbox",
+                "categories": ["insufficient_information", "single_user_turn"],
+                "expected_recovery_path": "patch_then_retry",
+            }
+        ),
+    )
+
+    workflow = planner.plan(request).workflow
+    workflow.metadata["benchmark"] = "toolsandbox"
+    workflow.metadata["toolsandbox_categories"] = ["insufficient_information", "single_user_turn"]
+    workflow.metadata["expected_recovery_path"] = "patch_then_retry"
+    workflow.metadata["reuse_override_inputs"] = {"cap_write": ["target_path"]}
+    write_step = next(step for step in workflow.execution_plan if step.capability_id == "cap_write")
+    write_step.metadata["repair_default_inputs"] = {"target_path": "outputs/toolsandbox/reports/toolsandbox_reuse_002.txt"}
+    write_step.inputs.pop("target_path", None)
+
+    HTGPPlanner._apply_reusable_hints(
+        workflow,
+        {
+            "recommended_inputs": {
+                "cap_write": {"target_path": "outputs/toolsandbox/reports/toolsandbox_reuse_002.txt"}
+            }
+        },
+    )
+
+    assert "target_path" not in write_step.inputs
+    assert workflow.metadata["reusable_context"]["suppressed_inputs"] == [
+        {
+            "step_id": write_step.step_id,
+            "capability_id": "cap_write",
+            "input_key": "target_path",
+            "reason": "repair_sensitive_missing_input",
+        }
+    ]
+
+
+def test_reusable_hints_can_still_apply_safe_nonrepair_input() -> None:
+    planner = build_planner()
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_safe_reuse_001", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+            ]
+        ),
+    )
+
+    workflow = planner.plan(request).workflow
+    retrieve_step = next(step for step in workflow.execution_plan if step.capability_id == "cap_retrieve")
+
+    HTGPPlanner._apply_reusable_hints(
+        workflow,
+        {
+            "recommended_inputs": {
+                "cap_retrieve": {"result_key": "cached_result"}
+            }
+        },
+    )
+
+    assert retrieve_step.inputs["result_key"] == "cached_result"
 
 
 def test_replan_from_error_inherits_workflow_request_context_when_request_is_sparse() -> None:
@@ -642,6 +800,7 @@ def test_reusable_profile_respects_overplanning_objective_tool_allow_list() -> N
             ]
         ),
         hints=PlanningHints(
+            allow_reuse=True,
             user_style={
                 "tool_allow_list": ["search_tool", "write_tool"],
                 "milestones": ["retrieve data", "write report"],
@@ -654,6 +813,46 @@ def test_reusable_profile_respects_overplanning_objective_tool_allow_list() -> N
 
     assert all(step.tool_id in {"search_tool", "write_tool"} for step in result.workflow.execution_plan if step.tool_id)
     assert result.workflow.execution_plan[0].inputs["result_key"] == "cached_result"
+
+
+def test_planner_does_not_load_reuse_profile_when_reuse_is_disabled() -> None:
+    asset_registry = InMemoryAssetRegistry()
+    asset_registry.upsert(
+        SimpleNamespace(
+            snippet_id="asset_ws_disabled_001",
+            task_signature="phase1::family=t0_general::caps=cap_retrieve+cap_write::fail=none::goal=retrieve_and_write_report",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "write_tool"},
+            recommended_inputs={"cap_retrieve": {"result_key": "cached_result"}},
+            metadata={
+                "failure_context": "none",
+                "required_state_slots": [],
+            },
+        )
+    )
+    planner = build_planner(asset_registry=asset_registry)
+    request = PlanningRequest(
+        task=TaskSpec(task_id="task_013b", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+            ]
+        ),
+        hints=PlanningHints(
+            allow_reuse=False,
+            user_style={
+                "tool_allow_list": ["search_tool", "write_tool"],
+                "ideal_tool_calls": 2,
+            },
+        ),
+    )
+
+    result = planner.plan(request)
+
+    assert result.workflow.metadata["reusable_context"]["profile_loaded"] is False
+    assert result.workflow.metadata["reusable_context"]["resolved_asset_ids"] == []
+    assert "result_key" not in result.workflow.execution_plan[0].inputs
 
 
 def test_binder_uses_objective_constrained_reusable_binding_as_preference() -> None:
@@ -677,6 +876,7 @@ def test_binder_uses_objective_constrained_reusable_binding_as_preference() -> N
             ]
         ),
         hints=PlanningHints(
+            allow_reuse=True,
             user_style={
                 "categories": ["single_tool"],
                 "tool_allow_list": ["write_tool", "writer_tool"],

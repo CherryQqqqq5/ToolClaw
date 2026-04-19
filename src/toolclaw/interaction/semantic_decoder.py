@@ -15,6 +15,7 @@ class DecodedInteractionSignal:
     intent_type: str
     slot_updates: Dict[str, Any] = field(default_factory=dict)
     approvals: Dict[str, bool] = field(default_factory=dict)
+    control_updates: Dict[str, Any] = field(default_factory=dict)
     constraints: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -29,11 +30,9 @@ class SemanticDecoder:
         q_text = str(request.question or "").lower()
         q_type = str(request.metadata.get("query_policy", {}).get("question_type") or request.expected_answer_type or "").lower()
         text = str(raw_reply.raw_text or "").strip()
-        if bool(request.metadata.get("interaction_probe")):
-            return DecodedInteractionSignal(
-                intent_type="interaction_probe",
-                metadata={"decode_strategy": "probe_passthrough", "decode_confidence": 1.0},
-            )
+        slot_updates: Dict[str, Any] = {}
+        approvals: Dict[str, bool] = {}
+        control_updates: Dict[str, Any] = {}
 
         if raw_reply.status in {"deny", "abstain", "malformed"}:
             return DecodedInteractionSignal(
@@ -45,42 +44,51 @@ class SemanticDecoder:
                 },
             )
 
+        if isinstance(payload.get("input_patch"), dict):
+            slot_updates.update(dict(payload.get("input_patch", {})))
         if "approved" in payload:
+            approvals["approved"] = bool(payload.get("approved"))
+        for key, value in payload.items():
+            if key in {"input_patch", "approved"}:
+                continue
+            target = patch_targets.get(key)
+            if key in {"tool_id", "use_backup_tool", "clear_failure_flag", "fallback_execution_path", "branch_choice"}:
+                control_updates[key] = value
+                continue
+            if isinstance(target, str) and (target.startswith("step.inputs.") or target.startswith("state.")):
+                slot_updates[key] = value
+                continue
+            if isinstance(target, str) and target in {"binding.primary_tool", "policy.approved"}:
+                control_updates[key] = value
+                continue
+            if key not in {"abort"}:
+                slot_updates[key] = value
+        if approvals or slot_updates or control_updates:
+            if approvals and (slot_updates or control_updates):
+                intent_type = "compound_patch"
+            elif approvals:
+                intent_type = "permission_confirm"
+            elif control_updates:
+                intent_type = "action_confirm"
+            else:
+                intent_type = "slot_fill"
             return DecodedInteractionSignal(
-                intent_type="permission_confirm",
-                approvals={"approved": bool(payload.get("approved"))},
-                metadata={"decode_strategy": "payload", "decode_confidence": 1.0},
-            )
-        if "tool_id" in payload and payload.get("tool_id"):
-            return DecodedInteractionSignal(
-                intent_type="action_confirm",
-                slot_updates={"tool_id": payload.get("tool_id")},
-                metadata={"decode_strategy": "payload", "decode_confidence": 1.0},
-            )
-        if "input_patch" in payload and isinstance(payload.get("input_patch"), dict):
-            return DecodedInteractionSignal(
-                intent_type="slot_fill",
-                slot_updates=dict(payload.get("input_patch", {})),
-                metadata={"decode_strategy": "payload", "decode_confidence": 1.0},
-            )
-        direct_slot_updates = self._direct_slot_updates_from_payload(
-            payload=payload,
-            patch_targets=patch_targets,
-            schema=request.allowed_response_schema,
-        )
-        if direct_slot_updates:
-            return DecodedInteractionSignal(
-                intent_type="slot_fill",
-                slot_updates=direct_slot_updates,
+                intent_type=intent_type,
+                approvals=approvals,
+                slot_updates=slot_updates,
+                control_updates=control_updates,
                 metadata={"decode_strategy": "payload", "decode_confidence": 1.0},
             )
 
         is_permission = ("approval" in q_type) or ("permission" in q_type) or ("approve" in q_text)
         if is_permission:
             if self.YES_RE.search(text):
+                candidate_slots = [str(k) for k in patch_targets.keys() if k and k not in {"approved", "tool_id"}]
+                normalized_text = self.YES_RE.sub("", text, count=1).strip(" ,.;:")
                 return DecodedInteractionSignal(
-                    intent_type="permission_confirm",
+                    intent_type="compound_patch" if normalized_text and candidate_slots else "permission_confirm",
                     approvals={"approved": True},
+                    slot_updates={candidate_slots[0]: normalized_text} if normalized_text and candidate_slots else {},
                     metadata={"decode_strategy": "rule", "decode_confidence": 0.9},
                 )
             if self.NO_RE.search(text):
@@ -91,8 +99,6 @@ class SemanticDecoder:
                 )
 
         candidate_slots = [str(k) for k in patch_targets.keys() if k and k not in {"approved", "tool_id"}]
-        if not candidate_slots:
-            candidate_slots = self._candidate_slots_from_schema(request.allowed_response_schema)
         if text and candidate_slots:
             slot = candidate_slots[0]
             return DecodedInteractionSignal(
@@ -111,33 +117,6 @@ class SemanticDecoder:
             metadata={"decode_strategy": "fallback", "decode_confidence": 0.0},
         )
 
-    @staticmethod
-    def _candidate_slots_from_schema(schema: Dict[str, Any]) -> list[str]:
-        if not isinstance(schema, dict):
-            return []
-        properties = schema.get("properties")
-        if not isinstance(properties, dict):
-            return []
-        blocked = {"approved", "tool_id", "abort", "use_backup_tool", "clear_failure_flag", "input_patch"}
-        return [str(key) for key in properties.keys() if str(key) and str(key) not in blocked]
-
-    @classmethod
-    def _direct_slot_updates_from_payload(
-        cls,
-        *,
-        payload: Dict[str, Any],
-        patch_targets: Dict[str, Any],
-        schema: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        candidate_slots = [str(key) for key in patch_targets.keys() if str(key) and str(key) not in {"approved", "tool_id"}]
-        if not candidate_slots:
-            candidate_slots = cls._candidate_slots_from_schema(schema)
-        slot_updates: Dict[str, Any] = {}
-        for slot in candidate_slots:
-            if slot in payload and payload.get(slot) not in (None, ""):
-                slot_updates[slot] = payload.get(slot)
-        return slot_updates
-
 
 def compile_decoded_signal_to_user_reply(
     request: InteractionRequest,
@@ -148,6 +127,7 @@ def compile_decoded_signal_to_user_reply(
     payload = RepairUpdater.compile_semantic_payload(
         slot_updates=dict(signal.slot_updates),
         approvals=dict(signal.approvals),
+        control_updates=dict(signal.control_updates),
     )
 
     status = str(raw_reply.status or "accept")
@@ -172,6 +152,7 @@ def compile_decoded_signal_to_user_reply(
             "decoded_intent_type": signal.intent_type,
             "decoded_slot_updates": dict(signal.slot_updates),
             "decoded_approvals": dict(signal.approvals),
+            "decoded_control_updates": dict(signal.control_updates),
             "decoded_constraints_trace_only": dict(signal.constraints),
             "decode_metadata": dict(signal.metadata),
         },

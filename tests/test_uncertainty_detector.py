@@ -11,6 +11,20 @@ def test_uncertainty_detector_marks_approval_needed() -> None:
     assert report.primary_label == "policy_approval"
 
 
+def test_uncertainty_detector_exposes_missing_required_state_slots_during_approval() -> None:
+    workflow = Workflow.demo()
+    workflow.task.constraints.requires_user_approval = True
+    workflow.execution_plan[1].metadata["required_state_slots"] = ["approval_note"]
+    repair = Repair.demo()
+    repair.repair_type = RepairType.REQUEST_APPROVAL
+
+    report = UncertaintyDetector().analyze_failure(workflow, repair, {})
+
+    assert report.primary_label == "policy_approval"
+    assert "approval_note" in report.metadata["missing_assets"]
+    assert report.metadata["constraint_requires_approval"] is True
+
+
 def test_uncertainty_detector_marks_missing_asset_for_ask_user() -> None:
     workflow = Workflow.demo()
     repair = Repair.demo()

@@ -22,7 +22,15 @@ class AssetRegistry(Protocol):
     def upsert(self, artifact: Any) -> str:
         ...
 
-    def query(self, task_signature: str, top_k: int = 5) -> List[AssetMatch]:
+    def query(
+        self,
+        task_signature: str,
+        top_k: int = 5,
+        *,
+        required_capability_skeleton: Optional[List[str]] = None,
+        failure_context: Optional[str] = None,
+        required_state_slots: Optional[List[str]] = None,
+    ) -> List[AssetMatch]:
         ...
 
     def get(self, asset_id: str) -> Optional[Any]:
@@ -30,6 +38,34 @@ class AssetRegistry(Protocol):
 
 
 _SIGNATURE_TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+_NON_ALNUM_PATTERN = re.compile(r"[^a-z0-9]+")
+_ASSET_TYPE_PRIORITY = {
+    "WorkflowSnippet": 0,
+    "workflowsnippet": 0,
+    "PolicySnippet": 1,
+    "policysnippet": 1,
+    "SkillHint": 2,
+    "skillhint": 2,
+}
+
+
+def _normalize_field(value: Any, *, default: str = "") -> str:
+    text = str(value or "").strip().lower()
+    if not text:
+        return default
+    normalized = _NON_ALNUM_PATTERN.sub("_", text).strip("_")
+    return normalized or default
+
+
+def _normalize_str_list(values: Any) -> List[str]:
+    if not isinstance(values, list):
+        return []
+    normalized: List[str] = []
+    for value in values:
+        token = _normalize_field(value)
+        if token and token not in normalized:
+            normalized.append(token)
+    return normalized
 
 
 def _signature_tokens(value: Any) -> set[str]:
@@ -57,9 +93,9 @@ def _parse_task_signature(signature: str) -> Dict[str, Any]:
         key = key.strip()
         value = value.strip()
         if key == "caps":
-            parsed["caps"] = [item for item in value.split("+") if item]
+            parsed["caps"] = [_normalize_field(item) for item in value.split("+") if _normalize_field(item)]
         elif key in {"family", "fail", "goal"}:
-            parsed[key] = value
+            parsed[key] = _normalize_field(value)
     parsed["goal_tokens"] = _signature_tokens(parsed["goal"])
     return parsed
 
@@ -73,36 +109,183 @@ def _jaccard(left: set[str], right: set[str]) -> float:
     return len(left.intersection(right)) / len(union)
 
 
-def _score_signature_match(query_signature: str, candidate_signature: str) -> tuple[float, str]:
+def _score_signature_match(query_signature: str, candidate_signature: str) -> Dict[str, Any]:
     query = _parse_task_signature(query_signature)
     candidate = _parse_task_signature(candidate_signature)
-    if query["raw"] == candidate["raw"]:
-        return 1.0, "exact"
-
-    score = 0.0
-    match_type = "lexical_similarity"
-    if query["family"] and candidate["family"] and query["family"] == candidate["family"]:
-        score += 0.28
-        match_type = "structural_similarity"
-    if query["fail"] and candidate["fail"] and query["fail"] == candidate["fail"]:
-        score += 0.14
-        match_type = "structural_similarity"
-
-    query_caps = set(query["caps"])
-    candidate_caps = set(candidate["caps"])
-    if query_caps and candidate_caps:
-        score += 0.38 * _jaccard(query_caps, candidate_caps)
-        match_type = "structural_similarity"
-
+    family_match = bool(query["family"] and candidate["family"] and query["family"] == candidate["family"])
+    fail_match = bool(query["fail"] and candidate["fail"] and query["fail"] == candidate["fail"])
+    caps_match = bool(query["caps"] and candidate["caps"] and list(query["caps"]) == list(candidate["caps"]))
+    goal_match = bool(query["goal"] and candidate["goal"] and query["goal"] == candidate["goal"])
     goal_overlap = _jaccard(query["goal_tokens"], candidate["goal_tokens"])
-    if goal_overlap:
-        score += 0.14 * goal_overlap
-
     token_overlap = _jaccard(query["tokens"], candidate["tokens"])
-    if token_overlap:
-        score += 0.06 * token_overlap
 
-    return round(score, 4), match_type
+    exact_score = 1.0 if family_match and fail_match and caps_match and goal_match else 0.0
+    transfer_score = 0.0
+    reuse_mode = "none"
+    if exact_score >= 1.0:
+        reuse_mode = "exact_reuse"
+        transfer_score = 0.98
+    elif family_match and fail_match and caps_match:
+        transfer_score = round(min(0.98, 0.58 + 0.28 * goal_overlap + 0.08 * token_overlap), 4)
+        if transfer_score >= 0.62:
+            reuse_mode = "transfer_reuse"
+
+    best_score = exact_score if reuse_mode == "exact_reuse" else transfer_score
+    return {
+        "query_signature": query_signature,
+        "candidate_signature": candidate_signature,
+        "reuse_mode": reuse_mode,
+        "match_type": reuse_mode,
+        "exact_score": round(exact_score, 4),
+        "transfer_score": round(transfer_score, 4),
+        "score": round(best_score, 4),
+        "goal_overlap": round(goal_overlap, 4),
+        "token_overlap": round(token_overlap, 4),
+        "family_match": family_match,
+        "fail_match": fail_match,
+        "caps_match": caps_match,
+        "goal_match": goal_match,
+    }
+
+
+def _asset_metadata(asset: Any) -> Dict[str, Any]:
+    metadata = getattr(asset, "metadata", {})
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def _asset_capability_skeleton(asset: Any) -> List[str]:
+    skeleton = getattr(asset, "capability_skeleton", None)
+    if isinstance(skeleton, list):
+        return _normalize_str_list(skeleton)
+    metadata = _asset_metadata(asset)
+    if isinstance(metadata.get("capability_skeleton"), list):
+        return _normalize_str_list(metadata.get("capability_skeleton"))
+    parsed = _parse_task_signature(str(getattr(asset, "task_signature", "")))
+    return list(parsed["caps"])
+
+
+def _asset_failure_context(asset: Any) -> str:
+    metadata = _asset_metadata(asset)
+    explicit = metadata.get("failure_context")
+    if explicit not in (None, ""):
+        return _normalize_field(explicit, default="none")
+    parsed = _parse_task_signature(str(getattr(asset, "task_signature", "")))
+    return _normalize_field(parsed.get("fail"), default="none")
+
+
+def _asset_required_state_slots(asset: Any) -> List[str]:
+    metadata = _asset_metadata(asset)
+    return _normalize_str_list(metadata.get("required_state_slots"))
+
+
+def _asset_source_task_id(asset: Any) -> str:
+    metadata = _asset_metadata(asset)
+    return str(metadata.get("source_task_id") or "").strip()
+
+
+def _asset_source_reuse_family(asset: Any) -> str:
+    metadata = _asset_metadata(asset)
+    return str(metadata.get("reuse_family_id") or "").strip()
+
+
+def _asset_source_semantic_reuse_family(asset: Any) -> str:
+    metadata = _asset_metadata(asset)
+    return str(metadata.get("semantic_reuse_family") or "").strip()
+
+
+def _quality_score(asset: Any) -> float:
+    try:
+        return float(getattr(asset, "quality_score", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _compatibility_rejections(
+    *,
+    asset: Any,
+    required_capability_skeleton: Optional[List[str]],
+    failure_context: Optional[str],
+    required_state_slots: Optional[List[str]],
+) -> List[str]:
+    rejection_reasons: List[str] = []
+    normalized_skeleton = _normalize_str_list(required_capability_skeleton)
+    if normalized_skeleton and _asset_capability_skeleton(asset) != normalized_skeleton:
+        rejection_reasons.append("capability_skeleton_mismatch")
+    normalized_failure = _normalize_field(failure_context, default="none") if failure_context else ""
+    if normalized_failure and _asset_failure_context(asset) != normalized_failure:
+        rejection_reasons.append("failure_context_mismatch")
+    normalized_state_slots = _normalize_str_list(required_state_slots)
+    asset_state_slots = _asset_required_state_slots(asset)
+    if normalized_state_slots and asset_state_slots != normalized_state_slots:
+        rejection_reasons.append("required_state_slots_mismatch")
+    return rejection_reasons
+
+
+def _ranked_match_for_asset(
+    *,
+    asset_id: str,
+    asset: Any,
+    asset_type: str,
+    task_signature: str,
+    signatures: List[str],
+    required_capability_skeleton: Optional[List[str]],
+    failure_context: Optional[str],
+    required_state_slots: Optional[List[str]],
+) -> Optional[AssetMatch]:
+    rejection_reasons = _compatibility_rejections(
+        asset=asset,
+        required_capability_skeleton=required_capability_skeleton,
+        failure_context=failure_context,
+        required_state_slots=required_state_slots,
+    )
+    if rejection_reasons:
+        return None
+
+    best_details: Optional[Dict[str, Any]] = None
+    best_signature = ""
+    for candidate_signature in signatures:
+        details = _score_signature_match(task_signature, candidate_signature)
+        if details["reuse_mode"] == "none":
+            continue
+        if best_details is None or details["score"] > best_details["score"]:
+            best_details = details
+            best_signature = candidate_signature
+    if best_details is None:
+        return None
+    return AssetMatch(
+        asset_id=asset_id,
+        asset_type=asset_type,
+        score=float(best_details["score"]),
+        metadata={
+            "task_signature": task_signature,
+            "matched_signature": best_signature,
+            "match_type": best_details["match_type"],
+            "reuse_mode": best_details["reuse_mode"],
+            "exact_score": best_details["exact_score"],
+            "transfer_score": best_details["transfer_score"],
+            "goal_overlap": best_details["goal_overlap"],
+            "token_overlap": best_details["token_overlap"],
+            "quality_score": round(_quality_score(asset), 4),
+            "asset_capability_skeleton": _asset_capability_skeleton(asset),
+            "asset_failure_context": _asset_failure_context(asset),
+            "asset_required_state_slots": _asset_required_state_slots(asset),
+            "source_task_id": _asset_source_task_id(asset),
+            "source_reuse_family_id": _asset_source_reuse_family(asset),
+            "source_semantic_reuse_family": _asset_source_semantic_reuse_family(asset),
+            "query_required_capability_skeleton": _normalize_str_list(required_capability_skeleton),
+            "query_failure_context": _normalize_field(failure_context, default="none") if failure_context else "",
+            "query_required_state_slots": _normalize_str_list(required_state_slots),
+            "rejection_reasons": [],
+        },
+    )
+
+
+def _match_sort_key(match: AssetMatch) -> tuple[int, float, float, int, str]:
+    reuse_mode = str(match.metadata.get("reuse_mode") or "")
+    mode_rank = 0 if reuse_mode == "exact_reuse" else 1
+    quality_score = float(match.metadata.get("quality_score", 0.0) or 0.0)
+    asset_type_rank = _ASSET_TYPE_PRIORITY.get(match.asset_type, _ASSET_TYPE_PRIORITY.get(match.asset_type.lower(), 9))
+    return (mode_rank, -match.score, -quality_score, asset_type_rank, match.asset_id)
 
 
 class InMemoryAssetRegistry:
@@ -126,45 +309,33 @@ class InMemoryAssetRegistry:
                 self._task_index[signature].append(asset_id)
         return asset_id
 
-    def query(self, task_signature: str, top_k: int = 5) -> List[AssetMatch]:
-        ranked_matches: Dict[str, AssetMatch] = {}
-        for rank, asset_id in enumerate(self._task_index.get(task_signature, [])):
-            asset = self._assets[asset_id]
-            ranked_matches[asset_id] = AssetMatch(
-                asset_id=asset_id,
-                asset_type=type(asset).__name__,
-                score=max(0.0, 1.0 - rank * 0.02),
-                metadata={"task_signature": task_signature, "matched_signature": task_signature, "match_type": "exact"},
-            )
-
+    def query(
+        self,
+        task_signature: str,
+        top_k: int = 5,
+        *,
+        required_capability_skeleton: Optional[List[str]] = None,
+        failure_context: Optional[str] = None,
+        required_state_slots: Optional[List[str]] = None,
+    ) -> List[AssetMatch]:
+        matches: List[AssetMatch] = []
         for asset_id, asset in self._assets.items():
             primary_signature = getattr(asset, "task_signature", "")
             signatures = self._artifact_signatures(asset, primary_signature=primary_signature)
-            best_score = -1.0
-            best_signature = ""
-            best_match_type = "lexical_similarity"
-            for candidate_signature in signatures:
-                score, match_type = _score_signature_match(task_signature, candidate_signature)
-                if score > best_score:
-                    best_score = score
-                    best_signature = candidate_signature
-                    best_match_type = match_type
-            if best_score < 0.34:
-                continue
-            current = ranked_matches.get(asset_id)
-            if current is None or best_score > current.score:
-                ranked_matches[asset_id] = AssetMatch(
-                    asset_id=asset_id,
-                    asset_type=type(asset).__name__,
-                    score=best_score,
-                    metadata={
-                        "task_signature": task_signature,
-                        "matched_signature": best_signature,
-                        "match_type": best_match_type,
-                    },
-                )
+            ranked = _ranked_match_for_asset(
+                asset_id=asset_id,
+                asset=asset,
+                asset_type=type(asset).__name__,
+                task_signature=task_signature,
+                signatures=signatures,
+                required_capability_skeleton=required_capability_skeleton,
+                failure_context=failure_context,
+                required_state_slots=required_state_slots,
+            )
+            if ranked is not None:
+                matches.append(ranked)
 
-        matches = sorted(ranked_matches.values(), key=lambda match: (-match.score, match.asset_id))
+        matches = sorted(matches, key=_match_sort_key)
         return matches[:top_k]
 
     def get(self, asset_id: str) -> Optional[Any]:
@@ -224,7 +395,11 @@ class FileAssetRegistry:
             ),
             encoding="utf-8",
         )
-        index["assets"][asset_id] = {"path": asset_path.name, "task_signature": task_signature}
+        index["assets"][asset_id] = {
+            "path": asset_path.name,
+            "task_signature": task_signature,
+            "asset_type": type(artifact).__name__,
+        }
         index["assets"][asset_id]["signatures"] = signatures
         for signature in signatures:
             index["task_index"].setdefault(signature, [])
@@ -233,49 +408,40 @@ class FileAssetRegistry:
         self._save_index(index)
         return asset_id
 
-    def query(self, task_signature: str, top_k: int = 5) -> List[AssetMatch]:
+    def query(
+        self,
+        task_signature: str,
+        top_k: int = 5,
+        *,
+        required_capability_skeleton: Optional[List[str]] = None,
+        failure_context: Optional[str] = None,
+        required_state_slots: Optional[List[str]] = None,
+    ) -> List[AssetMatch]:
         index = self._load_index()
-        ranked_matches: Dict[str, AssetMatch] = {}
-        for rank, asset_id in enumerate(index["task_index"].get(task_signature, [])):
-            asset_meta = index["assets"][asset_id]
-            ranked_matches[asset_id] = AssetMatch(
-                asset_id=asset_id,
-                asset_type=asset_meta["path"].replace(".json", ""),
-                score=max(0.0, 1.0 - rank * 0.02),
-                metadata={"task_signature": task_signature, "matched_signature": task_signature, "match_type": "exact"},
-            )
-
+        matches: List[AssetMatch] = []
         for asset_id, asset_meta in index["assets"].items():
             signatures = [
                 str(item)
                 for item in asset_meta.get("signatures", [asset_meta.get("task_signature", "")])
                 if str(item)
             ]
-            best_score = -1.0
-            best_signature = ""
-            best_match_type = "lexical_similarity"
-            for candidate_signature in signatures:
-                score, match_type = _score_signature_match(task_signature, candidate_signature)
-                if score > best_score:
-                    best_score = score
-                    best_signature = candidate_signature
-                    best_match_type = match_type
-            if best_score < 0.34:
+            asset = self.get(asset_id)
+            if asset is None:
                 continue
-            current = ranked_matches.get(asset_id)
-            if current is None or best_score > current.score:
-                ranked_matches[asset_id] = AssetMatch(
-                    asset_id=asset_id,
-                    asset_type=asset_meta["path"].replace(".json", ""),
-                    score=best_score,
-                    metadata={
-                        "task_signature": task_signature,
-                        "matched_signature": best_signature,
-                        "match_type": best_match_type,
-                    },
-                )
+            ranked = _ranked_match_for_asset(
+                asset_id=asset_id,
+                asset=asset,
+                asset_type=str(asset_meta.get("asset_type") or type(asset).__name__),
+                task_signature=task_signature,
+                signatures=signatures,
+                required_capability_skeleton=required_capability_skeleton,
+                failure_context=failure_context,
+                required_state_slots=required_state_slots,
+            )
+            if ranked is not None:
+                matches.append(ranked)
 
-        matches = sorted(ranked_matches.values(), key=lambda match: (-match.score, match.asset_id))
+        matches = sorted(matches, key=_match_sort_key)
         return matches[:top_k]
 
     def get(self, asset_id: str) -> Optional[Any]:

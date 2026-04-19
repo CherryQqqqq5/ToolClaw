@@ -26,6 +26,10 @@ class BindingRequest:
     state_values: Dict[str, Any] = field(default_factory=dict)
     forbidden_tools: List[str] = field(default_factory=list)
     preferred_tools: List[str] = field(default_factory=list)
+    required_state_slots: List[str] = field(default_factory=list)
+    state_preconditions: List[str] = field(default_factory=list)
+    ordering_sensitive: bool = False
+    backup_tool_map: Dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -46,6 +50,7 @@ class ToolBinder:
     _WRITE_NEGATIVE_HINTS = {"backup", "fallback", "reserve", "reserved", "outage", "legacy", "ordering", "order", "violate", "violates"}
     _RETRIEVE_CAPABILITY_IDS = {"cap_retrieve", "cap_search", "cap_lookup"}
     _WRITE_CAPABILITY_IDS = {"cap_write", "cap_send", "cap_reply"}
+    _STATE_ADMIN_HINTS = {"set", "status", "state", "toggle", "enable", "disable", "update"}
 
     @classmethod
     def _tokens(cls, *values: str) -> set[str]:
@@ -94,6 +99,14 @@ class ToolBinder:
         sole_candidate = len(request.candidate_tools) == 1
         preferred_tools = set(request.preferred_tools)
         capability_tokens = self._tokens(request.capability.capability_id, request.capability.description)
+        required_state_slots = self._normalized_items(request.required_state_slots)
+        state_preconditions = self._normalized_items(request.state_preconditions)
+        state_requirement_tokens = self._tokens(sorted(required_state_slots), sorted(state_preconditions))
+        backup_only_tools = {
+            str(backup_tool_id).strip()
+            for backup_tool_id in request.backup_tool_map.values()
+            if str(backup_tool_id).strip()
+        }
 
         for tool in request.candidate_tools:
             if tool.tool_id in request.forbidden_tools:
@@ -120,6 +133,17 @@ class ToolBinder:
             disallowed_capabilities = self._normalized_items(metadata.get("disallowed_capabilities", []))
             affordances = self._normalized_items(metadata.get("affordances", []))
             failure_priors = self._normalized_items(metadata.get("failure_priors", []))
+            tool_required_state_slots = self._normalized_items(
+                metadata.get("required_state_slots")
+                or metadata.get("consumes_state_slots")
+                or metadata.get("state_preconditions")
+                or []
+            )
+            tool_produced_state_slots = self._normalized_items(
+                metadata.get("produces_state_slots")
+                or metadata.get("state_outputs")
+                or []
+            )
 
             capability_id = request.capability.capability_id.lower()
             if capability_id in preferred_capabilities:
@@ -129,8 +153,13 @@ class ToolBinder:
                 score -= 0.7
                 reasons.append("metadata:disallowed_capability")
 
+            retrieve_overlap = self._RETRIEVE_HINTS.intersection(tool_tokens)
+            write_overlap = self._WRITE_HINTS.intersection(tool_tokens)
+            state_admin_overlap = self._STATE_ADMIN_HINTS.intersection(tool_tokens).union(
+                self._STATE_ADMIN_HINTS.intersection(affordances)
+            )
+
             if is_retrieve:
-                retrieve_overlap = self._RETRIEVE_HINTS.intersection(tool_tokens)
                 if retrieve_overlap:
                     score += 0.65
                     reasons.append("semantic_match:retrieve_tool")
@@ -141,7 +170,6 @@ class ToolBinder:
                     score -= 0.2
                     reasons.append("penalty:write_tool_for_retrieve")
             if is_write:
-                write_overlap = self._WRITE_HINTS.intersection(tool_tokens)
                 if write_overlap:
                     score += 0.65
                     reasons.append("semantic_match:write_tool")
@@ -157,11 +185,42 @@ class ToolBinder:
                     penalty = 0.25 if {"backup", "fallback", "outage", "reserved", "reserve"}.intersection(negative_write_hints) else 0.45
                     score -= penalty
                     reasons.append(f"penalty:write_distractor:{'+'.join(sorted(negative_write_hints))}")
+            if required_state_slots:
+                if tool_required_state_slots and required_state_slots.issubset(tool_required_state_slots):
+                    score += 0.35
+                    reasons.append("state_preconditions:tool_consumes_required_slots")
+                elif tool_required_state_slots and tool_required_state_slots.intersection(required_state_slots):
+                    score += 0.18
+                    reasons.append("state_preconditions:partial_state_slot_match")
+                if tool_produced_state_slots.intersection(required_state_slots):
+                    score -= 0.35
+                    reasons.append("penalty:tool_produces_dependency_state")
+
+                state_slot_overlap = state_requirement_tokens.intersection(tool_tokens)
+                if request.ordering_sensitive and state_slot_overlap and state_admin_overlap and not is_retrieve:
+                    score -= 0.45
+                    reasons.append(
+                        f"penalty:ordering_state_prep_tool:{'+'.join(sorted(state_slot_overlap))}"
+                    )
+                elif request.ordering_sensitive and state_slot_overlap and write_overlap:
+                    score += 0.12
+                    reasons.append(
+                        f"ordering_sensitive:consumer_tool:{'+'.join(sorted(state_slot_overlap))}"
+                    )
+                elif is_write and not state_admin_overlap and write_overlap:
+                    score += 0.08
+                    reasons.append("state_preconditions:write_after_state_ready")
             if request.state_values.get("__failure_context__"):
                 failure_context = str(request.state_values["__failure_context__"]).strip().lower()
                 if failure_context and failure_context in failure_priors:
                     score -= 0.2
                     reasons.append("metadata:failure_prior_penalty")
+            if tool.tool_id in backup_only_tools and tool.tool_id not in preferred_tools:
+                score -= 0.3
+                reasons.append("penalty:planner_backup_only_tool")
+            if tool.tool_id in request.backup_tool_map:
+                score += 0.12
+                reasons.append("planner:primary_has_declared_backup")
             if tool.tool_id in preferred_tools:
                 score += 0.9
                 reasons.append("reusable_preference")
@@ -178,6 +237,11 @@ class ToolBinder:
 
         primary = matches[0]
         backup_tools = [m.tool_id for m in matches[1:3]]
+        declared_backup = str(request.backup_tool_map.get(primary.tool_id) or "").strip()
+        if declared_backup and declared_backup not in request.forbidden_tools:
+            candidate_tool_ids = {tool.tool_id for tool in request.candidate_tools}
+            if declared_backup in candidate_tool_ids and declared_backup != primary.tool_id:
+                backup_tools = [declared_backup] + [tool_id for tool_id in backup_tools if tool_id != declared_backup]
         binding = ToolBinding(
             capability_id=request.capability.capability_id,
             primary_tool=primary.tool_id,
@@ -193,20 +257,37 @@ class ToolBinder:
         context: WorkflowContext,
         forbidden_tools: Optional[List[str]] = None,
         preferred_bindings: Optional[Dict[str, str]] = None,
+        state_values: Optional[Dict[str, Any]] = None,
+        step_hints: Optional[Sequence[Dict[str, Any]]] = None,
+        backup_tool_map: Optional[Dict[str, str]] = None,
     ) -> List[BindingResult]:
         forbidden_tools = forbidden_tools or []
         preferred_bindings = preferred_bindings or {}
+        state_values = state_values or {}
+        step_hints = list(step_hints or [])
+        backup_tool_map = backup_tool_map or {}
         return [
             self.bind_one(
                 BindingRequest(
                     capability=cap,
                     candidate_tools=candidate_tools,
                     context=context,
+                    state_values=dict(state_values),
                     forbidden_tools=forbidden_tools,
                     preferred_tools=[preferred_bindings[cap.capability_id]]
                     if preferred_bindings.get(cap.capability_id)
                     else [],
+                    required_state_slots=list(step_hints[idx].get("required_state_slots", []))
+                    if idx < len(step_hints)
+                    else [],
+                    state_preconditions=list(step_hints[idx].get("state_preconditions", []))
+                    if idx < len(step_hints)
+                    else [],
+                    ordering_sensitive=bool(step_hints[idx].get("ordering_sensitive"))
+                    if idx < len(step_hints)
+                    else False,
+                    backup_tool_map=dict(backup_tool_map),
                 )
             )
-            for cap in capabilities
+            for idx, cap in enumerate(capabilities)
         ]

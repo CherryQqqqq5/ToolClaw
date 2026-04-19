@@ -48,6 +48,10 @@ class UncertaintyDetector:
             state_values=state_values,
             missing_input_keys=missing_input_keys,
         )
+        unsatisfied_state_slots = self._collect_unsatisfied_state_slots(step=step, state_values=state_values)
+        for slot in unsatisfied_state_slots:
+            if slot not in missing_assets:
+                missing_assets.append(slot)
         for source in (repair.metadata.get("missing_assets", []),):
             if not isinstance(source, list):
                 continue
@@ -61,7 +65,10 @@ class UncertaintyDetector:
         alternative_tool_ids = [
             tool_id for tool_id in available_tool_ids if tool_id and tool_id != failed_tool_id
         ]
+        approval_pending = step_id not in set(state_values.get("__approved_steps__", []))
+        constraint_requires_approval = bool(workflow.task.constraints.requires_user_approval and approval_pending)
         branch_options = self._collect_branch_options(step=step, repair=repair)
+        remaining_user_turns = self._remaining_user_turns(workflow=workflow, state_values=state_values)
         stale_assets = [
             str(item)
             for item in state_values.get("__stale_state_slots__", [])
@@ -71,6 +78,9 @@ class UncertaintyDetector:
             asset = str(item)
             if asset and asset not in stale_assets:
                 stale_assets.append(asset)
+        for slot in unsatisfied_state_slots:
+            if slot not in stale_assets:
+                stale_assets.append(slot)
 
         if repair.repair_type == RepairType.REQUEST_APPROVAL:
             return UncertaintyReport(
@@ -80,8 +90,19 @@ class UncertaintyDetector:
                 metadata={
                     "state_keys": sorted(state_values.keys()),
                     "step_id": step_id,
+                    "missing_input_keys": missing_input_keys,
+                    "missing_assets": missing_assets,
+                    "stale_assets": stale_assets,
+                    "failed_tool_id": failed_tool_id or None,
+                    "backup_tool_id": backup_tool_id or None,
+                    "available_tool_ids": available_tool_ids,
+                    "alternative_tool_ids": alternative_tool_ids,
+                    "branch_options": branch_options,
+                    "error_category": error_category,
                     "patch_targets": {"approved": "policy.approved"},
                     "constraint_source": "policy",
+                    "constraint_requires_approval": True,
+                    "remaining_user_turns": remaining_user_turns,
                 },
             )
         if repair.repair_type == RepairType.ASK_USER:
@@ -101,6 +122,8 @@ class UncertaintyDetector:
                         "failed_tool_id": failed_tool_id or None,
                         "backup_tool_id": backup_tool_id or None,
                         "error_category": error_category,
+                        "constraint_requires_approval": constraint_requires_approval,
+                        "remaining_user_turns": remaining_user_turns,
                     },
                 )
             if error_category == "state_failure" and stale_assets:
@@ -119,6 +142,8 @@ class UncertaintyDetector:
                         "failed_tool_id": failed_tool_id or None,
                         "backup_tool_id": backup_tool_id or None,
                         "error_category": error_category,
+                        "constraint_requires_approval": constraint_requires_approval,
+                        "remaining_user_turns": remaining_user_turns,
                     },
                 )
             if self._is_constraint_conflict(workflow=workflow, repair=repair, error_category=error_category):
@@ -136,8 +161,9 @@ class UncertaintyDetector:
                         "step_id": step_id,
                         "error_category": error_category,
                         "failed_tool_id": failed_tool_id or None,
-                        "constraint_requires_approval": bool(workflow.task.constraints.requires_user_approval),
+                        "constraint_requires_approval": constraint_requires_approval,
                         "forbidden_actions": list(workflow.task.constraints.forbidden_actions),
+                        "remaining_user_turns": remaining_user_turns,
                     },
                 )
             if branch_options:
@@ -157,6 +183,8 @@ class UncertaintyDetector:
                         "failed_tool_id": failed_tool_id or None,
                         "backup_tool_id": backup_tool_id or None,
                         "error_category": error_category,
+                        "constraint_requires_approval": constraint_requires_approval,
+                        "remaining_user_turns": remaining_user_turns,
                     },
                 )
             if self._is_tool_mismatch(
@@ -182,6 +210,8 @@ class UncertaintyDetector:
                         "available_tool_ids": available_tool_ids,
                         "alternative_tool_ids": alternative_tool_ids,
                         "error_category": error_category,
+                        "constraint_requires_approval": constraint_requires_approval,
+                        "remaining_user_turns": remaining_user_turns,
                     },
                 )
             if error_category == "environment_failure":
@@ -201,6 +231,8 @@ class UncertaintyDetector:
                         "backup_tool_id": backup_tool_id or None,
                         "available_tool_ids": available_tool_ids,
                         "error_category": error_category,
+                        "constraint_requires_approval": constraint_requires_approval,
+                        "remaining_user_turns": remaining_user_turns,
                     },
                 )
             return UncertaintyReport(
@@ -218,12 +250,18 @@ class UncertaintyDetector:
                     "alternative_tool_ids": alternative_tool_ids,
                     "branch_options": branch_options,
                     "error_category": error_category,
+                    "constraint_requires_approval": constraint_requires_approval,
+                    "remaining_user_turns": remaining_user_turns,
                 },
             )
         return UncertaintyReport(
             primary_label="recoverable_runtime_error",
             confidence=0.6,
-            metadata={"state_keys": sorted(state_values.keys()), "step_id": step_id},
+            metadata={
+                "state_keys": sorted(state_values.keys()),
+                "step_id": step_id,
+                "remaining_user_turns": remaining_user_turns,
+            },
         )
 
     @staticmethod
@@ -258,6 +296,13 @@ class UncertaintyDetector:
                 scoped_key = f"{step.step_id}.{key}"
                 if scoped_key not in missing_assets and key not in missing_assets:
                     missing_assets.append(key)
+            for slot in step.metadata.get("required_state_slots", []):
+                slot_text = str(slot)
+                if not slot_text:
+                    continue
+                if slot_text not in state_values or state_values.get(slot_text) in {None, ""}:
+                    if slot_text not in missing_assets:
+                        missing_assets.append(slot_text)
         for source in (
             workflow.context.environment.missing_assets,
             state_values.get("__missing_assets__", []),
@@ -269,6 +314,32 @@ class UncertaintyDetector:
                 if asset and asset not in missing_assets:
                     missing_assets.append(asset)
         return missing_assets
+
+    @staticmethod
+    def _collect_unsatisfied_state_slots(step: Any, state_values: Dict[str, Any]) -> List[str]:
+        if step is None:
+            return []
+        preflight_policy = step.metadata.get("preflight_state_policy", {})
+        if not isinstance(preflight_policy, dict):
+            return []
+        state_slot = str(preflight_policy.get("state_slot") or "")
+        if not state_slot:
+            return []
+        required_value = preflight_policy.get("required_value")
+        if state_slot not in state_values or state_values.get(state_slot) in {None, ""}:
+            return []
+        if required_value is not None and state_values.get(state_slot) != required_value:
+            return [state_slot]
+        return []
+
+    @staticmethod
+    def _remaining_user_turns(workflow: Workflow, state_values: Dict[str, Any]) -> Optional[int]:
+        remaining_budgets = state_values.get("__remaining_budgets__", {})
+        if isinstance(remaining_budgets, dict) and remaining_budgets.get("user_turns") is not None:
+            return int(remaining_budgets["user_turns"])
+        if workflow.task.constraints.max_user_turns is None:
+            return None
+        return int(workflow.task.constraints.max_user_turns) - int(state_values.get("__user_turns__", 0))
 
     @staticmethod
     def _collect_branch_options(step: Any, repair: Repair) -> List[str]:
@@ -313,6 +384,4 @@ class UncertaintyDetector:
             return False
         if not failed_tool_id:
             return False
-        if error_category == "environment_failure":
-            return bool(backup_tool_id)
         return bool(backup_tool_id or alternative_tool_ids)

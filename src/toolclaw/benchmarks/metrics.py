@@ -53,6 +53,15 @@ class EvalRow:
     recovery_budget_used: float
     stop_reason: str
     trace_path: str
+    reuse_mode: str = "none"
+    reuse_tier: str = "none"
+    reuse_selected_asset_id: str = ""
+    reuse_selected_match_signature: str = ""
+    reuse_source_task_id: str = ""
+    reuse_target_family: str = ""
+    reuse_source_family: str = ""
+    reuse_target_semantic_family: str = ""
+    reuse_source_semantic_family: str = ""
 
 
 def write_rows_csv(rows: Iterable[EvalRow], csv_path: Path) -> None:
@@ -97,6 +106,15 @@ def write_rows_csv(rows: Iterable[EvalRow], csv_path: Path) -> None:
                 "state_repair_success",
                 "reuse_pass_index",
                 "reused_artifact",
+                "reuse_mode",
+                "reuse_tier",
+                "reuse_selected_asset_id",
+                "reuse_selected_match_signature",
+                "reuse_source_task_id",
+                "reuse_target_family",
+                "reuse_source_family",
+                "reuse_target_semantic_family",
+                "reuse_source_semantic_family",
                 "second_run_improvement",
                 "budget_violation",
                 "budget_violation_reason",

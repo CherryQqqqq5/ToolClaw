@@ -79,3 +79,85 @@ def test_query_policy_builds_environment_resolution_query() -> None:
     assert plan.ask is True
     assert plan.question_type == "environment_resolution"
     assert "clear_failure_flag" in plan.response_schema["properties"]
+
+
+def test_query_policy_builds_compound_approval_and_target_path_query() -> None:
+    plan = QueryPolicy().decide_query(
+        UncertaintyReport(
+            primary_label="policy_approval",
+            confidence=0.95,
+            metadata={
+                "missing_input_keys": ["target_path"],
+                "missing_assets": ["target_path"],
+                "constraint_requires_approval": True,
+            },
+        )
+    )
+
+    assert plan.ask is True
+    assert plan.question_type == "approval_and_patch"
+    assert plan.response_schema["required"] == ["approved", "target_path"]
+    assert plan.patch_targets == {
+        "target_path": "step.inputs.target_path",
+        "approved": "policy.approved",
+    }
+
+
+def test_query_policy_builds_compound_approval_and_state_slot_query_on_last_turn() -> None:
+    plan = QueryPolicy().decide_query(
+        UncertaintyReport(
+            primary_label="policy_approval",
+            confidence=0.95,
+            metadata={
+                "missing_assets": ["approval_note"],
+                "constraint_requires_approval": True,
+                "remaining_user_turns": 1,
+            },
+        )
+    )
+
+    assert plan.ask is True
+    assert plan.question_type == "approval_and_patch"
+    assert plan.response_schema["required"] == ["approved", "approval_note"]
+    assert plan.patch_targets == {
+        "approval_note": "state.approval_note",
+        "approved": "policy.approved",
+    }
+    assert plan.urgency == "critical"
+
+
+def test_query_policy_keeps_approval_only_when_no_concrete_repair_payload_exists() -> None:
+    plan = QueryPolicy().decide_query(
+        UncertaintyReport(
+            primary_label="policy_approval",
+            confidence=0.95,
+            metadata={
+                "alternative_tool_ids": ["write_tool"],
+                "constraint_requires_approval": True,
+            },
+        )
+    )
+
+    assert plan.ask is True
+    assert plan.question_type == "approval"
+    assert plan.response_schema["required"] == ["approved"]
+    assert plan.patch_targets == {"approved": "policy.approved"}
+
+
+def test_query_policy_wraps_tool_switch_with_approval_when_required() -> None:
+    plan = QueryPolicy().decide_query(
+        UncertaintyReport(
+            primary_label="tool_mismatch",
+            confidence=0.82,
+            metadata={
+                "alternative_tool_ids": ["backup_write_tool"],
+                "constraint_requires_approval": True,
+            },
+        )
+    )
+
+    assert plan.ask is True
+    assert plan.question_type == "approval_and_patch"
+    assert "approved" in plan.response_schema["required"]
+    assert "tool_id" in plan.response_schema["properties"]
+    assert plan.patch_targets["approved"] == "policy.approved"

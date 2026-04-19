@@ -23,7 +23,9 @@ from toolclaw.schemas.workflow import (
     CapabilityGraph,
     CapabilityNode,
     CheckpointPolicy,
+    FallbackRoute,
     Phase,
+    PreflightRequirement,
     RollbackPolicy,
     TaskSpec,
     ToolBinding,
@@ -58,6 +60,7 @@ __all__ = [
 class PlanningHints:
     preferred_capabilities: List[str] = field(default_factory=list)
     forbidden_tools: List[str] = field(default_factory=list)
+    allow_reuse: bool = False
     reusable_asset_ids: List[str] = field(default_factory=list)
     prior_failures: List[str] = field(default_factory=list)
     user_style: Dict[str, Any] = field(default_factory=dict)
@@ -393,8 +396,10 @@ class PolicyInjector:
         bindings: List[ToolBinding],
         task: TaskSpec,
         benchmark_hints: Optional[Dict[str, Any]] = None,
+        step_hints: Optional[Sequence[Dict[str, Any]]] = None,
     ) -> List[WorkflowStep]:
         benchmark_hints = benchmark_hints or {}
+        step_hints = list(step_hints or [])
         binding_by_cap = {binding.capability_id: binding for binding in bindings}
         milestone_assignments = self._assign_milestones_to_capabilities(
             [capability.capability_id for capability in graph.capabilities],
@@ -404,6 +409,7 @@ class PolicyInjector:
         allowed_tools = [str(item) for item in benchmark_hints.get("tool_allow_list", []) if str(item)]
         steps: List[WorkflowStep] = []
         for idx, capability in enumerate(graph.capabilities, start=1):
+            hint = step_hints[idx - 1] if idx - 1 < len(step_hints) else {}
             binding = binding_by_cap.get(capability.capability_id)
             tool_id = binding.primary_tool if binding else None
             if capability.capability_id == "cap_retrieve":
@@ -428,6 +434,22 @@ class PolicyInjector:
                 default_expected_output=expected_output,
             )
 
+            dependency_sources = [str(item) for item in hint.get("dependency_sources", []) if str(item)]
+            ordering_sensitive = bool(hint.get("ordering_sensitive"))
+            rollback_to = dependency_sources[-1] if dependency_sources else (f"step_{idx - 1:02d}" if idx > 1 else None)
+            required_state_slots = [str(item) for item in hint.get("required_state_slots", []) if str(item)]
+            state_bindings = dict(hint.get("state_bindings", {})) if isinstance(hint.get("state_bindings"), dict) else {}
+            preflight_state_policy = (
+                dict(hint.get("preflight_state_policy", {}))
+                if isinstance(hint.get("preflight_state_policy"), dict)
+                else {}
+            )
+            checkpoint_reason = (
+                str(hint.get("checkpoint_reason"))
+                if hint.get("checkpoint_reason")
+                else ("ordering_sensitive_dependency" if ordering_sensitive else "planner_injected")
+            )
+
             steps.append(
                 WorkflowStep(
                     step_id=f"step_{idx:02d}",
@@ -437,7 +459,7 @@ class PolicyInjector:
                     inputs=inputs,
                     expected_output=expected_output,
                     checkpoint=True,
-                    rollback_to=(f"step_{idx - 1:02d}" if idx > 1 else None),
+                    rollback_to=rollback_to,
                     requires_user_confirmation=("requires_approval" in capability.preconditions),
                     metadata={
                         "policy_gate": "default_phase1",
@@ -448,6 +470,13 @@ class PolicyInjector:
                             milestone_assignments.get(capability.capability_id),
                             benchmark_hints.get("milestones", []),
                         ),
+                        "required_state_slots": required_state_slots,
+                        "state_bindings": state_bindings,
+                        "ordering_sensitive": ordering_sensitive,
+                        "dependency_sources": dependency_sources,
+                        "dependency_type": hint.get("dependency_type"),
+                        "checkpoint_reason": checkpoint_reason,
+                        "preflight_state_policy": preflight_state_policy,
                         "allowed_tools": allowed_tools,
                         "branch_options": branch_options if idx == len(graph.capabilities) and branch_options else [],
                         "branch_sensitive": bool(idx == len(graph.capabilities) and branch_options),
@@ -530,6 +559,41 @@ class PolicyInjector:
             tool_candidates = ([step.tool_id] if step.tool_id else []) + (list(binding.backup_tools) if binding else [])
             if allowed_tools:
                 tool_candidates = [tool_id for tool_id in tool_candidates if tool_id in allowed_tools]
+            required_state_slots = [str(item) for item in step.metadata.get("required_state_slots", []) if str(item)]
+            preflight_state_policy = (
+                dict(step.metadata.get("preflight_state_policy", {}))
+                if isinstance(step.metadata.get("preflight_state_policy"), dict)
+                else {}
+            )
+            preflight_requirements = [
+                PreflightRequirement(
+                    asset_key=slot,
+                    source="state_slot",
+                    required=True,
+                    metadata={"step_id": step.step_id},
+                )
+                for slot in required_state_slots
+            ]
+            preflight_slot = str(preflight_state_policy.get("state_slot") or "")
+            if preflight_slot and preflight_slot not in {req.asset_key for req in preflight_requirements}:
+                preflight_requirements.append(
+                    PreflightRequirement(
+                        asset_key=preflight_slot,
+                        source="preflight_policy",
+                        required=True,
+                        metadata={"required_value": preflight_state_policy.get("required_value")},
+                    )
+                )
+            fallback_routes = [
+                FallbackRoute(
+                    tool_id=tool_id,
+                    condition="on_tool_failure",
+                    priority=priority,
+                    metadata={"planner_ranked_backup": True},
+                )
+                for priority, tool_id in enumerate(list(binding.backup_tools) if binding else [], start=1)
+            ]
+            dependency_sources = [str(item) for item in step.metadata.get("dependency_sources", []) if str(item)]
             nodes.append(
                 WorkflowNode(
                     node_id=step.step_id,
@@ -538,16 +602,27 @@ class PolicyInjector:
                     tool_candidates=tool_candidates,
                     inputs=dict(step.inputs),
                     expected_output=step.expected_output,
-                    dependencies=[steps[idx - 1].step_id] if idx > 0 else [],
-                    checkpoint_policy=CheckpointPolicy(enabled=step.checkpoint, reason="planner_injected"),
-                    rollback_policy=RollbackPolicy(rollback_to_step_id=step.rollback_to),
+                    dependencies=dependency_sources or ([steps[idx - 1].step_id] if idx > 0 else []),
+                    checkpoint_policy=CheckpointPolicy(
+                        enabled=step.checkpoint,
+                        reason=str(step.metadata.get("checkpoint_reason") or "planner_injected"),
+                    ),
+                    rollback_policy=RollbackPolicy(
+                        rollback_to_step_id=step.rollback_to,
+                        reason="ordering_sensitive_dependency" if step.metadata.get("ordering_sensitive") else None,
+                    ),
                     approval_gate=ApprovalGate(required=step.requires_user_confirmation),
+                    fallback_routes=fallback_routes,
+                    preflight_requirements=preflight_requirements,
                     metadata=dict(step.metadata),
                 )
             )
-            if idx > 0:
+            edge_sources = dependency_sources or ([steps[idx - 1].step_id] if idx > 0 else [])
+            for dependency_source in edge_sources:
                 edge_condition = "on_branch_resolved" if step.metadata.get("branch_sensitive") else "on_success"
-                edges.append(WorkflowEdge(source=steps[idx - 1].step_id, target=step.step_id, condition=edge_condition))
+                if step.metadata.get("dependency_type") == "state":
+                    edge_condition = "on_state_ready"
+                edges.append(WorkflowEdge(source=dependency_source, target=step.step_id, condition=edge_condition))
             if binding and binding.backup_tools:
                 edges.append(WorkflowEdge(source=step.step_id, target=step.step_id, condition="on_tool_failure_use_backup"))
             if step.requires_user_confirmation:
@@ -682,12 +757,20 @@ class HTGPPlanner:
             candidate_tools = [tool for tool in request.context.candidate_tools if tool.tool_id in allowed_tools]
         preferred_bindings = self._benchmark_preferred_bindings(candidate_tools, benchmark_hints)
         preferred_bindings.update(dict(reusable_profile.get("recommended_bindings", {})))
+        step_hints = self._step_planning_hints(
+            graph=graph,
+            benchmark_hints=benchmark_hints,
+            candidate_tools=candidate_tools,
+        )
         binding_results = self.binder.bind_graph(
             capabilities=graph.capabilities,
             candidate_tools=candidate_tools,
             context=request.context,
             forbidden_tools=request.hints.forbidden_tools,
             preferred_bindings=preferred_bindings,
+            state_values={"__failure_context__": benchmark_hints.get("primary_failtax")},
+            step_hints=step_hints,
+            backup_tool_map=dict(benchmark_hints.get("backup_tool_map", {})),
         )
 
         bindings: List[ToolBinding] = []
@@ -700,8 +783,19 @@ class HTGPPlanner:
             bindings.append(binding_result.binding)
             diagnostics.binding_scores[capability.capability_id] = binding_result.binding.binding_confidence
 
-        execution_plan = self.policy_injector.compile_execution_plan(graph, bindings, request.task, benchmark_hints=benchmark_hints)
-        workflow_graph = self.policy_injector.compile_workflow_graph(graph, execution_plan, bindings=bindings, benchmark_hints=benchmark_hints)
+        execution_plan = self.policy_injector.compile_execution_plan(
+            graph,
+            bindings,
+            request.task,
+            benchmark_hints=benchmark_hints,
+            step_hints=step_hints,
+        )
+        workflow_graph = self.policy_injector.compile_workflow_graph(
+            graph,
+            execution_plan,
+            bindings=bindings,
+            benchmark_hints=benchmark_hints,
+        )
         diagnostics.overplanning_risk = self._overplanning_risk(
             request=request,
             execution_plan=execution_plan,
@@ -736,6 +830,7 @@ class HTGPPlanner:
                 "benchmark_hints": {
                     "categories": list(benchmark_hints.get("categories", [])),
                     "tool_allow_list": list(benchmark_hints.get("tool_allow_list", [])),
+                    "backup_tool_map": dict(benchmark_hints.get("backup_tool_map", {})),
                     "ideal_tool_calls": benchmark_hints.get("ideal_tool_calls"),
                     "ideal_turn_count": benchmark_hints.get("ideal_turn_count"),
                     "milestones": list(benchmark_hints.get("milestones", [])),
@@ -747,6 +842,8 @@ class HTGPPlanner:
                 "reusable_context": {
                     "resolved_asset_ids": list(request.hints.reusable_asset_ids),
                     "profile_loaded": bool(resolved_reusable_asset_ids),
+                    "reuse_mode": str(reusable_profile.get("reuse_mode", "none")),
+                    "selected_match": deepcopy(reusable_profile.get("selected_match", {})),
                 },
                 "reuse_override_inputs": deepcopy(request.hints.user_style.get("reuse_override_inputs", {})),
                 "tool_execution_backend": str(request.hints.user_style.get("tool_execution_backend", "mock")),
@@ -811,6 +908,138 @@ class HTGPPlanner:
         return None
 
     @staticmethod
+    def _parse_step_ordinal(step_id: Any) -> Optional[int]:
+        match = re.match(r"step_(\d+)$", str(step_id or "").strip().lower())
+        if not match:
+            return None
+        return int(match.group(1))
+
+    @staticmethod
+    def _state_slot_for_capability(capability_id: str) -> Optional[str]:
+        return {
+            "cap_retrieve": "retrieved_info",
+            "cap_summarize": "summary_text",
+            "cap_write": "report_artifact",
+        }.get(str(capability_id or "").strip().lower())
+
+    @staticmethod
+    def _state_slot_for_precondition(precondition: str) -> Optional[str]:
+        return {
+            "information_obtained": "retrieved_info",
+            "summary_ready": "summary_text",
+            "artifact_ready": "report_artifact",
+            "requires_approval": "approved",
+            "approved": "approved",
+        }.get(str(precondition or "").strip().lower())
+
+    @staticmethod
+    def _tool_uses_outbound_cellular(tool_id: str) -> bool:
+        normalized = str(tool_id or "").strip().lower()
+        return "send_message" in normalized or normalized in {"send_sms", "send_text"}
+
+    @classmethod
+    def _normalized_dependency_edges(cls, benchmark_hints: Dict[str, Any]) -> List[Dict[str, str]]:
+        normalized: List[Dict[str, str]] = []
+        for raw_edge in benchmark_hints.get("dependency_edges", []):
+            if not isinstance(raw_edge, dict):
+                continue
+            source = str(raw_edge.get("source") or "").strip()
+            target = str(raw_edge.get("target") or "").strip()
+            edge_type = str(raw_edge.get("type") or raw_edge.get("edge_type") or "default").strip().lower()
+            if source and target:
+                normalized.append({"source": source, "target": target, "type": edge_type or "default"})
+        return normalized
+
+    @classmethod
+    def _step_planning_hints(
+        cls,
+        *,
+        graph: CapabilityGraph,
+        benchmark_hints: Dict[str, Any],
+        candidate_tools: Sequence[ToolSpec],
+    ) -> List[Dict[str, Any]]:
+        hints: List[Dict[str, Any]] = []
+        for capability in graph.capabilities:
+            state_bindings: Dict[str, str] = {}
+            required_state_slots: List[str] = []
+            state_preconditions: List[str] = []
+            for precondition in capability.preconditions:
+                normalized_precondition = str(precondition or "").strip()
+                if not normalized_precondition:
+                    continue
+                if normalized_precondition not in state_preconditions:
+                    state_preconditions.append(normalized_precondition)
+                slot = cls._state_slot_for_precondition(normalized_precondition)
+                if slot and slot not in required_state_slots:
+                    required_state_slots.append(slot)
+                    state_bindings.setdefault(slot, slot)
+            hints.append(
+                {
+                    "required_state_slots": required_state_slots,
+                    "state_preconditions": state_preconditions,
+                    "state_bindings": state_bindings,
+                    "ordering_sensitive": bool(required_state_slots),
+                    "dependency_sources": [],
+                    "dependency_type": None,
+                    "checkpoint_reason": None,
+                    "preflight_state_policy": {},
+                }
+            )
+
+        normalized_edges = cls._normalized_dependency_edges(benchmark_hints)
+        for edge in normalized_edges:
+            source_ordinal = cls._parse_step_ordinal(edge["source"])
+            target_ordinal = cls._parse_step_ordinal(edge["target"])
+            if source_ordinal is None or target_ordinal is None:
+                continue
+            source_index = source_ordinal - 1
+            target_index = target_ordinal - 1
+            if not (0 <= source_index < len(graph.capabilities) and 0 <= target_index < len(graph.capabilities)):
+                continue
+            source_capability = graph.capabilities[source_index]
+            target_hint = hints[target_index]
+            source_step_id = f"step_{source_ordinal:02d}"
+            if source_step_id not in target_hint["dependency_sources"]:
+                target_hint["dependency_sources"].append(source_step_id)
+            target_hint["ordering_sensitive"] = True
+            target_hint["dependency_type"] = edge["type"]
+            target_hint["checkpoint_reason"] = f"{edge['type']}_dependency"
+            if edge["type"] == "state":
+                slot = cls._state_slot_for_capability(source_capability.capability_id)
+                if slot and slot not in target_hint["required_state_slots"]:
+                    target_hint["required_state_slots"].append(slot)
+                    target_hint["state_bindings"].setdefault(slot, slot)
+
+        state_slots = [str(item) for item in benchmark_hints.get("state_slots", []) if str(item)]
+        allowed_tools = {str(item) for item in benchmark_hints.get("tool_allow_list", []) if str(item)}
+        candidate_tool_ids = {tool.tool_id for tool in candidate_tools}
+        if (
+            "cellular_service_status" in state_slots
+            and any(cls._tool_uses_outbound_cellular(tool_id) for tool_id in candidate_tool_ids)
+            and {"get_cellular_service_status", "set_cellular_service_status"}.intersection(allowed_tools or candidate_tool_ids)
+        ):
+            for index in range(len(graph.capabilities) - 1, -1, -1):
+                if graph.capabilities[index].capability_id != "cap_write":
+                    continue
+                hint = hints[index]
+                if "cellular_service_status" not in hint["required_state_slots"]:
+                    hint["required_state_slots"].append("cellular_service_status")
+                    hint["state_bindings"].setdefault("cellular_on", "cellular_service_status")
+                hint["ordering_sensitive"] = True
+                hint["checkpoint_reason"] = hint["checkpoint_reason"] or "preflight_state_dependency"
+                hint["preflight_state_policy"] = {
+                    "state_slot": "cellular_service_status",
+                    "required_value": True,
+                    "repair_target": "cellular_service_status",
+                    "repair_value": True,
+                    "auto_repair": "set_cellular_service_status" in (allowed_tools or candidate_tool_ids),
+                    "reason": "outbound messaging requires cellular connectivity",
+                }
+                break
+
+        return hints
+
+    @staticmethod
     def _snapshot_request(request: PlanningRequest) -> Dict[str, Any]:
         return {
             "planner_mode": request.planner_mode,
@@ -818,6 +1047,7 @@ class HTGPPlanner:
             "hints": {
                 "preferred_capabilities": list(request.hints.preferred_capabilities),
                 "forbidden_tools": list(request.hints.forbidden_tools),
+                "allow_reuse": bool(request.hints.allow_reuse),
                 "reusable_asset_ids": list(request.hints.reusable_asset_ids),
                 "prior_failures": list(request.hints.prior_failures),
                 "user_style": deepcopy(request.hints.user_style),
@@ -832,6 +1062,7 @@ class HTGPPlanner:
             "messages",
             "milestones",
             "tool_allow_list",
+            "backup_tool_map",
             "simulated_policy",
             "branch_options",
             "ideal_tool_calls",
@@ -868,6 +1099,10 @@ class HTGPPlanner:
                 str(item) for item in hint_snapshot.get("preferred_capabilities", []) if str(item)
             ],
             forbidden_tools=[str(item) for item in hint_snapshot.get("forbidden_tools", []) if str(item)],
+            allow_reuse=bool(
+                hint_snapshot.get("allow_reuse")
+                or hint_snapshot.get("reusable_asset_ids")
+            ),
             reusable_asset_ids=[str(item) for item in hint_snapshot.get("reusable_asset_ids", []) if str(item)],
             prior_failures=[str(item) for item in hint_snapshot.get("prior_failures", []) if str(item)],
             user_style=deepcopy(hint_snapshot.get("user_style", {}))
@@ -911,6 +1146,7 @@ class HTGPPlanner:
             forbidden_tools=list(
                 dict.fromkeys([*inherited.hints.forbidden_tools, *request.hints.forbidden_tools])
             ),
+            allow_reuse=bool(inherited.hints.allow_reuse or request.hints.allow_reuse),
             reusable_asset_ids=list(
                 dict.fromkeys([*inherited.hints.reusable_asset_ids, *request.hints.reusable_asset_ids])
             ),
@@ -938,23 +1174,40 @@ class HTGPPlanner:
         user_style = dict(request.hints.user_style)
         categories = [str(item) for item in user_style.get("categories", []) if str(item)]
         tool_allow_list = [str(item) for item in user_style.get("tool_allow_list", []) if str(item)]
+        raw_backup_tool_map = user_style.get("backup_tool_map", {})
+        backup_tool_map = dict(raw_backup_tool_map) if isinstance(raw_backup_tool_map, dict) else {}
         milestones = [str(item) for item in user_style.get("milestones", []) if str(item)]
         branch_options = [str(item) for item in user_style.get("branch_options", []) if str(item)]
         ideal_tool_calls = HTGPPlanner._coerce_int(user_style.get("ideal_tool_calls"))
         ideal_turn_count = HTGPPlanner._coerce_int(user_style.get("ideal_turn_count"))
         used_keys = [
             key
-            for key in ("categories", "tool_allow_list", "ideal_tool_calls", "ideal_turn_count", "milestones", "branch_options")
+            for key in (
+                "categories",
+                "tool_allow_list",
+                "backup_tool_map",
+                "ideal_tool_calls",
+                "ideal_turn_count",
+                "milestones",
+                "branch_options",
+                "state_slots",
+                "dependency_edges",
+                "primary_failtax",
+            )
             if user_style.get(key)
         ]
         return {
             "categories": categories,
             "tool_allow_list": tool_allow_list,
+            "backup_tool_map": backup_tool_map,
             "ideal_tool_calls": ideal_tool_calls,
             "ideal_turn_count": ideal_turn_count,
             "milestones": milestones,
             "branch_options": branch_options,
+            "state_slots": [str(item) for item in user_style.get("state_slots", []) if str(item)],
+            "dependency_edges": HTGPPlanner._normalized_dependency_edges(user_style),
             "used_keys": used_keys,
+            "primary_failtax": user_style.get("primary_failtax"),
         }
 
     @staticmethod
@@ -1033,6 +1286,7 @@ class HTGPPlanner:
         replanning_hints = PlanningHints(
             preferred_capabilities=list(request.hints.preferred_capabilities),
             forbidden_tools=list(request.hints.forbidden_tools),
+            allow_reuse=bool(request.hints.allow_reuse),
             reusable_asset_ids=list(request.hints.reusable_asset_ids),
             prior_failures=list(request.hints.prior_failures) + [error.category.value],
             user_style=replan_user_style,
@@ -1086,6 +1340,7 @@ class HTGPPlanner:
         result.workflow.workflow_graph = self.policy_injector.compile_workflow_graph(
             result.workflow.capability_graph,
             result.workflow.execution_plan,
+            bindings=result.workflow.tool_bindings,
             benchmark_hints=self._benchmark_hints(request),
         )
         result.workflow.metadata["replanned_from_workflow_id"] = failed_workflow.workflow_id
@@ -1293,12 +1548,6 @@ class HTGPPlanner:
                 if binding is not None and step.tool_id:
                     binding.primary_tool = step.tool_id
 
-            if "requires_user_confirmation" in patch:
-                step.requires_user_confirmation = bool(patch["requires_user_confirmation"])
-                node = graph_nodes.get(step.step_id)
-                if node is not None:
-                    node.approval_gate.required = step.requires_user_confirmation
-
             if "metadata" in patch and isinstance(patch["metadata"], dict):
                 step.metadata.update(deepcopy(patch["metadata"]))
                 node = graph_nodes.get(step.step_id)
@@ -1317,34 +1566,65 @@ class HTGPPlanner:
             "recommended_bindings": {},
             "recommended_inputs": {},
             "asset_ids": [],
+            "reuse_mode": "none",
+            "selected_match": {},
         }
-        if not self.asset_registry:
+        reuse_enabled = bool(request.hints.allow_reuse or request.hints.reusable_asset_ids)
+        if not self.asset_registry or not reuse_enabled:
             return profile
 
         asset_ids = list(request.hints.reusable_asset_ids)
+        capability_skeleton = [capability.capability_id for capability in graph.capabilities] if graph else []
+        required_state_slots = self._required_state_slots(request)
+        failure_context = str(request.hints.user_style.get("failure_type") or "").strip() or None
+        selected_match: Dict[str, Any] = {}
         if not asset_ids and self.asset_registry:
-            capability_skeleton = [capability.capability_id for capability in graph.capabilities] if graph else []
             signatures = build_task_signature_candidates(
                 user_goal=request.task.user_goal,
                 task_family=request.hints.user_style.get("task_family"),
                 capability_skeleton=capability_skeleton,
-                failure_context=request.hints.user_style.get("failure_type"),
+                failure_context=failure_context,
             )
             matches = []
             for signature in signatures:
-                matches.extend(self.asset_registry.query(signature, top_k=5))
-            asset_ids = [m.asset_id for m in matches]
-        profile["asset_ids"] = list(dict.fromkeys(str(asset_id) for asset_id in asset_ids if str(asset_id)))
+                matches.extend(
+                    self.asset_registry.query(
+                        signature,
+                        top_k=5,
+                        required_capability_skeleton=capability_skeleton,
+                        failure_context=failure_context,
+                        required_state_slots=required_state_slots,
+                    )
+                )
+            deduped_matches: List[Any] = []
+            seen_asset_ids: set[str] = set()
+            for match in matches:
+                if match.asset_id in seen_asset_ids:
+                    continue
+                seen_asset_ids.add(match.asset_id)
+                deduped_matches.append(match)
+            if deduped_matches:
+                selected_match = dict(deduped_matches[0].metadata)
+                selected_match["asset_id"] = deduped_matches[0].asset_id
+                asset_ids = [deduped_matches[0].asset_id]
+        admitted_asset_ids: List[str] = []
 
         for asset_id in asset_ids:
             asset = self.asset_registry.get(asset_id)
             if asset is None:
                 continue
-            capability_skeleton = getattr(asset, "capability_skeleton", None)
+            if not self._asset_reuse_compatible(
+                asset,
+                required_capability_skeleton=capability_skeleton,
+                failure_context=failure_context,
+                required_state_slots=required_state_slots,
+            ):
+                continue
+            asset_capability_skeleton = getattr(asset, "capability_skeleton", None)
             recommended_bindings = getattr(asset, "recommended_bindings", None)
             recommended_inputs = getattr(asset, "recommended_inputs", None)
-            if capability_skeleton:
-                profile["capability_order"] = list(capability_skeleton)
+            if asset_capability_skeleton:
+                profile["capability_order"] = list(asset_capability_skeleton)
             if recommended_bindings:
                 profile["recommended_bindings"].update(dict(recommended_bindings))
             if recommended_inputs:
@@ -1355,11 +1635,81 @@ class HTGPPlanner:
                         if isinstance(inputs, dict)
                     }
                 )
+            admitted_asset_ids.append(str(asset_id))
+            if not selected_match:
+                asset_metadata = getattr(asset, "metadata", {})
+                if not isinstance(asset_metadata, dict):
+                    asset_metadata = {}
+                selected_match = {
+                    "reuse_mode": "explicit_asset",
+                    "asset_id": str(asset_id),
+                    "asset_capability_skeleton": list(asset_capability_skeleton or []),
+                    "asset_failure_context": str(asset_metadata.get("failure_context", "")),
+                    "asset_required_state_slots": list(asset_metadata.get("required_state_slots", [])),
+                    "source_task_id": str(asset_metadata.get("source_task_id", "")),
+                    "source_reuse_family_id": str(asset_metadata.get("reuse_family_id", "")),
+                    "source_semantic_reuse_family": str(asset_metadata.get("semantic_reuse_family", "")),
+                }
+            break
+        profile["asset_ids"] = admitted_asset_ids
+        profile["reuse_mode"] = str(selected_match.get("reuse_mode") or "none")
+        profile["selected_match"] = selected_match
         return self._constrain_reusable_profile(
             profile,
             graph=graph,
             overplanning_objective=overplanning_objective or {},
         )
+
+    @staticmethod
+    def _required_state_slots(request: PlanningRequest) -> List[str]:
+        slots: List[str] = []
+        raw_state_slots = request.hints.user_style.get("state_slots", [])
+        if isinstance(raw_state_slots, list):
+            for slot in raw_state_slots:
+                text = str(slot).strip()
+                if text and text not in slots:
+                    slots.append(text)
+        steps = request.workflow_overrides.get("steps", {})
+        if isinstance(steps, dict):
+            for patch in steps.values():
+                if not isinstance(patch, dict):
+                    continue
+                metadata = patch.get("metadata", {})
+                if not isinstance(metadata, dict):
+                    continue
+                for slot in metadata.get("required_state_slots", []):
+                    text = str(slot).strip()
+                    if text and text not in slots:
+                        slots.append(text)
+        return slots
+
+    @staticmethod
+    def _asset_reuse_compatible(
+        asset: Any,
+        *,
+        required_capability_skeleton: List[str],
+        failure_context: Optional[str],
+        required_state_slots: List[str],
+    ) -> bool:
+        asset_metadata = getattr(asset, "metadata", {})
+        if not isinstance(asset_metadata, dict):
+            asset_metadata = {}
+        asset_capability_skeleton = [
+            str(item)
+            for item in getattr(asset, "capability_skeleton", asset_metadata.get("capability_skeleton", []))
+            if str(item)
+        ]
+        if required_capability_skeleton and asset_capability_skeleton and asset_capability_skeleton != required_capability_skeleton:
+            return False
+        asset_failure_context = str(asset_metadata.get("failure_context") or "").strip()
+        if failure_context and asset_failure_context and asset_failure_context != failure_context:
+            return False
+        asset_required_state_slots = [str(item) for item in asset_metadata.get("required_state_slots", []) if str(item)]
+        if required_state_slots and asset_required_state_slots != required_state_slots:
+            return False
+        if required_state_slots and not asset_required_state_slots:
+            return False
+        return True
 
     @staticmethod
     def _apply_reusable_hints(workflow: Workflow, reusable_profile: Dict[str, Any]) -> None:
@@ -1368,6 +1718,13 @@ class HTGPPlanner:
             return
         raw_overrides = workflow.metadata.get("reuse_override_inputs", {})
         override_map = raw_overrides if isinstance(raw_overrides, dict) else {}
+        reusable_context = workflow.metadata.setdefault("reusable_context", {})
+        if not isinstance(reusable_context, dict):
+            reusable_context = {}
+            workflow.metadata["reusable_context"] = reusable_context
+        existing_suppressed = reusable_context.get("suppressed_inputs", [])
+        suppressed_inputs = existing_suppressed if isinstance(existing_suppressed, list) else []
+        reusable_context["suppressed_inputs"] = suppressed_inputs
 
         graph_nodes = {node.node_id: node for node in workflow.workflow_graph.nodes}
         for step in workflow.execution_plan:
@@ -1380,6 +1737,7 @@ class HTGPPlanner:
                 if str(item)
             }
             task_scoped_keys = HTGPPlanner._task_scoped_reuse_keys(workflow, step)
+            deferred_inputs = HTGPPlanner._deferred_repair_inputs(step)
             for key, value in suggested_inputs.items():
                 resolved_value = value
                 if key in task_scoped_keys:
@@ -1387,6 +1745,24 @@ class HTGPPlanner:
                     if task_local_value is None:
                         continue
                     resolved_value = task_local_value
+                suppression_reason = HTGPPlanner._reuse_input_suppression_reason(
+                    workflow,
+                    step,
+                    key=key,
+                    override_keys=override_keys,
+                    task_scoped_keys=task_scoped_keys,
+                    deferred_inputs=deferred_inputs,
+                )
+                if suppression_reason is not None:
+                    suppressed_inputs.append(
+                        {
+                            "step_id": step.step_id,
+                            "capability_id": step.capability_id,
+                            "input_key": key,
+                            "reason": suppression_reason,
+                        }
+                    )
+                    continue
                 if key not in step.inputs or key in override_keys:
                     step.inputs[key] = resolved_value
             node = graph_nodes.get(step.step_id)
@@ -1398,8 +1774,72 @@ class HTGPPlanner:
                         if task_local_value is None:
                             continue
                         resolved_value = task_local_value
+                    if HTGPPlanner._reuse_input_suppression_reason(
+                        workflow,
+                        step,
+                        key=key,
+                        override_keys=override_keys,
+                        task_scoped_keys=task_scoped_keys,
+                        deferred_inputs=deferred_inputs,
+                    ) is not None:
+                        continue
                     if key not in node.inputs or key in override_keys:
                         node.inputs[key] = resolved_value
+
+    @staticmethod
+    def _deferred_repair_inputs(step: WorkflowStep) -> set[str]:
+        repair_defaults = step.metadata.get("repair_default_inputs")
+        if not isinstance(repair_defaults, dict):
+            return set()
+        deferred: set[str] = set()
+        for key, value in repair_defaults.items():
+            if value in (None, ""):
+                continue
+            if step.inputs.get(str(key)) not in (None, ""):
+                continue
+            deferred.add(str(key))
+        return deferred
+
+    @staticmethod
+    def _workflow_requires_failure_materialization(workflow: Workflow) -> bool:
+        categories = {
+            str(item).strip().lower()
+            for item in workflow.metadata.get("toolsandbox_categories")
+            or workflow.metadata.get("categories")
+            or []
+            if str(item).strip()
+        }
+        if categories.intersection({"insufficient_information", "multiple_user_turn"}):
+            return True
+        expected_recovery_path = str(workflow.metadata.get("expected_recovery_path") or "").strip().lower()
+        if any(token in expected_recovery_path for token in ("approval", "clarify", "ask", "patch", "repair", "retry", "resume")):
+            return True
+        if bool(workflow.task.constraints.requires_user_approval):
+            return True
+        return any(bool(step.requires_user_confirmation) for step in workflow.execution_plan)
+
+    @classmethod
+    def _reuse_input_suppression_reason(
+        cls,
+        workflow: Workflow,
+        step: WorkflowStep,
+        *,
+        key: str,
+        override_keys: set[str],
+        task_scoped_keys: set[str],
+        deferred_inputs: set[str],
+    ) -> Optional[str]:
+        normalized_key = str(key)
+        input_missing = step.inputs.get(normalized_key) in (None, "")
+        if normalized_key in deferred_inputs and input_missing:
+            return "repair_sensitive_missing_input"
+        if (
+            normalized_key in task_scoped_keys
+            and input_missing
+            and cls._workflow_requires_failure_materialization(workflow)
+        ):
+            return "task_scoped_input_deferred_until_failure_materializes"
+        return None
 
     @staticmethod
     def _task_scoped_reuse_keys(workflow: Workflow, step: WorkflowStep) -> set[str]:
@@ -1441,6 +1881,10 @@ class HTGPPlanner:
                 if isinstance(inputs, dict)
             },
             "asset_ids": list(profile.get("asset_ids", [])),
+            "reuse_mode": str(profile.get("reuse_mode", "none")),
+            "selected_match": dict(profile.get("selected_match", {}))
+            if isinstance(profile.get("selected_match", {}), dict)
+            else {},
         }
         allowed_capabilities = {capability.capability_id for capability in graph.capabilities} if graph else set()
         preferred_capabilities = {

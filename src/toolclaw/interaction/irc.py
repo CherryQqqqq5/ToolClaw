@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 
 from toolclaw.execution.executor import ExecutionOutcome
 from toolclaw.interaction.query_policy import QueryPolicy
-from toolclaw.interaction.repair_updater import AnswerPatchCompiler, InteractionRequest, RepairUpdater, ResumePatch, UserReply
+from toolclaw.interaction.repair_updater import AnswerPatchCompiler, InteractionRequest, RepairUpdater, UserReply
 from toolclaw.interaction.reply_provider import RawUserReply, ReplyProvider
 from toolclaw.interaction.semantic_decoder import SemanticDecoder, compile_decoded_signal_to_user_reply
 from toolclaw.interaction.uncertainty_detector import UncertaintyDetector
@@ -104,19 +104,22 @@ class InteractionShell:
             and self._should_force_interaction_probe(outcome=outcome, run_id=run_id)
         ):
             turns = 1
+            interaction_stats["asked"] += 1
+            interaction_stats["necessary"] += 1
+            interaction_stats["asked_and_necessary"] += 1
             probe_query = InteractionRequest(
                 interaction_id=f"int_probe_{run_id}",
-                question="Please confirm this task required an interaction checkpoint before completion.",
-                expected_answer_type="interaction_probe",
+                question="Please confirm the missing detail required to complete this task.",
+                expected_answer_type="missing_asset_patch",
                 context_summary={"step_id": "interaction_probe"},
                 allowed_response_schema={
                     "type": "object",
-                    "properties": {},
-                    "additionalProperties": True,
+                    "properties": {"value": {"type": "string"}},
+                    "required": ["value"],
                 },
                 metadata={
-                    "query_policy": {"question_type": "interaction_probe", "target_scope": "trace_only", "urgency": "required"},
-                    "patch_targets": {},
+                    "query_policy": {"question_type": "missing_asset_patch", "target_scope": "state_patch", "urgency": "required"},
+                    "patch_targets": {"value": "interaction_probe"},
                     "interaction_probe": True,
                 },
             )
@@ -159,6 +162,14 @@ class InteractionShell:
                     "target_scope": query_plan.target_scope,
                     "urgency": query_plan.urgency,
                 }
+                budget_profile = (
+                    dict(query.metadata.get("budget_profile", {}))
+                    if isinstance(query.metadata.get("budget_profile"), dict)
+                    else {}
+                )
+                if report.metadata.get("remaining_user_turns") is not None:
+                    budget_profile["remaining_user_turns"] = int(report.metadata["remaining_user_turns"])
+                query.metadata["budget_profile"] = budget_profile
             self._escalate_query(
                 query=query,
                 outcome=outcome,
@@ -245,19 +256,6 @@ class InteractionShell:
                     metadata={"stopped_reason": budget_violation},
                 )
 
-            resume_patch = self.answer_patch_compiler.ingest_reply(
-                workflow=outcome.workflow,
-                repair=repair,
-                reply=reply,
-                state_values=resumed_state,
-            )
-            self._append_resume_events(
-                combined_trace,
-                query=query,
-                reply=reply,
-                resume_patch=resume_patch,
-                turn_index=turns,
-            )
             outcome = self.runtime.resume_task(
                 workflow=outcome.workflow,
                 repair=repair,
@@ -267,7 +265,6 @@ class InteractionShell:
                 backup_tool_map=backup_tool_map,
                 state_values=resumed_state,
                 compile_on_success=compile_on_success,
-                resume_patch=resume_patch,
             )
             next_signature = self._failure_signature(outcome)
             if outcome.success or not outcome.blocked or next_signature != failure_signature:
@@ -330,15 +327,12 @@ class InteractionShell:
     ) -> None:
         events = trace_payload.setdefault("events", [])
         metrics = trace_payload.setdefault("metrics", {})
-        query_event_type, reply_event_type = InteractionShell._interaction_event_types(query)
-        query_event_name = str(query_event_type.value)
-        reply_event_name = str(reply_event_type.value)
         events.append(
             {
-                "event_id": f"evt_{query_event_name}_{turn_index:02d}",
+                "event_id": f"evt_user_query_{turn_index:02d}",
                 "timestamp": utc_now_iso(),
                 "step_id": query.context_summary.get("step_id"),
-                "event_type": query_event_name,
+                "event_type": EventType.USER_QUERY.value,
                 "actor": "interaction_shell",
                 "tool_id": None,
                 "input_ref": None,
@@ -353,7 +347,6 @@ class InteractionShell:
                     "context_summary": dict(query.context_summary),
                     "allowed_response_schema": dict(query.allowed_response_schema),
                     "query_metadata": dict(query.metadata),
-                    "interaction_kind": "probe" if bool(query.metadata.get("interaction_probe")) else "repair",
                     "uncertainty_cause": query.metadata.get("uncertainty"),
                     "query_policy_decision": dict(query.metadata.get("query_policy", {})),
                     "patch_targets": dict(query.metadata.get("patch_targets", {})),
@@ -367,10 +360,10 @@ class InteractionShell:
         reply_status = str(getattr(reply, "status", "accept"))
         events.append(
             {
-                "event_id": f"evt_{reply_event_name}_{turn_index:02d}",
+                "event_id": f"evt_user_reply_{turn_index:02d}",
                 "timestamp": utc_now_iso(),
                 "step_id": query.context_summary.get("step_id"),
-                "event_type": reply_event_name,
+                "event_type": EventType.USER_REPLY.value,
                 "actor": "user_simulator",
                 "tool_id": None,
                 "input_ref": None,
@@ -382,7 +375,6 @@ class InteractionShell:
                     "accepted": bool(reply.accepted),
                     "status": reply_status,
                     "reply_class": reply_status,
-                    "interaction_kind": "probe" if bool(reply.metadata.get("interaction_probe")) else "repair",
                     "policy_outcome": (
                         "safe_abort_success"
                         if reply_status == "deny"
@@ -398,98 +390,12 @@ class InteractionShell:
             }
         )
         metrics["user_queries"] = int(metrics.get("user_queries", 0)) + 1
-        if query_event_type == EventType.APPROVAL_REQUEST:
-            metrics["approval_requests"] = int(metrics.get("approval_requests", 0)) + 1
-        if reply_event_type == EventType.APPROVAL_RESPONSE:
-            metrics["approval_responses"] = int(metrics.get("approval_responses", 0)) + 1
-        if bool(query.metadata.get("interaction_probe")):
-            metrics["probe_user_queries"] = int(metrics.get("probe_user_queries", 0)) + 1
-            metrics["probe_user_replies"] = int(metrics.get("probe_user_replies", 0)) + 1
-        else:
-            metrics["repair_user_queries"] = int(metrics.get("repair_user_queries", 0)) + 1
-            metrics["repair_user_replies"] = int(metrics.get("repair_user_replies", 0)) + 1
         metadata = trace_payload.setdefault("metadata", {})
         reply_metadata = dict(getattr(reply, "metadata", {}) or {})
         if bool(reply_metadata.get("oracle_reply_consumed")):
             metadata["oracle_reply_consumed_count"] = int(metadata.get("oracle_reply_consumed_count", 0)) + 1
         if bool(reply_metadata.get("oracle_reply_mismatch")):
             metadata["oracle_reply_mismatch_count"] = int(metadata.get("oracle_reply_mismatch_count", 0)) + 1
-
-    @staticmethod
-    def _interaction_event_types(query: Any) -> tuple[EventType, EventType]:
-        if bool(query.metadata.get("interaction_probe")):
-            return EventType.USER_QUERY, EventType.USER_REPLY
-        repair_type = str(query.metadata.get("repair_type") or "").strip().lower()
-        expected_answer_type = str(query.expected_answer_type or "").strip().lower()
-        if repair_type == "request_approval" or "approval" in expected_answer_type:
-            return EventType.APPROVAL_REQUEST, EventType.APPROVAL_RESPONSE
-        return EventType.USER_QUERY, EventType.USER_REPLY
-
-    @staticmethod
-    def _append_resume_events(
-        trace_payload: Dict[str, Any],
-        *,
-        query: Any,
-        reply: Any,
-        resume_patch: ResumePatch,
-        turn_index: int,
-    ) -> None:
-        events = trace_payload.setdefault("events", [])
-        compiled_patch_summary = {
-            "resume_step_id": resume_patch.resume_step_id,
-            "state_updates": dict(resume_patch.state_updates),
-            "policy_updates": dict(resume_patch.policy_updates),
-            "binding_patch": dict(resume_patch.binding_patch),
-            "missing_asset_patch": dict(resume_patch.missing_asset_patch),
-        }
-        events.append(
-            {
-                "event_id": f"evt_patch_compiled_{turn_index:02d}",
-                "timestamp": utc_now_iso(),
-                "step_id": resume_patch.resume_step_id,
-                "event_type": EventType.PATCH_COMPILED.value,
-                "actor": "interaction_shell",
-                "tool_id": None,
-                "input_ref": None,
-                "tool_args": None,
-                "output": compiled_patch_summary,
-                "message": None,
-                "metadata": {
-                    "interaction_id": reply.interaction_id,
-                    "interaction_kind": "probe" if bool(reply.metadata.get("interaction_probe")) else "repair",
-                    "patch_targets": dict(reply.metadata.get("patch_targets", {})),
-                    "answer_patch": dict(resume_patch.metadata.get("answer_patch", {})),
-                    "decoded_intent_type": reply.metadata.get("decoded_intent_type"),
-                    "decoded_slot_updates": dict(reply.metadata.get("decoded_slot_updates", {})),
-                    "decoded_approvals": dict(reply.metadata.get("decoded_approvals", {})),
-                },
-            }
-        )
-        events.append(
-            {
-                "event_id": f"evt_resume_requested_{turn_index:02d}",
-                "timestamp": utc_now_iso(),
-                "step_id": resume_patch.resume_step_id,
-                "event_type": EventType.RESUME_REQUESTED.value,
-                "actor": "interaction_shell",
-                "tool_id": None,
-                "input_ref": None,
-                "tool_args": None,
-                "output": {
-                    "resume_step_id": resume_patch.resume_step_id,
-                    "has_state_updates": bool(resume_patch.state_updates),
-                    "has_policy_updates": bool(resume_patch.policy_updates),
-                    "has_binding_patch": bool(resume_patch.binding_patch),
-                },
-                "message": query.question,
-                "metadata": {
-                    "interaction_id": query.interaction_id,
-                    "interaction_kind": "probe" if bool(query.metadata.get("interaction_probe")) else "repair",
-                    "query_policy_decision": dict(query.metadata.get("query_policy", {})),
-                    "patch_targets": dict(query.metadata.get("patch_targets", {})),
-                },
-            }
-        )
 
     @staticmethod
     def _merge_trace_payloads(base_trace: Dict[str, Any], new_trace: Dict[str, Any]) -> Dict[str, Any]:
@@ -504,15 +410,7 @@ class InteractionShell:
         merged["events"] = list(base_trace.get("events", [])) + list(new_trace.get("events", []))
         merged_metrics = dict(base_trace.get("metrics", {}))
         new_metrics = dict(new_trace.get("metrics", {}))
-        for key in (
-            "tool_calls",
-            "repair_actions",
-            "user_queries",
-            "probe_user_queries",
-            "repair_user_queries",
-            "probe_user_replies",
-            "repair_user_replies",
-        ):
+        for key in ("tool_calls", "repair_actions", "user_queries"):
             merged_metrics[key] = int(base_trace.get("metrics", {}).get(key, 0)) + int(new_metrics.get(key, 0))
         for key in ("total_steps", "success", "token_cost", "latency_ms"):
             if key in new_metrics:
@@ -639,7 +537,6 @@ class InteractionShell:
         )
         metrics = trace_payload.setdefault("metrics", {})
         metrics["success"] = success
-        trace_payload.setdefault("metadata", {})["stopped_reason"] = stop_reason
         self._write_trace(output_path, trace_payload)
 
     @staticmethod
@@ -750,11 +647,6 @@ class InteractionShell:
     def _should_force_interaction_probe(outcome: ExecutionOutcome, run_id: str) -> bool:
         if not (str(run_id).startswith("a3_") or str(run_id).startswith("a4_")):
             return False
-        task_constraints = outcome.workflow.task.constraints
-        if task_constraints.max_user_turns is not None and int(task_constraints.max_user_turns) <= 1:
-            return False
-        if bool(task_constraints.requires_user_approval):
-            return False
         categories = outcome.workflow.metadata.get("toolsandbox_categories") or outcome.workflow.metadata.get("categories") or []
         category_set = {str(item) for item in categories if str(item)}
         if "multiple_user_turn" in category_set or "insufficient_information" in category_set:
@@ -775,44 +667,6 @@ class InteractionShell:
                 return self._timeout_reply(request, timeout_s)
 
     def _decode_to_user_reply(self, request: InteractionRequest, raw: Any) -> UserReply:
-        if bool(request.metadata.get("interaction_probe")):
-            if isinstance(raw, RawUserReply):
-                return UserReply(
-                    interaction_id=raw.interaction_id,
-                    payload={},
-                    raw_text=str(raw.raw_text or ""),
-                    accepted=bool(raw.accepted),
-                    status=str(raw.status or "accept"),
-                    metadata={
-                        **dict(raw.metadata or {}),
-                        "interaction_probe": True,
-                        "patch_targets": {},
-                        "decoded_intent_type": "interaction_probe",
-                        "decoded_slot_updates": {},
-                        "decoded_approvals": {},
-                        "decoded_constraints_trace_only": {},
-                        "decode_metadata": {"decode_strategy": "probe_passthrough", "decode_confidence": 1.0},
-                    },
-                )
-            if isinstance(raw, UserReply):
-                reply = UserReply(
-                    interaction_id=raw.interaction_id,
-                    payload={},
-                    raw_text=str(raw.raw_text or ""),
-                    accepted=bool(raw.accepted),
-                    status=str(raw.status or "accept"),
-                    metadata={
-                        **dict(raw.metadata or {}),
-                        "interaction_probe": True,
-                        "patch_targets": {},
-                        "decoded_intent_type": "interaction_probe",
-                        "decoded_slot_updates": {},
-                        "decoded_approvals": {},
-                        "decoded_constraints_trace_only": {},
-                        "decode_metadata": {"decode_strategy": "probe_passthrough", "decode_confidence": 1.0},
-                    },
-                )
-                return reply
         if isinstance(raw, UserReply):
             raw_obj = RawUserReply(
                 interaction_id=raw.interaction_id,
@@ -823,23 +677,7 @@ class InteractionShell:
                 metadata=dict(raw.metadata or {}),
             )
             decoded = self.semantic_decoder.decode(request, raw_obj)
-            reply = UserReply(
-                interaction_id=raw.interaction_id,
-                payload=dict(raw.payload or {}),
-                raw_text=str(raw.raw_text or ""),
-                accepted=bool(raw.accepted),
-                status=str(raw.status or "accept"),
-                metadata={
-                    **dict(raw.metadata or {}),
-                    "patch_targets": dict(request.metadata.get("patch_targets", {})),
-                    "decoded_intent_type": decoded.intent_type,
-                    "decoded_slot_updates": dict(decoded.slot_updates),
-                    "decoded_approvals": dict(decoded.approvals),
-                    "decoded_constraints_trace_only": dict(decoded.constraints),
-                    "decode_metadata": dict(decoded.metadata),
-                },
-            )
-            return reply
+            return compile_decoded_signal_to_user_reply(request, raw_obj, decoded)
         if isinstance(raw, RawUserReply):
             decoded = self.semantic_decoder.decode(request, raw)
             return compile_decoded_signal_to_user_reply(request, raw, decoded)

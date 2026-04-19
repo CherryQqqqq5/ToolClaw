@@ -182,9 +182,13 @@ def test_runtime_compile_gate_uses_real_trace_metrics_before_upserting(tmp_path:
 
 def test_compiler_indexes_signature_aliases_for_structural_reuse() -> None:
     workflow = Workflow.demo()
+    workflow.task.task_id = "contact_edit__pair01__pass2"
     workflow.task.user_goal = "Retrieve the customer handoff summary and save the support report."
     workflow.metadata["task_family"] = "toolsandbox_reuse_transfer_001"
     workflow.metadata["failure_type"] = "binding_failure"
+    workflow.metadata["reuse_family_id"] = "contact_edit__pair01"
+    workflow.metadata["state_slots"] = ["retrieved_info"]
+    workflow.execution_plan[1].metadata["required_state_slots"] = ["retrieved_info"]
 
     artifacts = SWPCCompiler().compile_from_trace(workflow=workflow, trace=Trace.demo(), final_state={})
     snippet = artifacts.workflow_snippets[0]
@@ -193,6 +197,11 @@ def test_compiler_indexes_signature_aliases_for_structural_reuse() -> None:
     assert "task_signature_aliases" in snippet.metadata
     aliases = snippet.metadata["task_signature_aliases"]
     assert any(alias.endswith("::family=toolsandbox_reuse_transfer_001::caps=cap_retrieve+cap_write::fail=binding_failure") for alias in aliases)
+    assert snippet.metadata["failure_context"] == "binding_failure"
+    assert snippet.metadata["required_state_slots"] == ["retrieved_info"]
+    assert snippet.metadata["source_task_id"] == "contact_edit__pair01__pass2"
+    assert snippet.metadata["reuse_family_id"] == "contact_edit__pair01"
+    assert snippet.metadata["semantic_reuse_family"] == "contact_edit"
 
 
 def test_structural_signature_candidates_support_query_variation() -> None:
@@ -212,12 +221,19 @@ def test_structural_signature_candidates_support_query_variation() -> None:
     )
     matches = []
     for signature in variant_signatures:
-        matches.extend(registry.query(signature))
+        matches.extend(
+            registry.query(
+                signature,
+                required_capability_skeleton=["cap_retrieve", "cap_write"],
+                failure_context="binding_failure",
+            )
+        )
 
     assert matches
+    assert matches[0].metadata["reuse_mode"] == "transfer_reuse"
 
 
-def test_registry_query_supports_structural_similarity_without_exact_signature() -> None:
+def test_registry_query_rejects_cross_family_similarity_without_admission_compatibility() -> None:
     registry = InMemoryAssetRegistry()
     workflow = Workflow.demo()
     workflow.task.user_goal = "Retrieve the customer handoff summary and save the support report."
@@ -227,11 +243,12 @@ def test_registry_query_supports_structural_similarity_without_exact_signature()
     registry.upsert(snippet)
 
     matches = registry.query(
-        "phase1::family=t0_general::caps=cap_retrieve+cap_write::fail=none::goal=fetch_transition_notes_and_write_support_brief"
+        "phase1::family=t0_general::caps=cap_retrieve+cap_write::fail=none::goal=fetch_transition_notes_and_write_support_brief",
+        required_capability_skeleton=["cap_retrieve", "cap_write"],
+        failure_context="none",
     )
 
-    assert matches
-    assert matches[0].metadata["match_type"] in {"structural_similarity", "lexical_similarity", "exact"}
+    assert matches == []
 
 
 def test_compiler_blocks_promotion_on_heldout_eval_split() -> None:

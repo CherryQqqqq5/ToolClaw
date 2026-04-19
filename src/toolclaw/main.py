@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
 
-from toolclaw.compiler.swpc import SWPCCompiler, build_task_signature_candidates
+from toolclaw.compiler.swpc import SWPCCompiler
 from toolclaw.execution.executor import ExecutionOutcome, SequentialExecutor
 from toolclaw.interaction.repair_updater import RepairUpdater, UserReply
 from toolclaw.planner.htgp import HTGPPlanner, PlanningRequest
@@ -24,11 +24,9 @@ class ToolClawRuntime:
     repair_updater: RepairUpdater
     compiler: SWPCCompiler
     asset_registry: AssetRegistry
-    wire_executor_planner: bool = True
 
     def __post_init__(self) -> None:
-        if self.wire_executor_planner:
-            self.executor.planner = self.planner
+        self.executor.planner = self.planner
 
     def run_task(
         self,
@@ -56,16 +54,7 @@ class ToolClawRuntime:
         backup_tool_map: Optional[Dict[str, str]] = None,
         compile_on_success: bool = True,
     ) -> ExecutionOutcome:
-        if not request.hints.reusable_asset_ids and self.asset_registry:
-            signatures = build_task_signature_candidates(
-                user_goal=request.task.user_goal,
-                task_family=request.hints.user_style.get("task_family"),
-                failure_context=request.hints.user_style.get("failure_type"),
-            )
-            reusable_ids = []
-            for signature in signatures:
-                reusable_ids.extend(match.asset_id for match in self.asset_registry.query(signature))
-            request.hints.reusable_asset_ids = list(dict.fromkeys(reusable_ids))
+        request.hints.allow_reuse = True
         return self.run_task(
             request=request,
             run_id=run_id,
@@ -84,15 +73,13 @@ class ToolClawRuntime:
         backup_tool_map: Optional[Dict[str, str]] = None,
         state_values: Optional[Dict[str, object]] = None,
         compile_on_success: bool = True,
-        resume_patch: Optional[object] = None,
     ) -> ExecutionOutcome:
-        if resume_patch is None:
-            resume_patch = self.repair_updater.ingest_reply(
-                workflow=workflow,
-                repair=repair,
-                reply=reply,
-                state_values=dict(state_values or {}),
-            )
+        resume_patch = self.repair_updater.ingest_reply(
+            workflow=workflow,
+            repair=repair,
+            reply=reply,
+            state_values=dict(state_values or {}),
+        )
         outcome = self.executor.resume_from_patch(
             workflow=workflow,
             run_id=run_id,
@@ -137,10 +124,6 @@ class ToolClawRuntime:
         trace.metrics.success = bool(metrics.get("success"))
         trace.metrics.tool_calls = int(metrics.get("tool_calls", 0) or 0)
         trace.metrics.user_queries = int(metrics.get("user_queries", 0) or 0)
-        trace.metrics.probe_user_queries = int(metrics.get("probe_user_queries", 0) or 0)
-        trace.metrics.repair_user_queries = int(metrics.get("repair_user_queries", 0) or 0)
-        trace.metrics.probe_user_replies = int(metrics.get("probe_user_replies", 0) or 0)
-        trace.metrics.repair_user_replies = int(metrics.get("repair_user_replies", 0) or 0)
         trace.metrics.repair_actions = int(metrics.get("repair_actions", 0) or 0)
         trace.metrics.total_steps = int(metrics.get("total_steps", 0) or 0)
         for event in payload.get("events", []):
@@ -161,10 +144,6 @@ class ToolClawRuntime:
         trace.metrics.success = bool(metrics.get("success"))
         trace.metrics.tool_calls = int(metrics.get("tool_calls", 0) or 0)
         trace.metrics.user_queries = int(metrics.get("user_queries", 0) or 0)
-        trace.metrics.probe_user_queries = int(metrics.get("probe_user_queries", 0) or 0)
-        trace.metrics.repair_user_queries = int(metrics.get("repair_user_queries", 0) or 0)
-        trace.metrics.probe_user_replies = int(metrics.get("probe_user_replies", 0) or 0)
-        trace.metrics.repair_user_replies = int(metrics.get("repair_user_replies", 0) or 0)
         trace.metrics.repair_actions = int(metrics.get("repair_actions", 0) or 0)
         trace.metrics.total_steps = int(metrics.get("total_steps", 0) or 0)
         return trace
