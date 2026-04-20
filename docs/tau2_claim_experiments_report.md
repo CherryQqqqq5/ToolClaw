@@ -37,20 +37,20 @@ The concrete claim questions were:
 
 These experiments were run after the following changes:
 
-- [src/toolclaw/benchmarks/adapters.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/src/toolclaw/benchmarks/adapters.py)
+- [src/toolclaw/benchmarks/adapters.py](src/toolclaw/benchmarks/adapters.py)
   - Tau2 approval metadata was changed to failure-step-local (`approval_scope=failure_step`, `approval_target_step=failure_step`)
-- [scripts/run_eval.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/scripts/run_eval.py)
+- [scripts/run_eval.py](scripts/run_eval.py)
   - Tau2 approval is applied only to the target failure step
   - `requires_user_confirmation` is preserved in `workflow_overrides`
   - `a2_planner` now correctly inherits `a1_recovery`'s repair/fallback behavior
-- [scripts/check_benchmark_consistency.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/scripts/check_benchmark_consistency.py)
+- [scripts/check_benchmark_consistency.py](scripts/check_benchmark_consistency.py)
   - consistency checking uses benchmark-scored success when available
 
 Local regression coverage:
 
-- [tests/test_tau2_adapter.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/tests/test_tau2_adapter.py)
-- [tests/test_eval_script.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/tests/test_eval_script.py)
-- [tests/test_check_benchmark_consistency.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/tests/test_check_benchmark_consistency.py)
+- [tests/test_tau2_adapter.py](tests/test_tau2_adapter.py)
+- [tests/test_eval_script.py](tests/test_eval_script.py)
+- [tests/test_check_benchmark_consistency.py](tests/test_check_benchmark_consistency.py)
 
 ## 4. Common experiment entry
 
@@ -61,8 +61,8 @@ All server-side runs used:
 Common runtime setup:
 
 ```bash
-cd /cephfs/qiuyn/ToolClaw
-export PYTHONPATH=/cephfs/qiuyn/ToolClaw/src
+cd <repo-root>
+export PYTHONPATH=src
 export TOOLCLAW_BENCHMARK_PROXY_PROVIDER=openrouter
 export TOOLCLAW_BENCHMARK_PROXY_FORCE=1
 export OPENAI_API_KEY='YOUR_OPENROUTER_KEY'
@@ -85,9 +85,9 @@ Measure the final full-benchmark Tau2 behavior after:
 ### 5.2 Entry
 
 ```bash
-/cephfs/qiuyn/miniconda3/bin/python3.13 scripts/run_tau2_bench.py \
-  --source /cephfs/qiuyn/ToolClaw/data/tau2_bench.formal.json \
-  --outdir /cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter \
+python3 scripts/run_tau2_bench.py \
+  --source data/tau2_bench.formal.json \
+  --outdir outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter \
   --mode planner \
   --systems a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse \
   --num-runs 3
@@ -95,14 +95,14 @@ Measure the final full-benchmark Tau2 behavior after:
 
 ### 5.3 Input files
 
-- Source: `/cephfs/qiuyn/ToolClaw/data/tau2_bench.formal.json`
+- Source: `data/tau2_bench.formal.json`
 
 ### 5.4 Output files
 
-- Outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter`
-- Scoreboard: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/scoreboard.json`
-- Per-system summary: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/per_system_summary.json`
-- Normalized taskset: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/prepared/tau2_bench.normalized.json`
+- Outdir: `outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter`
+- Scoreboard: `outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/scoreboard.json`
+- Per-system summary: `outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/per_system_summary.json`
+- Normalized taskset: `outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter/prepared/tau2_bench.normalized.json`
 
 ### 5.5 Final results
 
@@ -164,14 +164,14 @@ The source slice contained exactly three tasks:
 
 Generated file:
 
-- `/cephfs/qiuyn/ToolClaw/data/tau2_bench.approval_only.json`
+- `data/tau2_bench.approval_only.json`
 
 ### 6.3 Entry
 
 ```bash
-/cephfs/qiuyn/miniconda3/bin/python3.13 scripts/run_tau2_bench.py \
-  --source /cephfs/qiuyn/ToolClaw/data/tau2_bench.approval_only.json \
-  --outdir /cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter \
+python3 scripts/run_tau2_bench.py \
+  --source data/tau2_bench.approval_only.json \
+  --outdir outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter \
   --mode planner \
   --systems a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse \
   --num-runs 3
@@ -183,10 +183,10 @@ Recorded result:
 
 ### 6.4 Output files
 
-- Outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter`
-- Scoreboard: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter/scoreboard.json`
-- Per-system summary: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter/per_system_summary.json`
-- Comparison CSV: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter/comparison.csv`
+- Outdir: `outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter`
+- Scoreboard: `outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter/scoreboard.json`
+- Per-system summary: `outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter/per_system_summary.json`
+- Comparison CSV: `outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter/comparison.csv`
 
 ### 6.5 Final results
 
@@ -231,14 +231,14 @@ The source slice contained exactly one task:
 
 Generated file:
 
-- `/cephfs/qiuyn/ToolClaw/data/tau2_bench.binding_plus_approval_only.json`
+- `data/tau2_bench.binding_plus_approval_only.json`
 
 ### 7.3 Entry
 
 ```bash
-/cephfs/qiuyn/miniconda3/bin/python3.13 scripts/run_tau2_bench.py \
-  --source /cephfs/qiuyn/ToolClaw/data/tau2_bench.binding_plus_approval_only.json \
-  --outdir /cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter \
+python3 scripts/run_tau2_bench.py \
+  --source data/tau2_bench.binding_plus_approval_only.json \
+  --outdir outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter \
   --mode planner \
   --systems a3_interaction,a4_reuse \
   --num-runs 10
@@ -250,10 +250,10 @@ Recorded result:
 
 ### 7.4 Output files
 
-- Outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter`
-- Scoreboard: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/scoreboard.json`
-- Comparison CSV: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/comparison.csv`
-- Per-system summary: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/per_system_summary.json`
+- Outdir: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter`
+- Scoreboard: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/scoreboard.json`
+- Comparison CSV: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/comparison.csv`
+- Per-system summary: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/per_system_summary.json`
 
 ### 7.5 Final results
 

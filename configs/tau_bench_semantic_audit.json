@@ -1,0 +1,20 @@
+{
+  "benchmark": "tau_bench",
+  "updated_at": "2026-04-20",
+  "paper_safe_metrics": [],
+  "supporting_only_metrics": [
+    "mean_success_rate",
+    "pass_at_k",
+    "consistency",
+    "rule_following",
+    "interaction_quality",
+    "tool_efficiency",
+    "repair_overhead"
+  ],
+  "must_fix_items": [
+    "prepare_tau_bench_source.py currently collapses upstream domain tasks into generic instruction rows and drops environment-state semantics needed for paper-safe headline claims.",
+    "TauBenchAdapter scoring is ToolClaw-proxy scoring and does not reproduce upstream tau-bench evaluation semantics.",
+    "Current tau-bench alignment does not preserve enough real-world domain-rule structure to treat the resulting scoreboard as a headline benchmark claim."
+  ],
+  "promote_tau_bench": false
+}

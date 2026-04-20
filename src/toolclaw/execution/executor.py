@@ -985,6 +985,10 @@ class SequentialExecutor:
         return f"cp_{step_id}"
 
     @staticmethod
+    def _is_missing_state_value(value: Any) -> bool:
+        return value is None or value == ""
+
+    @staticmethod
     def _step_index(workflow: Workflow, step_id: Optional[str]) -> int:
         if step_id is None:
             return 0
@@ -1057,7 +1061,11 @@ class SequentialExecutor:
         self._inject_step_state_failures(step=step, state_values=state_values)
         required_slots = [str(item) for item in step.metadata.get("required_state_slots", []) if str(item)]
         stale_slots = [str(item) for item in state_values.get("__stale_state_slots__", []) if str(item)]
-        missing_slots = [slot for slot in required_slots if slot not in state_values or state_values.get(slot) in {None, ""}]
+        missing_slots = [
+            slot
+            for slot in required_slots
+            if slot not in state_values or self._is_missing_state_value(state_values.get(slot))
+        ]
         stale_required = [slot for slot in required_slots if slot in stale_slots]
         preflight_policy = self._preflight_state_policy_for_step(step)
         simulated_missing_arg_values = step.metadata.get("simulated_missing_arg_values", {})
@@ -1069,7 +1077,7 @@ class SequentialExecutor:
         if state_slot:
             if state_slot not in required_slots:
                 required_slots.append(state_slot)
-            if state_slot not in state_values or state_values.get(state_slot) in {None, ""}:
+            if state_slot not in state_values or self._is_missing_state_value(state_values.get(state_slot)):
                 if state_slot not in missing_slots:
                     missing_slots.append(state_slot)
             elif required_value is not None and state_values.get(state_slot) != required_value:
@@ -1226,7 +1234,7 @@ class SequentialExecutor:
                 inferred_missing_assets.append("target_path")
             required_slots = [str(item) for item in step.metadata.get("required_state_slots", []) if str(item)]
             for slot in required_slots:
-                if slot not in inferred_missing_assets and tool_args.get(slot) in {None, ""}:
+                if slot not in inferred_missing_assets and self._is_missing_state_value(tool_args.get(slot)):
                     inferred_missing_assets.append(slot)
 
         error_obj = ToolClawError(

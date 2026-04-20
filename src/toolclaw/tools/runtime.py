@@ -24,6 +24,8 @@ def run_tool(tool_id: str, args: Dict[str, Any], *, workflow: Optional[Workflow]
         return run_mock_tool(tool_id, args)
     if backend == "semantic_mock":
         return _run_semantic_tool(tool_id, args, spec=spec)
+    if backend == "bfcl_stub":
+        return _run_bfcl_stub(tool_id, args, spec=spec)
     if backend == "hybrid":
         if tool_id in MOCK_TOOL_REGISTRY:
             return run_mock_tool(tool_id, args)
@@ -158,6 +160,19 @@ def _run_semantic_tool(tool_id: str, args: Dict[str, Any], *, spec: Optional[Too
             for key, value in state_patch.items()
         }
     return result
+
+
+def _run_bfcl_stub(tool_id: str, args: Dict[str, Any], *, spec: Optional[ToolSpec]) -> Dict[str, Any]:
+    metadata = spec.metadata if spec and isinstance(spec.metadata, dict) else {}
+    return {
+        "status": "success",
+        "payload": {
+            "tool_id": tool_id,
+            "arguments": dict(args),
+            "schema": dict(metadata.get("parameters", {})) if isinstance(metadata.get("parameters"), dict) else {},
+            "backend": "bfcl_stub",
+        },
+    }
 
 
 def _validate_semantic_args(tool_id: str, args: Dict[str, Any], *, spec: Optional[ToolSpec], tool_tokens: set[str]) -> None:

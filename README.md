@@ -10,6 +10,8 @@ The repository currently contains:
 
 The authoritative implementation boundary is [docs/method.md](docs/method.md). This README is a repository status summary, not a broader claim than the method contract.
 
+Paper-facing benchmark planning now lives in [docs/paper_benchmark_portfolio.md](docs/paper_benchmark_portfolio.md) and [configs/paper_claim_matrix.yaml](configs/paper_claim_matrix.yaml).
+
 ## Current Status
 
 - Phase-1 contract: implemented and reproducible

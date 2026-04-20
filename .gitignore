@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
+._*
 .pytest_cache/
 .venv/
 
@@ -22,6 +23,11 @@ secrets/
 # the final paper-facing datasets and summaries we want to keep reproducible.
 outputs/*
 data/*
+!data/bfcl/
+data/bfcl/*
+!data/bfcl/bfcl_v4.fc_core.aligned.jsonl
+!data/bfcl/bfcl_v4.agentic_ext.aligned.jsonl
+!data/bfcl/manifest.json
 
 # Keep repo-curated benchmark datasets used in the paper
 !data/toolsandbox.formal.json

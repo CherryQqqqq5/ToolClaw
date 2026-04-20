@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Dict, Iterable, List, Optional, Protocol
 
 from toolclaw.benchmarks.task_annotations import annotate_task_payload
 from toolclaw.planner.htgp import PlanningRequest
@@ -51,15 +52,278 @@ class BFCLAdapter:
     benchmark_name: str = "bfcl"
 
     def load_samples(self, source: str) -> List[BenchmarkSample]:
-        _ = source
-        return []
+        path = Path(source)
+        if not path.exists():
+            raise FileNotFoundError(f"bfcl source not found: {path}")
+
+        payload_rows = list(_load_jsonlike_rows(path))
+        samples: List[BenchmarkSample] = []
+        for idx, raw in enumerate(payload_rows, start=1):
+            sample_id = str(
+                raw.get("sample_id")
+                or raw.get("task_id")
+                or raw.get("id")
+                or f"bfcl_sample_{idx:05d}"
+            )
+            metadata = dict(raw.get("metadata", {})) if isinstance(raw.get("metadata"), dict) else {}
+            scenario = str(raw.get("scenario") or metadata.get("bfcl_group") or "bfcl")
+            samples.append(BenchmarkSample(sample_id=sample_id, raw_payload=raw, scenario=scenario, metadata=metadata))
+        return samples
+
+    def load_samples_from_tasks(self, tasks: Iterable[Dict[str, Any]]) -> List[BenchmarkSample]:
+        samples: List[BenchmarkSample] = []
+        for idx, task in enumerate(tasks, start=1):
+            metadata = dict(task.get("metadata", {})) if isinstance(task.get("metadata"), dict) else {}
+            sample_id = str(task.get("task_id") or task.get("sample_id") or f"bfcl_task_{idx:05d}")
+            samples.append(
+                BenchmarkSample(
+                    sample_id=sample_id,
+                    raw_payload={
+                        "sample_id": sample_id,
+                        "query": task.get("query"),
+                        "candidate_tools": list(task.get("candidate_tools", [])) if isinstance(task.get("candidate_tools"), list) else [],
+                        "constraints": dict(task.get("constraints", {})) if isinstance(task.get("constraints"), dict) else {},
+                        "expected_call_structure": metadata.get("expected_call_structure", task.get("expected_call_structure", {})),
+                        "metadata": metadata,
+                    },
+                    scenario=str(task.get("scenario") or metadata.get("bfcl_group") or "bfcl"),
+                    metadata=metadata,
+                )
+            )
+        return samples
 
     def build_request(self, sample: BenchmarkSample) -> PlanningRequest:
-        raise NotImplementedError("Implement BFCL dataset mapping here.")
+        eval_task = self.to_eval_task(sample)
+        demo = Workflow.demo()
+        task = TaskSpec(
+            task_id=str(eval_task["task_id"]),
+            user_goal=str(eval_task["query"]),
+            success_criteria=list(
+                sample.raw_payload.get(
+                    "success_criteria",
+                    [
+                        "select the correct tool or function",
+                        "produce the expected call structure",
+                        "fill arguments that satisfy the benchmark schema",
+                    ],
+                )
+            ),
+            constraints=self._build_constraints(sample),
+        )
+        context = WorkflowContext(
+            environment=demo.context.environment,
+            candidate_tools=self._build_candidate_tools(sample),
+        )
+        return PlanningRequest(task=task, context=context, policy=demo.policy)
+
+    def to_eval_task(self, sample: BenchmarkSample) -> Dict[str, Any]:
+        metadata = dict(sample.metadata)
+        task: Dict[str, Any] = {
+            "task_id": sample.sample_id,
+            "scenario": str(sample.raw_payload.get("scenario") or metadata.get("bfcl_group") or "bfcl"),
+            "query": self._extract_query(sample.raw_payload),
+            "candidate_tools": self._normalized_candidate_tools(sample.raw_payload),
+            "constraints": dict(sample.raw_payload.get("constraints", {})) if isinstance(sample.raw_payload.get("constraints"), dict) else {},
+            "metadata": {
+                "benchmark": self.benchmark_name,
+                "bfcl_track": metadata.get("bfcl_track", sample.raw_payload.get("bfcl_track", "")),
+                "bfcl_group": metadata.get("bfcl_group", sample.raw_payload.get("bfcl_group", "")),
+                "bfcl_call_pattern": metadata.get("bfcl_call_pattern", sample.raw_payload.get("bfcl_call_pattern", "serial")),
+                "bfcl_language": metadata.get("bfcl_language", sample.raw_payload.get("bfcl_language", "en")),
+                "expected_call_structure": sample.raw_payload.get("expected_call_structure", {}),
+                "official_evaluator_supported": bool(
+                    metadata.get(
+                        "official_evaluator_supported",
+                        sample.raw_payload.get("official_evaluator_supported", False),
+                    )
+                ),
+                **metadata,
+            },
+        }
+        if sample.raw_payload.get("ideal_tool_calls") is not None:
+            task["ideal_tool_calls"] = sample.raw_payload.get("ideal_tool_calls")
+        elif sample.raw_payload.get("expected_call_structure"):
+            task["ideal_tool_calls"] = len(self._flatten_expected_calls(sample.raw_payload.get("expected_call_structure", {})))
+        return annotate_task_payload(task)
 
     def score_trace(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> BenchmarkTraceScore:
-        _ = trace_payload
-        return BenchmarkTraceScore(benchmark=self.benchmark_name, sample_id=sample.sample_id, success=False)
+        expected_calls = self._flatten_expected_calls(sample.raw_payload.get("expected_call_structure", {}))
+        expected_tools = [str(call.get("tool_name") or call.get("tool_id") or "").strip() for call in expected_calls]
+        actual_calls = self._extract_actual_calls(trace_payload)
+        actual_tools = [str(call.get("tool_id") or "").strip() for call in actual_calls]
+        expected_counter = Counter(tool for tool in expected_tools if tool)
+        actual_counter = Counter(tool for tool in actual_tools if tool)
+        tool_sequence_match = 1.0 if expected_tools and actual_tools == expected_tools else 0.0
+        tool_selection_overlap = 1.0
+        if expected_counter:
+            matched = sum(min(expected_counter[tool], actual_counter.get(tool, 0)) for tool in expected_counter)
+            tool_selection_overlap = matched / max(sum(expected_counter.values()), 1)
+        parameter_fill_ratio = self._parameter_fill_ratio(expected_calls, actual_calls)
+        candidate_tool_ids = {
+            str(tool.get("tool_id") or tool.get("name") or "").strip()
+            for tool in self._normalized_candidate_tools(sample.raw_payload)
+        }
+        policy_format_compliance = 1.0 if all(tool in candidate_tool_ids for tool in actual_tools if tool) else 0.0
+        repairs = int(trace_payload.get("metrics", {}).get("repair_actions", 0) or 0)
+        benchmark_success = bool(trace_payload.get("metrics", {}).get("success")) and tool_selection_overlap >= 1.0 and parameter_fill_ratio >= 1.0
+        return BenchmarkTraceScore(
+            benchmark=self.benchmark_name,
+            sample_id=sample.sample_id,
+            success=benchmark_success,
+            metrics={
+                "binder_selection_match": tool_selection_overlap,
+                "tool_sequence_match": tool_sequence_match,
+                "parameter_fill_ratio": parameter_fill_ratio,
+                "policy_format_compliance": policy_format_compliance,
+                "repair_overhead": float(repairs),
+            },
+            diagnostics={
+                "expected_tools": expected_tools,
+                "actual_tools": actual_tools,
+                "expected_call_count": len(expected_calls),
+                "actual_call_count": len(actual_calls),
+                "repair_actions": repairs,
+            },
+        )
+
+    @staticmethod
+    def _extract_query(raw: Dict[str, Any]) -> str:
+        return str(
+            raw.get("query")
+            or raw.get("user_goal")
+            or raw.get("instruction")
+            or raw.get("prompt")
+            or "complete the benchmark task"
+        )
+
+    @staticmethod
+    def _normalized_candidate_tools(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
+        raw_tools = raw.get("candidate_tools") or raw.get("tools") or []
+        if not isinstance(raw_tools, list):
+            return []
+        normalized: List[Dict[str, Any]] = []
+        for idx, raw_tool in enumerate(raw_tools, start=1):
+            if isinstance(raw_tool, str):
+                normalized.append({"tool_id": raw_tool, "description": raw_tool})
+                continue
+            if isinstance(raw_tool, dict):
+                parameters = raw_tool.get("parameters") or raw_tool.get("schema") or {}
+                normalized.append(
+                    {
+                        "tool_id": str(raw_tool.get("tool_id") or raw_tool.get("name") or f"tool_{idx:02d}"),
+                        "description": str(
+                            raw_tool.get("description")
+                            or raw_tool.get("tool_id")
+                            or raw_tool.get("name")
+                            or "tool"
+                        ),
+                        "parameters": parameters if isinstance(parameters, dict) else {},
+                    }
+                )
+        return normalized
+
+    def _build_candidate_tools(self, sample: BenchmarkSample) -> List[ToolSpec]:
+        normalized = self._normalized_candidate_tools(sample.raw_payload)
+        if normalized:
+            return [
+                ToolSpec(
+                    tool_id=str(tool["tool_id"]),
+                    description=str(tool["description"]),
+                    metadata={"parameters": dict(tool.get("parameters", {}))},
+                )
+                for tool in normalized
+            ]
+        return [
+            ToolSpec(tool_id="search_tool", description="Search information from a source."),
+            ToolSpec(tool_id="write_tool", description="Write output artifact."),
+        ]
+
+    @staticmethod
+    def _build_constraints(sample: BenchmarkSample) -> TaskConstraints:
+        raw_constraints = sample.raw_payload.get("constraints", {})
+        task_constraints = TaskConstraints()
+        if not isinstance(raw_constraints, dict):
+            return task_constraints
+        if raw_constraints.get("max_tool_calls") is not None:
+            task_constraints.max_tool_calls = int(raw_constraints["max_tool_calls"])
+        if raw_constraints.get("max_user_turns") is not None:
+            task_constraints.max_user_turns = int(raw_constraints["max_user_turns"])
+        if raw_constraints.get("max_repair_attempts") is not None:
+            task_constraints.max_repair_attempts = int(raw_constraints["max_repair_attempts"])
+        return task_constraints
+
+    @staticmethod
+    def _flatten_expected_calls(structure: Any) -> List[Dict[str, Any]]:
+        if isinstance(structure, list):
+            return [call for call in structure if isinstance(call, dict)]
+        if isinstance(structure, dict):
+            if isinstance(structure.get("calls"), list):
+                return [call for call in structure["calls"] if isinstance(call, dict)]
+            groups = structure.get("groups")
+            flattened: List[Dict[str, Any]] = []
+            if isinstance(groups, list):
+                for group in groups:
+                    if not isinstance(group, list):
+                        continue
+                    flattened.extend(call for call in group if isinstance(call, dict))
+            return flattened
+        return []
+
+    @staticmethod
+    def _extract_actual_calls(trace_payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+        actual: List[Dict[str, Any]] = []
+        for event in trace_payload.get("events", []):
+            if not isinstance(event, dict) or event.get("event_type") != "tool_call":
+                continue
+            tool_args = event.get("tool_args")
+            actual.append(
+                {
+                    "tool_id": str(event.get("tool_id") or ""),
+                    "arguments": dict(tool_args) if isinstance(tool_args, dict) else {},
+                }
+            )
+        return actual
+
+    @staticmethod
+    def _parameter_fill_ratio(expected_calls: List[Dict[str, Any]], actual_calls: List[Dict[str, Any]]) -> float:
+        expected_keys = 0
+        matched_keys = 0
+        for expected_call, actual_call in zip(expected_calls, actual_calls):
+            expected_args = expected_call.get("arguments", {})
+            actual_args = actual_call.get("arguments", {})
+            if not isinstance(expected_args, dict):
+                continue
+            expected_keys += len(expected_args)
+            for key, value in expected_args.items():
+                if key in actual_args and actual_args.get(key) == value:
+                    matched_keys += 1
+        if expected_keys == 0:
+            return 1.0
+        return matched_keys / expected_keys
+
+
+def _load_jsonlike_rows(path: Path) -> Iterable[Dict[str, Any]]:
+    if path.suffix == ".jsonl":
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            raw = json.loads(line)
+            if isinstance(raw, dict):
+                yield raw
+        return
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(payload, list):
+        for raw in payload:
+            if isinstance(raw, dict):
+                yield raw
+        return
+    if isinstance(payload, dict) and isinstance(payload.get("samples"), list):
+        for raw in payload["samples"]:
+            if isinstance(raw, dict):
+                yield raw
+        return
+    raise ValueError(f"Unsupported JSON payload for benchmark source: {path}")
 
 
 @dataclass

@@ -20,9 +20,10 @@ This checklist defines a clean, reproducible experiment workspace so every run m
 1. `exp01_toolsandbox_core_a0_a4` (P0)
 2. ToolSandbox failtax/focused/reuse summaries (P0 follow-up analysis)
 3. `exp02_tau_a0_a4` and `exp03_tau2_a0_a4` (P1)
-4. `exp04_bfcl_v4` (P2)
-5. robustness and budget sweeps (P2)
-6. TRAJECT-Bench (optional diagnostic extension)
+4. `exp04_bfcl_fc_core` (P2 headline planner/binder protocol)
+5. `exp05_bfcl_agentic_ext` (supporting-only appendix protocol)
+6. robustness and budget sweeps (P2)
+7. TRAJECT-Bench (optional diagnostic extension)
 
 ## 4) First experiment command
 

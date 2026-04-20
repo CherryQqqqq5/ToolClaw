@@ -1,0 +1,203 @@
+{
+  "updated_at": "2026-04-20",
+  "claims": {
+    "interaction_headline": {
+      "status": "supported_current_evidence",
+      "benchmark_suite": "toolsandbox_official",
+      "claim": "ToolSandbox official carries the headline claim for interaction and stateful workflow intelligence.",
+      "metrics": {
+        "primary": [
+          "mean_success_rate",
+          "pass_at_k"
+        ],
+        "supporting": [
+          "interaction_contract_satisfied",
+          "success_rate@multiple_user_turn",
+          "success_rate@insufficient_information"
+        ]
+      }
+    },
+    "planner_binding_headline": {
+      "status": "planned_bfcl_fc_core",
+      "benchmark_suite": "bfcl_fc_core",
+      "claim": "Planner, binder, and parameter correctness should be anchored to BFCL function-calling core only.",
+      "metrics": {
+        "primary": [
+          "official_bfcl_eval_success",
+          "official_bfcl_eval_tool_selection_correctness",
+          "official_bfcl_eval_argument_correctness",
+          "official_bfcl_eval_structure_correctness"
+        ],
+        "supporting": [
+          "toolclaw_diagnostics_binder_selection_match",
+          "toolclaw_diagnostics_parameter_fill_ratio",
+          "toolclaw_diagnostics_policy_format_compliance"
+        ]
+      }
+    },
+    "bfcl_agentic_supporting": {
+      "status": "supporting_only",
+      "benchmark_suite": "bfcl_agentic_ext",
+      "claim": "BFCL agentic extension tracks broader BFCL v4 capabilities such as web search, memory, and format sensitivity, and is supplementary only.",
+      "metrics": {
+        "primary": [
+          "official_bfcl_eval_success"
+        ],
+        "supporting": [
+          "official_bfcl_eval_structure_correctness"
+        ]
+      }
+    },
+    "dual_control_interaction": {
+      "status": "supported_current_evidence",
+      "benchmark_suite": "tau2_dual_control",
+      "claim": "Tau2-bench carries the headline claim for dual-control interaction and interactive correction.",
+      "metrics": {
+        "primary": [
+          "mean_success_rate",
+          "interactive_correction",
+          "approval_following"
+        ],
+        "supporting": [
+          "policy_compliance_success_rate",
+          "safe_abort_rate"
+        ]
+      }
+    },
+    "tau_bench_supporting": {
+      "status": "supporting_only_until_audit_passes",
+      "benchmark_suite": "tau_bench_supporting",
+      "claim": "Tau-bench remains supporting-only until the semantic audit explicitly promotes it.",
+      "metrics": {
+        "primary": [
+          "mean_success_rate",
+          "pass_at_k"
+        ],
+        "supporting": [
+          "rule_following",
+          "interaction_quality",
+          "tool_efficiency"
+        ]
+      }
+    },
+    "reuse_exact_match_cost": {
+      "status": "supported_narrow_evidence",
+      "benchmark_suite": "reuse_exact_match",
+      "claim": "Reuse currently supports a narrow exact-match cost-reduction claim under matched task signatures.",
+      "metrics": {
+        "primary": [
+          "delta_tool_calls@exact_match_reuse",
+          "delta_repair_actions@exact_match_reuse"
+        ],
+        "supporting": [
+          "delta_user_turns@exact_match_reuse",
+          "delta_success@cross_family_transfer_reuse"
+        ]
+      }
+    }
+  },
+  "suites": {
+    "toolsandbox_official": {
+      "status": "implemented",
+      "runner": "scripts/run_toolsandbox_bench.py",
+      "default_source": "data/toolsandbox.formal.official.json",
+      "default_mode": "planner",
+      "default_systems": "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "default_num_runs": 3,
+      "claim_ids": [
+        "interaction_headline"
+      ],
+      "paper_role": "headline"
+    },
+    "bfcl_fc_core": {
+      "status": "implemented",
+      "runner": "scripts/run_bfcl_bench.py",
+      "score_script": "scripts/score_bfcl_outputs.py",
+      "default_source": "data/bfcl/bfcl_v4.fc_core.aligned.jsonl",
+      "default_mode": "planner",
+      "default_systems": "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "default_num_runs": 1,
+      "track": "fc_core",
+      "official_eval": true,
+      "toolclaw_diagnostics": true,
+      "claim_ids": [
+        "planner_binding_headline"
+      ],
+      "paper_role": "headline"
+    },
+    "bfcl_agentic_ext": {
+      "status": "implemented",
+      "runner": "scripts/run_bfcl_bench.py",
+      "score_script": "scripts/score_bfcl_outputs.py",
+      "default_source": "data/bfcl/bfcl_v4.agentic_ext.aligned.jsonl",
+      "default_mode": "planner",
+      "default_systems": "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "default_num_runs": 1,
+      "track": "agentic_ext",
+      "official_eval": true,
+      "toolclaw_diagnostics": true,
+      "claim_ids": [
+        "bfcl_agentic_supporting"
+      ],
+      "paper_role": "supporting_only"
+    },
+    "tau2_dual_control": {
+      "status": "implemented",
+      "runner": "scripts/run_tau2_bench.py",
+      "default_source": "data/tau2_bench.formal.json",
+      "default_mode": "planner",
+      "default_systems": "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "default_num_runs": 3,
+      "claim_ids": [
+        "dual_control_interaction"
+      ],
+      "slice_by": "scenario",
+      "slice_values": "dual_control",
+      "paper_role": "headline"
+    },
+    "tau_bench_supporting": {
+      "status": "implemented",
+      "runner": "scripts/run_tau_bench.py",
+      "default_source": "data/tau_bench/tau_bench.aligned.jsonl",
+      "default_mode": "planner",
+      "default_systems": "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "default_num_runs": 1,
+      "claim_ids": [
+        "tau_bench_supporting"
+      ],
+      "audit_config": "configs/tau_bench_semantic_audit.json",
+      "paper_role": "supporting_only"
+    },
+    "tau_bench_headline": {
+      "status": "implemented",
+      "runner": "scripts/run_tau_bench.py",
+      "default_source": "data/tau_bench/tau_bench.aligned.jsonl",
+      "default_mode": "planner",
+      "default_systems": "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "default_num_runs": 1,
+      "claim_ids": [
+        "tau_bench_supporting"
+      ],
+      "audit_config": "configs/tau_bench_semantic_audit.json",
+      "requires_audit_promotion": true,
+      "paper_role": "headline_candidate"
+    },
+    "reuse_exact_match": {
+      "status": "implemented",
+      "runner": "scripts/run_tau2_bench.py",
+      "default_source": "data/tau2_bench.formal.json",
+      "default_mode": "planner",
+      "default_systems": "a3_interaction,a4_reuse",
+      "default_num_runs": 1,
+      "claim_ids": [
+        "reuse_exact_match_cost"
+      ],
+      "reuse_second_run": true,
+      "post_analysis": [
+        "reuse_strata",
+        "reuse_headroom"
+      ],
+      "paper_role": "supporting_only"
+    }
+  }
+}

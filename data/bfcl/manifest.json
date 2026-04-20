@@ -1,0 +1,52 @@
+{
+  "benchmark": "bfcl_v4",
+  "source": "repo_scaffold",
+  "outputs": {
+    "fc_core": "data/bfcl/bfcl_v4.fc_core.aligned.jsonl",
+    "agentic_ext": "data/bfcl/bfcl_v4.agentic_ext.aligned.jsonl"
+  },
+  "protocol_subset": {
+    "fc_core": {
+      "included_groups": [
+        "live",
+        "multi_turn",
+        "non_live"
+      ],
+      "excluded_groups": [
+        "format_sensitivity",
+        "memory",
+        "web_search"
+      ],
+      "language_rule": "english_only_unless_validated_multilingual_official_evaluator",
+      "call_pattern_rule": "serial_and_parallel_only",
+      "official_evaluator_coverage": {
+        "serial": true,
+        "parallel": true,
+        "multilingual": false
+      }
+    },
+    "agentic_ext": {
+      "included_groups": [
+        "format_sensitivity",
+        "memory",
+        "web_search"
+      ],
+      "excluded_groups": [
+        "live",
+        "multi_turn",
+        "non_live"
+      ]
+    }
+  },
+  "official_evaluator_script": "",
+  "counts": {
+    "fc_core": 1,
+    "agentic_ext": 1,
+    "excluded": 0
+  },
+  "excluded_rows": [],
+  "notes": [
+    "This is a repo-scaffold protocol artifact for local smoke runs.",
+    "Paper-safe BFCL reporting should replace it with prepared subsets from official BFCL source exports."
+  ]
+}

@@ -295,6 +295,26 @@ def test_check_state_failure_enforces_cellular_preflight_for_outbound_message() 
     assert result.error.evidence.metadata["preflight_state_policy"]["state_slot"] == "cellular_service_status"
 
 
+def test_check_state_failure_accepts_dict_state_slot_values() -> None:
+    step = WorkflowStep(
+        step_id="step_03",
+        capability_id="cap_write",
+        tool_id="bfcl_followup_tool",
+        action_type=ActionType.TOOL_CALL,
+        inputs={"query": "continue the workflow"},
+        metadata={"required_state_slots": ["prior_tool_result"]},
+    )
+    trace = Trace(run_id="run_bfcl_state_001", workflow_id="wf_bfcl_state_001", task_id="task_bfcl_state_001")
+
+    result = SequentialExecutor()._check_state_failure(
+        step=step,
+        trace=trace,
+        state_values={"prior_tool_result": {"tool_id": "lookup_customer", "arguments": {"customer_id": "42"}}},
+    )
+
+    assert result is None
+
+
 def test_executor_supports_semantic_mock_backend_for_non_toy_tools(tmp_path: Path) -> None:
     workflow = Workflow.demo()
     workflow.execution_plan = workflow.execution_plan[:1]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+from copy import deepcopy
 import os
 import subprocess
 import json
@@ -25,6 +26,12 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from toolclaw.benchmarks.baseline_runner import run_baseline
+from toolclaw.benchmarks.adapters import BFCLAdapter
+from toolclaw.bfcl_runtime import (
+    extract_parallel_argument_sets,
+    extract_tool_arguments,
+    rank_candidate_tools,
+)
 from toolclaw.benchmarks.metrics import (
     EvalRow,
     summarize,
@@ -50,7 +57,7 @@ from toolclaw.main import ToolClawRuntime
 from toolclaw.planner.capability_intents import CAPABILITY_PROFILES_BY_ID, infer_capability_from_text
 from toolclaw.planner.htgp import PlanningRequest, build_default_planner
 from toolclaw.registry import AssetRegistry, FileAssetRegistry, InMemoryAssetRegistry
-from toolclaw.schemas.workflow import RiskLevel, TaskConstraints, ToolSpec, Workflow
+from toolclaw.schemas.workflow import CapabilityEdge, RiskLevel, TaskConstraints, ToolSpec, Workflow, WorkflowEdge
 
 
 @dataclass(frozen=True)
@@ -182,6 +189,8 @@ SYSTEM_ALIASES: Dict[str, str] = {
     "toolclaw_lite": "a3_interaction",
 }
 
+BFCL_ADAPTER = BFCLAdapter()
+
 
 def _build_tool_specs(raw_tools: Any) -> List[ToolSpec]:
     candidate_tools: List[ToolSpec] = []
@@ -200,6 +209,37 @@ def _build_tool_specs(raw_tools: Any) -> List[ToolSpec]:
                 )
             )
     return candidate_tools
+
+
+def _bfcl_tool_lookup(candidate_tools: List[ToolSpec]) -> Dict[str, ToolSpec]:
+    return {
+        str(tool.tool_id): tool
+        for tool in candidate_tools
+        if str(tool.tool_id).strip()
+    }
+
+
+def _bfcl_best_tool(candidate_tools: List[ToolSpec], text: str) -> Optional[ToolSpec]:
+    ranked = rank_candidate_tools(text, candidate_tools)
+    if not ranked:
+        return candidate_tools[0] if candidate_tools else None
+    best_tool_id = str(ranked[0]["tool"].get("tool_id") or "")
+    return _bfcl_tool_lookup(candidate_tools).get(best_tool_id) or (candidate_tools[0] if candidate_tools else None)
+
+
+def _bfcl_tool_parameters(tool: Optional[ToolSpec]) -> Dict[str, Any]:
+    metadata = tool.metadata if tool and isinstance(tool.metadata, dict) else {}
+    parameters = metadata.get("parameters")
+    return dict(parameters) if isinstance(parameters, dict) else {}
+
+
+def _bfcl_build_step_inputs(tool: Optional[ToolSpec], text: str, *, keep_query_fallback: bool = True) -> Dict[str, Any]:
+    if tool is None:
+        return {"query": text}
+    extracted = extract_tool_arguments(tool.tool_id, _bfcl_tool_parameters(tool), text)
+    if extracted:
+        return extracted
+    return {"query": text} if keep_query_fallback else {}
 
 
 def _normalize_message_role(value: Any) -> str:
@@ -316,6 +356,130 @@ def _configure_seed_single_step_workflow(
     return workflow
 
 
+def _configure_bfcl_step_metadata(step: Any, tool: Optional[ToolSpec], text: str) -> None:
+    parameters = _bfcl_tool_parameters(tool)
+    step.metadata["bfcl_query_text"] = text
+    step.metadata["bfcl_schema"] = dict(parameters)
+    step.metadata["bfcl_benchmark"] = True
+
+
+def _ensure_workflow_capacity(workflow: Workflow, count: int) -> None:
+    while len(workflow.capability_graph.capabilities) < count:
+        workflow.capability_graph.capabilities.append(deepcopy(workflow.capability_graph.capabilities[-1]))
+    while len(workflow.tool_bindings) < count:
+        workflow.tool_bindings.append(deepcopy(workflow.tool_bindings[-1]))
+    while len(workflow.execution_plan) < count:
+        workflow.execution_plan.append(deepcopy(workflow.execution_plan[-1]))
+    while len(workflow.workflow_graph.nodes) < count:
+        workflow.workflow_graph.nodes.append(deepcopy(workflow.workflow_graph.nodes[-1]))
+
+
+def _configure_bfcl_seed_steps(
+    workflow: Workflow,
+    step_specs: List[Dict[str, Any]],
+) -> Workflow:
+    if not step_specs:
+        return workflow
+    _ensure_workflow_capacity(workflow, len(step_specs))
+    workflow.capability_graph.edges = []
+    workflow.workflow_graph.edges = []
+    workflow.workflow_graph.entry_nodes = ["step_01"]
+    workflow.workflow_graph.exit_nodes = [f"step_{len(step_specs):02d}"]
+
+    for index, spec in enumerate(step_specs, start=1):
+        tool = spec.get("tool")
+        if not isinstance(tool, ToolSpec):
+            continue
+        capability_id = _seed_capability_for_tool(tool, default="cap_retrieve")
+        inputs = dict(spec.get("inputs") or {})
+        text = str(spec.get("text") or "")
+        expected_output = f"bfcl_result_{index:02d}"
+        step_id = f"step_{index:02d}"
+
+        cap_node = workflow.capability_graph.capabilities[index - 1]
+        _configure_seed_capability_node(cap_node, capability_id)
+
+        binding = workflow.tool_bindings[index - 1]
+        binding.capability_id = capability_id
+        binding.primary_tool = tool.tool_id
+        binding.backup_tools = []
+        binding.binding_confidence = 1.0
+
+        step = workflow.execution_plan[index - 1]
+        step.step_id = step_id
+        step.capability_id = capability_id
+        step.tool_id = tool.tool_id
+        step.inputs = inputs
+        step.expected_output = expected_output
+        step.rollback_to = None
+        _configure_bfcl_step_metadata(step, tool, text)
+
+        node = workflow.workflow_graph.nodes[index - 1]
+        node.node_id = step_id
+        node.capability_id = capability_id
+        node.selected_tool = tool.tool_id
+        node.tool_candidates = [tool.tool_id]
+        node.inputs = inputs
+        node.expected_output = expected_output
+        node.dependencies = [f"step_{index - 1:02d}"] if index > 1 else []
+        node.rollback_policy = None
+        node.metadata["bfcl_benchmark"] = True
+
+        if index > 1:
+            workflow.capability_graph.edges.append(
+                CapabilityEdge(
+                    source=workflow.capability_graph.capabilities[index - 2].capability_id,
+                    target=capability_id,
+                    condition="bfcl_sequence",
+                )
+            )
+            workflow.workflow_graph.edges.append(
+                WorkflowEdge(
+                    source=f"step_{index - 1:02d}",
+                    target=step_id,
+                    condition="bfcl_sequence",
+                    edge_type="default",
+                )
+            )
+
+    workflow.capability_graph.capabilities = workflow.capability_graph.capabilities[: len(step_specs)]
+    workflow.tool_bindings = workflow.tool_bindings[: len(step_specs)]
+    workflow.execution_plan = workflow.execution_plan[: len(step_specs)]
+    workflow.workflow_graph.nodes = workflow.workflow_graph.nodes[: len(step_specs)]
+    return workflow
+
+
+def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user_goal: str) -> List[Dict[str, Any]]:
+    metadata = task.get("metadata", {}) if isinstance(task.get("metadata"), dict) else {}
+    call_pattern = str(metadata.get("bfcl_call_pattern") or "serial")
+    query = str(task.get("query") or user_goal)
+    milestones = [str(item).strip() for item in task.get("milestones", []) if str(item).strip()]
+    if call_pattern == "parallel" and len(candidate_tools) == 1:
+        tool = candidate_tools[0]
+        arg_sets = extract_parallel_argument_sets(tool.tool_id, _bfcl_tool_parameters(tool), query)
+        if len(arg_sets) > 1:
+            return [{"tool": tool, "inputs": arg_set, "text": query} for arg_set in arg_sets]
+    if metadata.get("bfcl_group") == "multi_turn" and milestones:
+        step_specs: List[Dict[str, Any]] = []
+        for milestone in milestones:
+            tool = _bfcl_best_tool(candidate_tools, milestone)
+            if tool is None:
+                continue
+            step_specs.append(
+                {
+                    "tool": tool,
+                    "inputs": _bfcl_build_step_inputs(tool, milestone),
+                    "text": milestone,
+                }
+            )
+        if step_specs:
+            return step_specs
+    tool = _bfcl_best_tool(candidate_tools, query)
+    if tool is None:
+        return []
+    return [{"tool": tool, "inputs": _bfcl_build_step_inputs(tool, query), "text": query}]
+
+
 def _build_seed_workflow(task: Dict[str, Any], candidate_tools: List[ToolSpec], user_goal: str) -> Workflow:
     workflow = Workflow.demo()
     workflow.workflow_id = f"wf_{canonical_task_id(task)}"
@@ -323,6 +487,14 @@ def _build_seed_workflow(task: Dict[str, Any], candidate_tools: List[ToolSpec], 
     workflow.task.user_goal = user_goal
     if candidate_tools:
         workflow.context.candidate_tools = list(candidate_tools)
+
+    raw_metadata = task.get("metadata", {})
+    benchmark = str(raw_metadata.get("benchmark") or task.get("benchmark") or "").strip().lower() if isinstance(raw_metadata, dict) else str(task.get("benchmark") or "").strip().lower()
+    if benchmark == "bfcl":
+        step_specs = _bfcl_seed_specs(task, candidate_tools, user_goal)
+        if not step_specs:
+            return workflow
+        return _configure_bfcl_seed_steps(workflow, step_specs)
 
     allow_list = list(task.get("tool_allow_list", [])) if isinstance(task.get("tool_allow_list"), list) else []
     scenario = str(task.get("scenario", "success"))
@@ -382,6 +554,58 @@ def _build_seed_workflow(task: Dict[str, Any], candidate_tools: List[ToolSpec], 
         workflow.workflow_graph.nodes[1].selected_tool = write_tool.tool_id
         workflow.workflow_graph.nodes[1].tool_candidates = [write_tool.tool_id]
     workflow.metadata["planner_mode"] = "recovery_seed"
+    return workflow
+
+
+def _adapt_bfcl_workflow(
+    workflow: Workflow,
+    *,
+    task: Dict[str, Any],
+    candidate_tools: List[ToolSpec],
+    mode: str,
+) -> Workflow:
+    if not candidate_tools:
+        return workflow
+    metadata = task.get("metadata", {}) if isinstance(task.get("metadata"), dict) else {}
+    tool_lookup = _bfcl_tool_lookup(candidate_tools)
+    query = str(task.get("query") or workflow.task.user_goal or "")
+    milestones = [str(item).strip() for item in task.get("milestones", []) if str(item).strip()]
+    call_pattern = str(metadata.get("bfcl_call_pattern") or "serial")
+
+    if call_pattern == "parallel" and len(candidate_tools) == 1:
+        parallel_specs = _bfcl_seed_specs(task, candidate_tools, query)
+        if len(parallel_specs) > 1:
+            return _configure_bfcl_seed_steps(workflow, parallel_specs)
+
+    if metadata.get("bfcl_group") == "multi_turn" and (
+        mode != "planner" or any(not str(step.tool_id or "").strip() for step in workflow.execution_plan)
+    ):
+        seed_specs = _bfcl_seed_specs(task, candidate_tools, query)
+        if len(seed_specs) > 1:
+            return _configure_bfcl_seed_steps(workflow, seed_specs)
+
+    for index, step in enumerate(workflow.execution_plan):
+        text = milestones[index] if index < len(milestones) else query
+        selected_tool = tool_lookup.get(str(step.tool_id or "").strip())
+        if selected_tool is None:
+            selected_tool = _bfcl_best_tool(candidate_tools, text)
+        if selected_tool is None:
+            continue
+        step.tool_id = selected_tool.tool_id
+        step.inputs = extract_tool_arguments(
+            selected_tool.tool_id,
+            _bfcl_tool_parameters(selected_tool),
+            text,
+            existing_args=step.inputs,
+        ) or _bfcl_build_step_inputs(selected_tool, text)
+        _configure_bfcl_step_metadata(step, selected_tool, text)
+        if index < len(workflow.tool_bindings):
+            workflow.tool_bindings[index].primary_tool = selected_tool.tool_id
+        if index < len(workflow.workflow_graph.nodes):
+            workflow.workflow_graph.nodes[index].selected_tool = selected_tool.tool_id
+            workflow.workflow_graph.nodes[index].tool_candidates = [selected_tool.tool_id]
+            workflow.workflow_graph.nodes[index].inputs = dict(step.inputs)
+    workflow.context.candidate_tools = list(candidate_tools)
     return workflow
 
 
@@ -605,6 +829,7 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
     task = annotate_task_payload(task)
     raw_metadata = task.get("metadata")
     toolsandbox_metadata = raw_metadata if isinstance(raw_metadata, dict) and raw_metadata.get("benchmark") == "toolsandbox" else {}
+    bfcl_metadata = raw_metadata if isinstance(raw_metadata, dict) and raw_metadata.get("benchmark") == "bfcl" else {}
     raw_tools = task.get("candidate_tools")
     if raw_tools is None and isinstance(task.get("tool_allow_list"), list):
         raw_tools = list(task.get("tool_allow_list", []))
@@ -652,6 +877,8 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         )
         workflow = planner.plan(request).workflow
     elif mode == "seed":
+        workflow = _build_seed_workflow(task, candidate_tools, planner_goal)
+    elif mode == "demo" and bfcl_metadata:
         workflow = _build_seed_workflow(task, candidate_tools, planner_goal)
     else:
         workflow = Workflow.demo()
@@ -711,6 +938,8 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         configured_tool_backend = task.get("tool_execution_backend") or task.get("tool_backend")
     if configured_tool_backend is None and toolsandbox_metadata:
         configured_tool_backend = "semantic_mock"
+    if configured_tool_backend is None and bfcl_metadata:
+        configured_tool_backend = "bfcl_stub"
     workflow.metadata["tool_execution_backend"] = str(configured_tool_backend or "mock")
     workflow.metadata.update(annotate_task(task))
     workflow.metadata["task_family"] = derive_task_family(task, scenario=str(task.get("scenario", "success")), task_id=workflow.task.task_id)
@@ -820,6 +1049,14 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
             workflow.metadata["resume_state_drop_slots"] = []
             workflow.metadata["resume_state_stale_slots"] = ["retrieved_info"] if state_mode == "recovery_not_committed" else []
         workflow.metadata["state_failure_mode"] = state_mode
+
+    if bfcl_metadata:
+        workflow = _adapt_bfcl_workflow(
+            workflow,
+            task=task,
+            candidate_tools=candidate_tools,
+            mode=mode,
+        )
 
     return workflow
 
@@ -1341,6 +1578,11 @@ def row_from_trace(
             source_semantic_family=source_semantic_family,
         )
     )
+    benchmark = str((task.get("metadata") or {}).get("benchmark") or "").strip().lower() if isinstance(task.get("metadata"), dict) else ""
+    benchmark_success = bool(metrics.get("success"))
+    if benchmark == "bfcl":
+        sample = BFCL_ADAPTER.load_samples_from_tasks([task])[0]
+        benchmark_success = BFCL_ADAPTER.score_trace(sample, trace_payload).success
     return EvalRow(
         task_id=task_id,
         system=system,
@@ -1355,7 +1597,7 @@ def row_from_trace(
         chosen_tool=chosen_tool or None,
         state_slots=json.dumps(list(task_annotations.get("state_slots", [])), ensure_ascii=True),
         dependency_edges=json.dumps(list(task_annotations.get("dependency_edges", [])), ensure_ascii=True),
-        success=bool(metrics.get("success")),
+        success=benchmark_success,
         tool_calls=int(metrics.get("tool_calls", 0)),
         repair_actions=int(metrics.get("repair_actions", 0)),
         repair_triggered=repair_triggered,
@@ -1481,6 +1723,12 @@ def execute_system(
             run_id=f"{spec.system_id}_{task_id}",
             output_path=trace_path,
         )
+        benchmark = str((task.get("metadata") or {}).get("benchmark") or "").strip().lower() if isinstance(task.get("metadata"), dict) else ""
+        baseline_success = bool(baseline_trace.metrics.success)
+        if benchmark == "bfcl":
+            trace_payload = json.loads(trace_path.read_text(encoding="utf-8"))
+            sample = BFCL_ADAPTER.load_samples_from_tasks([task])[0]
+            baseline_success = BFCL_ADAPTER.score_trace(sample, trace_payload).success
         return EvalRow(
             task_id=task_id,
             system=spec.system_id,
@@ -1495,7 +1743,7 @@ def execute_system(
             chosen_tool=None,
             state_slots=json.dumps(list(task.get("state_slots", [])), ensure_ascii=True),
             dependency_edges=json.dumps(list(task.get("dependency_edges", [])), ensure_ascii=True),
-            success=bool(baseline_trace.metrics.success),
+            success=baseline_success,
             tool_calls=baseline_trace.metrics.tool_calls,
             repair_actions=baseline_trace.metrics.repair_actions,
             repair_triggered=0,

@@ -1,5 +1,14 @@
 # Paper Claim Freeze Plan
 
+## Update Note (2026-04-19)
+
+The benchmark-portfolio guidance in this file is now superseded by:
+
+- [docs/paper_benchmark_portfolio.md](docs/paper_benchmark_portfolio.md)
+- [configs/paper_claim_matrix.yaml](configs/paper_claim_matrix.yaml)
+
+Keep using this document as a record of the frozen archived results, but use the newer portfolio and claim-matrix files for current paper-planning decisions.
+
 ## 1. Purpose
 
 This document freezes the current paper-facing experimental scope for ToolClaw after the `a2_planner` system-definition fix.
@@ -37,35 +46,35 @@ The final benchmark package for the paper should be:
 ### 3.1 Main evidence
 
 1. **ToolSandbox official frozen benchmark**
-   - outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix`
+   - outdir: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix`
    - role: main performance table
 
 2. **ToolSandbox bundled core slice**
-   - outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix`
+   - outdir: `outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix`
    - role: mechanism analysis
 
 3. **Matched ToolSandbox ablation**
-   - outdir: `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_matched_20260406_094138`
+   - outdir: `outputs/remote/toolsandbox_matched_20260406_094138`
    - role: mechanism isolation
 
 4. **Tau2 full benchmark after `a2` fix**
-   - outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter`
+   - outdir: `outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter`
    - role: interaction / approval stress validation
 
 ### 3.2 Supporting evidence
 
 1. **Tau2 approval-only slice**
-   - outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter`
+   - outdir: `outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter`
    - role: pure approval behavior
 
 2. **Tau2 isolated repeated `binding_plus_approval` stress**
-   - outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter`
+   - outdir: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter`
    - role: negative evidence limiting reuse claims
 
 3. **ToolSandbox reuse split train/eval**
    - outdirs:
-     - `/cephfs/qiuyn/ToolClaw/outputs/exp/toolsandbox_split_train`
-     - `/cephfs/qiuyn/ToolClaw/outputs/exp/toolsandbox_split_eval`
+     - `outputs/exp/toolsandbox_split_train`
+     - `outputs/exp/toolsandbox_split_eval`
    - role: boundary result showing no held-out success advantage for reuse
 
 ### 3.3 Excluded from the main paper path

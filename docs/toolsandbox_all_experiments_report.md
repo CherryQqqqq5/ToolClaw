@@ -17,8 +17,8 @@ Reporting rules:
 
 Since the main report below was written, the repo has added two targeted follow-ups relevant to reuse and interaction:
 
-1. historical reuse-failure diagnosis on `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_persist_pass2`
-2. post-fix targeted 3-run gatefix bench on `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_gatefix_bench`
+1. historical reuse-failure diagnosis on `outputs/remote/toolsandbox_core_r3_persist_pass2`
+2. post-fix targeted 3-run gatefix bench on `outputs/remote/toolsandbox_core_r3_gatefix_bench`
 
 These follow-ups do not change the archived 88-sample official headline result. They do change how the repository should interpret the earlier core-slice reuse regression:
 
@@ -31,7 +31,7 @@ This means the repository can now support "reuse is safer than before on the tar
 
 Since that note, the repo has added a second-stage exact-match continuation follow-up on:
 
-- `/cephfs/qiuyn/ToolClaw/outputs/remote/reuse_strata_tau2_auto_replay_v4`
+- `outputs/remote/reuse_strata_tau2_auto_replay_v4`
 
 This newer follow-up does not change the archived 88-sample headline result either. It does refine the reuse claim boundary:
 
@@ -47,21 +47,21 @@ Therefore the strongest current reuse claim is now:
 
 ## 2. Datasets and provenance
 
-The repo contains two ToolSandbox dataset paths with different roles. Their intended meanings are documented in [docs/toolsandbox_usage.md](/Users/cherry/.codex/worktrees/1bba/ToolClaw/docs/toolsandbox_usage.md:36).
+The repo contains two ToolSandbox dataset paths with different roles. Their intended meanings are documented in [docs/toolsandbox_usage.md](docs/toolsandbox_usage.md:36).
 
 ### 2.1 Official frozen benchmark
 
-- Path: `/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.official.json`
+- Path: `data/toolsandbox.formal.official.json`
 - Role in this report: **main benchmark dataset**
 - Verified properties used in this report:
   - sample count: `88`
-  - benchmark outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix`
+  - benchmark outdir: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix`
   - result summary source in the final report: `reference_result_summary`
   - consistency check: `PASSED`
 
 ### 2.2 Bundled fallback/core slice
 
-- Path: `/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.json`
+- Path: `data/toolsandbox.formal.json`
 - Role in this report: **mechanism-analysis slice**
 - Verified properties:
   - sample count: `14`
@@ -85,7 +85,7 @@ This report includes five archived experiment groups plus two targeted post-fix 
 
 ## 4. System ladder after the `a2` fix
 
-The intended system ladder is now correctly implemented in [scripts/run_eval.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/scripts/run_eval.py:68).
+The intended system ladder is now correctly implemented in [scripts/run_eval.py](scripts/run_eval.py:68).
 
 - `a0_baseline`: baseline execution
 - `a1_recovery`: recovery-only
@@ -119,17 +119,17 @@ Measure end-to-end ToolClaw performance on the restored 88-sample ToolSandbox fr
 
 ### 5.2 Entry
 
-- Runner: [scripts/run_toolsandbox_bench.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/scripts/run_toolsandbox_bench.py)
+- Runner: [scripts/run_toolsandbox_bench.py](scripts/run_toolsandbox_bench.py)
 
 ### 5.3 Inputs and outputs
 
-- Source: `/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.official.json`
-- Normalized taskset: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/prepared/toolsandbox.normalized.json`
-- Outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix`
-- Report: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/report.md`
-- Scoreboard: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/scoreboard.json`
-- Per-system summary: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/per_system_summary.json`
-- Scored comparison: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/comparison.scored.csv`
+- Source: `data/toolsandbox.formal.official.json`
+- Normalized taskset: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/prepared/toolsandbox.normalized.json`
+- Outdir: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix`
+- Report: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/report.md`
+- Scoreboard: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/scoreboard.json`
+- Per-system summary: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/per_system_summary.json`
+- Scored comparison: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/comparison.scored.csv`
 
 ### 5.4 Process
 
@@ -199,16 +199,16 @@ Evaluate the same systems on the explicit 14-sample bundled fallback/core slice 
 
 ### 6.2 Entry
 
-- Runner: [scripts/run_toolsandbox_bench.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/scripts/run_toolsandbox_bench.py)
+- Runner: [scripts/run_toolsandbox_bench.py](scripts/run_toolsandbox_bench.py)
 
 ### 6.3 Inputs and outputs
 
-- Source: `/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.json`
-- Normalized taskset: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/prepared/toolsandbox.normalized.json`
-- Outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix`
-- Report: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/report.md`
-- Scoreboard: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/scoreboard.json`
-- Per-system summary: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/per_system_summary.json`
+- Source: `data/toolsandbox.formal.json`
+- Normalized taskset: `outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/prepared/toolsandbox.normalized.json`
+- Outdir: `outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix`
+- Report: `outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/report.md`
+- Scoreboard: `outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/scoreboard.json`
+- Per-system summary: `outputs/paper_clean_v1/exp_toolsandbox_core_explicit_formaljson_r3_openrouter_a2fix/per_system_summary.json`
 
 ### 6.4 Process
 
@@ -280,19 +280,19 @@ Check whether the earlier `a4 < a3` reuse regression still appears after the str
 ### 9.5.2 Inputs and outputs
 
 - Historical regression-diagnosis outdir:
-  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_persist_pass2`
+  - `outputs/remote/toolsandbox_core_r3_persist_pass2`
 - Post-fix targeted bench outdir:
-  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_gatefix_bench`
+  - `outputs/remote/toolsandbox_core_r3_gatefix_bench`
 - Historical diagnosis:
-  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_persist_pass2/a3_vs_a4_reuse_failure_analysis.json`
+  - `outputs/remote/toolsandbox_core_r3_persist_pass2/a3_vs_a4_reuse_failure_analysis.json`
 - Post-fix diagnosis:
-  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_gatefix_bench/a3_vs_a4_reuse_failure_analysis.json`
+  - `outputs/remote/toolsandbox_core_r3_gatefix_bench/a3_vs_a4_reuse_failure_analysis.json`
 - Post-fix raw comparison:
-  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_gatefix_bench/comparison.raw.csv`
+  - `outputs/remote/toolsandbox_core_r3_gatefix_bench/comparison.raw.csv`
 - Post-fix scored comparison:
-  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_gatefix_bench/comparison.scored.csv`
+  - `outputs/remote/toolsandbox_core_r3_gatefix_bench/comparison.scored.csv`
 - Post-fix per-system summary:
-  - `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_core_r3_gatefix_bench/per_system_summary.json`
+  - `outputs/remote/toolsandbox_core_r3_gatefix_bench/per_system_summary.json`
 
 ### 9.5.3 Historical diagnosis result
 
@@ -344,15 +344,15 @@ Check whether the repaired reuse pipeline can do more than avoid harm, specifica
 ### 9.6.2 Inputs and outputs
 
 - Tau2 repeated taskset:
-  - `/cephfs/qiuyn/ToolClaw/outputs/reuse_experiment_tau2/prepared/repeated_taskset.json`
+  - `outputs/reuse_experiment_tau2/prepared/repeated_taskset.json`
 - Outdir:
-  - `/cephfs/qiuyn/ToolClaw/outputs/remote/reuse_strata_tau2_auto_replay_v4`
+  - `outputs/remote/reuse_strata_tau2_auto_replay_v4`
 - Tier analysis:
-  - `/cephfs/qiuyn/ToolClaw/outputs/remote/reuse_strata_tau2_auto_replay_v4/reuse_strata_analysis.json`
+  - `outputs/remote/reuse_strata_tau2_auto_replay_v4/reuse_strata_analysis.json`
 - Headroom analysis:
-  - `/cephfs/qiuyn/ToolClaw/outputs/remote/reuse_strata_tau2_auto_replay_v4/reuse_headroom_analysis.json`
+  - `outputs/remote/reuse_strata_tau2_auto_replay_v4/reuse_headroom_analysis.json`
 - Raw comparison:
-  - `/cephfs/qiuyn/ToolClaw/outputs/remote/reuse_strata_tau2_auto_replay_v4/comparison.csv`
+  - `outputs/remote/reuse_strata_tau2_auto_replay_v4/comparison.csv`
 
 ### 9.6.3 Result
 
@@ -409,15 +409,15 @@ Isolate which mechanism matters on the ToolSandbox mechanism slice by comparing:
 
 ### 7.2 Entry
 
-- Runner: [scripts/run_toolsandbox_matched_ablation.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/scripts/run_toolsandbox_matched_ablation.py)
-- Delegated benchmark runner: [scripts/run_toolsandbox_bench.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/scripts/run_toolsandbox_bench.py)
+- Runner: [scripts/run_toolsandbox_matched_ablation.py](scripts/run_toolsandbox_matched_ablation.py)
+- Delegated benchmark runner: [scripts/run_toolsandbox_bench.py](scripts/run_toolsandbox_bench.py)
 
 ### 7.3 Inputs and outputs
 
-- Source: `/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.json`
-- Outdir: `/cephfs/qiuyn/ToolClaw/outputs/remote/toolsandbox_matched_20260406_094138`
-- Report: [outputs/remote/toolsandbox_matched_20260406_094138/report.md](/Users/cherry/.codex/worktrees/1bba/ToolClaw/outputs/remote/toolsandbox_matched_20260406_094138/report.md)
-- Manifest: [outputs/remote/toolsandbox_matched_20260406_094138/experiment_manifest.json](/Users/cherry/.codex/worktrees/1bba/ToolClaw/outputs/remote/toolsandbox_matched_20260406_094138/experiment_manifest.json)
+- Source: `data/toolsandbox.formal.json`
+- Outdir: `outputs/remote/toolsandbox_matched_20260406_094138`
+- Report: [outputs/remote/toolsandbox_matched_20260406_094138/report.md](outputs/remote/toolsandbox_matched_20260406_094138/report.md)
+- Manifest: [outputs/remote/toolsandbox_matched_20260406_094138/experiment_manifest.json](outputs/remote/toolsandbox_matched_20260406_094138/experiment_manifest.json)
 
 ### 7.4 Final results
 
@@ -461,21 +461,21 @@ Test reuse under an explicit train/eval split instead of only within one mixed b
 
 ### 8.2 Entry
 
-- Runner: [scripts/run_reuse_split_experiment.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/scripts/run_reuse_split_experiment.py)
+- Runner: [scripts/run_reuse_split_experiment.py](scripts/run_reuse_split_experiment.py)
 
 ### 8.3 Inputs and outputs
 
 Train:
 
-- Source: `/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.train.json`
-- Outdir: `/cephfs/qiuyn/ToolClaw/outputs/exp/toolsandbox_split_train`
-- Report: [outputs/exp/toolsandbox_split_train/report.md](/Users/cherry/.codex/worktrees/1bba/ToolClaw/outputs/exp/toolsandbox_split_train/report.md)
+- Source: `data/toolsandbox.formal.train.json`
+- Outdir: `outputs/exp/toolsandbox_split_train`
+- Report: [outputs/exp/toolsandbox_split_train/report.md](outputs/exp/toolsandbox_split_train/report.md)
 
 Eval:
 
-- Source: `/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.eval.json`
-- Outdir: `/cephfs/qiuyn/ToolClaw/outputs/exp/toolsandbox_split_eval`
-- Report: [outputs/exp/toolsandbox_split_eval/report.md](/Users/cherry/.codex/worktrees/1bba/ToolClaw/outputs/exp/toolsandbox_split_eval/report.md)
+- Source: `data/toolsandbox.formal.eval.json`
+- Outdir: `outputs/exp/toolsandbox_split_eval`
+- Report: [outputs/exp/toolsandbox_split_eval/report.md](outputs/exp/toolsandbox_split_eval/report.md)
 
 ### 8.4 Final results
 
@@ -513,24 +513,24 @@ Use Tau2 to separate failure modes that ToolSandbox alone cannot isolate cleanly
 
 ### 9.2 Detailed report
 
-- [docs/tau2_claim_experiments_report.md](/Users/cherry/.codex/worktrees/1bba/ToolClaw/docs/tau2_claim_experiments_report.md)
+- [docs/tau2_claim_experiments_report.md](docs/tau2_claim_experiments_report.md)
 
 ### 9.3 Inputs and outputs
 
 #### E1. Full Tau2 after `a2` fix
 
-- Source: `/cephfs/qiuyn/ToolClaw/data/tau2_bench.formal.json`
-- Outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter`
+- Source: `data/tau2_bench.formal.json`
+- Outdir: `outputs/paper_clean_v1/exp09_tau2_a2fix_r3_openrouter`
 
 #### E2. Approval-only Tau2 slice
 
-- Source: `/cephfs/qiuyn/ToolClaw/data/tau2_bench.approval_only.json`
-- Outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter`
+- Source: `data/tau2_bench.approval_only.json`
+- Outdir: `outputs/paper_clean_v1/exp07_tau2_approval_only_r3_openrouter`
 
 #### E3. Isolated repeated `binding_plus_approval`
 
-- Source: `/cephfs/qiuyn/ToolClaw/data/tau2_bench.binding_plus_approval_only.json`
-- Outdir: `/cephfs/qiuyn/ToolClaw/outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter`
+- Source: `data/tau2_bench.binding_plus_approval_only.json`
+- Outdir: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter`
 
 ### 9.4 Final results
 
@@ -681,10 +681,10 @@ Additional note:
 
 Reason for exclusion:
 
-- these slices are created by [scripts/derive_toolsandbox_formal_slices.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/scripts/derive_toolsandbox_formal_slices.py)
-- they are structurally checked by [scripts/verify_toolsandbox_slices.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/scripts/verify_toolsandbox_slices.py)
+- these slices are created by [scripts/derive_toolsandbox_formal_slices.py](scripts/derive_toolsandbox_formal_slices.py)
+- they are structurally checked by [scripts/verify_toolsandbox_slices.py](scripts/verify_toolsandbox_slices.py)
 - they are not needed in the final paper path because:
-  - [scripts/run_toolsandbox_bench.py](/Users/cherry/.codex/worktrees/1bba/ToolClaw/scripts/run_toolsandbox_bench.py) already emits focused category summaries for the high-value paper slices
+  - [scripts/run_toolsandbox_bench.py](scripts/run_toolsandbox_bench.py) already emits focused category summaries for the high-value paper slices
   - the explicit bundled core slice is a cleaner mechanism-analysis set
   - matched ablation isolates repair/fallback/reuse effects more directly than many tiny derived slices
   - adding both would increase provenance and multiplicity complexity without changing the main conclusions
