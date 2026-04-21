@@ -259,6 +259,12 @@ def _toolclaw_row_scores(
         "parameter_fill_ratio": float(score.metrics.get("parameter_fill_ratio", 0.0)),
         "policy_format_compliance": float(score.metrics.get("policy_format_compliance", 0.0)),
         "repair_overhead": float(score.metrics.get("repair_overhead", 0.0)),
+        "missing_required_arg_rate": float(score.metrics.get("missing_required_arg_rate", 0.0)),
+        "preflight_interception_rate": float(score.metrics.get("preflight_interception_rate", 0.0)),
+        "repair_success_rate": float(score.metrics.get("repair_success_rate", 0.0)),
+        "exec_verified": float(score.metrics.get("exec_verified", 0.0)),
+        "avg_tool_calls": float(score.metrics.get("avg_tool_calls", 0.0)),
+        "avg_user_queries": float(score.metrics.get("avg_user_queries", 0.0)),
     }
 
 
@@ -392,6 +398,12 @@ def main() -> None:
                 "toolclaw_diagnostics_parameter_fill_ratio": diagnostics["parameter_fill_ratio"],
                 "toolclaw_diagnostics_policy_format_compliance": diagnostics["policy_format_compliance"],
                 "toolclaw_diagnostics_repair_overhead": diagnostics["repair_overhead"],
+                "toolclaw_diagnostics_missing_required_arg_rate": diagnostics["missing_required_arg_rate"],
+                "toolclaw_diagnostics_preflight_interception_rate": diagnostics["preflight_interception_rate"],
+                "toolclaw_diagnostics_repair_success_rate": diagnostics["repair_success_rate"],
+                "toolclaw_diagnostics_exec_verified": diagnostics["exec_verified"],
+                "toolclaw_diagnostics_avg_tool_calls": diagnostics["avg_tool_calls"],
+                "toolclaw_diagnostics_avg_user_queries": diagnostics["avg_user_queries"],
             }
         )
 
@@ -425,6 +437,12 @@ def main() -> None:
                 "toolclaw_diagnostics_parameter_fill_ratio",
                 "toolclaw_diagnostics_policy_format_compliance",
                 "toolclaw_diagnostics_repair_overhead",
+                "toolclaw_diagnostics_missing_required_arg_rate",
+                "toolclaw_diagnostics_preflight_interception_rate",
+                "toolclaw_diagnostics_repair_success_rate",
+                "toolclaw_diagnostics_exec_verified",
+                "toolclaw_diagnostics_avg_tool_calls",
+                "toolclaw_diagnostics_avg_user_queries",
             ],
         ),
     }

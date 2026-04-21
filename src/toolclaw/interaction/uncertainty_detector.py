@@ -286,6 +286,27 @@ class UncertaintyDetector:
         missing: List[str] = []
         if step.capability_id == "cap_write" and not step.inputs.get("target_path"):
             missing.append("target_path")
+        required_input_keys = step.metadata.get("required_input_keys", [])
+        if not isinstance(required_input_keys, list):
+            required_input_keys = []
+        input_bindings = step.metadata.get("input_bindings", {})
+        if not isinstance(input_bindings, dict):
+            input_bindings = {}
+        state_bindings = step.metadata.get("state_bindings", {})
+        if not isinstance(state_bindings, dict):
+            state_bindings = {}
+        implicit_fallbacks = step.metadata.get("implicit_state_fallback_slots", [])
+        if not isinstance(implicit_fallbacks, list):
+            implicit_fallbacks = []
+        for key in required_input_keys:
+            key_text = str(key).strip()
+            if not key_text:
+                continue
+            if key_text in missing or step.inputs.get(key_text) not in {None, ""}:
+                continue
+            if key_text in input_bindings or key_text in state_bindings or key_text in implicit_fallbacks:
+                continue
+            missing.append(key_text)
         return missing
 
     @staticmethod
@@ -299,8 +320,7 @@ class UncertaintyDetector:
         missing_assets: List[str] = []
         if step is not None:
             for key in missing_input_keys:
-                scoped_key = f"{step.step_id}.{key}"
-                if scoped_key not in missing_assets and key not in missing_assets:
+                if key not in missing_assets:
                     missing_assets.append(key)
             for slot in step.metadata.get("required_state_slots", []):
                 slot_text = str(slot)

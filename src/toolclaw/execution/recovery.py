@@ -100,10 +100,17 @@ class RecoveryEngine:
             if isinstance(evidence_metadata.get("simulated_missing_arg_values", {}), dict)
             else {}
         )
+        missing_input_keys = (
+            [str(item) for item in evidence_metadata.get("missing_input_keys", []) if str(item)]
+            if isinstance(evidence_metadata.get("missing_input_keys"), list)
+            else []
+        )
 
         parsed_missing = self._extract_missing_required_fields(raw_message)
         if parsed_missing:
             missing_target = parsed_missing[0]
+        elif missing_input_keys:
+            missing_target = missing_input_keys[0]
 
         if error.state_context.missing_assets:
             missing_target = error.state_context.missing_assets[0]
@@ -167,6 +174,7 @@ class RecoveryEngine:
                 metadata={
                     "mapped_from_error_category": error.category.value,
                     "missing_assets": [missing_target],
+                    "missing_input_keys": list(missing_input_keys),
                     "suggested_values": suggested_values,
                     "phase": "phase1_training_free",
                 },
@@ -253,6 +261,7 @@ class RecoveryEngine:
             ),
             metadata={
                 "mapped_from_error_category": error.category.value,
+                "missing_input_keys": list(missing_input_keys),
                 "phase": "phase1_training_free",
             },
         )

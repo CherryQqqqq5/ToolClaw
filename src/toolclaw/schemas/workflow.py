@@ -105,6 +105,11 @@ class ToolBinding:
     primary_tool: str
     backup_tools: List[str] = field(default_factory=list)
     binding_confidence: float = 0.0
+    required_input_keys: List[str] = field(default_factory=list)
+    input_bindings: Dict[str, str] = field(default_factory=dict)
+    grounding_sources: Dict[str, Any] = field(default_factory=dict)
+    grounding_confidence: Dict[str, float] = field(default_factory=dict)
+    unresolved_required_inputs: List[str] = field(default_factory=list)
 
 
 @dataclass

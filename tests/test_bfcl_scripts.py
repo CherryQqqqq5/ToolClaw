@@ -545,7 +545,16 @@ def test_run_and_score_bfcl_scripts_generate_protocol_outputs(tmp_path: Path) ->
     assert claim_summary["claims"][0]["claim_id"] == "planner_binding_headline"
     assert claim_summary["paper_safe_for_claim"] is True
     assert "toolclaw_diagnostics_repair_overhead" in scored_rows[0]
+    assert "toolclaw_diagnostics_missing_required_arg_rate" in scored_rows[0]
+    assert "toolclaw_diagnostics_preflight_interception_rate" in scored_rows[0]
+    assert "toolclaw_diagnostics_repair_success_rate" in scored_rows[0]
+    assert "toolclaw_diagnostics_exec_verified" in scored_rows[0]
+    assert "toolclaw_diagnostics_avg_tool_calls" in scored_rows[0]
+    assert "toolclaw_diagnostics_avg_user_queries" in scored_rows[0]
     assert "repair_overhead" not in claim_summary["claims"][0]["metric_snapshot"]
+    assert "toolclaw_diagnostics_missing_required_arg_rate" in diagnostics["per_system"]["a0_baseline"]
+    assert "toolclaw_diagnostics_preflight_interception_rate" in diagnostics["per_system"]["a0_baseline"]
+    assert "toolclaw_diagnostics_exec_verified" in diagnostics["per_system"]["a0_baseline"]
 
 
 def test_run_bfcl_full_v4_track_merges_protocol_files(tmp_path: Path) -> None:
@@ -732,6 +741,66 @@ def test_bfcl_adapter_scores_tool_args_payloads() -> None:
 
     assert score.success is True
     assert score.metrics["parameter_fill_ratio"] == 1.0
+
+
+def test_bfcl_adapter_records_preflight_grounding_diagnostics() -> None:
+    adapter = BFCLAdapter()
+    sample = adapter.load_samples_from_tasks(
+        [
+            {
+                "task_id": "weather_case",
+                "query": "Get weather of Ha Noi for me",
+                "candidate_tools": [
+                    {
+                        "tool_id": "api.weather",
+                        "description": "Get weather by location",
+                        "parameters": {
+                            "type": "dict",
+                            "properties": {"loc": {"type": "string"}, "unit": {"type": "string"}},
+                            "required": ["loc"],
+                        },
+                    }
+                ],
+                "metadata": {
+                    "benchmark": "bfcl",
+                    "expected_call_structure": {
+                        "pattern": "serial",
+                        "calls": [
+                            {
+                                "tool_name": "api.weather",
+                                "arguments": {"loc": "Ha Noi, Vietnam"},
+                            }
+                        ],
+                    },
+                },
+            }
+        ]
+    )[0]
+    trace_payload = {
+        "metrics": {"success": False, "repair_actions": 1, "tool_calls": 0, "user_queries": 1},
+        "events": [
+            {
+                "event_type": "preflight_check",
+                "step_id": "step_01",
+                "tool_id": "api.weather",
+                "output": {
+                    "reason": "missing_required_input",
+                    "missing_required_inputs": ["loc"],
+                },
+                "metadata": {"required_input_keys": ["loc", "unit"]},
+            }
+        ],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.success is False
+    assert score.metrics["missing_required_arg_rate"] == 0.5
+    assert score.metrics["preflight_interception_rate"] == 1.0
+    assert score.metrics["repair_success_rate"] == 0.0
+    assert score.metrics["exec_verified"] == 0.0
+    assert score.metrics["avg_tool_calls"] == 0.0
+    assert score.metrics["avg_user_queries"] == 1.0
 
 
 def test_bfcl_runtime_extract_tool_arguments_keeps_benchmark_logic_out_of_executor() -> None:

@@ -93,6 +93,31 @@ class ToolBinder:
             return items
         return set()
 
+    @staticmethod
+    def _tool_parameters(metadata: Dict[str, Any]) -> Dict[str, Any]:
+        parameters = metadata.get("parameters") or metadata.get("schema") or {}
+        return dict(parameters) if isinstance(parameters, dict) else {}
+
+    @classmethod
+    def _tool_required_input_keys(cls, metadata: Dict[str, Any]) -> List[str]:
+        explicit = metadata.get("required_inputs")
+        if isinstance(explicit, list):
+            return [str(item) for item in explicit if str(item)]
+        parameters = cls._tool_parameters(metadata)
+        required = parameters.get("required")
+        if isinstance(required, list):
+            return [str(item) for item in required if str(item)]
+        return []
+
+    @staticmethod
+    def _binding_source_payload(*, source: str, confidence: float, state_key: Optional[str] = None, rationale: Optional[str] = None) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {"source": source, "confidence": float(confidence)}
+        if state_key:
+            payload["state_key"] = state_key
+        if rationale:
+            payload["rationale"] = rationale
+        return payload
+
     def bind_one(self, request: BindingRequest) -> BindingResult:
         capability_name = request.capability.description.lower()
         matches: List[ToolMatch] = []
@@ -139,6 +164,7 @@ class ToolBinder:
                 or metadata.get("state_preconditions")
                 or []
             )
+            required_input_keys = self._tool_required_input_keys(metadata)
             tool_produced_state_slots = self._normalized_items(
                 metadata.get("produces_state_slots")
                 or metadata.get("state_outputs")
@@ -229,7 +255,55 @@ class ToolBinder:
                 reasons.append("sole_candidate_tool")
 
             if score > 0.15:
-                matches.append(ToolMatch(tool_id=tool.tool_id, score=round(score, 4), reasons=reasons))
+                input_bindings: Dict[str, str] = {}
+                grounding_sources: Dict[str, Any] = {}
+                grounding_confidence: Dict[str, float] = {}
+                unresolved_required_inputs: List[str] = []
+                for input_key in required_input_keys:
+                    normalized_key = str(input_key).strip()
+                    if not normalized_key:
+                        continue
+                    if normalized_key in request.state_values:
+                        input_bindings[normalized_key] = normalized_key
+                        grounding_sources[normalized_key] = self._binding_source_payload(
+                            source="state_value",
+                            state_key=normalized_key,
+                            confidence=0.95,
+                            rationale="existing state value matches the required input key",
+                        )
+                        grounding_confidence[normalized_key] = 0.95
+                        continue
+                    if normalized_key.lower() in required_state_slots:
+                        input_bindings[normalized_key] = normalized_key
+                        grounding_sources[normalized_key] = self._binding_source_payload(
+                            source="required_state_slot",
+                            state_key=normalized_key,
+                            confidence=0.85,
+                            rationale="required state slot name matches the required input key",
+                        )
+                        grounding_confidence[normalized_key] = 0.85
+                        continue
+                    unresolved_required_inputs.append(normalized_key)
+                    grounding_sources[normalized_key] = self._binding_source_payload(
+                        source="unresolved",
+                        confidence=0.0,
+                        rationale="tool requires the input but binder has no generic source for it",
+                    )
+                    grounding_confidence[normalized_key] = 0.0
+                matches.append(
+                    ToolMatch(
+                        tool_id=tool.tool_id,
+                        score=round(score, 4),
+                        reasons=reasons,
+                        arg_hints={
+                            "required_input_keys": list(required_input_keys),
+                            "input_bindings": input_bindings,
+                            "grounding_sources": grounding_sources,
+                            "grounding_confidence": grounding_confidence,
+                            "unresolved_required_inputs": unresolved_required_inputs,
+                        },
+                    )
+                )
 
         matches.sort(key=lambda m: (-m.score, m.tool_id))
         if not matches:
@@ -247,8 +321,24 @@ class ToolBinder:
             primary_tool=primary.tool_id,
             backup_tools=backup_tools,
             binding_confidence=primary.score,
+            required_input_keys=list(primary.arg_hints.get("required_input_keys", [])),
+            input_bindings=dict(primary.arg_hints.get("input_bindings", {})),
+            grounding_sources=dict(primary.arg_hints.get("grounding_sources", {})),
+            grounding_confidence=dict(primary.arg_hints.get("grounding_confidence", {})),
+            unresolved_required_inputs=list(primary.arg_hints.get("unresolved_required_inputs", [])),
         )
-        return BindingResult(binding=binding, alternatives=matches)
+        return BindingResult(
+            binding=binding,
+            alternatives=matches,
+            metadata={
+                "tool_choice_evidence": list(primary.reasons),
+                "required_input_keys": list(binding.required_input_keys),
+                "input_bindings": dict(binding.input_bindings),
+                "grounding_sources": dict(binding.grounding_sources),
+                "grounding_confidence": dict(binding.grounding_confidence),
+                "unresolved_required_inputs": list(binding.unresolved_required_inputs),
+            },
+        )
 
     def bind_graph(
         self,

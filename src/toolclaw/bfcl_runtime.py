@@ -550,6 +550,15 @@ def _extract_enum_value(key: str, enum_values: Sequence[str], text: str) -> Any:
     for phrase, mapped in _ENUM_SYNONYMS.get(key, {}).items():
         if phrase in lower and mapped in enum_values:
             return mapped
+    normalized_key = key.lower().replace("_level", "").replace("_", " ").strip()
+    if "none" in enum_values:
+        none_patterns = {
+            f"no {normalized_key}",
+            f"without {normalized_key}",
+            f"{normalized_key} none",
+        }
+        if any(pattern in lower for pattern in none_patterns if pattern.strip()):
+            return "none"
     return None
 
 
@@ -593,9 +602,12 @@ def _extract_integer_value(key: str, prop: Mapping[str, Any], text: str) -> Any:
                 return value
     indexed_key = re.match(r"([a-z_]+?)(\d+)$", key_lower)
     if indexed_key and numbers:
+        candidate_numbers = list(numbers)
+        if len(candidate_numbers) >= 2 and candidate_numbers[0] == len(candidate_numbers) - 1:
+            candidate_numbers = candidate_numbers[1:]
         ordinal = int(indexed_key.group(2)) - 1
-        if 0 <= ordinal < len(numbers):
-            return numbers[ordinal]
+        if 0 <= ordinal < len(candidate_numbers):
+            return candidate_numbers[ordinal]
     if key_lower.endswith("id") or "identifier" in str(prop.get("description") or "").lower():
         match = re.search(rf"{re.escape(key_lower.replace('_', ' '))}[^\d]*(\d+)", lower)
         if match:

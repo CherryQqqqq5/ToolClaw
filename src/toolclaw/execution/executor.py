@@ -89,6 +89,7 @@ class RepairApplyResult:
 @dataclass
 class ExecutorConfig:
     allow_repair: bool = True
+    enable_schema_preflight: bool = True
     max_suffix_replans_per_signature: int = 2
     max_total_suffix_replans: int = 8
     suffix_replan_timeout_s: float = 6.0
@@ -341,7 +342,20 @@ class SequentialExecutor:
                 )
 
             state_error = self._check_state_failure(step=step, trace=trace, state_values=tracker.state_values)
-            step_result = state_error or self._execute_step(workflow=workflow, step=step, trace=trace, state_values=tracker.state_values)
+            input_error = None
+            if state_error is None:
+                input_error = self._check_required_input_failure(
+                    workflow=workflow,
+                    step=step,
+                    trace=trace,
+                    state_values=tracker.state_values,
+                )
+            step_result = state_error or input_error or self._execute_step(
+                workflow=workflow,
+                step=step,
+                trace=trace,
+                state_values=tracker.state_values,
+            )
             tracker.state_values["__tool_calls__"] = trace.metrics.tool_calls
             self._update_trace_budget_usage(trace, tracker.state_values)
             if step_result.ok:
@@ -1007,12 +1021,57 @@ class SequentialExecutor:
         return []
 
     @staticmethod
+    def _required_input_keys(step: WorkflowStep) -> list[str]:
+        explicit = step.metadata.get("required_input_keys")
+        if isinstance(explicit, list):
+            return [str(item) for item in explicit if str(item)]
+        return []
+
+    @staticmethod
+    def _input_bindings(step: WorkflowStep) -> dict[str, str]:
+        configured = step.metadata.get("input_bindings", {})
+        if not isinstance(configured, dict):
+            return {}
+        normalized: dict[str, str] = {}
+        for input_key, source in configured.items():
+            input_text = str(input_key).strip()
+            source_text = str(source).strip()
+            if input_text and source_text:
+                normalized[input_text] = source_text
+        return normalized
+
+    def _schema_preflight_enabled(self, workflow: Workflow, step: WorkflowStep) -> bool:
+        if not self.config.enable_schema_preflight:
+            return False
+        if step.metadata.get("disable_schema_preflight") is True:
+            return False
+        workflow_flag = workflow.metadata.get("enable_schema_preflight")
+        if workflow_flag is None:
+            return True
+        return bool(workflow_flag)
+
+    @classmethod
+    def _missing_required_inputs(
+        cls,
+        *,
+        step: WorkflowStep,
+        tool_args: Dict[str, Any],
+    ) -> list[str]:
+        return [
+            key
+            for key in cls._required_input_keys(step)
+            if cls._is_missing_state_value(tool_args.get(key))
+        ]
+
+    @staticmethod
     def _persistable_materialized_keys(step: WorkflowStep, tool_args: Dict[str, Any]) -> list[str]:
         keys: set[str] = set()
+        keys.update(SequentialExecutor._input_bindings(step).keys())
         state_bindings = step.metadata.get("state_bindings", {})
         if isinstance(state_bindings, dict):
             keys.update(str(key) for key in state_bindings.keys() if str(key))
         keys.update(str(item) for item in step.metadata.get("required_state_slots", []) if str(item))
+        keys.update(SequentialExecutor._required_input_keys(step))
         keys.update(SequentialExecutor._implicit_state_fallback_slots(step))
         if step.capability_id == "cap_write":
             keys.add("target_path")
@@ -1021,6 +1080,9 @@ class SequentialExecutor:
     @staticmethod
     def _materialize_tool_args(step: WorkflowStep, state_values: Dict[str, Any]) -> Dict[str, Any]:
         tool_args = dict(step.inputs)
+        for input_key, state_key in SequentialExecutor._input_bindings(step).items():
+            if state_key in state_values and input_key not in tool_args:
+                tool_args[input_key] = state_values[state_key]
         state_bindings = step.metadata.get("state_bindings", {})
         if isinstance(state_bindings, dict):
             for input_key, state_key in state_bindings.items():
@@ -1156,6 +1218,89 @@ class SequentialExecutor:
         )
         return StepExecutionResult(ok=False, step_id=step.step_id, tool_id=step.tool_id, error=error)
 
+    def _check_required_input_failure(
+        self,
+        *,
+        workflow: Workflow,
+        step: WorkflowStep,
+        trace: Trace,
+        state_values: Dict[str, Any],
+    ) -> Optional[StepExecutionResult]:
+        if not self._schema_preflight_enabled(workflow, step):
+            return None
+        tool_args = self._materialize_tool_args(step=step, state_values=state_values)
+        missing_required_inputs = self._missing_required_inputs(step=step, tool_args=tool_args)
+        if not missing_required_inputs:
+            return None
+        trace.add_event(
+            event_id=f"evt_preflight_required_inputs_{step.step_id}",
+            event_type=EventType.PREFLIGHT_CHECK,
+            actor="executor",
+            step_id=step.step_id,
+            tool_id=step.tool_id,
+            output={
+                "status": "failed",
+                "reason": "missing_required_input",
+                "missing_required_inputs": list(missing_required_inputs),
+            },
+            metadata={
+                "required_input_keys": self._required_input_keys(step),
+                "input_bindings": self._input_bindings(step),
+            },
+        )
+        error = ToolClawError(
+            error_id=f"err_preflight_input_{step.step_id}",
+            run_id=trace.run_id,
+            workflow_id=trace.workflow_id,
+            step_id=step.step_id,
+            category=ErrorCategory.BINDING_FAILURE,
+            subtype="missing_required_input",
+            severity=ErrorSeverity.MEDIUM,
+            stage=ErrorStage.EXECUTION,
+            symptoms=[f"missing required input(s): {', '.join(missing_required_inputs)}"],
+            evidence=ErrorEvidence(
+                tool_id=step.tool_id,
+                raw_message=f"missing required input(s): {', '.join(missing_required_inputs)}",
+                inputs=dict(tool_args),
+                metadata={
+                    "required_input_keys": self._required_input_keys(step),
+                    "missing_input_keys": list(missing_required_inputs),
+                    "input_bindings": self._input_bindings(step),
+                    "grounding_sources": dict(step.metadata.get('grounding_sources', {}))
+                    if isinstance(step.metadata.get("grounding_sources"), dict)
+                    else {},
+                    "grounding_confidence": dict(step.metadata.get('grounding_confidence', {}))
+                    if isinstance(step.metadata.get("grounding_confidence"), dict)
+                    else {},
+                    "repair_default_inputs": dict(step.metadata.get("repair_default_inputs", {}))
+                    if isinstance(step.metadata.get("repair_default_inputs"), dict)
+                    else {},
+                },
+            ),
+            root_cause_hypothesis=["executor preflight detected missing required tool inputs before execution"],
+            state_context=StateContext(
+                active_capability=step.capability_id,
+                active_step_id=step.step_id,
+                missing_assets=list(missing_required_inputs),
+                state_values=dict(state_values),
+                policy_flags={"approval_pending": False},
+            ),
+            recoverability=Recoverability(
+                recoverable=True,
+                requires_user_input=True,
+                requires_tool_switch=False,
+                requires_rollback=False,
+                requires_approval=False,
+            ),
+            failtax_label=ErrorCategory.BINDING_FAILURE.value,
+            metadata={
+                "failure_class": "missing_required_input",
+                "missing_input_keys": list(missing_required_inputs),
+                "missing_state_slots": [],
+            },
+        )
+        return StepExecutionResult(ok=False, step_id=step.step_id, tool_id=step.tool_id, error=error)
+
     @staticmethod
     def _inject_step_state_failures(
         *,
@@ -1251,10 +1396,18 @@ class SequentialExecutor:
         if category == ErrorCategory.BINDING_FAILURE:
             if step.capability_id == "cap_write" and not tool_args.get("target_path"):
                 inferred_missing_assets.append("target_path")
+            required_input_keys = self._required_input_keys(step)
+            missing_input_keys = self._missing_required_inputs(step=step, tool_args=tool_args)
+            for input_key in missing_input_keys:
+                if input_key not in inferred_missing_assets:
+                    inferred_missing_assets.append(input_key)
             required_slots = [str(item) for item in step.metadata.get("required_state_slots", []) if str(item)]
             for slot in required_slots:
                 if slot not in inferred_missing_assets and self._is_missing_state_value(tool_args.get(slot)):
                     inferred_missing_assets.append(slot)
+        else:
+            required_input_keys = self._required_input_keys(step)
+            missing_input_keys = []
 
         error_obj = ToolClawError(
             error_id=f"err_{step.step_id}",
@@ -1275,6 +1428,15 @@ class SequentialExecutor:
                     "preflight_state_policy": preflight_policy,
                     "repair_default_inputs": repair_default_inputs,
                     "simulated_missing_arg_values": simulated_missing_arg_values,
+                    "required_input_keys": required_input_keys,
+                    "missing_input_keys": missing_input_keys,
+                    "input_bindings": self._input_bindings(step),
+                    "grounding_sources": dict(step.metadata.get("grounding_sources", {}))
+                    if isinstance(step.metadata.get("grounding_sources"), dict)
+                    else {},
+                    "grounding_confidence": dict(step.metadata.get("grounding_confidence", {}))
+                    if isinstance(step.metadata.get("grounding_confidence"), dict)
+                    else {},
                 },
             ),
             root_cause_hypothesis=["tool invocation failed in sequential execution"],
@@ -1295,29 +1457,54 @@ class SequentialExecutor:
             ),
             recoverability=Recoverability(
                 recoverable=True,
-                requires_user_input=(category in {ErrorCategory.ENVIRONMENT_FAILURE, ErrorCategory.STATE_FAILURE}),
+                requires_user_input=(category in {ErrorCategory.ENVIRONMENT_FAILURE, ErrorCategory.STATE_FAILURE} or bool(missing_input_keys)),
                 requires_tool_switch=(category == ErrorCategory.ENVIRONMENT_FAILURE),
                 requires_rollback=False,
                 requires_approval=False,
             ),
             failtax_label=category.value,
+            metadata={
+                "failure_class": "missing_required_input" if missing_input_keys else ("missing_state_slot" if inferred_missing_assets else "tool_execution_error"),
+                "missing_input_keys": list(missing_input_keys),
+                "missing_state_slots": [slot for slot in inferred_missing_assets if slot not in missing_input_keys],
+            },
         )
         return error_obj
 
     @staticmethod
     def run_preflight(workflow: Workflow) -> "PreflightReport":
         missing_assets = []
+        missing_required_inputs = []
         warnings = []
         for step in workflow.execution_plan:
             if step.capability_id == "cap_write" and not step.inputs.get("target_path"):
                 missing_assets.append(f"{step.step_id}.target_path")
             if not step.tool_id:
                 warnings.append(f"{step.step_id} has no bound tool")
+            input_bindings = SequentialExecutor._input_bindings(step)
+            state_bindings = step.metadata.get("state_bindings", {})
+            if not isinstance(state_bindings, dict):
+                state_bindings = {}
+            for input_key in SequentialExecutor._required_input_keys(step):
+                if input_key in step.inputs:
+                    continue
+                if input_key in input_bindings:
+                    continue
+                if input_key in state_bindings:
+                    continue
+                if input_key in SequentialExecutor._implicit_state_fallback_slots(step):
+                    continue
+                missing_required_inputs.append(f"{step.step_id}.{input_key}")
             preflight_policy = SequentialExecutor._preflight_state_policy_for_step(step)
             state_slot = str(preflight_policy.get("state_slot") or "")
             if state_slot:
                 missing_assets.append(f"{step.step_id}.{state_slot}")
-        return PreflightReport(ok=not warnings, missing_assets=missing_assets, warnings=warnings)
+        return PreflightReport(
+            ok=not warnings and not missing_required_inputs,
+            missing_assets=missing_assets,
+            missing_required_inputs=missing_required_inputs,
+            warnings=warnings,
+        )
 
     @staticmethod
     def _sanitize_tool_args(tool_id: Optional[str], tool_args: Dict[str, Any]) -> Dict[str, Any]:
@@ -1451,7 +1638,13 @@ from toolclaw.planner.htgp import HTGPPlanner  # noqa: E402
 class PreflightReport:
     ok: bool
     missing_assets: list[str] = field(default_factory=list)
+    missing_required_inputs: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"ok": self.ok, "missing_assets": list(self.missing_assets), "warnings": list(self.warnings)}
+        return {
+            "ok": self.ok,
+            "missing_assets": list(self.missing_assets),
+            "missing_required_inputs": list(self.missing_required_inputs),
+            "warnings": list(self.warnings),
+        }

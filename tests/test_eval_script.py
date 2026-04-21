@@ -274,6 +274,46 @@ def test_build_workflow_from_task_rejects_empty_toolsandbox_tool_space() -> None
         raise AssertionError("expected ValueError for empty ToolSandbox tool space")
 
 
+def test_build_workflow_from_task_bfcl_expected_empty_calls_abstains_even_with_relevant_tool() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_expected_abstain", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_live_irrelevance_expected_empty_001",
+            "query": "Chama um uber pra mim ae pro endereço Rua Explosao, 8899?",
+            "candidate_tools": [
+                {
+                    "tool_id": "call_uber",
+                    "description": "Requests an Uber ride to the specified pickup location.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["location"],
+                        "properties": {"location": {"type": "string"}},
+                    },
+                }
+            ],
+            "expected_call_structure": {"pattern": "serial", "calls": []},
+            "metadata": {
+                "benchmark": "bfcl",
+                "bfcl_group": "live",
+                "bfcl_call_pattern": "serial",
+                "expected_call_structure": {"pattern": "serial", "calls": []},
+            },
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_preflight_only"],
+    )
+
+    assert workflow.metadata["bfcl_abstained"] is True
+    assert workflow.execution_plan == []
+    assert workflow.tool_bindings == []
+
+
 def test_build_planning_request_preserves_toolsandbox_metadata() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_request", module_path)
@@ -382,7 +422,7 @@ def test_execute_system_planner_executor_skips_second_planner(monkeypatch, tmp_p
     build_calls: list[str] = []
     executed: dict[str, object] = {}
 
-    def fake_build_workflow_from_task(task, mode="demo"):
+    def fake_build_workflow_from_task(task, mode="demo", spec=None, **kwargs):
         build_calls.append(mode)
         return seed_workflow
 
@@ -430,7 +470,7 @@ def test_execute_system_baseline_uses_planner_workflow(monkeypatch, tmp_path: Pa
     build_calls: list[str] = []
     run_calls: dict[str, object] = {}
 
-    def fake_build_workflow_from_task(task, mode="demo"):
+    def fake_build_workflow_from_task(task, mode="demo", spec=None, **kwargs):
         build_calls.append(mode)
         return workflow
 
@@ -466,7 +506,7 @@ def test_execute_system_baseline_uses_planner_workflow(monkeypatch, tmp_path: Pa
         runtime=None,
     )
 
-    assert build_calls == ["planner"]
+    assert build_calls == ["demo"]
     assert run_calls["workflow"] is workflow
     assert row.system == "a0_baseline"
 
@@ -484,7 +524,7 @@ def test_execute_system_bfcl_structured_interaction_uses_shell(monkeypatch, tmp_
     build_calls: list[str] = []
     shell_calls: list[str] = []
 
-    def fake_build_workflow_from_task(task, mode="demo"):
+    def fake_build_workflow_from_task(task, mode="demo", spec=None, **kwargs):
         build_calls.append(mode)
         return workflow
 
@@ -539,7 +579,7 @@ def test_execute_system_interaction_uses_same_planner_workflow_as_a2(monkeypatch
     workflow.execution_plan[0].tool_id = "weather_lookup"
     build_calls: list[str] = []
 
-    def fake_build_workflow_from_task(task, mode="demo"):
+    def fake_build_workflow_from_task(task, mode="demo", spec=None, **kwargs):
         build_calls.append(mode)
         return workflow
 
@@ -584,7 +624,7 @@ def test_execute_system_recovery_executor_uses_seed_workflow(monkeypatch, tmp_pa
     build_calls: list[str] = []
     executed: dict[str, object] = {}
 
-    def fake_build_workflow_from_task(task, mode="demo"):
+    def fake_build_workflow_from_task(task, mode="demo", spec=None, **kwargs):
         build_calls.append(mode)
         return workflow
 
@@ -609,7 +649,7 @@ def test_execute_system_recovery_executor_uses_seed_workflow(monkeypatch, tmp_pa
         runtime=runtime,
     )
 
-    assert build_calls == ["seed"]
+    assert build_calls == ["demo"]
     assert executed["workflow"] is workflow
     assert row["system"] == "a1_recovery"
 
@@ -626,7 +666,7 @@ def test_execute_system_rolls_back_transfer_reuse_to_a3_behavior(monkeypatch, tm
     seed_workflow.task.task_id = "toolsandbox_reuse_rollback_001"
     seed_workflow.task.user_goal = "retrieve and write report"
 
-    def fake_build_workflow_from_task(task, mode="demo"):
+    def fake_build_workflow_from_task(task, mode="demo", spec=None, **kwargs):
         return seed_workflow
 
     def fake_row_from_trace(*, task, system, scenario, trace_path, reused_artifact):
@@ -640,7 +680,7 @@ def test_execute_system_rolls_back_transfer_reuse_to_a3_behavior(monkeypatch, tm
     call_log: list[dict[str, object]] = []
 
     class FakeShell:
-        def run(self, *, request, run_id, output_path, backup_tool_map, use_reuse, compile_on_success):
+        def run(self, *, request, run_id, output_path, backup_tool_map, use_reuse, compile_on_success, seed_workflow=None):
             call_log.append(
                 {
                     "use_reuse": use_reuse,
@@ -745,9 +785,9 @@ def test_build_runtime_for_spec_detaches_executor_planner_for_non_replan_specs(m
     planner_runtime = module.build_runtime_for_spec(spec=module.SYSTEM_SPECS["a2_planner"])
     interaction_runtime = module.build_runtime_for_spec(spec=module.SYSTEM_SPECS["a3_interaction"])
 
-    assert recovery_runtime.executor.planner is None
-    assert planner_runtime.executor.planner is None
-    assert interaction_runtime.executor.planner is not None
+    assert recovery_runtime.executor.planner is not None
+    assert planner_runtime.executor.planner is not None
+    assert interaction_runtime.executor.planner is None
 
 
 def test_run_baseline_preserves_toolsandbox_trace_metadata(tmp_path: Path) -> None:
@@ -802,7 +842,7 @@ def test_run_baseline_stops_on_approval_required_policy_gate(tmp_path: Path) -> 
     assert stop_reason == "awaiting_user_interaction"
 
 
-def test_run_eval_script_separates_recovery_only_and_planner_only_ablation(tmp_path: Path) -> None:
+def test_run_eval_script_separates_grounding_ablation_configs(tmp_path: Path) -> None:
     taskset = [
         {
             "task_id": "task_binding_planner_001",
@@ -827,8 +867,8 @@ def test_run_eval_script_separates_recovery_only_and_planner_only_ablation(tmp_p
         str(taskset_path),
         "--outdir",
         str(outdir),
-        "--mode",
-        "planner",
+        "--systems",
+        "tc_recovery_only,fc_preflight_only,fc_grounding_recovery",
     ]
     completed = subprocess.run(
         cmd,
@@ -842,9 +882,10 @@ def test_run_eval_script_separates_recovery_only_and_planner_only_ablation(tmp_p
 
     rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
     toolclaw_rows = {(row["task_id"], row["system"]): row for row in rows}
-    assert int(toolclaw_rows[("task_binding_planner_001", "a1_recovery")]["repair_actions"]) >= 1
-    assert toolclaw_rows[("task_binding_planner_001", "a2_planner")]["stop_reason"] == "repair_disabled"
-    assert int(toolclaw_rows[("task_env_planner_001", "a2_planner")]["repair_actions"]) == 0
+    assert int(toolclaw_rows[("task_binding_planner_001", "tc_recovery_only")]["repair_actions"]) >= 1
+    assert toolclaw_rows[("task_binding_planner_001", "fc_preflight_only")]["stop_reason"] == "repair_disabled"
+    assert int(toolclaw_rows[("task_binding_planner_001", "fc_grounding_recovery")]["repair_actions"]) >= 1
+    assert int(toolclaw_rows[("task_env_planner_001", "fc_preflight_only")]["repair_actions"]) == 0
 
 
 def test_build_shell_supports_configured_llm_backend_without_placeholder_error() -> None:
@@ -1252,7 +1293,7 @@ def test_execute_system_uses_shell_for_bfcl_interaction_workflows(monkeypatch: p
     shell_calls: list[str] = []
     executor_calls: list[str] = []
 
-    def _fake_build_workflow_from_task(task: dict, mode: str = "demo"):
+    def _fake_build_workflow_from_task(task: dict, mode: str = "demo", spec=None, **kwargs):
         assert mode == "planner"
         return workflow
 

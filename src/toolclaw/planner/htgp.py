@@ -400,7 +400,6 @@ class PolicyInjector:
     ) -> List[WorkflowStep]:
         benchmark_hints = benchmark_hints or {}
         step_hints = list(step_hints or [])
-        binding_by_cap = {binding.capability_id: binding for binding in bindings}
         milestone_assignments = self._assign_milestones_to_capabilities(
             [capability.capability_id for capability in graph.capabilities],
             benchmark_hints.get("milestones", []),
@@ -410,7 +409,7 @@ class PolicyInjector:
         steps: List[WorkflowStep] = []
         for idx, capability in enumerate(graph.capabilities, start=1):
             hint = step_hints[idx - 1] if idx - 1 < len(step_hints) else {}
-            binding = binding_by_cap.get(capability.capability_id)
+            binding = bindings[idx - 1] if idx - 1 < len(bindings) else None
             tool_id = binding.primary_tool if binding else None
             if capability.capability_id == "cap_retrieve":
                 inputs = {"query": task.user_goal}
@@ -444,6 +443,11 @@ class PolicyInjector:
                 if isinstance(hint.get("preflight_state_policy"), dict)
                 else {}
             )
+            required_input_keys = list(binding.required_input_keys) if binding else []
+            input_bindings = dict(binding.input_bindings) if binding else {}
+            grounding_sources = dict(binding.grounding_sources) if binding else {}
+            grounding_confidence = dict(binding.grounding_confidence) if binding else {}
+            unresolved_required_inputs = list(binding.unresolved_required_inputs) if binding else []
             checkpoint_reason = (
                 str(hint.get("checkpoint_reason"))
                 if hint.get("checkpoint_reason")
@@ -472,6 +476,11 @@ class PolicyInjector:
                         ),
                         "required_state_slots": required_state_slots,
                         "state_bindings": state_bindings,
+                        "required_input_keys": required_input_keys,
+                        "input_bindings": input_bindings,
+                        "grounding_sources": grounding_sources,
+                        "grounding_confidence": grounding_confidence,
+                        "unresolved_required_inputs": unresolved_required_inputs,
                         "ordering_sensitive": ordering_sensitive,
                         "dependency_sources": dependency_sources,
                         "dependency_type": hint.get("dependency_type"),
@@ -554,13 +563,13 @@ class PolicyInjector:
         allowed_tools = {str(item) for item in benchmark_hints.get("tool_allow_list", []) if str(item)}
         nodes: List[WorkflowNode] = []
         edges: List[WorkflowEdge] = []
-        binding_by_capability = {binding.capability_id: binding for binding in (bindings or [])}
         for idx, step in enumerate(steps):
-            binding = binding_by_capability.get(step.capability_id)
+            binding = bindings[idx] if bindings and idx < len(bindings) else None
             tool_candidates = ([step.tool_id] if step.tool_id else []) + (list(binding.backup_tools) if binding else [])
             if allowed_tools:
                 tool_candidates = [tool_id for tool_id in tool_candidates if tool_id in allowed_tools]
             required_state_slots = [str(item) for item in step.metadata.get("required_state_slots", []) if str(item)]
+            required_input_keys = [str(item) for item in step.metadata.get("required_input_keys", []) if str(item)]
             preflight_state_policy = (
                 dict(step.metadata.get("preflight_state_policy", {}))
                 if isinstance(step.metadata.get("preflight_state_policy"), dict)
@@ -575,6 +584,18 @@ class PolicyInjector:
                 )
                 for slot in required_state_slots
             ]
+            existing_requirement_keys = {req.asset_key for req in preflight_requirements}
+            for input_key in required_input_keys:
+                if input_key in existing_requirement_keys:
+                    continue
+                preflight_requirements.append(
+                    PreflightRequirement(
+                        asset_key=input_key,
+                        source="required_input",
+                        required=True,
+                        metadata={"step_id": step.step_id},
+                    )
+                )
             preflight_slot = str(preflight_state_policy.get("state_slot") or "")
             if preflight_slot and preflight_slot not in {req.asset_key for req in preflight_requirements}:
                 preflight_requirements.append(

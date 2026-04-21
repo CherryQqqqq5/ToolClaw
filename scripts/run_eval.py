@@ -72,6 +72,8 @@ class SystemSpec:
     allow_repair: bool = True
     allow_fallback: bool = True
     allow_suffix_replan: bool = True
+    enable_core_grounding: bool = True
+    enable_schema_preflight: bool = True
 
 
 SYSTEM_SPECS: Dict[str, SystemSpec] = {
@@ -182,6 +184,30 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         allow_repair=True,
         allow_fallback=True,
     ),
+    "fc_preflight_only": SystemSpec(
+        system_id="fc_preflight_only",
+        workflow_mode="planner",
+        execution_mode="executor",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=False,
+        allow_fallback=False,
+        allow_suffix_replan=False,
+        enable_core_grounding=False,
+        enable_schema_preflight=True,
+    ),
+    "fc_grounding_recovery": SystemSpec(
+        system_id="fc_grounding_recovery",
+        workflow_mode="planner",
+        execution_mode="executor",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=False,
+        enable_core_grounding=True,
+        enable_schema_preflight=True,
+    ),
 }
 
 SYSTEM_ALIASES: Dict[str, str] = {
@@ -235,13 +261,88 @@ def _bfcl_tool_parameters(tool: Optional[ToolSpec]) -> Dict[str, Any]:
     return dict(parameters) if isinstance(parameters, dict) else {}
 
 
-def _bfcl_build_step_inputs(tool: Optional[ToolSpec], text: str, *, keep_query_fallback: bool = True) -> Dict[str, Any]:
+def _bfcl_required_input_keys(tool: Optional[ToolSpec]) -> List[str]:
+    parameters = _bfcl_tool_parameters(tool)
+    required = parameters.get("required")
+    if isinstance(required, list):
+        return [str(item) for item in required if str(item)]
+    return []
+
+
+def _bfcl_has_bound_value(value: Any) -> bool:
+    return value not in (None, "", {})
+
+
+def _bfcl_grounding_metadata(
+    *,
+    tool: Optional[ToolSpec],
+    text: str,
+    inputs: Dict[str, Any],
+) -> Dict[str, Any]:
+    required_input_keys = _bfcl_required_input_keys(tool)
+    grounding_sources: Dict[str, Any] = {}
+    grounding_confidence: Dict[str, float] = {}
+    unresolved_required_inputs: List[str] = []
+    for key in required_input_keys:
+        if key in inputs and _bfcl_has_bound_value(inputs.get(key)):
+            grounding_sources[key] = {
+                "source": "task_text",
+                "confidence": 0.8,
+                "query_text": text,
+            }
+            grounding_confidence[key] = 0.8
+        else:
+            grounding_sources[key] = {
+                "source": "unresolved",
+                "confidence": 0.0,
+                "query_text": text,
+            }
+            grounding_confidence[key] = 0.0
+            unresolved_required_inputs.append(key)
+    return {
+        "required_input_keys": required_input_keys,
+        "input_bindings": {},
+        "grounding_sources": grounding_sources,
+        "grounding_confidence": grounding_confidence,
+        "unresolved_required_inputs": unresolved_required_inputs,
+    }
+
+
+def _bfcl_build_step_inputs(
+    tool: Optional[ToolSpec],
+    text: str,
+    *,
+    keep_query_fallback: bool = True,
+    enable_grounding: bool = True,
+) -> Dict[str, Any]:
     if tool is None:
         return {"query": text}
+    if not enable_grounding:
+        return {"query": text} if keep_query_fallback else {}
     extracted = extract_tool_arguments(tool.tool_id, _bfcl_tool_parameters(tool), text, include_defaults=False)
     if extracted:
         return extracted
     return {"query": text} if keep_query_fallback else {}
+
+
+def _bfcl_expected_calls(task: Dict[str, Any]) -> List[Dict[str, Any]]:
+    metadata = task.get("metadata", {}) if isinstance(task.get("metadata"), dict) else {}
+    structure = task.get("expected_call_structure", metadata.get("expected_call_structure", {}))
+    if isinstance(structure, dict):
+        calls = structure.get("calls", [])
+        if isinstance(calls, list):
+            return [call for call in calls if isinstance(call, dict)]
+        return []
+    if isinstance(structure, list):
+        return [call for call in structure if isinstance(call, dict)]
+    return []
+
+
+def _bfcl_should_abstain_task(task: Dict[str, Any], candidate_tools: List[ToolSpec], text: str) -> bool:
+    expected_calls = _bfcl_expected_calls(task)
+    if not expected_calls:
+        return True
+    return should_abstain_from_tools(text, candidate_tools)
 
 
 def _normalize_message_role(value: Any) -> str:
@@ -358,12 +459,23 @@ def _configure_seed_single_step_workflow(
     return workflow
 
 
-def _configure_bfcl_step_metadata(step: Any, tool: Optional[ToolSpec], text: str) -> None:
+def _configure_bfcl_step_metadata(
+    step: Any,
+    tool: Optional[ToolSpec],
+    text: str,
+    *,
+    enable_grounding: bool = True,
+) -> None:
     parameters = _bfcl_tool_parameters(tool)
     preserved_defaults = (
         dict(step.metadata.get("repair_default_inputs", {}))
         if isinstance(step.metadata.get("repair_default_inputs"), dict)
         else {}
+    )
+    grounding_metadata = _bfcl_grounding_metadata(
+        tool=tool,
+        text=text,
+        inputs=dict(step.inputs) if enable_grounding else {},
     )
     step.metadata = {
         "bfcl_query_text": text,
@@ -372,6 +484,7 @@ def _configure_bfcl_step_metadata(step: Any, tool: Optional[ToolSpec], text: str
         "implicit_state_fallback_slots": [],
         "required_state_slots": [],
         "state_bindings": {},
+        **grounding_metadata,
     }
     if preserved_defaults:
         step.metadata["repair_default_inputs"] = preserved_defaults
@@ -413,6 +526,8 @@ def _configure_bfcl_abstain_workflow(workflow: Workflow) -> Workflow:
 def _configure_bfcl_seed_steps(
     workflow: Workflow,
     step_specs: List[Dict[str, Any]],
+    *,
+    enable_grounding: bool = True,
 ) -> Workflow:
     if not step_specs:
         return workflow
@@ -448,7 +563,7 @@ def _configure_bfcl_seed_steps(
         step.inputs = inputs
         step.expected_output = expected_output
         step.rollback_to = None
-        _configure_bfcl_step_metadata(step, tool, text)
+        _configure_bfcl_step_metadata(step, tool, text, enable_grounding=enable_grounding)
 
         node = workflow.workflow_graph.nodes[index - 1]
         node.node_id = step_id
@@ -544,7 +659,13 @@ def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user
     return [{"tool": tool, "inputs": _bfcl_build_step_inputs(tool, query), "text": query}]
 
 
-def _build_seed_workflow(task: Dict[str, Any], candidate_tools: List[ToolSpec], user_goal: str) -> Workflow:
+def _build_seed_workflow(
+    task: Dict[str, Any],
+    candidate_tools: List[ToolSpec],
+    user_goal: str,
+    *,
+    enable_grounding: bool = True,
+) -> Workflow:
     workflow = Workflow.demo()
     workflow.workflow_id = f"wf_{canonical_task_id(task)}"
     workflow.task.task_id = canonical_task_id(task)
@@ -555,12 +676,26 @@ def _build_seed_workflow(task: Dict[str, Any], candidate_tools: List[ToolSpec], 
     raw_metadata = task.get("metadata", {})
     benchmark = str(raw_metadata.get("benchmark") or task.get("benchmark") or "").strip().lower() if isinstance(raw_metadata, dict) else str(task.get("benchmark") or "").strip().lower()
     if benchmark == "bfcl":
-        if should_abstain_from_tools(str(task.get("query") or user_goal), candidate_tools):
+        if _bfcl_should_abstain_task(task, candidate_tools, str(task.get("query") or user_goal)):
             return _configure_bfcl_abstain_workflow(workflow)
         step_specs = _bfcl_seed_specs(task, candidate_tools, user_goal)
         if not step_specs:
             return workflow
-        return _configure_bfcl_seed_steps(workflow, step_specs)
+        if not enable_grounding:
+            disabled_specs = [
+                {
+                    **spec,
+                    "inputs": _bfcl_build_step_inputs(
+                        spec.get("tool"),
+                        str(spec.get("text") or user_goal),
+                        keep_query_fallback=True,
+                        enable_grounding=False,
+                    ),
+                }
+                for spec in step_specs
+            ]
+            return _configure_bfcl_seed_steps(workflow, disabled_specs, enable_grounding=False)
+        return _configure_bfcl_seed_steps(workflow, step_specs, enable_grounding=True)
 
     allow_list = list(task.get("tool_allow_list", [])) if isinstance(task.get("tool_allow_list"), list) else []
     scenario = str(task.get("scenario", "success"))
@@ -629,6 +764,7 @@ def _adapt_bfcl_workflow(
     task: Dict[str, Any],
     candidate_tools: List[ToolSpec],
     mode: str,
+    enable_grounding: bool,
 ) -> Workflow:
     if not candidate_tools:
         return workflow
@@ -637,20 +773,46 @@ def _adapt_bfcl_workflow(
     query = str(task.get("query") or workflow.task.user_goal or "")
     milestones = [str(item).strip() for item in task.get("milestones", []) if str(item).strip()]
     call_pattern = str(metadata.get("bfcl_call_pattern") or "serial")
-    if should_abstain_from_tools(query, candidate_tools):
+    if _bfcl_should_abstain_task(task, candidate_tools, query):
         return _configure_bfcl_abstain_workflow(workflow)
 
     if call_pattern == "parallel":
         parallel_specs = _bfcl_seed_specs(task, candidate_tools, query)
         if len(parallel_specs) > 1:
-            return _configure_bfcl_seed_steps(workflow, parallel_specs)
+            if not enable_grounding:
+                parallel_specs = [
+                    {
+                        **spec,
+                        "inputs": _bfcl_build_step_inputs(
+                            spec.get("tool"),
+                            str(spec.get("text") or query),
+                            keep_query_fallback=True,
+                            enable_grounding=False,
+                        ),
+                    }
+                    for spec in parallel_specs
+                ]
+            return _configure_bfcl_seed_steps(workflow, parallel_specs, enable_grounding=enable_grounding)
 
     if metadata.get("bfcl_group") == "multi_turn" and (
         mode != "planner" or any(not str(step.tool_id or "").strip() for step in workflow.execution_plan)
     ):
         seed_specs = _bfcl_seed_specs(task, candidate_tools, query)
         if len(seed_specs) > 1:
-            return _configure_bfcl_seed_steps(workflow, seed_specs)
+            if not enable_grounding:
+                seed_specs = [
+                    {
+                        **spec,
+                        "inputs": _bfcl_build_step_inputs(
+                            spec.get("tool"),
+                            str(spec.get("text") or query),
+                            keep_query_fallback=True,
+                            enable_grounding=False,
+                        ),
+                    }
+                    for spec in seed_specs
+                ]
+            return _configure_bfcl_seed_steps(workflow, seed_specs, enable_grounding=enable_grounding)
 
     for index, step in enumerate(workflow.execution_plan):
         text = milestones[index] if index < len(milestones) else query
@@ -666,16 +828,20 @@ def _adapt_bfcl_workflow(
         capability_id = _bfcl_capability_id(selected_tool)
         step.capability_id = capability_id
         step.tool_id = selected_tool.tool_id
-        step.inputs = extract_tool_arguments(
-            selected_tool.tool_id,
-            _bfcl_tool_parameters(selected_tool),
-            text,
-            include_defaults=False,
-        ) or _bfcl_build_step_inputs(selected_tool, text)
+        step.inputs = (
+            extract_tool_arguments(
+                selected_tool.tool_id,
+                _bfcl_tool_parameters(selected_tool),
+                text,
+                include_defaults=False,
+            )
+            if enable_grounding
+            else {}
+        ) or _bfcl_build_step_inputs(selected_tool, text, enable_grounding=enable_grounding)
         step.inputs.pop("query", None)
         step.inputs.pop("target_path", None)
         step.metadata["repair_default_inputs"] = dict(step.inputs)
-        _configure_bfcl_step_metadata(step, selected_tool, text)
+        _configure_bfcl_step_metadata(step, selected_tool, text, enable_grounding=enable_grounding)
         if index < len(workflow.tool_bindings):
             workflow.tool_bindings[index].capability_id = capability_id
             workflow.tool_bindings[index].primary_tool = selected_tool.tool_id
@@ -904,7 +1070,12 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
     return _completion
 
 
-def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workflow:
+def build_workflow_from_task(
+    task: Dict[str, Any],
+    mode: str = "demo",
+    *,
+    spec: Optional[SystemSpec] = None,
+) -> Workflow:
     task = annotate_task_payload(task)
     raw_metadata = task.get("metadata")
     toolsandbox_metadata = raw_metadata if isinstance(raw_metadata, dict) and raw_metadata.get("benchmark") == "toolsandbox" else {}
@@ -956,9 +1127,19 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
         )
         workflow = planner.plan(request).workflow
     elif mode == "seed":
-        workflow = _build_seed_workflow(task, candidate_tools, planner_goal)
+        workflow = _build_seed_workflow(
+            task,
+            candidate_tools,
+            planner_goal,
+            enable_grounding=True if spec is None else bool(spec.enable_core_grounding),
+        )
     elif mode == "demo" and bfcl_metadata:
-        workflow = _build_seed_workflow(task, candidate_tools, planner_goal)
+        workflow = _build_seed_workflow(
+            task,
+            candidate_tools,
+            planner_goal,
+            enable_grounding=True if spec is None else bool(spec.enable_core_grounding),
+        )
     else:
         workflow = Workflow.demo()
 
@@ -1020,6 +1201,8 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
     if configured_tool_backend is None and bfcl_metadata:
         configured_tool_backend = "bfcl_stub"
     workflow.metadata["tool_execution_backend"] = str(configured_tool_backend or "mock")
+    workflow.metadata["enable_core_grounding"] = True if spec is None else bool(spec.enable_core_grounding)
+    workflow.metadata["enable_schema_preflight"] = True if spec is None else bool(spec.enable_schema_preflight)
     workflow.metadata.update(annotate_task(task))
     workflow.metadata["task_family"] = derive_task_family(task, scenario=str(task.get("scenario", "success")), task_id=workflow.task.task_id)
     workflow.metadata["failure_type"] = derive_failure_type(task, scenario=str(task.get("scenario", "success")))
@@ -1135,6 +1318,7 @@ def build_workflow_from_task(task: Dict[str, Any], mode: str = "demo") -> Workfl
             task=task,
             candidate_tools=candidate_tools,
             mode=mode,
+            enable_grounding=bool(workflow.metadata.get("enable_core_grounding", True)),
         )
 
     return workflow
@@ -1206,7 +1390,10 @@ def build_runtime_for_spec(
             recovery_engine=RecoveryEngine(
                 RecoveryConfig(enable_tool_fallback=spec.allow_fallback)
             ),
-            config=ExecutorConfig(allow_repair=spec.allow_repair),
+            config=ExecutorConfig(
+                allow_repair=spec.allow_repair,
+                enable_schema_preflight=spec.enable_schema_preflight,
+            ),
         ),
         repair_updater=RepairUpdater(),
         compiler=SWPCCompiler(),
@@ -1797,7 +1984,7 @@ def execute_system(
     reused_artifact = False
 
     if spec.execution_mode == "baseline":
-        workflow = build_workflow_from_task(task, mode=spec.workflow_mode)
+        workflow = build_workflow_from_task(task, mode=spec.workflow_mode, spec=spec)
         baseline_trace, baseline_stop = run_baseline(
             workflow=workflow,
             run_id=f"{spec.system_id}_{task_id}",
@@ -1858,7 +2045,7 @@ def execute_system(
         raise RuntimeError(f"runtime missing for system {spec.system_id}")
 
     if spec.execution_mode == "executor":
-        workflow = build_workflow_from_task(task, mode=spec.workflow_mode)
+        workflow = build_workflow_from_task(task, mode=spec.workflow_mode, spec=spec)
         runtime.executor.run_until_blocked(
             workflow=workflow,
             run_id=f"{spec.system_id}_{task_id}",
@@ -1873,7 +2060,7 @@ def execute_system(
             reused_artifact=False,
         )
 
-    seed_workflow = build_workflow_from_task(task, mode="planner")
+    seed_workflow = build_workflow_from_task(task, mode="planner", spec=spec)
     benchmark = str(seed_workflow.metadata.get("benchmark") or "").strip().lower()
     bfcl_direct_executor_only = benchmark == "bfcl" and bool(seed_workflow.metadata.get("bfcl_abstained"))
     if not seed_workflow.execution_plan or bfcl_direct_executor_only:

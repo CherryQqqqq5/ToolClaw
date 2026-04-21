@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from types import MethodType
 
+import toolclaw.execution.executor as executor_module
 from toolclaw.execution.executor import SequentialExecutor, StepExecutionResult
 from toolclaw.execution.state_tracker import StateTracker
 from toolclaw.planner.binder import ToolBinder
@@ -313,6 +314,92 @@ def test_check_state_failure_accepts_dict_state_slot_values() -> None:
     )
 
     assert result is None
+
+
+def test_materialize_tool_args_uses_input_bindings_from_state() -> None:
+    step = WorkflowStep(
+        step_id="step_ground_01",
+        capability_id="cap_weather",
+        tool_id="weather_lookup",
+        action_type=ActionType.TOOL_CALL,
+        inputs={},
+        metadata={
+            "required_input_keys": ["loc"],
+            "input_bindings": {"loc": "user_location"},
+        },
+    )
+
+    tool_args = SequentialExecutor._materialize_tool_args(
+        step=step,
+        state_values={"user_location": "Ha Noi, Vietnam"},
+    )
+
+    assert tool_args["loc"] == "Ha Noi, Vietnam"
+
+
+def test_run_preflight_reports_missing_required_inputs() -> None:
+    workflow = Workflow.demo()
+    workflow.execution_plan = [
+        WorkflowStep(
+            step_id="step_ground_02",
+            capability_id="cap_weather",
+            tool_id="weather_lookup",
+            action_type=ActionType.TOOL_CALL,
+            inputs={},
+            metadata={"required_input_keys": ["loc", "unit"]},
+        )
+    ]
+
+    report = SequentialExecutor.run_preflight(workflow)
+
+    assert report.ok is False
+    assert report.missing_required_inputs == ["step_ground_02.loc", "step_ground_02.unit"]
+
+
+def test_executor_fails_fast_on_missing_required_inputs_before_tool_execution(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    workflow.execution_plan = [
+        WorkflowStep(
+            step_id="step_ground_03",
+            capability_id="cap_weather",
+            tool_id="weather_lookup",
+            action_type=ActionType.TOOL_CALL,
+            expected_output="weather_payload",
+            inputs={},
+            metadata={"required_input_keys": ["loc"]},
+        )
+    ]
+    workflow.metadata["enable_schema_preflight"] = True
+
+    original_run_tool = executor_module.run_tool
+
+    def _forbidden_run_tool(*args, **kwargs):
+        raise AssertionError("run_tool should not be called when schema preflight fails")
+
+    executor_module.run_tool = _forbidden_run_tool
+    try:
+        outcome = SequentialExecutor(
+            config=executor_module.ExecutorConfig(allow_repair=False, enable_schema_preflight=True)
+        ).run_until_blocked(
+            workflow=workflow,
+            run_id="run_grounding_preflight_001",
+            output_path=str(tmp_path / "grounding_preflight_trace.json"),
+        )
+    finally:
+        executor_module.run_tool = original_run_tool
+
+    assert outcome.success is False
+    payload = json.loads((tmp_path / "grounding_preflight_trace.json").read_text(encoding="utf-8"))
+    preflight_events = [
+        event
+        for event in payload["events"]
+        if event["event_type"] == EventType.PREFLIGHT_CHECK.value
+        and event.get("output", {}).get("reason") == "missing_required_input"
+    ]
+    assert len(preflight_events) == 1
+    assert preflight_events[0]["output"]["missing_required_inputs"] == ["loc"]
+    stop_event = next(event for event in payload["events"] if event["event_type"] == EventType.STOP.value)
+    assert stop_event["output"]["reason"] == "repair_disabled"
 
 
 def test_executor_supports_semantic_mock_backend_for_non_toy_tools(tmp_path: Path) -> None:

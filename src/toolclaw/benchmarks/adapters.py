@@ -165,7 +165,23 @@ class BFCLAdapter:
         }
         policy_format_compliance = 1.0 if all(tool in candidate_tool_ids for tool in actual_tools if tool) else 0.0
         repairs = int(trace_payload.get("metrics", {}).get("repair_actions", 0) or 0)
+        tool_calls = int(trace_payload.get("metrics", {}).get("tool_calls", 0) or 0)
+        user_queries = int(trace_payload.get("metrics", {}).get("user_queries", 0) or 0)
+        missing_required_input_events = self._missing_required_input_events(trace_payload)
+        missing_required_input_count = sum(len(event.get("missing_required_inputs", [])) for event in missing_required_input_events)
+        required_input_total = sum(
+            len(event.get("required_input_keys") or event.get("missing_required_inputs") or [])
+            for event in missing_required_input_events
+        )
+        missing_required_arg_rate = (
+            float(missing_required_input_count) / float(required_input_total)
+            if required_input_total > 0
+            else 0.0
+        )
+        preflight_interception_rate = 1.0 if missing_required_input_events else 0.0
         benchmark_success = bool(trace_payload.get("metrics", {}).get("success")) and tool_selection_overlap >= 1.0 and parameter_fill_ratio >= 1.0
+        exec_verified = 1.0 if bool(trace_payload.get("metrics", {}).get("success")) and not missing_required_input_events else 0.0
+        repair_success_rate = 1.0 if repairs > 0 and benchmark_success else 0.0
         return BenchmarkTraceScore(
             benchmark=self.benchmark_name,
             sample_id=sample.sample_id,
@@ -176,6 +192,12 @@ class BFCLAdapter:
                 "parameter_fill_ratio": parameter_fill_ratio,
                 "policy_format_compliance": policy_format_compliance,
                 "repair_overhead": float(repairs),
+                "missing_required_arg_rate": missing_required_arg_rate,
+                "preflight_interception_rate": preflight_interception_rate,
+                "repair_success_rate": repair_success_rate,
+                "exec_verified": exec_verified,
+                "avg_tool_calls": float(tool_calls),
+                "avg_user_queries": float(user_queries),
             },
             diagnostics={
                 "expected_tools": expected_tools,
@@ -183,6 +205,7 @@ class BFCLAdapter:
                 "expected_call_count": len(expected_calls),
                 "actual_call_count": len(actual_calls),
                 "repair_actions": repairs,
+                "missing_required_input_events": missing_required_input_events,
             },
         )
 
@@ -283,6 +306,32 @@ class BFCLAdapter:
                 }
             )
         return actual
+
+    @staticmethod
+    def _missing_required_input_events(trace_payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+        events: List[Dict[str, Any]] = []
+        for event in trace_payload.get("events", []):
+            if not isinstance(event, dict) or event.get("event_type") != "preflight_check":
+                continue
+            output = event.get("output", {})
+            metadata = event.get("metadata", {})
+            if not isinstance(output, dict) or str(output.get("reason") or "") != "missing_required_input":
+                continue
+            missing_required_inputs = output.get("missing_required_inputs", [])
+            required_input_keys = metadata.get("required_input_keys", [])
+            events.append(
+                {
+                    "step_id": str(event.get("step_id") or ""),
+                    "tool_id": str(event.get("tool_id") or ""),
+                    "missing_required_inputs": [str(item) for item in missing_required_inputs if str(item)]
+                    if isinstance(missing_required_inputs, list)
+                    else [],
+                    "required_input_keys": [str(item) for item in required_input_keys if str(item)]
+                    if isinstance(required_input_keys, list)
+                    else [],
+                }
+            )
+        return events
 
     @staticmethod
     def _parameter_fill_ratio(expected_calls: List[Dict[str, Any]], actual_calls: List[Dict[str, Any]]) -> float:
