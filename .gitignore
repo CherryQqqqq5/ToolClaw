@@ -121,3 +121,16 @@ outputs/paper_suite_formal/bfcl_fc_core/*
 !outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json
 !outputs/paper_suite_formal/bfcl_fc_core/official_scoreboard.json
 !outputs/paper_suite_formal/bfcl_fc_core/toolclaw_diagnostics.json
+
+# Keep the BFCL grounding formal rerun summary bundle only.
+!outputs/paper_suite_grounding_formal_20260421_fix1/
+outputs/paper_suite_grounding_formal_20260421_fix1/*
+!outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/
+outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/*
+!outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/manifest.json
+!outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/experiment_manifest.json
+!outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/claim_summary.json
+!outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/official_scoreboard.json
+!outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/toolclaw_diagnostics.json
+!outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/report.md
+!outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/latest_run_report.md

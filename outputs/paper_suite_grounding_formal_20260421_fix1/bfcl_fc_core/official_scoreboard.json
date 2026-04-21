@@ -1,0 +1,57 @@
+{
+  "benchmark": "bfcl",
+  "track": "fc_core",
+  "namespace": "official_bfcl_eval",
+  "per_system": {
+    "a0_baseline": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.30086226986716386,
+      "official_bfcl_eval_tool_selection_correctness": 0.6922279189000233,
+      "official_bfcl_eval_argument_correctness": 0.30086226986716386,
+      "official_bfcl_eval_structure_correctness": 0.6536937776742018
+    },
+    "fc_preflight_only": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.2687019342810534,
+      "official_bfcl_eval_tool_selection_correctness": 0.31402936378466556,
+      "official_bfcl_eval_argument_correctness": 0.2687019342810534,
+      "official_bfcl_eval_structure_correctness": 0.31391284082964344
+    },
+    "fc_grounding_recovery": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.30086226986716386,
+      "official_bfcl_eval_tool_selection_correctness": 0.6940534451953702,
+      "official_bfcl_eval_argument_correctness": 0.30086226986716386,
+      "official_bfcl_eval_structure_correctness": 0.6550920531344675
+    },
+    "a4_reuse": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.30156140759729666,
+      "official_bfcl_eval_tool_selection_correctness": 0.6952186747455915,
+      "official_bfcl_eval_argument_correctness": 0.30156140759729666,
+      "official_bfcl_eval_structure_correctness": 0.6562572826846889
+    }
+  },
+  "unsupported_strata": [
+    {
+      "stratum": "multi_turn_base",
+      "reason": "missing_multi_turn_dependency:mpmath",
+      "paper_safe": false
+    },
+    {
+      "stratum": "multi_turn_long_context",
+      "reason": "missing_multi_turn_dependency:mpmath",
+      "paper_safe": false
+    },
+    {
+      "stratum": "multi_turn_miss_func",
+      "reason": "missing_multi_turn_dependency:mpmath",
+      "paper_safe": false
+    },
+    {
+      "stratum": "multi_turn_miss_param",
+      "reason": "missing_multi_turn_dependency:mpmath",
+      "paper_safe": false
+    }
+  ]
+}

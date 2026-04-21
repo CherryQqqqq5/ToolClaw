@@ -1,0 +1,27 @@
+{
+  "benchmark": "bfcl",
+  "generated_at": "2026-04-21T18:00:33.707437+00:00",
+  "track": "fc_core",
+  "source": "data/bfcl_formal/bfcl_v4.fc_core.aligned.jsonl",
+  "source_manifest": "data/bfcl_formal/manifest.json",
+  "normalized_taskset": "outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/prepared/bfcl.normalized.json",
+  "comparison_path": "outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/comparison.raw.csv",
+  "systems": [
+    "a0_baseline",
+    "fc_preflight_only",
+    "fc_grounding_recovery",
+    "a4_reuse"
+  ],
+  "num_runs": 1,
+  "experiment_metadata": {
+    "runner_script": "scripts/run_bfcl_bench.py",
+    "official_eval_requested": true,
+    "toolclaw_diagnostics_requested": true,
+    "mode": "planner",
+    "raw_only": true
+  },
+  "comparison_scored_path": "outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/comparison.scored.csv",
+  "official_scoreboard_path": "outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/official_scoreboard.json",
+  "toolclaw_diagnostics_path": "outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/toolclaw_diagnostics.json",
+  "claim_summary_path": "outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/claim_summary.json"
+}
