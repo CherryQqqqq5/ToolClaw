@@ -1,0 +1,154 @@
+{
+  "suite": "bfcl_fc_core",
+  "status": "completed",
+  "track": "fc_core",
+  "paper_safe_for_claim": false,
+  "official_bfcl_eval": {
+    "a0_baseline": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.1598694942903752,
+      "official_bfcl_eval_tool_selection_correctness": 0.5512351433232346,
+      "official_bfcl_eval_argument_correctness": 0.1598694942903752,
+      "official_bfcl_eval_structure_correctness": 0.5127010020974132
+    },
+    "fc_preflight_only": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.2519226287578653,
+      "official_bfcl_eval_tool_selection_correctness": 0.2972500582614775,
+      "official_bfcl_eval_argument_correctness": 0.2519226287578653,
+      "official_bfcl_eval_structure_correctness": 0.29713353530645537
+    },
+    "fc_grounding_recovery": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.15963644838033092,
+      "official_bfcl_eval_tool_selection_correctness": 0.5528276237085372,
+      "official_bfcl_eval_argument_correctness": 0.15963644838033092,
+      "official_bfcl_eval_structure_correctness": 0.5138662316476346
+    },
+    "a4_reuse": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.16010254020041947,
+      "official_bfcl_eval_tool_selection_correctness": 0.5537598073487143,
+      "official_bfcl_eval_argument_correctness": 0.16010254020041947,
+      "official_bfcl_eval_structure_correctness": 0.5147984152878117
+    }
+  },
+  "toolclaw_diagnostics": {
+    "a0_baseline": {
+      "num_rows": 4291.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.7260203265645573,
+      "toolclaw_diagnostics_tool_sequence_match": 0.39058494523421117,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.4034125504470412,
+      "toolclaw_diagnostics_policy_format_compliance": 1.0,
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.0,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.0,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_exec_verified": 0.9972034490794687,
+      "toolclaw_diagnostics_avg_tool_calls": 0.8848753204381263,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
+    },
+    "fc_preflight_only": {
+      "num_rows": 4291.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.3268626101881753,
+      "toolclaw_diagnostics_tool_sequence_match": 0.052435329759962714,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.8923327895595432,
+      "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.7336285248193894,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.7336285248193894,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_exec_verified": 0.26380797017012353,
+      "toolclaw_diagnostics_avg_tool_calls": 0.19296201351666278,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
+    },
+    "fc_grounding_recovery": {
+      "num_rows": 4291.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.7298269389321798,
+      "toolclaw_diagnostics_tool_sequence_match": 0.3924493125145654,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.38582652943524537,
+      "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
+      "toolclaw_diagnostics_repair_overhead": 0.4777441155907714,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.3815078070379865,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.4453507340946166,
+      "toolclaw_diagnostics_repair_success_rate": 0.10044278722908413,
+      "toolclaw_diagnostics_exec_verified": 0.5520857608948962,
+      "toolclaw_diagnostics_avg_tool_calls": 1.118853414122582,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
+    },
+    "a4_reuse": {
+      "num_rows": 4291.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.731125337573855,
+      "toolclaw_diagnostics_tool_sequence_match": 0.39361454206478674,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.3844282539749797,
+      "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
+      "toolclaw_diagnostics_repair_overhead": 0.4784432533209042,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.38220694476811934,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.4460498718247495,
+      "toolclaw_diagnostics_repair_success_rate": 0.10067583313912841,
+      "toolclaw_diagnostics_exec_verified": 0.5539501281752506,
+      "toolclaw_diagnostics_avg_tool_calls": 1.1225821486832905,
+      "toolclaw_diagnostics_avg_user_queries": 0.003495688650664181
+    }
+  },
+  "unsupported_strata": [
+    {
+      "stratum": "multi_turn_base",
+      "reason": "missing_multi_turn_dependency:mpmath",
+      "paper_safe": false
+    },
+    {
+      "stratum": "multi_turn_long_context",
+      "reason": "missing_multi_turn_dependency:mpmath",
+      "paper_safe": false
+    },
+    {
+      "stratum": "multi_turn_miss_func",
+      "reason": "missing_multi_turn_dependency:mpmath",
+      "paper_safe": false
+    },
+    {
+      "stratum": "multi_turn_miss_param",
+      "reason": "missing_multi_turn_dependency:mpmath",
+      "paper_safe": false
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "planner_binding_headline",
+      "paper_safe_for_claim": false,
+      "metric_snapshot": {
+        "a0_baseline": {
+          "num_rows": 4291.0,
+          "official_bfcl_eval_success": 0.1598694942903752,
+          "official_bfcl_eval_tool_selection_correctness": 0.5512351433232346,
+          "official_bfcl_eval_argument_correctness": 0.1598694942903752,
+          "official_bfcl_eval_structure_correctness": 0.5127010020974132
+        },
+        "fc_preflight_only": {
+          "num_rows": 4291.0,
+          "official_bfcl_eval_success": 0.2519226287578653,
+          "official_bfcl_eval_tool_selection_correctness": 0.2972500582614775,
+          "official_bfcl_eval_argument_correctness": 0.2519226287578653,
+          "official_bfcl_eval_structure_correctness": 0.29713353530645537
+        },
+        "fc_grounding_recovery": {
+          "num_rows": 4291.0,
+          "official_bfcl_eval_success": 0.15963644838033092,
+          "official_bfcl_eval_tool_selection_correctness": 0.5528276237085372,
+          "official_bfcl_eval_argument_correctness": 0.15963644838033092,
+          "official_bfcl_eval_structure_correctness": 0.5138662316476346
+        },
+        "a4_reuse": {
+          "num_rows": 4291.0,
+          "official_bfcl_eval_success": 0.16010254020041947,
+          "official_bfcl_eval_tool_selection_correctness": 0.5537598073487143,
+          "official_bfcl_eval_argument_correctness": 0.16010254020041947,
+          "official_bfcl_eval_structure_correctness": 0.5147984152878117
+        }
+      },
+      "interpretation": "BFCL fc_core is paper-safe only when the official evaluator covers all included strata."
+    }
+  ],
+  "paper_role": "headline_candidate"
+}
