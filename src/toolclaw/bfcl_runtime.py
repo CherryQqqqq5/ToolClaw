@@ -26,6 +26,21 @@ MULTI_TURN_FUNC_DOC_FILE_MAPPING: Dict[str, str] = {
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 _QUOTED_PATTERN = re.compile(r"""['"]([^'"]+)['"]""")
 _INTEGER_PATTERN = re.compile(r"\b\d+\b")
+_NUMBER_WORDS: Dict[str, int] = {
+    "zero": 0,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+}
 
 _TOOL_HINTS: Dict[str, set[str]] = {
     "cd": {"cd", "change", "directory", "folder", "go", "navigate", "enter"},
@@ -56,6 +71,37 @@ _ENUM_SYNONYMS: Dict[str, Dict[str, str]] = {
         "no sugar": "none",
     },
 }
+
+
+_STOPWORDS: set[str] = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "can", "do", "for", "from", "given", "i", "if",
+    "in", "is", "it", "its", "me", "my", "of", "on", "or", "please", "provide", "respectively", "so",
+    "that", "the", "their", "this", "to", "up", "using", "with", "you", "your",
+}
+
+_GENERIC_TOOL_TOKENS: set[str] = {
+    "api", "call", "calls", "calculate", "change", "changes", "common", "commonly", "data", "determine",
+    "existing", "function", "functions", "get", "given", "info", "information", "item", "items", "lookup",
+    "modify", "modifies", "new", "perform", "post", "properties", "property", "provide", "request",
+    "requests", "retrieve", "retrieves", "send", "sends", "specified", "tool", "tools", "update", "updates",
+    "url", "used", "user", "users", "using", "view", "web",
+}
+
+_MEASUREMENT_TOKENS: set[str] = {"meter", "meters", "minute", "minutes", "second", "seconds", "time", "unit", "units"}
+_INFORMATION_QUERY_PREFIXES: tuple[str, ...] = (
+    "what is",
+    "what are",
+    "who is",
+    "who are",
+    "when is",
+    "where is",
+    "tell me about",
+    "find information about",
+    "look up",
+)
+_RECENCY_QUERY_TOKENS: set[str] = {"latest", "recent", "today", "current", "newest", "breaking", "news"}
+_SEARCH_TOOL_TOKENS: set[str] = {"search", "lookup", "find", "query", "queries", "retrieve", "retrieves", "web", "information", "answer", "answers"}
+_NEWS_TOOL_TOKENS: set[str] = {"news", "headline", "headlines", "article", "articles", "events"}
 
 
 def display_repo_path(path: Path, root_dir: Path) -> str:
@@ -132,8 +178,112 @@ def load_multi_turn_candidate_tools(
     return tools
 
 
+def _informative_token_set(*values: Any, blocked: Sequence[str] | None = None) -> set[str]:
+    blocked_tokens = {token for token in (blocked or []) if token}
+    tokens = {
+        token
+        for token in _tokens(*values)
+        if token not in _STOPWORDS
+        and token not in _GENERIC_TOOL_TOKENS
+        and token not in _MEASUREMENT_TOKENS
+        and token not in blocked_tokens
+    }
+    return tokens
+
+
+def _schema_required_keys(schema: Mapping[str, Any]) -> List[str]:
+    required = schema.get("required")
+    if not isinstance(required, list):
+        return []
+    return [str(item) for item in required if str(item)]
+
+
+def _tool_schema_blocklist(parameters: Mapping[str, Any]) -> set[str]:
+    tokens: set[str] = set()
+    for key in _schema_properties(parameters).keys():
+        tokens.update(_tokens(str(key)))
+    return tokens
+
+
+def _tool_semantic_tokens(tool: Mapping[str, Any]) -> set[str]:
+    parameters = tool.get("parameters") if isinstance(tool.get("parameters"), Mapping) else {}
+    metadata = tool.get("metadata") if isinstance(tool.get("metadata"), Mapping) else {}
+    blocked = _tool_schema_blocklist(parameters)
+    return _informative_token_set(
+        tool.get("tool_id", ""),
+        tool.get("description", ""),
+        metadata.get("semantic_tags", []),
+        blocked=sorted(blocked),
+    )
+
+
+def _tool_schema_tokens(tool: Mapping[str, Any]) -> set[str]:
+    parameters = tool.get("parameters") if isinstance(tool.get("parameters"), Mapping) else {}
+    properties = _schema_properties(parameters)
+    enum_values: List[str] = []
+    for prop in properties.values():
+        if isinstance(prop, Mapping) and isinstance(prop.get("enum"), list):
+            enum_values.extend(str(item) for item in prop.get("enum", []) if str(item))
+    return _informative_token_set(list(properties.keys()), enum_values)
+
+
+def _tool_exact_mention(text: str, tool_id: str) -> bool:
+    normalized_text = str(text or "").lower()
+    if tool_id.lower() in normalized_text:
+        return True
+    parts = [part for part in re.split(r"[^a-z0-9]+", tool_id.lower()) if part and part not in _GENERIC_TOOL_TOKENS]
+    if not parts:
+        return False
+    return all(part in normalized_text for part in parts)
+
+
+def _required_argument_coverage(tool: Mapping[str, Any], text: str) -> float:
+    parameters = tool.get("parameters") if isinstance(tool.get("parameters"), Mapping) else {}
+    required = _schema_required_keys(parameters)
+    if not required:
+        return 1.0
+    extracted = extract_tool_arguments(str(tool.get("tool_id") or ""), parameters, text)
+    matched = sum(1 for key in required if key in extracted and not _is_missing_value(extracted.get(key)))
+    return matched / max(len(required), 1)
+
+
+def _query_information_intent(text: str) -> str:
+    lower = str(text or "").strip().lower()
+    if not lower:
+        return ""
+    asks_information = lower.endswith("?") or any(lower.startswith(prefix) for prefix in _INFORMATION_QUERY_PREFIXES)
+    if not asks_information:
+        return ""
+    tokens = set(_tokens(lower))
+    if tokens.intersection(_RECENCY_QUERY_TOKENS):
+        return "recent_info"
+    return "general_info"
+
+
+def _tool_information_intent_score(tool: Mapping[str, Any], intent: str) -> float:
+    if not intent:
+        return 0.0
+    tool_tokens = set(_tokens(tool.get("tool_id", ""), tool.get("description", "")))
+    search_like = bool(tool_tokens.intersection(_SEARCH_TOOL_TOKENS))
+    news_like = bool(tool_tokens.intersection(_NEWS_TOOL_TOKENS))
+    if intent == "recent_info":
+        score = 0.0
+        if search_like:
+            score += 0.5
+        if news_like:
+            score += 1.0
+        return score
+    score = 0.0
+    if search_like:
+        score += 1.0
+    if news_like:
+        score -= 0.5
+    return score
+
+
 def rank_candidate_tools(text: str, candidate_tools: Sequence[Any]) -> List[Dict[str, Any]]:
-    query_tokens = _tokens(text)
+    query_tokens = _informative_token_set(text)
+    info_intent = _query_information_intent(text)
     ranked: List[Dict[str, Any]] = []
     for raw_tool in candidate_tools:
         tool = _coerce_tool(raw_tool)
@@ -143,22 +293,87 @@ def rank_candidate_tools(text: str, candidate_tools: Sequence[Any]) -> List[Dict
         metadata = tool.get("metadata", {})
         if not isinstance(metadata, dict):
             metadata = {}
-        tool_tokens = _tokens(
-            tool_id,
-            tool.get("description", ""),
-            tool.get("parameters", {}),
-            metadata.get("semantic_tags", []),
-        )
-        hints = _TOOL_HINTS.get(tool_id, set())
-        overlap = query_tokens.intersection(tool_tokens.union(hints))
-        score = float(len(overlap))
-        if tool_id.lower() in text.lower():
-            score += 2.0
-        if hints.intersection(query_tokens):
+        semantic_tokens = _tool_semantic_tokens(tool)
+        schema_tokens = _tool_schema_tokens(tool)
+        hints = {token for token in _TOOL_HINTS.get(tool_id, set()) if token not in _STOPWORDS}
+        semantic_overlap = query_tokens.intersection(semantic_tokens)
+        schema_overlap = query_tokens.intersection(schema_tokens)
+        hint_overlap = query_tokens.intersection(hints)
+        required_coverage = _required_argument_coverage(tool, text)
+        score = (3.0 * len(semantic_overlap)) + (1.25 * len(schema_overlap)) + (2.5 * required_coverage)
+        score += _tool_information_intent_score(tool, info_intent)
+        exact_match = _tool_exact_mention(text, tool_id)
+        if exact_match:
+            score += 2.5
+        if hint_overlap:
             score += 1.5
-        ranked.append({"tool": tool, "score": score, "overlap": sorted(overlap)})
-    ranked.sort(key=lambda item: (-float(item["score"]), str(item["tool"].get("tool_id") or "")))
+        ranked.append(
+            {
+                "tool": tool,
+                "score": float(score),
+                "overlap": sorted(semantic_overlap.union(schema_overlap).union(hint_overlap)),
+                "semantic_overlap": sorted(semantic_overlap),
+                "schema_overlap": sorted(schema_overlap),
+                "required_argument_coverage": float(required_coverage),
+                "exact_match": exact_match,
+            }
+        )
+    ranked.sort(
+        key=lambda item: (
+            -float(item["score"]),
+            -len(item.get("semantic_overlap", [])),
+            -float(item.get("required_argument_coverage", 0.0)),
+            str(item["tool"].get("tool_id") or ""),
+        )
+    )
     return ranked
+
+
+def should_abstain_from_tools(text: str, candidate_tools: Sequence[Any]) -> bool:
+    ranked = rank_candidate_tools(text, candidate_tools)
+    if not ranked:
+        return True
+    best = ranked[0]
+    if len(candidate_tools) != 1:
+        return False
+    if best.get("exact_match"):
+        return False
+    if best.get("semantic_overlap"):
+        return False
+    return float(best.get("required_argument_coverage", 0.0)) < 1.0
+
+
+def select_candidate_tool(
+    text: str,
+    candidate_tools: Sequence[Any],
+    *,
+    preferred_tool_id: str | None = None,
+) -> Dict[str, Any] | None:
+    ranked = rank_candidate_tools(text, candidate_tools)
+    if not ranked:
+        return None
+    best = ranked[0]
+    if not preferred_tool_id:
+        return dict(best["tool"])
+    current = next((item for item in ranked if str(item["tool"].get("tool_id") or "") == str(preferred_tool_id)), None)
+    if current is None:
+        return dict(best["tool"])
+    if str(current["tool"].get("tool_id") or "") == str(best["tool"].get("tool_id") or ""):
+        return dict(current["tool"])
+    info_intent = _query_information_intent(text)
+    if best.get("exact_match") and not current.get("exact_match"):
+        return dict(best["tool"])
+    if best.get("semantic_overlap") and not current.get("semantic_overlap"):
+        return dict(best["tool"])
+    if best.get("schema_overlap") and not current.get("schema_overlap"):
+        return dict(best["tool"])
+    if info_intent and float(best.get("score", 0.0)) > float(current.get("score", 0.0)):
+        return dict(best["tool"])
+    if float(best.get("required_argument_coverage", 0.0)) >= float(current.get("required_argument_coverage", 0.0)) + 0.5:
+        return dict(best["tool"])
+    if float(best.get("score", 0.0)) >= float(current.get("score", 0.0)) + 0.5:
+        return dict(best["tool"])
+    return dict(current["tool"])
 
 
 def extract_parallel_argument_sets(tool_id: str, parameters: Mapping[str, Any], text: str) -> List[Dict[str, Any]]:
@@ -210,6 +425,7 @@ def extract_tool_arguments(
     text: str,
     *,
     existing_args: Mapping[str, Any] | None = None,
+    include_defaults: bool = True,
 ) -> Dict[str, Any]:
     existing = dict(existing_args or {})
     schema = dict(parameters) if isinstance(parameters, Mapping) else {}
@@ -225,7 +441,7 @@ def extract_tool_arguments(
         if value is not None:
             extracted[key] = value
             continue
-        default = prop.get("default") if isinstance(prop, Mapping) else None
+        default = prop.get("default") if include_defaults and isinstance(prop, Mapping) else None
         if not _is_missing_value(default):
             extracted[key] = default
     if extracted and "query" in existing:
@@ -280,6 +496,24 @@ def _quoted_strings(text: str) -> List[str]:
     return [match.strip() for match in _QUOTED_PATTERN.findall(text) if match.strip()]
 
 
+def _number_from_token(token: str) -> int | None:
+    lower = str(token or '').strip().lower()
+    if not lower:
+        return None
+    if lower.isdigit():
+        return int(lower)
+    return _NUMBER_WORDS.get(lower)
+
+
+def _ordered_numeric_values(text: str) -> List[int]:
+    values: List[int] = []
+    for match in re.finditer(r"\b(?:\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b", text, re.IGNORECASE):
+        value = _number_from_token(match.group(0))
+        if value is not None:
+            values.append(value)
+    return values
+
+
 def _schema_properties(schema: Mapping[str, Any]) -> Dict[str, Any]:
     properties = schema.get("properties")
     return dict(properties) if isinstance(properties, Mapping) else {}
@@ -298,10 +532,13 @@ def _extract_property_value(tool_id: str, key: str, prop: Mapping[str, Any], tex
         enum_value = _extract_enum_value(key, [str(item) for item in prop.get("enum", [])], text)
         if enum_value is not None:
             return enum_value
+        return None
     if prop_type == "boolean":
         return _extract_boolean_value(key, prop, text)
     if prop_type == "integer":
         return _extract_integer_value(key, prop, text)
+    if prop_type == "array":
+        return _extract_array_value(key, prop, text)
     return _extract_string_value(tool_id, key, prop, text)
 
 
@@ -336,7 +573,7 @@ def _extract_boolean_value(key: str, prop: Mapping[str, Any], text: str) -> Any:
 
 def _extract_integer_value(key: str, prop: Mapping[str, Any], text: str) -> Any:
     lower = text.lower()
-    numbers = [int(value) for value in _INTEGER_PATTERN.findall(text)]
+    numbers = _ordered_numeric_values(text)
     key_lower = key.lower()
     patterns = {
         "base": r"base(?:\s+of)?\s+(\d+)",
@@ -344,11 +581,21 @@ def _extract_integer_value(key: str, prop: Mapping[str, Any], text: str) -> Any:
         "duration": r"(\d+)\s*minutes?",
         "time": r"(\d+)\s*(?:seconds?|minutes?)",
         "lines": r"(\d+)\s*lines?",
+        "count": r"(?:first|top|last)\s+(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b",
+        "lower_limit": r"between\s+(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+and\s+",
+        "upper_limit": r"between\s+(?:\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+and\s+(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)",
     }
     if key_lower in patterns:
         match = re.search(patterns[key_lower], lower)
         if match:
-            return int(match.group(1))
+            value = _number_from_token(match.group(1))
+            if value is not None:
+                return value
+    indexed_key = re.match(r"([a-z_]+?)(\d+)$", key_lower)
+    if indexed_key and numbers:
+        ordinal = int(indexed_key.group(2)) - 1
+        if 0 <= ordinal < len(numbers):
+            return numbers[ordinal]
     if key_lower.endswith("id") or "identifier" in str(prop.get("description") or "").lower():
         match = re.search(rf"{re.escape(key_lower.replace('_', ' '))}[^\d]*(\d+)", lower)
         if match:
@@ -358,6 +605,25 @@ def _extract_integer_value(key: str, prop: Mapping[str, Any], text: str) -> Any:
             return int(id_match.group(1))
     if len(numbers) == 1:
         return numbers[0]
+    return None
+
+
+def _extract_array_value(key: str, prop: Mapping[str, Any], text: str) -> Any:
+    items = prop.get("items") if isinstance(prop.get("items"), Mapping) else {}
+    item_type = str(items.get("type") or "").strip().lower()
+    lower = text.lower()
+    if item_type == "integer":
+        if key.lower() == "multiples":
+            match = re.search(r"multiples? of\s+(.+?)(?:\s+between\b|\s+from\b|[.,;]|$)", lower)
+            if match:
+                values = _ordered_numeric_values(match.group(1))
+                if values:
+                    return values
+        values = _ordered_numeric_values(text)
+        return values or None
+    if item_type == "string":
+        quoted = _quoted_strings(text)
+        return quoted or None
     return None
 
 
@@ -406,7 +672,9 @@ def _extract_string_value(tool_id: str, key: str, prop: Mapping[str, Any], text:
                 if "hot" in candidate.lower() or "cold" in candidate.lower() or "warm" in candidate.lower():
                     return candidate
         if quoted:
-            return quoted[-1]
+            for candidate in reversed(quoted):
+                if not re.fullmatch(r"\d+", candidate.strip()):
+                    return candidate
         match = re.search(r"special request[:\s]+(.+)$", text, re.IGNORECASE)
         if match:
             return match.group(1).strip(" .")
@@ -434,8 +702,9 @@ def _extract_string_value(tool_id: str, key: str, prop: Mapping[str, Any], text:
         return None
     if key_lower == "name" and quoted:
         return quoted[0]
-    if quoted:
-        return quoted[0]
+    filtered_quoted = [candidate for candidate in quoted if key_lower.endswith("id") or not re.fullmatch(r"\d+", candidate.strip())]
+    if filtered_quoted:
+        return filtered_quoted[0]
     match = re.search(rf"{re.escape(key_lower.replace('_', ' '))}\s+(?:is\s+|of\s+)?([a-zA-Z0-9_./-]+)", text, re.IGNORECASE)
     if match:
         return match.group(1).strip(" .")

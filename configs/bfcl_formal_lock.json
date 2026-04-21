@@ -1,0 +1,54 @@
+{
+  "benchmark": "bfcl_v4",
+  "track": "fc_core",
+  "artifact_role": "formal_source_lock",
+  "evidence_status": "full_formal_bfcl_evidence_pending",
+  "prepared_manifest": "data/bfcl_formal/manifest.json",
+  "source": "data/external/bfcl_official",
+  "outputs": {
+    "fc_core": "data/bfcl_formal/bfcl_v4.fc_core.aligned.jsonl",
+    "agentic_ext": "data/bfcl_formal/bfcl_v4.agentic_ext.aligned.jsonl"
+  },
+  "counts": {
+    "fc_core": 4291,
+    "agentic_ext": 455,
+    "excluded": 150
+  },
+  "protocol_subset": {
+    "fc_core": {
+      "included_groups": [
+        "live",
+        "multi_turn",
+        "non_live"
+      ],
+      "excluded_groups": [
+        "format_sensitivity",
+        "memory",
+        "web_search"
+      ],
+      "language_rule": "english_only_unless_validated_multilingual_official_evaluator",
+      "call_pattern_rule": "serial_and_parallel_only",
+      "official_evaluator_coverage": {
+        "serial": true,
+        "parallel": true,
+        "multilingual": false
+      }
+    }
+  },
+  "official_wrapper_path": "scripts/bfcl_official_wrapper.py",
+  "preparation_command": [
+    "python3",
+    "scripts/prepare_bfcl_source.py",
+    "--source",
+    "data/external/bfcl_official",
+    "--outdir",
+    "data/bfcl_formal",
+    "--official-evaluator-script",
+    "scripts/bfcl_official_wrapper.py"
+  ],
+  "paper_bundle_outdir": "outputs/paper_suite_formal/bfcl_fc_core",
+  "notes": [
+    "This lock makes the formal BFCL prepared source repository-verifiable even when aligned payload files remain generated artifacts.",
+    "Formal BFCL claim evidence remains pending until a paper-grade bfcl_fc_core run is frozen with official_scoreboard.json, toolclaw_diagnostics.json, and claim_summary.json."
+  ]
+}

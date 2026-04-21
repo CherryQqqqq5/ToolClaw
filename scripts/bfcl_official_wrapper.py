@@ -320,13 +320,33 @@ def _score_multi_turn(
             "unsupported_reasons": ["missing_multi_turn_ground_truth"],
         }
     chunked_actual = _chunk_actual_calls_by_ground_truth(actual_calls, ground_truth_turns)
-    checker_result = multi_turn_checker(
-        chunked_actual,
-        ground_truth_turns,
-        prompt_entry,
-        category,
-        OFFICIAL_MODEL_NAME,
-    )
+    try:
+        checker_result = multi_turn_checker(
+            chunked_actual,
+            ground_truth_turns,
+            prompt_entry,
+            category,
+            OFFICIAL_MODEL_NAME,
+        )
+    except ModuleNotFoundError as exc:
+        missing = str(getattr(exc, "name", "") or type(exc).__name__)
+        return {
+            "success": 0.0,
+            "tool_selection_correctness": 0.0,
+            "argument_correctness": 0.0,
+            "structure_correctness": 0.0,
+            "paper_safe": False,
+            "unsupported_reasons": [f"missing_multi_turn_dependency:{missing}"],
+        }
+    except Exception as exc:
+        return {
+            "success": 0.0,
+            "tool_selection_correctness": 0.0,
+            "argument_correctness": 0.0,
+            "structure_correctness": 0.0,
+            "paper_safe": False,
+            "unsupported_reasons": [f"official_multi_turn_runtime_error:{type(exc).__name__}"],
+        }
     success = bool(checker_result.get("valid"))
     return {
         "success": float(success),
@@ -446,15 +466,25 @@ def main() -> None:
         trace_payload = _load_json(trace_paths[key])
         prompt_entry = _load_official_prompt_entry(task, prompt_cache)
         ground_truth_entry = _load_official_ground_truth(task, ground_truth_cache)
-        score = _score_row(
-            Language=Language,
-            ast_checker=ast_checker,
-            multi_turn_checker=multi_turn_checker,
-            task=task,
-            trace_payload=trace_payload,
-            prompt_entry=prompt_entry,
-            ground_truth_entry=ground_truth_entry,
-        )
+        try:
+            score = _score_row(
+                Language=Language,
+                ast_checker=ast_checker,
+                multi_turn_checker=multi_turn_checker,
+                task=task,
+                trace_payload=trace_payload,
+                prompt_entry=prompt_entry,
+                ground_truth_entry=ground_truth_entry,
+            )
+        except Exception as exc:
+            score = {
+                "success": 0.0,
+                "tool_selection_correctness": 0.0,
+                "argument_correctness": 0.0,
+                "structure_correctness": 0.0,
+                "paper_safe": False,
+                "unsupported_reasons": [f"official_wrapper_row_error:{type(exc).__name__}"],
+            }
         metadata = task.get("metadata", {}) if isinstance(task.get("metadata"), dict) else {}
         category = str(metadata.get("official_dataset_category") or "unknown")
         for reason in score.get("unsupported_reasons", []):

@@ -54,6 +54,17 @@ def _bool_cli(value: bool) -> str:
     return "true" if value else "false"
 
 
+def _resolve_source_path(raw_source: str) -> Path:
+    path = Path(raw_source)
+    return path if path.is_absolute() else (ROOT_DIR / path)
+
+
+def _load_optional_json(path: Path | None) -> Dict[str, Any]:
+    if path is None or not path.exists():
+        return {}
+    return _load_json(path)
+
+
 def _run(command: List[str]) -> None:
     completed = subprocess.run(
         command,
@@ -74,6 +85,44 @@ def _load_tau_audit(path_value: str | None) -> Dict[str, Any]:
     return _load_json(path)
 
 
+def _discover_source_manifest(source_path: Path) -> Path | None:
+    manifest_path = (source_path / "manifest.json") if source_path.is_dir() else (source_path.parent / "manifest.json")
+    return manifest_path if manifest_path.exists() else None
+
+
+def _check_bfcl_formal_source_gate(suite_cfg: Dict[str, Any], args: argparse.Namespace) -> None:
+    if not suite_cfg.get("requires_formal_source"):
+        return
+    source_path = _resolve_source_path(args.source or suite_cfg["default_source"])
+    manifest_path = _discover_source_manifest(source_path)
+    if manifest_path is None:
+        raise SystemExit("BFCL formal suite requires a prepared-source manifest alongside the selected source.")
+
+    source_manifest = _load_json(manifest_path)
+    if str(source_manifest.get("source") or "").strip() == "repo_scaffold":
+        raise SystemExit("BFCL formal suite cannot run from repo_scaffold data. Use a prepared formal source.")
+
+    formal_lock_path = ROOT_DIR / str(suite_cfg.get("formal_lock") or "")
+    if not formal_lock_path.exists():
+        raise SystemExit("BFCL formal suite requires a tracked formal lock artifact.")
+    formal_lock = _load_json(formal_lock_path)
+
+    expected_manifest = str(formal_lock.get("prepared_manifest") or "").strip()
+    actual_manifest = _display_path(manifest_path)
+    if expected_manifest and actual_manifest != expected_manifest:
+        raise SystemExit(
+            f"BFCL formal suite source manifest mismatch: expected {expected_manifest}, got {actual_manifest}."
+        )
+
+    if formal_lock.get("counts") and source_manifest.get("counts") and formal_lock["counts"] != source_manifest["counts"]:
+        raise SystemExit("BFCL formal suite counts do not match the tracked formal lock.")
+
+    expected_wrapper = str(formal_lock.get("official_wrapper_path") or "").strip()
+    actual_wrapper = str(source_manifest.get("official_evaluator_script") or "").strip()
+    if expected_wrapper and actual_wrapper and expected_wrapper != actual_wrapper:
+        raise SystemExit("BFCL formal suite official evaluator wrapper does not match the tracked formal lock.")
+
+
 def _check_tau_promotion_gate(suite_cfg: Dict[str, Any]) -> None:
     if not suite_cfg.get("requires_audit_promotion"):
         return
@@ -84,11 +133,12 @@ def _check_tau_promotion_gate(suite_cfg: Dict[str, Any]) -> None:
 
 def _command_for_suite(suite_cfg: Dict[str, Any], outdir: Path, args: argparse.Namespace) -> List[str]:
     runner = ROOT_DIR / suite_cfg["runner"]
+    resolved_source = _resolve_source_path(args.source or suite_cfg["default_source"])
     command = [
         sys.executable,
         str(runner),
         "--source",
-        str(ROOT_DIR / (args.source or suite_cfg["default_source"])) if not Path(args.source or suite_cfg["default_source"]).is_absolute() else str(Path(args.source or suite_cfg["default_source"])),
+        str(resolved_source),
         "--outdir",
         str(outdir),
         "--mode",
@@ -245,6 +295,7 @@ def main() -> None:
     outdir.mkdir(parents=True, exist_ok=True)
 
     _check_tau_promotion_gate(suite_cfg)
+    _check_bfcl_formal_source_gate(suite_cfg, args)
 
     runner_command = _command_for_suite(suite_cfg, outdir, args)
     score_command: List[str] | None = None

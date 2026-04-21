@@ -1,4 +1,5 @@
 import csv
+import importlib.util
 import json
 import os
 import subprocess
@@ -6,7 +7,13 @@ import sys
 from pathlib import Path
 
 from toolclaw.benchmarks.adapters import BFCLAdapter
-from toolclaw.bfcl_runtime import extract_tool_arguments
+from toolclaw.bfcl_runtime import (
+    extract_parallel_argument_sets,
+    extract_tool_arguments,
+    rank_candidate_tools,
+    select_candidate_tool,
+    should_abstain_from_tools,
+)
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -743,3 +750,262 @@ def test_bfcl_runtime_extract_tool_arguments_keeps_benchmark_logic_out_of_execut
     )
 
     assert extracted == {"base": 10, "height": 5, "unit": "units"}
+
+
+def test_score_bfcl_outputs_prefers_py39_plus_for_official_eval(monkeypatch) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(module.sys, "executable", "/usr/bin/python3")
+    monkeypatch.setattr(
+        module,
+        "_python_version",
+        lambda executable: {
+            "/usr/bin/python3": (3, 8, 10),
+            "/opt/python3.13": (3, 13, 0),
+        }.get(executable),
+    )
+    monkeypatch.setattr(
+        module.shutil,
+        "which",
+        lambda binary: "/opt/python3.13" if binary == "python3.13" else None,
+    )
+
+    selected, version = module._discover_official_python()
+
+    assert selected == "/opt/python3.13"
+    assert version == (3, 13, 0)
+
+
+def test_bfcl_official_wrapper_multi_turn_dependency_failure_is_row_local() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "bfcl_official_wrapper_module",
+        ROOT_DIR / "scripts" / "bfcl_official_wrapper.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    def _raise_missing_dependency(*args, **kwargs):
+        raise ModuleNotFoundError("No module named mpmath")
+
+    score = module._score_multi_turn(
+        multi_turn_checker=_raise_missing_dependency,
+        task={"metadata": {"official_dataset_category": "multi_turn_base"}},
+        prompt_entry={"prompt": "ignored"},
+        ground_truth_entry={"ground_truth": [["math_api.add(a=1,b=2)"]]},
+        actual_calls=[{"tool_id": "add", "arguments": {"a": 1, "b": 2}}],
+    )
+
+    assert score["paper_safe"] is False
+    assert score["success"] == 0.0
+    assert score["unsupported_reasons"] == ["missing_multi_turn_dependency:ModuleNotFoundError"]
+
+
+
+def test_bfcl_runtime_supports_numbered_integer_keys() -> None:
+    extracted = extract_tool_arguments(
+        "triangle_properties.get",
+        {
+            "type": "dict",
+            "properties": {
+                "side1": {"type": "integer"},
+                "side2": {"type": "integer"},
+                "side3": {"type": "integer"},
+            },
+            "required": ["side1", "side2", "side3"],
+        },
+        "The three sides are 5 units, 4 units and 3 units long.",
+    )
+
+    assert extracted["side1"] == 5
+    assert extracted["side2"] == 4
+    assert extracted["side3"] == 3
+
+
+
+def test_bfcl_runtime_abstains_for_mismatched_single_tool_query() -> None:
+    should_abstain = should_abstain_from_tools(
+        "Calculate the area of a triangle given the base is 10 meters and height is 5 meters.",
+        [
+            {
+                "tool_id": "determine_body_mass_index",
+                "description": "Calculate body mass index given weight and height.",
+                "parameters": {
+                    "type": "dict",
+                    "properties": {
+                        "weight": {"type": "float"},
+                        "height": {"type": "float"},
+                    },
+                    "required": ["weight", "height"],
+                },
+            }
+        ],
+    )
+
+    assert should_abstain is True
+
+
+
+def test_bfcl_runtime_prefers_high_confidence_tool_over_bad_preferred_tool() -> None:
+    selected = select_candidate_tool(
+        "update my latte to a large size with coconut milk and make it extra sweet; make it boiling hot. The drink id is latte.",
+        [
+            {
+                "tool_id": "ChaFod",
+                "description": "Changes the food item based on the customer's request.",
+                "parameters": {
+                    "type": "dict",
+                    "required": ["foodItem"],
+                    "properties": {"foodItem": {"type": "string"}},
+                },
+            },
+            {
+                "tool_id": "ChaDri.change_drink",
+                "description": "Modifies the existing drink order according to updated drink preferences.",
+                "parameters": {
+                    "type": "dict",
+                    "required": ["new_preferences"],
+                    "properties": {
+                        "drink_id": {"type": "string"},
+                        "new_preferences": {
+                            "type": "dict",
+                            "properties": {
+                                "size": {"type": "string", "enum": ["small", "medium", "large"]},
+                                "sweetness_level": {"type": "string", "enum": ["none", "light", "regular", "extra"]},
+                                "milk_type": {"type": "string", "enum": ["regular", "soy", "almond", "coconut"]},
+                                "temperature": {"type": "string", "enum": ["cold", "warm", "hot"]},
+                            },
+                        },
+                    },
+                },
+            },
+        ],
+        preferred_tool_id="ChaFod",
+    )
+
+    assert selected is not None
+    assert selected["tool_id"] == "ChaDri.change_drink"
+
+
+def test_bfcl_runtime_omits_unmatched_nested_enum_fields() -> None:
+    extracted = extract_tool_arguments(
+        "ChaDri.change_drink",
+        {
+            "type": "dict",
+            "properties": {
+                "drink_id": {"type": "string"},
+                "new_preferences": {
+                    "type": "dict",
+                    "properties": {
+                        "size": {"type": "string", "enum": ["small", "medium", "large"]},
+                        "milk_type": {"type": "string", "enum": ["regular", "soy", "almond", "coconut"]},
+                        "sweetness_level": {"type": "string", "enum": ["none", "light", "regular", "extra"]},
+                        "temperature": {"type": "string", "enum": ["cold", "warm", "hot"]},
+                        "special_instructions": {"type": "string"},
+                    },
+                },
+            },
+        },
+        'Update drink id "1234" to no sweetness and hot.',
+        include_defaults=False,
+    )
+
+    assert extracted["drink_id"] == "1234"
+    assert extracted["new_preferences"] == {
+        "sweetness_level": "none",
+        "temperature": "hot",
+    }
+
+
+def test_bfcl_runtime_extracts_parallel_multiple_numeric_arguments() -> None:
+    sum_args = extract_tool_arguments(
+        "math_toolkit.sum_of_multiples",
+        {
+            "type": "dict",
+            "properties": {
+                "lower_limit": {"type": "integer"},
+                "upper_limit": {"type": "integer"},
+                "multiples": {"type": "array", "items": {"type": "integer"}},
+            },
+        },
+        "Find the sum of multiples of 3 and 5 between 1 and 1000.",
+        include_defaults=False,
+    )
+    prime_args = extract_tool_arguments(
+        "math_toolkit.product_of_primes",
+        {
+            "type": "dict",
+            "properties": {
+                "count": {"type": "integer"},
+            },
+        },
+        "Also compute the product of the first five prime numbers.",
+        include_defaults=False,
+    )
+
+    assert sum_args == {"lower_limit": 1, "upper_limit": 1000, "multiples": [3, 5]}
+    assert prime_args == {"count": 5}
+
+
+def test_bfcl_runtime_extracts_repeated_parallel_argument_sets() -> None:
+    arg_sets = extract_parallel_argument_sets(
+        "spotify.play",
+        {
+            "type": "dict",
+            "properties": {
+                "artist": {"type": "string"},
+                "duration": {"type": "integer"},
+            },
+        },
+        "Play songs by artists Taylor Swift and Ed Sheeran, with durations 3 minutes and 4 minutes.",
+    )
+
+    assert arg_sets == [
+        {"artist": "Taylor Swift", "duration": 3},
+        {"artist": "Ed Sheeran", "duration": 4},
+    ]
+
+
+def test_bfcl_runtime_prefers_general_search_for_general_information_query() -> None:
+    selected = select_candidate_tool(
+        "what is Imjin war",
+        [
+            {
+                "tool_id": "ControlAppliance.execute",
+                "description": "Control a home appliance and check its status.",
+                "parameters": {
+                    "type": "dict",
+                    "required": ["command"],
+                    "properties": {"command": {"type": "string"}},
+                },
+            },
+            {
+                "tool_id": "HNA_WQA.search",
+                "description": "Retrieve up-to-date information by searching the web using keywords.",
+                "parameters": {
+                    "type": "dict",
+                    "required": ["keyword"],
+                    "properties": {"keyword": {"type": "string"}},
+                },
+            },
+            {
+                "tool_id": "HNA_NEWS.search",
+                "description": "Searches for recent events and news based on the specified keyword.",
+                "parameters": {
+                    "type": "dict",
+                    "required": ["keyword"],
+                    "properties": {"keyword": {"type": "string"}},
+                },
+            },
+        ],
+        preferred_tool_id="HNA_NEWS.search",
+    )
+
+    assert selected is not None
+    assert selected["tool_id"] == "HNA_WQA.search"

@@ -640,7 +640,7 @@ class SequentialExecutor:
         trace.metadata.task_annotations["chosen_tool"] = step.tool_id
         tool_args = self._materialize_tool_args(step=step, state_values=state_values)
         # Persist inferred dependency fills so retries/replans keep consistent inputs.
-        for key in ("target_path", "retrieved_info", "query"):
+        for key in self._persistable_materialized_keys(step, tool_args):
             if key in tool_args and key not in step.inputs:
                 step.inputs[key] = tool_args[key]
         trace.add_event(
@@ -998,6 +998,27 @@ class SequentialExecutor:
         return 0
 
     @staticmethod
+    def _implicit_state_fallback_slots(step: WorkflowStep) -> list[str]:
+        configured = step.metadata.get("implicit_state_fallback_slots")
+        if isinstance(configured, list):
+            return [str(item) for item in configured if str(item)]
+        if step.capability_id == "cap_write":
+            return ["retrieved_info", "query"]
+        return []
+
+    @staticmethod
+    def _persistable_materialized_keys(step: WorkflowStep, tool_args: Dict[str, Any]) -> list[str]:
+        keys: set[str] = set()
+        state_bindings = step.metadata.get("state_bindings", {})
+        if isinstance(state_bindings, dict):
+            keys.update(str(key) for key in state_bindings.keys() if str(key))
+        keys.update(str(item) for item in step.metadata.get("required_state_slots", []) if str(item))
+        keys.update(SequentialExecutor._implicit_state_fallback_slots(step))
+        if step.capability_id == "cap_write":
+            keys.add("target_path")
+        return [key for key in sorted(keys) if key in tool_args]
+
+    @staticmethod
     def _materialize_tool_args(step: WorkflowStep, state_values: Dict[str, Any]) -> Dict[str, Any]:
         tool_args = dict(step.inputs)
         state_bindings = step.metadata.get("state_bindings", {})
@@ -1006,16 +1027,14 @@ class SequentialExecutor:
                 if state_key in state_values:
                     tool_args[str(input_key)] = state_values[state_key]
         # Dependency-driven fallback wiring: carry required slots from previous state
-        # into current step inputs so write-like steps do not execute with empty args.
+        # into current step inputs so steps do not execute with empty declared dependencies.
         required_slots = [str(item) for item in step.metadata.get("required_state_slots", []) if str(item)]
         for slot in required_slots:
             if slot in state_values and slot not in tool_args:
                 tool_args[slot] = state_values[slot]
-        if step.capability_id == "cap_write":
-            if "retrieved_info" in state_values and "retrieved_info" not in tool_args:
-                tool_args["retrieved_info"] = state_values["retrieved_info"]
-            if "query" in state_values and "query" not in tool_args:
-                tool_args["query"] = state_values["query"]
+        for slot in SequentialExecutor._implicit_state_fallback_slots(step):
+            if slot in state_values and slot not in tool_args:
+                tool_args[slot] = state_values[slot]
         inferred_preflight = SequentialExecutor._preflight_state_policy_for_step(step)
         state_slot = str(inferred_preflight.get("state_slot") or "")
         if state_slot and state_slot in state_values and SequentialExecutor._tool_uses_outbound_cellular(step.tool_id):

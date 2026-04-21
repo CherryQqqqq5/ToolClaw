@@ -46,6 +46,23 @@ class ToolClawRuntime:
         self._compile_and_store_if_success(outcome, enabled=compile_on_success)
         return outcome
 
+    def run_workflow(
+        self,
+        workflow: Workflow,
+        run_id: str,
+        output_path: str,
+        backup_tool_map: Optional[Dict[str, str]] = None,
+        compile_on_success: bool = True,
+    ) -> ExecutionOutcome:
+        outcome = self.executor.run_until_blocked(
+            workflow=workflow,
+            run_id=run_id,
+            output_path=output_path,
+            backup_tool_map=backup_tool_map,
+        )
+        self._compile_and_store_if_success(outcome, enabled=compile_on_success)
+        return outcome
+
     def run_task_with_reuse(
         self,
         request: PlanningRequest,

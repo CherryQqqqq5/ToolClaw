@@ -1,0 +1,47 @@
+{
+  "benchmark": "bfcl",
+  "track": "fc_core",
+  "namespace": "toolclaw_diagnostics",
+  "per_system": {
+    "a0_baseline": {
+      "num_rows": 4291.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.7135013113456367,
+      "toolclaw_diagnostics_tool_sequence_match": 0.3835935679328828,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.38047455276539405,
+      "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
+      "toolclaw_diagnostics_repair_overhead": 0.0
+    },
+    "a1_recovery": {
+      "num_rows": 4291.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.7135013113456367,
+      "toolclaw_diagnostics_tool_sequence_match": 0.3835935679328828,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.38047455276539405,
+      "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
+      "toolclaw_diagnostics_repair_overhead": 0.0
+    },
+    "a2_planner": {
+      "num_rows": 4291.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.6170206745014483,
+      "toolclaw_diagnostics_tool_sequence_match": 0.2975996271265439,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.3418301182750029,
+      "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
+      "toolclaw_diagnostics_repair_overhead": 0.0
+    },
+    "a3_interaction": {
+      "num_rows": 4291.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.6171954589339814,
+      "toolclaw_diagnostics_tool_sequence_match": 0.29736658121649967,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.34136402645491437,
+      "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
+      "toolclaw_diagnostics_repair_overhead": 0.0
+    },
+    "a4_reuse": {
+      "num_rows": 4291.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.6171954589339814,
+      "toolclaw_diagnostics_tool_sequence_match": 0.29736658121649967,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.34136402645491437,
+      "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
+      "toolclaw_diagnostics_repair_overhead": 0.0
+    }
+  }
+}

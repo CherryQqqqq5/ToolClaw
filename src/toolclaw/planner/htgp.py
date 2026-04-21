@@ -480,6 +480,7 @@ class PolicyInjector:
                         "allowed_tools": allowed_tools,
                         "branch_options": branch_options if idx == len(graph.capabilities) and branch_options else [],
                         "branch_sensitive": bool(idx == len(graph.capabilities) and branch_options),
+                        "implicit_state_fallback_slots": ["retrieved_info", "query"] if capability.capability_id == "cap_write" else [],
                     },
                 )
             )
@@ -1528,12 +1529,25 @@ class HTGPPlanner:
         if not isinstance(step_overrides, dict):
             return
 
+        HTGPPlanner._ensure_workflow_capacity_for_overrides(workflow, step_overrides)
+
         graph_nodes = {node.node_id: node for node in workflow.workflow_graph.nodes}
-        bindings_by_capability = {binding.capability_id: binding for binding in workflow.tool_bindings}
-        for step in workflow.execution_plan:
+        for index, step in enumerate(workflow.execution_plan):
             patch = step_overrides.get(step.step_id)
             if not isinstance(patch, dict):
                 continue
+            binding = workflow.tool_bindings[index] if index < len(workflow.tool_bindings) else None
+            capability_node = workflow.capability_graph.capabilities[index] if index < len(workflow.capability_graph.capabilities) else None
+
+            if "capability_id" in patch and patch["capability_id"]:
+                step.capability_id = str(patch["capability_id"])
+                node = graph_nodes.get(step.step_id)
+                if node is not None:
+                    node.capability_id = step.capability_id
+                if binding is not None:
+                    binding.capability_id = step.capability_id
+                if capability_node is not None:
+                    capability_node.capability_id = step.capability_id
 
             if "inputs" in patch and isinstance(patch["inputs"], dict):
                 step.inputs = dict(patch["inputs"])
@@ -1547,7 +1561,6 @@ class HTGPPlanner:
                 if node is not None:
                     node.selected_tool = step.tool_id
                     node.tool_candidates = [step.tool_id] if step.tool_id else []
-                binding = bindings_by_capability.get(step.capability_id)
                 if binding is not None and step.tool_id:
                     binding.primary_tool = step.tool_id
 
@@ -1556,6 +1569,90 @@ class HTGPPlanner:
                 node = graph_nodes.get(step.step_id)
                 if node is not None:
                     node.metadata.update(deepcopy(patch["metadata"]))
+        workflow.capability_graph.edges = HTGPPlanner._rebuild_capability_edges(workflow.capability_graph.capabilities)
+
+    @staticmethod
+    def _ensure_workflow_capacity_for_overrides(
+        workflow: Workflow,
+        step_overrides: Dict[str, Dict[str, Any]],
+    ) -> None:
+        if not step_overrides or not workflow.execution_plan:
+            return
+        required_steps = len(workflow.execution_plan)
+        for step_id in step_overrides:
+            if not isinstance(step_id, str):
+                continue
+            match = re.fullmatch(r"step_(\d+)", step_id.strip())
+            if not match:
+                continue
+            required_steps = max(required_steps, int(match.group(1)))
+        if required_steps <= len(workflow.execution_plan):
+            return
+        if not workflow.workflow_graph.nodes or not workflow.capability_graph.capabilities:
+            return
+
+        HTGPPlanner._ensure_binding_alignment(workflow)
+
+        from toolclaw.schemas.workflow import CapabilityEdge
+
+        while len(workflow.execution_plan) < required_steps:
+            index = len(workflow.execution_plan) + 1
+            previous_step = workflow.execution_plan[-1]
+            previous_node = workflow.workflow_graph.nodes[-1]
+            previous_binding = workflow.tool_bindings[-1]
+            previous_capability = workflow.capability_graph.capabilities[-1]
+
+            new_step = deepcopy(previous_step)
+            new_step.step_id = f"step_{index:02d}"
+            new_step.expected_output = str(previous_step.expected_output or f"step_{index:02d}_output")
+            new_step.rollback_to = previous_step.step_id
+            workflow.execution_plan.append(new_step)
+
+            new_node = deepcopy(previous_node)
+            new_node.node_id = new_step.step_id
+            new_node.expected_output = new_step.expected_output
+            new_node.dependencies = [previous_step.step_id]
+            workflow.workflow_graph.nodes.append(new_node)
+            workflow.workflow_graph.edges.append(
+                WorkflowEdge(
+                    source=previous_step.step_id,
+                    target=new_step.step_id,
+                    condition="override_sequence",
+                    edge_type="default",
+                )
+            )
+
+            workflow.tool_bindings.append(deepcopy(previous_binding))
+            workflow.capability_graph.capabilities.append(deepcopy(previous_capability))
+            workflow.capability_graph.edges.append(
+                CapabilityEdge(
+                    source=workflow.capability_graph.capabilities[-2].capability_id,
+                    target=workflow.capability_graph.capabilities[-1].capability_id,
+                    condition="override_sequence",
+                )
+            )
+
+        workflow.workflow_graph.entry_nodes = ["step_01"] if workflow.workflow_graph.nodes else []
+        workflow.workflow_graph.exit_nodes = [workflow.execution_plan[-1].step_id] if workflow.execution_plan else []
+
+    @staticmethod
+    def _ensure_binding_alignment(workflow: Workflow) -> None:
+        if not workflow.execution_plan:
+            return
+        while len(workflow.tool_bindings) < len(workflow.execution_plan):
+            step_index = len(workflow.tool_bindings)
+            step = workflow.execution_plan[step_index]
+            primary_tool = step.tool_id
+            if not primary_tool and workflow.tool_bindings:
+                primary_tool = workflow.tool_bindings[-1].primary_tool
+            workflow.tool_bindings.append(
+                ToolBinding(
+                    capability_id=str(step.capability_id or ""),
+                    primary_tool=str(primary_tool or ""),
+                    backup_tools=[],
+                    binding_confidence=1.0 if primary_tool else 0.0,
+                )
+            )
 
     def _load_reusable_profile(
         self,

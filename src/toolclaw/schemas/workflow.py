@@ -433,6 +433,7 @@ class Workflow:
                 expected_output="report_artifact",
                 checkpoint=True,
                 rollback_to="step_01",
+                metadata={"implicit_state_fallback_slots": ["retrieved_info", "query"]},
             ),
         ]
 

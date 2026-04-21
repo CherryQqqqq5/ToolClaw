@@ -28,6 +28,9 @@ data/bfcl/*
 !data/bfcl/bfcl_v4.fc_core.aligned.jsonl
 !data/bfcl/bfcl_v4.agentic_ext.aligned.jsonl
 !data/bfcl/manifest.json
+!data/bfcl_formal/
+data/bfcl_formal/*
+!data/bfcl_formal/manifest.json
 
 # Keep repo-curated benchmark datasets used in the paper
 !data/toolsandbox.formal.json
@@ -107,3 +110,14 @@ outputs/exp/toolsandbox_split_eval/*
 !outputs/exp/toolsandbox_split_eval/report.md
 !outputs/exp/toolsandbox_split_eval/scoreboard.json
 !outputs/exp/toolsandbox_split_eval/per_system_summary.json
+
+# Keep the BFCL formal paper bundle summaries only.
+!outputs/paper_suite_formal/
+outputs/paper_suite_formal/*
+!outputs/paper_suite_formal/bfcl_fc_core/
+outputs/paper_suite_formal/bfcl_fc_core/*
+!outputs/paper_suite_formal/bfcl_fc_core/manifest.json
+!outputs/paper_suite_formal/bfcl_fc_core/experiment_manifest.json
+!outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json
+!outputs/paper_suite_formal/bfcl_fc_core/official_scoreboard.json
+!outputs/paper_suite_formal/bfcl_fc_core/toolclaw_diagnostics.json

@@ -19,6 +19,7 @@ from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
 from toolclaw.main import ToolClawRuntime
 from toolclaw.planner.htgp import PlanningRequest
 from toolclaw.schemas.trace import EventType, utc_now_iso
+from toolclaw.schemas.workflow import Workflow
 
 
 @dataclass
@@ -62,8 +63,17 @@ class InteractionShell:
         backup_tool_map: Optional[Dict[str, str]] = None,
         use_reuse: bool = False,
         compile_on_success: bool = True,
+        seed_workflow: Optional[Workflow] = None,
     ) -> ExecutionOutcome:
-        if use_reuse:
+        if seed_workflow is not None and not use_reuse:
+            outcome = self.runtime.run_workflow(
+                workflow=seed_workflow,
+                run_id=run_id,
+                output_path=output_path,
+                backup_tool_map=backup_tool_map,
+                compile_on_success=compile_on_success,
+            )
+        elif use_reuse:
             outcome = self.runtime.run_task_with_reuse(
                 request=request,
                 run_id=run_id,

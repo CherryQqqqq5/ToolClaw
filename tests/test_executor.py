@@ -399,3 +399,34 @@ def test_executor_stops_on_repeat_failure_limit_instead_of_spinning(tmp_path: Pa
     payload = json.loads((tmp_path / "repeat_failure_guard.json").read_text(encoding="utf-8"))
     stop_event = next(event for event in payload["events"] if event["event_type"] == EventType.STOP.value)
     assert stop_event["output"]["reason"] == "repeat_failure_limit_reached"
+
+
+def test_executor_materialize_tool_args_supports_explicit_implicit_fallback_slots() -> None:
+    step = WorkflowStep(
+        step_id="step_custom_01",
+        capability_id="cap_retrieve",
+        tool_id="custom_tool",
+        inputs={},
+        metadata={"implicit_state_fallback_slots": ["query"]},
+    )
+
+    tool_args = SequentialExecutor._materialize_tool_args(step, {"query": "hello world"})
+
+    assert tool_args["query"] == "hello world"
+
+
+def test_executor_materialize_tool_args_allows_explicit_opt_out_for_write_steps() -> None:
+    step = WorkflowStep(
+        step_id="step_write_01",
+        capability_id="cap_write",
+        tool_id="write_tool",
+        inputs={"target_path": "outputs/reports/demo.txt"},
+        metadata={"implicit_state_fallback_slots": []},
+    )
+
+    tool_args = SequentialExecutor._materialize_tool_args(
+        step,
+        {"query": "should not leak", "retrieved_info": "should not leak"},
+    )
+
+    assert tool_args == {"target_path": "outputs/reports/demo.txt"}

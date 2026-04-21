@@ -311,6 +311,50 @@ def test_interaction_shell_treats_abortive_reply_as_safe_abort_success(tmp_path:
     assert outcome.metadata["stopped_reason"] == "safe_abort_success"
 
 
+def test_interaction_shell_executes_seed_workflow_before_interaction(tmp_path: Path) -> None:
+    calls = {"run_workflow": 0, "run_task": 0}
+    workflow = Workflow.demo()
+
+    class StubRuntime:
+        def __init__(self) -> None:
+            self.repair_updater = RepairUpdater()
+
+        def run_workflow(self, *, workflow, run_id, output_path, backup_tool_map=None, compile_on_success=True):
+            calls["run_workflow"] += 1
+            return SequentialExecutor().run_until_blocked(
+                workflow=workflow,
+                run_id=run_id,
+                output_path=output_path,
+                backup_tool_map=backup_tool_map,
+            )
+
+        def run_task(self, **kwargs):
+            calls["run_task"] += 1
+            raise AssertionError("run_task should not be used when seed_workflow is provided without reuse")
+
+        def run_task_with_reuse(self, **kwargs):
+            raise AssertionError("reuse path should not be used in this test")
+
+    shell = InteractionShell(
+        runtime=StubRuntime(),
+        config=InteractionLoopConfig(max_turns=1, simulator_policy=SimulatedPolicy()),
+    )
+    request = PlanningRequest(task=workflow.task, context=workflow.context, policy=workflow.policy)
+
+    outcome = shell.run(
+        request=request,
+        run_id="run_seed_workflow_001",
+        output_path=str(tmp_path / "seed_workflow_trace.json"),
+        use_reuse=False,
+        compile_on_success=False,
+        seed_workflow=workflow,
+    )
+
+    assert outcome.success is True
+    assert calls["run_workflow"] == 1
+    assert calls["run_task"] == 0
+
+
 def test_user_simulator_prefers_tool_id_for_tool_switch_schema() -> None:
     request = InteractionRequest(
         interaction_id="int_tool_switch_001",

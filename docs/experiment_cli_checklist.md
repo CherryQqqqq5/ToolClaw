@@ -14,6 +14,12 @@ This checklist defines a clean, reproducible experiment workspace so every run m
 - If `data/external/ToolSandbox/data/**/result_summary.json` is missing, ToolSandbox formal runs may fall back to bundled core data.
 - Fallback/core runs are valid for mechanism claims and ablations.
 - Any "official" claim must be backed by an official run export with `result_summary.json`.
+- BFCL headline runs must not use `data/bfcl/manifest.json` scaffold data.
+- BFCL `fc_core` headline runs must resolve to the tracked formal source manifest or tracked formal lock artifact and must produce:
+  - `official_scoreboard.json`
+  - `toolclaw_diagnostics.json`
+  - `claim_summary.json`
+- Until that formal BFCL bundle is frozen, BFCL should be described as protocol/readiness plus small-probe connectivity, not completed paper evidence.
 
 ## 3) Experiment order (locked)
 

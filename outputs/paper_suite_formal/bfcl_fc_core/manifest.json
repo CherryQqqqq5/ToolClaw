@@ -1,0 +1,41 @@
+{
+  "suite": "bfcl_fc_core",
+  "status": "completed",
+  "paper_role": "headline_candidate",
+  "generated_at": "2026-04-20T21:11:36.497138+00:00",
+  "runner": "scripts/run_bfcl_bench.py",
+  "score_script": "scripts/score_bfcl_outputs.py",
+  "runner_command": [
+    "/usr/bin/python3",
+    "/cephfs/qiuyn/ToolClaw/scripts/run_bfcl_bench.py",
+    "--source",
+    "/cephfs/qiuyn/ToolClaw/data/bfcl_formal/bfcl_v4.fc_core.aligned.jsonl",
+    "--outdir",
+    "/cephfs/qiuyn/ToolClaw/outputs/paper_suite_formal/bfcl_fc_core",
+    "--mode",
+    "planner",
+    "--systems",
+    "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+    "--num-runs",
+    "1",
+    "--track",
+    "fc_core",
+    "--official-eval",
+    "true",
+    "--toolclaw-diagnostics",
+    "true"
+  ],
+  "score_command": [
+    "/usr/bin/python3",
+    "/cephfs/qiuyn/ToolClaw/scripts/score_bfcl_outputs.py",
+    "--outdir",
+    "/cephfs/qiuyn/ToolClaw/outputs/paper_suite_formal/bfcl_fc_core",
+    "--official-eval",
+    "true",
+    "--toolclaw-diagnostics",
+    "true"
+  ],
+  "claim_summary_path": "outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json",
+  "comparison_raw_path": "outputs/paper_suite_formal/bfcl_fc_core/comparison.raw.csv",
+  "comparison_scored_path": "outputs/paper_suite_formal/bfcl_fc_core/comparison.scored.csv"
+}

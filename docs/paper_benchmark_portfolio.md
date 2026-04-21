@@ -44,136 +44,108 @@ This note updates the paper-facing benchmark plan after reviewing the current re
 - ToolGym is best treated as a later supplementary stress test, not the main paper anchor.
 - WebArena, WorkArena, and OSWorld are strong benchmarks, but they move the paper toward browser or computer-use agents rather than workflow intelligence over tool calling.
 
-## BFCL status on 2026-04-20
+## BFCL status on 2026-04-21
 
-This repository now has a prepared formal BFCL split and a working official-eval bridge, but the reported evidence is still based on small `fc_core` probes rather than a full 4291-row paper run.
+BFCL `fc_core` protocol and the official-eval bridge are implemented. A full formal `bfcl_fc_core` run has completed at [outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json](../outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json), and the earlier all-zero official result was traced to two scorer-side failures: the scorer launched the upstream wrapper with server-default `python3.8`, and the wrapper escalated per-row multi-turn dependency failures into a process-wide crash. Both issues are now fixed in benchmark-side code. The current formal bundle yields non-zero official metrics on supported strata, but `paper_safe_for_claim` remains `false` because multi-turn strata still require missing upstream dependency `mpmath`.
 
 ### Prepared dataset status
 
-- Formal prepared source: [data/bfcl_formal/manifest.json](../data/bfcl_formal/manifest.json)
-- Current counts:
+- Tracked scaffold manifest:
+  - [data/bfcl/manifest.json](../data/bfcl/manifest.json)
+- Tracked formal-source manifest:
+  - [data/bfcl_formal/manifest.json](../data/bfcl_formal/manifest.json)
+- Tracked formal lock artifact:
+  - [configs/bfcl_formal_lock.json](../configs/bfcl_formal_lock.json)
+- Formal prepared-source counts recorded in the tracked formal manifest/lock:
   - `fc_core = 4291`
   - `agentic_ext = 455`
   - `excluded = 150`
-- Official wrapper path recorded in the manifest:
+- Official wrapper path recorded in the formal manifest/lock:
   - [scripts/bfcl_official_wrapper.py](../scripts/bfcl_official_wrapper.py)
 
-### Current scored outputs
+### Evidence boundary
 
-- Small 3-case probe:
-  - scoreboard: [outputs/paper_suite_bfcl_refresh3/bfcl_fc_core/official_scoreboard.json](../outputs/paper_suite_bfcl_refresh3/bfcl_fc_core/official_scoreboard.json)
-  - diagnostics: [outputs/paper_suite_bfcl_refresh3/bfcl_fc_core/toolclaw_diagnostics.json](../outputs/paper_suite_bfcl_refresh3/bfcl_fc_core/toolclaw_diagnostics.json)
-- Current 12-case pilot:
-  - scoreboard: [outputs/paper_suite_bfcl_pilot12_refresh3/bfcl_fc_core/official_scoreboard.json](../outputs/paper_suite_bfcl_pilot12_refresh3/bfcl_fc_core/official_scoreboard.json)
-  - scored rows: [outputs/paper_suite_bfcl_pilot12_refresh3/bfcl_fc_core/comparison.scored.csv](../outputs/paper_suite_bfcl_pilot12_refresh3/bfcl_fc_core/comparison.scored.csv)
-  - diagnostics: [outputs/paper_suite_bfcl_pilot12_refresh3/bfcl_fc_core/toolclaw_diagnostics.json](../outputs/paper_suite_bfcl_pilot12_refresh3/bfcl_fc_core/toolclaw_diagnostics.json)
+- The repository exposes a verifiable formal prepared-source manifest and lock.
+- The current server-side formal result bundle is:
+  - [outputs/paper_suite_formal/bfcl_fc_core/official_scoreboard.json](../outputs/paper_suite_formal/bfcl_fc_core/official_scoreboard.json)
+  - [outputs/paper_suite_formal/bfcl_fc_core/toolclaw_diagnostics.json](../outputs/paper_suite_formal/bfcl_fc_core/toolclaw_diagnostics.json)
+  - [outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json](../outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json)
+- The current BFCL headline claim is still not paper-safe because the official evaluator remains unsupported for several multi-turn strata.
 
-### Probe3 result summary
+### Formal `bfcl_fc_core` observations
 
-The current 3-case probe is no longer a fake-positive baseline run. All systems now execute BFCL tools directly and land at the same official score:
+The full formal run now exposes meaningful official scores on supported strata instead of collapsing all systems to zero. Current official results are:
 
-| system | official success | tool selection | argument | structure |
-| --- | ---: | ---: | ---: | ---: |
-| `a0_baseline` | 0.6667 | 0.6667 | 0.6667 | 0.6667 |
-| `a1_recovery` | 0.6667 | 0.6667 | 0.6667 | 0.6667 |
-| `a2_planner` | 0.6667 | 0.6667 | 0.6667 | 0.6667 |
-| `a3_interaction` | 0.6667 | 0.6667 | 0.6667 | 0.6667 |
-| `a4_reuse` | 0.6667 | 0.6667 | 0.6667 | 0.6667 |
+- `a0_baseline`: success `0.0291`, tool selection `0.4265`, structure `0.3873`
+- `a1_recovery`: success `0.0280`, tool selection `0.4265`, structure `0.3873`
+- `a2_planner`: success `0.0226`, tool selection `0.3407`, structure `0.3020`
+- `a3_interaction`: success `0.0221`, tool selection `0.3409`, structure `0.3018`
+- `a4_reuse`: success `0.0221`, tool selection `0.3409`, structure `0.3018`
 
-Passed tasks for all five systems:
+Unsupported official strata are currently:
 
-- `live_simple_0-0-0`
-- `simple_python_0`
+- `multi_turn_base`
+- `multi_turn_long_context`
+- `multi_turn_miss_func`
+- `multi_turn_miss_param`
 
-Failed task for all five systems:
+All four are blocked by the same upstream runtime dependency gap: `missing_multi_turn_dependency:mpmath`.
 
-- `multi_turn_base_0`
+These formal observations support a competence-check framing only:
 
-Interpretation: the single-turn BFCL path is now working, but the multi-turn path remains unsolved.
+- supported:
+  - BFCL `fc_core` is implemented as a protocol path for planner/binder competence evaluation
+  - official evaluator connectivity is now working for supported strata on the full formal run
+  - the earlier all-zero BFCL result was a scorer artifact, not a faithful system result
+- not yet supported:
+  - a paper-safe headline BFCL claim
+  - a headline claim that ToolClaw already shows clear BFCL lift
+  - a strong multi-turn BFCL claim
 
-### Pilot12 result summary
+### Why BFCL still shows weak system separation in local pilots
 
-The current 12-case pilot is the best compact view of BFCL `fc_core` performance:
+The current local BFCL pilots still behave more like function-call correctness checks than like blocked, stateful, repair-heavy control tasks.
 
-| system | official success | count | tool selection | argument | structure |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `a0_baseline` | 0.5833 | 7/12 | 0.6667 | 0.5833 | 0.6667 |
-| `a1_recovery` | 0.5833 | 7/12 | 0.6667 | 0.5833 | 0.6667 |
-| `a2_planner` | 0.5000 | 6/12 | 0.5833 | 0.5000 | 0.5833 |
-| `a3_interaction` | 0.3333 | 4/12 | 0.5000 | 0.3333 | 0.4167 |
-| `a4_reuse` | 0.3333 | 4/12 | 0.5000 | 0.3333 | 0.4167 |
+- BFCL `fc_core` primarily rewards function-call correctness.
+- The higher ToolClaw layers are not strongly activated in the current local BFCL pilots.
+- Multi-turn decomposition remains the main unsolved path.
+- Reuse and interaction therefore do not yet convert into visible BFCL gains.
 
-Passed task IDs by system:
+### Refreshed medium subset on 2026-04-21
 
-- `a0_baseline` and `a1_recovery`
-  - `live_multiple_0-0-0`
-  - `live_simple_0-0-0`
-  - `live_simple_1-1-0`
-  - `parallel_0`
-  - `parallel_1`
-  - `simple_python_0`
-  - `simple_python_1`
-- `a2_planner`
-  - `live_simple_0-0-0`
-  - `live_simple_1-1-0`
-  - `parallel_0`
-  - `parallel_1`
-  - `simple_python_0`
-  - `simple_python_1`
-- `a3_interaction` and `a4_reuse`
-  - `live_simple_0-0-0`
-  - `live_simple_1-1-0`
-  - `simple_python_0`
-  - `simple_python_1`
+A refreshed BFCL medium subset run now exists at:
 
-Main failed buckets:
+- [outputs/bfcl_medium_subset_v3/official_scoreboard.json](../outputs/bfcl_medium_subset_v3/official_scoreboard.json)
+- [outputs/bfcl_medium_subset_v3/toolclaw_diagnostics.json](../outputs/bfcl_medium_subset_v3/toolclaw_diagnostics.json)
+- [outputs/bfcl_medium_subset_v3/claim_summary.json](../outputs/bfcl_medium_subset_v3/claim_summary.json)
 
-- All systems still fail:
-  - `multi_turn_base_0`
-  - `multi_turn_base_1`
-  - `multi_turn_miss_param_0`
-  - `multi_turn_miss_param_1`
-  - `live_multiple_1-0-1`
-- `a2_planner` also loses:
-  - `live_multiple_0-0-0`
-- `a3_interaction` and `a4_reuse` also lose:
-  - `live_multiple_0-0-0`
-  - `parallel_0`
-  - `parallel_1`
+This subset uses 28 `fc_core` rows spanning `irrelevance`, `live_irrelevance`, `multiple`, `live_multiple`, `parallel`, `parallel_multiple`, and `simple_python`. After benchmark-side protocol cleanup, all five systems are aligned on the same official score profile:
 
-### Why BFCL currently shows weak system separation
+- `a0_baseline = 0.5714`
+- `a1_recovery = 0.5714`
+- `a2_planner = 0.5714`
+- `a3_interaction = 0.5714`
+- `a4_reuse = 0.5714`
 
-The present BFCL results do not support a monotonic `a0 -> a4` performance ladder. The reasons are structural, not just noise.
+The important point is not that BFCL now shows a headline lift. It still does not. The important point is that the earlier separation on this subset was partly contaminated by protocol mismatch in the BFCL runner path. After removing BFCL-specific path artifacts, the remaining failures are concentrated in benchmark-content buckets rather than in system-path noise.
 
-1. BFCL `fc_core` currently rewards function-call correctness more than ToolClaw's higher-level control stack.
-   - The official output only scores `success`, `tool_selection`, `argument`, and `structure`.
-   - It does not directly reward interaction quality, repair quality, or reuse utility in the main score.
+Current bucket observations on `bfcl_medium_subset_v3` are:
 
-2. The higher ToolClaw layers are barely activated in the current BFCL pilot.
-   - In [outputs/paper_suite_bfcl_pilot12_refresh3/bfcl_fc_core/toolclaw_diagnostics.json](../outputs/paper_suite_bfcl_pilot12_refresh3/bfcl_fc_core/toolclaw_diagnostics.json), all five systems have `toolclaw_diagnostics_repair_overhead = 0.0`.
-   - This means the BFCL tasks in the current pilot are not producing the blocked, repair-heavy execution pattern that normally reveals `a1`, `a3`, or `a4`.
+- `irrelevance` and `live_irrelevance`: all systems are `1.0`
+- `live_multiple`: all systems are `0.5`
+- `parallel_multiple`: all systems are `0.5`, with structure improved to `0.75`
+- `parallel`: all systems are `0.5`
+- `multiple`: all systems remain `0.0`
+- `simple_python`: all systems are `0.5`
 
-3. The current BFCL runtime backend is still a stubbed function-call environment.
-   - Representative traces record `run_manifest.tool_runtime_backend = "bfcl_stub"`.
-   - This keeps the task close to function-call generation and away from the richer stateful recovery loop where ToolClaw's interaction layer is strongest.
+This refreshed subset is `paper_safe_for_claim = true` because the official evaluator fully covers the included rows. It supports a narrower and cleaner statement:
 
-4. `a3_interaction` only helps when execution actually blocks.
-   - In [scripts/run_eval.py](../scripts/run_eval.py), `a3_interaction` and `a4_reuse` differ from planner/executor mainly through `shell.run(...)`.
-   - In [src/toolclaw/interaction/irc.py](../src/toolclaw/interaction/irc.py), the real interaction loop only expands once `outcome.blocked` is true.
-   - The current BFCL pilot mostly does not block, so `a3` has little chance to produce upside.
-
-5. `a4_reuse` does not yet have a strong BFCL reuse regime.
-   - Hard cases such as `multi_turn_base_0` still show `reuse_mode = "none"` and empty `selected_match`.
-   - Easier cases can load a transfer prior, but the recorded `utility_gain_score` is still `0.0`, which means reuse is not generating additional measurable correctness on this pilot.
-
-### Current BFCL claim boundary
-
-- Supported today:
-  - ToolClaw can now execute a meaningful single-turn and partial parallel BFCL `fc_core` slice with real official scoring.
-  - The benchmark is usable as a planner/binder competence check.
-- Not supported today:
-  - A headline claim that planner, interaction, or reuse produces clear lift on BFCL.
-  - A strong multi-turn BFCL claim.
+- supported:
+  - the BFCL `fc_core` protocol path is now stable enough for paper-safe subset evaluation
+  - current residual failures are concentrated in benchmark content buckets, not in benchmark-side runner corruption
+- not supported:
+  - any claim that ToolClaw already shows BFCL headline lift over its own lower-layer variants
+  - any claim that BFCL currently separates interaction or reuse advantages
 
 ### Engineering note
 

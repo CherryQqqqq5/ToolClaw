@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from toolclaw.benchmarks.baseline_runner import run_baseline
 from toolclaw.interaction.repair_updater import InteractionRequest
 from toolclaw.schemas.workflow import Workflow
@@ -467,6 +469,107 @@ def test_execute_system_baseline_uses_planner_workflow(monkeypatch, tmp_path: Pa
     assert build_calls == ["planner"]
     assert run_calls["workflow"] is workflow
     assert row.system == "a0_baseline"
+
+
+def test_execute_system_bfcl_structured_interaction_uses_shell(monkeypatch, tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_structured", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = Workflow.demo()
+    workflow.metadata["benchmark"] = "bfcl"
+    build_calls: list[str] = []
+    shell_calls: list[str] = []
+
+    def fake_build_workflow_from_task(task, mode="demo"):
+        build_calls.append(mode)
+        return workflow
+
+    def fake_run_until_blocked(*, workflow, run_id, output_path, backup_tool_map):
+        raise AssertionError("BFCL interaction workflow should not be forced into direct executor mode")
+
+    def fake_row_from_trace(*, task, system, scenario, trace_path, reused_artifact):
+        return {"system": system, "scenario": scenario, "trace_path": str(trace_path)}
+
+    class _FakeShell:
+        def run(self, **kwargs):
+            shell_calls.append(kwargs["run_id"])
+            assert kwargs["seed_workflow"] is workflow
+            Path(kwargs["output_path"]).write_text(
+                json.dumps({"events": [], "metrics": {"success": True}, "metadata": {}}),
+                encoding="utf-8",
+            )
+            return SimpleNamespace(workflow=workflow)
+
+    monkeypatch.setattr(module, "build_workflow_from_task", fake_build_workflow_from_task)
+    monkeypatch.setattr(module, "row_from_trace", fake_row_from_trace)
+    monkeypatch.setattr(module, "build_shell", lambda runtime, task: _FakeShell())
+
+    runtime = SimpleNamespace(
+        executor=SimpleNamespace(run_until_blocked=fake_run_until_blocked),
+    )
+
+    row = module.execute_system(
+        spec=module.SYSTEM_SPECS["a3_interaction"],
+        task={"task_id": "bfcl_parallel_001", "query": "play music", "metadata": {"benchmark": "bfcl"}},
+        task_index=1,
+        traces_dir=tmp_path,
+        runtime=runtime,
+    )
+
+    assert build_calls == ["planner"]
+    assert shell_calls == ["a3_interaction_bfcl_parallel_001"]
+    assert row["system"] == "a3_interaction"
+
+
+def test_execute_system_interaction_uses_same_planner_workflow_as_a2(monkeypatch, tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_a3_seed", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = Workflow.demo()
+    workflow.metadata["benchmark"] = "toolsandbox"
+    workflow.task.task_id = "shared_planner_workflow"
+    workflow.execution_plan[0].tool_id = "weather_lookup"
+    build_calls: list[str] = []
+
+    def fake_build_workflow_from_task(task, mode="demo"):
+        build_calls.append(mode)
+        return workflow
+
+    class _FakeShell:
+        def run(self, **kwargs):
+            assert kwargs["seed_workflow"] is workflow
+            Path(kwargs["output_path"]).write_text(
+                json.dumps({"events": [], "metrics": {"success": True}, "metadata": {}}),
+                encoding="utf-8",
+            )
+            return SimpleNamespace(workflow=workflow)
+
+    monkeypatch.setattr(module, "build_workflow_from_task", fake_build_workflow_from_task)
+    monkeypatch.setattr(module, "build_shell", lambda runtime, task: _FakeShell())
+    monkeypatch.setattr(
+        module,
+        "row_from_trace",
+        lambda **kwargs: SimpleNamespace(system=kwargs["system"], task_id=kwargs["task"]["task_id"]),
+    )
+
+    row = module.execute_system(
+        spec=module.SYSTEM_SPECS["a3_interaction"],
+        task={"task_id": "ts_interaction_001", "query": "check weather"},
+        task_index=1,
+        traces_dir=tmp_path,
+        runtime=SimpleNamespace(executor=SimpleNamespace(run_until_blocked=lambda **kwargs: None)),
+    )
+
+    assert build_calls == ["planner"]
+    assert row.system == "a3_interaction"
 
 
 def test_execute_system_recovery_executor_uses_seed_workflow(monkeypatch, tmp_path: Path) -> None:
@@ -1074,3 +1177,240 @@ def test_shell_wrappers_parse_as_bash() -> None:
             text=True,
         )
         assert completed.returncode == 0, completed.stderr
+
+
+def test_bfcl_seed_specs_build_parallel_multiple_steps() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_parallel_multiple", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    candidate_tools = [
+        module.ToolSpec(
+            tool_id="math_toolkit.sum_of_multiples",
+            description="Compute the sum of multiples within a range.",
+            metadata={
+                "parameters": {
+                    "type": "dict",
+                    "properties": {
+                        "lower_limit": {"type": "integer"},
+                        "upper_limit": {"type": "integer"},
+                        "multiples": {"type": "array", "items": {"type": "integer"}},
+                    },
+                }
+            },
+        ),
+        module.ToolSpec(
+            tool_id="math_toolkit.product_of_primes",
+            description="Compute the product of the first N prime numbers.",
+            metadata={
+                "parameters": {
+                    "type": "dict",
+                    "properties": {
+                        "count": {"type": "integer"},
+                    },
+                }
+            },
+        ),
+    ]
+
+    specs = module._bfcl_seed_specs(
+        {
+            "query": "Find the sum of multiples of 3 and 5 between 1 and 1000, and also compute the product of the first five prime numbers.",
+            "metadata": {"bfcl_call_pattern": "parallel"},
+        },
+        candidate_tools,
+        "parallel math query",
+    )
+
+    assert len(specs) == 2
+    assert [spec["tool"].tool_id for spec in specs] == [
+        "math_toolkit.sum_of_multiples",
+        "math_toolkit.product_of_primes",
+    ]
+    assert specs[0]["inputs"] == {"lower_limit": 1, "upper_limit": 1000, "multiples": [3, 5]}
+    assert specs[1]["inputs"] == {"count": 5}
+
+
+def test_execute_system_uses_shell_for_bfcl_interaction_workflows(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_interaction", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.Workflow.demo()
+    workflow.metadata["benchmark"] = "bfcl"
+    workflow.execution_plan = workflow.execution_plan[:1]
+    workflow.execution_plan[0].capability_id = "cap_retrieve"
+    workflow.execution_plan[0].tool_id = "weather_lookup"
+    workflow.execution_plan[0].inputs = {"city": "Paris"}
+
+    shell_calls: list[str] = []
+    executor_calls: list[str] = []
+
+    def _fake_build_workflow_from_task(task: dict, mode: str = "demo"):
+        assert mode == "planner"
+        return workflow
+
+    class _FakeExecutor:
+        def run_until_blocked(self, **kwargs):
+            executor_calls.append(kwargs["run_id"])
+            trace_path = Path(kwargs["output_path"])
+            trace_path.write_text(json.dumps({"events": [], "metrics": {}, "metadata": {}}), encoding="utf-8")
+
+    class _FakeShell:
+        def run(self, **kwargs):
+            shell_calls.append(kwargs["run_id"])
+            trace_path = Path(kwargs["output_path"])
+            trace_path.write_text(
+                json.dumps(
+                    {
+                        "events": [],
+                        "metrics": {"success": True, "tool_calls": 1},
+                        "metadata": {},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            return SimpleNamespace(workflow=workflow)
+
+    fake_runtime = SimpleNamespace(
+        executor=_FakeExecutor(),
+        _compile_and_store_if_success=lambda outcome, enabled=True: None,
+    )
+
+    monkeypatch.setattr(module, "build_workflow_from_task", _fake_build_workflow_from_task)
+    monkeypatch.setattr(module, "build_shell", lambda runtime, task: _FakeShell())
+    monkeypatch.setattr(
+        module,
+        "row_from_trace",
+        lambda **kwargs: SimpleNamespace(system=kwargs["system"], task_id=kwargs["task"].get("task_id")),
+    )
+
+    result = module.execute_system(
+        spec=module.SYSTEM_SPECS["a3_interaction"],
+        task={
+            "task_id": "bfcl_shell_001",
+            "scenario": "bfcl",
+            "query": "Call weather_lookup with city=Paris.",
+            "metadata": {"benchmark": "bfcl"},
+        },
+        task_index=1,
+        traces_dir=tmp_path,
+        runtime=fake_runtime,
+    )
+
+    assert result.system == "a3_interaction"
+    assert shell_calls == ["a3_interaction_bfcl_shell_001"]
+    assert executor_calls == []
+
+
+def test_build_planning_request_preserves_step_capability_overrides() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_request_overrides", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = Workflow.demo()
+    workflow.execution_plan = workflow.execution_plan[:1]
+    workflow.execution_plan[0].step_id = "step_01"
+    workflow.execution_plan[0].capability_id = "cap_retrieve"
+    workflow.execution_plan[0].tool_id = "weather_lookup"
+    workflow.execution_plan[0].inputs = {"city": "Paris"}
+    workflow.execution_plan[0].metadata = {"bfcl_benchmark": True}
+
+    request = module.build_planning_request(workflow, allow_reuse=False)
+
+    assert request.workflow_overrides["steps"]["step_01"]["capability_id"] == "cap_retrieve"
+
+
+def test_htgp_request_overrides_can_restore_missing_steps() -> None:
+    from toolclaw.planner.htgp import PlanningRequest, build_default_planner
+
+    workflow = Workflow.demo()
+    workflow.execution_plan = workflow.execution_plan[:1]
+    workflow.workflow_graph.nodes = workflow.workflow_graph.nodes[:1]
+    workflow.workflow_graph.edges = []
+    workflow.workflow_graph.entry_nodes = ["step_01"]
+    workflow.workflow_graph.exit_nodes = ["step_01"]
+    workflow.tool_bindings = workflow.tool_bindings[:1]
+    workflow.capability_graph.capabilities = workflow.capability_graph.capabilities[:1]
+    workflow.capability_graph.edges = []
+
+    planner = build_default_planner()
+    request = PlanningRequest(
+        task=workflow.task,
+        context=workflow.context,
+        policy=workflow.policy,
+        workflow_overrides={
+            "steps": {
+                "step_01": {
+                    "capability_id": "cap_retrieve",
+                    "tool_id": "tool_one",
+                    "inputs": {"query": "first"},
+                    "metadata": {},
+                },
+                "step_02": {
+                    "capability_id": "cap_retrieve",
+                    "tool_id": "tool_two",
+                    "inputs": {"query": "second"},
+                    "metadata": {},
+                },
+            }
+        },
+    )
+
+    result = planner.plan(request)
+
+    assert len(result.workflow.execution_plan) >= 2
+    assert result.workflow.execution_plan[0].tool_id == "tool_one"
+    assert result.workflow.execution_plan[1].tool_id == "tool_two"
+
+
+def test_htgp_request_overrides_restore_missing_steps_without_existing_bindings() -> None:
+    from toolclaw.planner.htgp import HTGPPlanner
+
+    workflow = Workflow.demo()
+    workflow.execution_plan = workflow.execution_plan[:1]
+    workflow.execution_plan[0].step_id = "step_01"
+    workflow.execution_plan[0].capability_id = "cap_retrieve"
+    workflow.execution_plan[0].tool_id = "tool_one"
+    workflow.execution_plan[0].inputs = {"query": "first"}
+    workflow.workflow_graph.nodes = workflow.workflow_graph.nodes[:1]
+    workflow.workflow_graph.edges = []
+    workflow.workflow_graph.entry_nodes = ["step_01"]
+    workflow.workflow_graph.exit_nodes = ["step_01"]
+    workflow.tool_bindings = []
+    workflow.capability_graph.capabilities = workflow.capability_graph.capabilities[:1]
+    workflow.capability_graph.edges = []
+
+    HTGPPlanner._apply_request_overrides(
+        workflow,
+        {
+            "steps": {
+                "step_01": {
+                    "capability_id": "cap_retrieve",
+                    "tool_id": "tool_one",
+                    "inputs": {"query": "first"},
+                    "metadata": {},
+                },
+                "step_02": {
+                    "capability_id": "cap_retrieve",
+                    "tool_id": "tool_two",
+                    "inputs": {"query": "second"},
+                    "metadata": {},
+                },
+            }
+        },
+    )
+
+    assert len(workflow.execution_plan) == 2
+    assert workflow.execution_plan[1].tool_id == "tool_two"
+    assert len(workflow.tool_bindings) == 2
+    assert workflow.tool_bindings[1].primary_tool == "tool_two"

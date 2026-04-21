@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -86,7 +88,12 @@ def _load_task_lookup(path: Path) -> Dict[str, Dict[str, Any]]:
     return {str(task.get("task_id") or ""): task for task in payload if isinstance(task, dict)}
 
 
-def _discover_official_evaluator(manifest: Dict[str, Any], override: str | None) -> Path | None:
+def _discover_official_evaluator(
+    manifest: Dict[str, Any],
+    override: str | None,
+    *,
+    normalized_taskset: Path | None = None,
+) -> Path | None:
     if override:
         path = Path(override)
         return path if path.exists() else None
@@ -100,8 +107,83 @@ def _discover_official_evaluator(manifest: Dict[str, Any], override: str | None)
                 candidate = (ROOT_DIR / script) if not Path(script).is_absolute() else Path(script)
                 if candidate.exists():
                     return candidate
+    if normalized_taskset and normalized_taskset.exists():
+        try:
+            payload = json.loads(normalized_taskset.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            payload = []
+        if isinstance(payload, list):
+            for task in payload:
+                if not isinstance(task, dict):
+                    continue
+                metadata = task.get("metadata", {})
+                if not isinstance(metadata, dict):
+                    continue
+                script = str(metadata.get("official_evaluator_script") or "").strip()
+                if not script:
+                    continue
+                candidate = (ROOT_DIR / script) if not Path(script).is_absolute() else Path(script)
+                if candidate.exists():
+                    return candidate
     return None
 
+
+
+def _parse_python_version(stdout: str) -> Tuple[int, int, int] | None:
+    raw = str(stdout or "").strip()
+    parts = raw.split(".")
+    if len(parts) < 2:
+        return None
+    try:
+        major = int(parts[0])
+        minor = int(parts[1])
+        patch = int(parts[2]) if len(parts) > 2 else 0
+    except ValueError:
+        return None
+    return (major, minor, patch)
+
+
+def _python_version(executable: str) -> Tuple[int, int, int] | None:
+    try:
+        completed = subprocess.run(
+            [executable, "-c", "import sys; print(\".\".join(str(part) for part in sys.version_info[:3]))"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
+    if completed.returncode != 0:
+        return None
+    return _parse_python_version(completed.stdout)
+
+
+def _discover_official_python() -> Tuple[str, Tuple[int, int, int] | None]:
+    candidates: List[str] = []
+    override = os.environ.get("BFCL_OFFICIAL_PYTHON", "").strip()
+    if override:
+        candidates.append(override)
+    candidates.append(sys.executable)
+    for binary in ("python3.13", "python3.12", "python3.11", "python3.10", "python3.9"):
+        resolved = shutil.which(binary)
+        if resolved:
+            candidates.append(resolved)
+    for candidate in ("/cephfs/qiuyn/miniconda3/bin/python3.13", "/cephfs/qiuyn/miniconda3/bin/python3"):
+        if Path(candidate).exists():
+            candidates.append(candidate)
+
+    seen = set()
+    for candidate in candidates:
+        normalized = str(Path(candidate))
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        version = _python_version(normalized)
+        if version is not None and version >= (3, 9, 0):
+            return normalized, version
+
+    fallback = str(Path(sys.executable))
+    return fallback, _python_version(fallback)
 
 def _run_official_evaluator(
     *,
@@ -116,11 +198,12 @@ def _run_official_evaluator(
     if evaluator_script is None:
         return {}, [{"stratum": "all", "reason": "official_evaluator_unavailable", "paper_safe": False}]
 
+    evaluator_python, evaluator_version = _discover_official_python()
     with tempfile.TemporaryDirectory(prefix="toolclaw_bfcl_eval_") as tmp:
         output_path = Path(tmp) / "official_eval.json"
         completed = subprocess.run(
             [
-                sys.executable,
+                evaluator_python,
                 str(evaluator_script),
                 "--prepared-taskset",
                 str(normalized_taskset),
@@ -135,7 +218,10 @@ def _run_official_evaluator(
             text=True,
         )
         if completed.returncode != 0 or not output_path.exists():
-            return {}, [{"stratum": "all", "reason": "official_evaluator_failed", "paper_safe": False, "stderr": completed.stderr.strip()}]
+            error_row: Dict[str, Any] = {"stratum": "all", "reason": "official_evaluator_failed", "paper_safe": False, "stderr": completed.stderr.strip(), "python_executable": evaluator_python}
+            if evaluator_version is not None:
+                error_row["python_version"] = ".".join(str(part) for part in evaluator_version)
+            return {}, [error_row]
         payload = _load_json(output_path)
 
     results: Dict[Tuple[int, str, str], Dict[str, Any]] = {}
@@ -255,7 +341,11 @@ def main() -> None:
     task_lookup = _load_task_lookup(normalized_taskset)
     adapter = BFCLAdapter()
 
-    evaluator_script = _discover_official_evaluator(manifest, args.official_evaluator_script)
+    evaluator_script = _discover_official_evaluator(
+        manifest,
+        args.official_evaluator_script,
+        normalized_taskset=normalized_taskset,
+    )
     official_results, unsupported = _run_official_evaluator(
         evaluator_script=evaluator_script,
         normalized_taskset=normalized_taskset,

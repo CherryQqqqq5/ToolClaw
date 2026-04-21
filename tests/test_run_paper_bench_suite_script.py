@@ -204,6 +204,7 @@ def test_paper_claim_matrix_is_json_compatible() -> None:
     }
     assert set(payload["suites"]) == {
         "toolsandbox_official",
+        "bfcl_fc_core_smoke",
         "bfcl_fc_core",
         "bfcl_agentic_ext",
         "tau2_dual_control",
@@ -359,10 +360,35 @@ def test_run_paper_bench_suite_tau2_and_reuse(tmp_path: Path) -> None:
     assert reuse_claim_summary["claims"][0]["claim_id"] == "reuse_exact_match_cost"
 
 
-def test_run_paper_bench_suite_bfcl_fc_core(tmp_path: Path) -> None:
+def test_run_paper_bench_suite_bfcl_fc_core_smoke(tmp_path: Path) -> None:
     source_dir = _write_bfcl_source_dir(tmp_path)
     out_root = tmp_path / "paper_suite"
     _run(
+        [
+            sys.executable,
+            "scripts/run_paper_bench_suite.py",
+            "bfcl_fc_core_smoke",
+            "--source",
+            str(source_dir / "bfcl_v4.fc_core.aligned.jsonl"),
+            "--out-root",
+            str(out_root),
+            "--systems",
+            "a0_baseline",
+            "--num-runs",
+            "1",
+        ]
+    )
+    suite_outdir = out_root / "bfcl_fc_core_smoke"
+    claim_summary = json.loads((suite_outdir / "claim_summary.json").read_text(encoding="utf-8"))
+    assert claim_summary["suite"] == "bfcl_fc_core_smoke"
+    assert "official_bfcl_eval" in claim_summary
+    assert "toolclaw_diagnostics" in claim_summary
+
+
+def test_run_paper_bench_suite_bfcl_fc_core_requires_formal_source(tmp_path: Path) -> None:
+    source_dir = _write_bfcl_source_dir(tmp_path)
+    out_root = tmp_path / "paper_suite"
+    completed = _run(
         [
             sys.executable,
             "scripts/run_paper_bench_suite.py",
@@ -375,14 +401,11 @@ def test_run_paper_bench_suite_bfcl_fc_core(tmp_path: Path) -> None:
             "a0_baseline",
             "--num-runs",
             "1",
-        ]
+        ],
+        check=False,
     )
-    suite_outdir = out_root / "bfcl_fc_core"
-    claim_summary = json.loads((suite_outdir / "claim_summary.json").read_text(encoding="utf-8"))
-    assert claim_summary["suite"] == "bfcl_fc_core"
-    assert claim_summary["claims"][0]["claim_id"] == "planner_binding_headline"
-    assert "official_bfcl_eval" in claim_summary
-    assert "toolclaw_diagnostics" in claim_summary
+    assert completed.returncode != 0
+    assert "formal suite" in completed.stderr or "formal suite" in completed.stdout or "mismatch" in completed.stderr or "mismatch" in completed.stdout
 
 
 def test_run_paper_bench_suite_tau_headline_is_blocked(tmp_path: Path) -> None:

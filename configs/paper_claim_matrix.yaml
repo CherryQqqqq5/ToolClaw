@@ -18,7 +18,7 @@
       }
     },
     "planner_binding_headline": {
-      "status": "planned_bfcl_fc_core",
+      "status": "evidence_pending_formal_freeze",
       "benchmark_suite": "bfcl_fc_core",
       "claim": "Planner, binder, and parameter correctness should be anchored to BFCL function-calling core only.",
       "metrics": {
@@ -97,6 +97,20 @@
     }
   },
   "suites": {
+    "bfcl_fc_core_smoke": {
+      "status": "implemented",
+      "runner": "scripts/run_bfcl_bench.py",
+      "score_script": "scripts/score_bfcl_outputs.py",
+      "default_source": "data/bfcl/bfcl_v4.fc_core.aligned.jsonl",
+      "default_mode": "planner",
+      "default_systems": "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "default_num_runs": 1,
+      "track": "fc_core",
+      "official_eval": true,
+      "toolclaw_diagnostics": true,
+      "claim_ids": [],
+      "paper_role": "readiness_only"
+    },
     "toolsandbox_official": {
       "status": "implemented",
       "runner": "scripts/run_toolsandbox_bench.py",
@@ -113,17 +127,19 @@
       "status": "implemented",
       "runner": "scripts/run_bfcl_bench.py",
       "score_script": "scripts/score_bfcl_outputs.py",
-      "default_source": "data/bfcl/bfcl_v4.fc_core.aligned.jsonl",
+      "default_source": "data/bfcl_formal/bfcl_v4.fc_core.aligned.jsonl",
       "default_mode": "planner",
       "default_systems": "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
       "default_num_runs": 1,
       "track": "fc_core",
       "official_eval": true,
       "toolclaw_diagnostics": true,
+      "formal_lock": "configs/bfcl_formal_lock.json",
+      "requires_formal_source": true,
       "claim_ids": [
         "planner_binding_headline"
       ],
-      "paper_role": "headline"
+      "paper_role": "headline_candidate"
     },
     "bfcl_agentic_ext": {
       "status": "implemented",

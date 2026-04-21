@@ -1,0 +1,1402 @@
+{
+  "benchmark": "bfcl_v4",
+  "source": "data/external/bfcl_official",
+  "artifact_role": "prepared_source_manifest",
+  "evidence_status": "full_formal_bfcl_evidence_pending",
+  "preparation_command": "python3 scripts/prepare_bfcl_source.py --source data/external/bfcl_official --outdir data/bfcl_formal --official-evaluator-script scripts/bfcl_official_wrapper.py",
+  "outputs": {
+    "fc_core": "data/bfcl_formal/bfcl_v4.fc_core.aligned.jsonl",
+    "agentic_ext": "data/bfcl_formal/bfcl_v4.agentic_ext.aligned.jsonl"
+  },
+  "protocol_subset": {
+    "fc_core": {
+      "included_groups": [
+        "live",
+        "multi_turn",
+        "non_live"
+      ],
+      "excluded_groups": [
+        "format_sensitivity",
+        "memory",
+        "web_search"
+      ],
+      "language_rule": "english_only_unless_validated_multilingual_official_evaluator",
+      "call_pattern_rule": "serial_and_parallel_only",
+      "official_evaluator_coverage": {
+        "serial": true,
+        "parallel": true,
+        "multilingual": false
+      }
+    },
+    "agentic_ext": {
+      "included_groups": [
+        "format_sensitivity",
+        "memory",
+        "web_search"
+      ],
+      "excluded_groups": [
+        "live",
+        "multi_turn",
+        "non_live"
+      ]
+    }
+  },
+  "official_evaluator_script": "scripts/bfcl_official_wrapper.py",
+  "counts": {
+    "fc_core": 4291,
+    "agentic_ext": 455,
+    "excluded": 150
+  },
+  "excluded_rows": [
+    {
+      "sample_id": "simple_java_0",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_1",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_2",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_3",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_4",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_5",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_6",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_7",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_8",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_9",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_10",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_11",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_12",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_13",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_14",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_15",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_16",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_17",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_18",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_19",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_20",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_21",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_22",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_23",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_24",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_25",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_26",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_27",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_28",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_29",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_30",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_31",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_32",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_33",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_34",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_35",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_36",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_37",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_38",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_39",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_40",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_41",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_42",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_43",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_44",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_45",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_46",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_47",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_48",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_49",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_50",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_51",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_52",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_53",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_54",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_55",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_56",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_57",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_58",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_59",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_60",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_61",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_62",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_63",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_64",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_65",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_66",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_67",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_68",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_69",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_70",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_71",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_72",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_73",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_74",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_75",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_76",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_77",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_78",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_79",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_80",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_81",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_82",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_83",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_84",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_85",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_86",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_87",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_88",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_89",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_90",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_91",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_92",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_93",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_94",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_95",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_96",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_97",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_98",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_java_99",
+      "bfcl_group": "non_live",
+      "bfcl_language": "java",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_0",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_1",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_2",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_3",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_4",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_5",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_6",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_7",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_8",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_9",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_10",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_11",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_12",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_13",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_14",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_15",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_16",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_17",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_18",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_19",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_20",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_21",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_22",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_23",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_24",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_25",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_26",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_27",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_28",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_29",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_30",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_31",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_32",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_33",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_34",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_35",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_36",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_37",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_38",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_39",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_40",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_41",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_42",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_43",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_44",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_45",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_46",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_47",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_48",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    },
+    {
+      "sample_id": "simple_javascript_49",
+      "bfcl_group": "non_live",
+      "bfcl_language": "javascript",
+      "bfcl_call_pattern": "serial",
+      "reasons": [
+        "multilingual_requires_validated_official_evaluator"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "benchmark": "bfcl",
+  "track": "fc_core",
+  "namespace": "official_bfcl_eval",
+  "per_system": {
+    "a0_baseline": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.02913073875553484,
+      "official_bfcl_eval_tool_selection_correctness": 0.4265478132525441,
+      "official_bfcl_eval_argument_correctness": 0.02913073875553484,
+      "official_bfcl_eval_structure_correctness": 0.38732230249359123
+    },
+    "a1_recovery": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.027965509205313446,
+      "official_bfcl_eval_tool_selection_correctness": 0.4265478132525441,
+      "official_bfcl_eval_argument_correctness": 0.027965509205313446,
+      "official_bfcl_eval_structure_correctness": 0.38732230249359123
+    },
+    "a2_planner": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.022605453274295036,
+      "official_bfcl_eval_tool_selection_correctness": 0.34067816359822883,
+      "official_bfcl_eval_argument_correctness": 0.022605453274295036,
+      "official_bfcl_eval_structure_correctness": 0.3020274994173852
+    },
+    "a3_interaction": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.022139361454206478,
+      "official_bfcl_eval_tool_selection_correctness": 0.34085294803076205,
+      "official_bfcl_eval_argument_correctness": 0.022139361454206478,
+      "official_bfcl_eval_structure_correctness": 0.30179445350734097
+    },
+    "a4_reuse": {
+      "num_rows": 4291.0,
+      "official_bfcl_eval_success": 0.022139361454206478,
+      "official_bfcl_eval_tool_selection_correctness": 0.34085294803076205,
+      "official_bfcl_eval_argument_correctness": 0.022139361454206478,
+      "official_bfcl_eval_structure_correctness": 0.30179445350734097
+    }
+  },
+  "unsupported_strata": [
+    {
+      "stratum": "multi_turn_base",
+      "reason": "missing_multi_turn_dependency:mpmath",
+      "paper_safe": false
+    },
+    {
+      "stratum": "multi_turn_long_context",
+      "reason": "missing_multi_turn_dependency:mpmath",
+      "paper_safe": false
+    },
+    {
+      "stratum": "multi_turn_miss_func",
+      "reason": "missing_multi_turn_dependency:mpmath",
+      "paper_safe": false
+    },
+    {
+      "stratum": "multi_turn_miss_param",
+      "reason": "missing_multi_turn_dependency:mpmath",
+      "paper_safe": false
+    }
+  ]
+}
