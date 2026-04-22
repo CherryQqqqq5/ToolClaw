@@ -20,7 +20,7 @@
     "planner_binding_headline": {
       "status": "evidence_pending_formal_freeze",
       "benchmark_suite": "bfcl_fc_core",
-      "claim": "Planner, binder, and parameter correctness should be anchored to BFCL function-calling core only.",
+      "claim": "Planner, binder, and grounding should be anchored to BFCL function-calling core only. Current frozen BFCL slices support a mechanism-level grounding claim; a formal freeze is still required before treating BFCL as headline evidence beyond mechanism confirmation.",
       "metrics": {
         "primary": [
           "official_bfcl_eval_success",
@@ -31,6 +31,10 @@
         "supporting": [
           "toolclaw_diagnostics_binder_selection_match",
           "toolclaw_diagnostics_parameter_fill_ratio",
+          "toolclaw_diagnostics_exec_verified",
+          "toolclaw_diagnostics_preflight_interception_rate",
+          "toolclaw_diagnostics_repair_applied_count",
+          "toolclaw_diagnostics_repair_success_count",
           "toolclaw_diagnostics_policy_format_compliance"
         ]
       }
@@ -139,7 +143,7 @@
       "claim_ids": [
         "planner_binding_headline"
       ],
-      "paper_role": "headline_candidate"
+      "paper_role": "mechanism_headline_candidate"
     },
     "bfcl_agentic_ext": {
       "status": "implemented",

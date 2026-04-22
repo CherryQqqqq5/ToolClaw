@@ -387,3 +387,21 @@ Current freeze decision:
 - **center the paper on ToolSandbox official + ToolSandbox core/matched + Tau2**
 
 This is the most credible and lowest-drift path from the current evidence state to a defensible paper.
+## BFCL freeze note (2026-04-22)
+
+BFCL should currently be frozen as **mechanism evidence**, not as a guaranteed top-line win headline.
+
+Frozen BFCL analysis assets:
+
+- [/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_triggered_preflight_v3/official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_triggered_preflight_v3/official_scoreboard.json)
+- [/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_medium_v5/official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_medium_v5/official_scoreboard.json)
+- [/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v3/official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v3/official_scoreboard.json)
+- [/Users/cherry/mnt/ToolClaw/docs/bfcl_grounding_repair_audit_progress_20260422_zh.md](/Users/cherry/mnt/ToolClaw/docs/bfcl_grounding_repair_audit_progress_20260422_zh.md)
+
+Current interpretation:
+
+- `fc_preflight_only` collapses on required-arg-sensitive BFCL slices.
+- grounded arms recover to baseline-level success.
+- the current gain is extraction-driven rather than repair-closure-driven.
+
+Until a final frozen BFCL confirm clearly exceeds baseline on a core official metric, BFCL should support the planner/binder/grounding **mechanism headline** and remain analysis-backed rather than top-line-win-backed.
