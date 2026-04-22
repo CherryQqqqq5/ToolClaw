@@ -1159,6 +1159,8 @@ class SequentialExecutor:
         trace: Trace,
         state_values: Dict[str, Any],
     ) -> bool:
+        if bool(workflow.metadata.get("disable_simulated_auto_approval")):
+            return False
         simulated_policy = workflow.metadata.get("simulated_policy")
         if not isinstance(simulated_policy, dict) or not simulated_policy:
             return False

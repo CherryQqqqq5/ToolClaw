@@ -522,12 +522,48 @@ def _configure_bfcl_step_metadata(
     merged_metadata.setdefault("implicit_state_fallback_slots", [])
     merged_metadata.setdefault("required_state_slots", [])
     merged_metadata.setdefault("state_bindings", {})
-    for key, value in grounding_metadata.items():
-        existing_value = merged_metadata.get(key)
-        if not _nonempty_metadata_value(existing_value) and _nonempty_metadata_value(value):
-            merged_metadata[key] = value
-        elif key not in merged_metadata:
-            merged_metadata[key] = value
+    current_required_keys = list(grounding_metadata.get("required_input_keys", []))
+    current_required_set = set(current_required_keys)
+    existing_sources = (
+        dict(merged_metadata.get("grounding_sources", {}))
+        if isinstance(merged_metadata.get("grounding_sources"), dict)
+        else {}
+    )
+    existing_confidence = (
+        dict(merged_metadata.get("grounding_confidence", {}))
+        if isinstance(merged_metadata.get("grounding_confidence"), dict)
+        else {}
+    )
+    merged_sources: Dict[str, Any] = {}
+    merged_confidence: Dict[str, float] = {}
+    computed_sources = grounding_metadata.get("grounding_sources", {})
+    computed_confidence = grounding_metadata.get("grounding_confidence", {})
+    if not isinstance(computed_sources, dict):
+        computed_sources = {}
+    if not isinstance(computed_confidence, dict):
+        computed_confidence = {}
+    for key in current_required_keys:
+        existing_value = existing_sources.get(key)
+        if _nonempty_metadata_value(existing_value):
+            merged_sources[key] = existing_value
+        elif key in computed_sources:
+            merged_sources[key] = computed_sources[key]
+        existing_score = existing_confidence.get(key)
+        if isinstance(existing_score, (int, float)):
+            merged_confidence[key] = float(existing_score)
+        elif key in computed_confidence:
+            merged_confidence[key] = float(computed_confidence[key])
+
+    merged_metadata["required_input_keys"] = current_required_keys
+    merged_metadata["grounding_sources"] = merged_sources
+    merged_metadata["grounding_confidence"] = merged_confidence
+    merged_metadata["unresolved_required_inputs"] = [
+        key
+        for key in grounding_metadata.get("unresolved_required_inputs", [])
+        if key in current_required_set
+    ]
+    if not _nonempty_metadata_value(merged_metadata.get("input_bindings")):
+        merged_metadata["input_bindings"] = grounding_metadata.get("input_bindings", {})
     step.metadata = merged_metadata
     _finalize_bfcl_repair_defaults(step)
 
@@ -1160,6 +1196,16 @@ def build_workflow_from_task(
         request.hints.user_style["milestones"] = list(task.get("milestones", []))
         request.hints.user_style["branch_options"] = list(task.get("branch_options", []))
         request.hints.user_style["backup_tool_map"] = dict(task.get("backup_tool_map", {}))
+        request.hints.user_style["requires_interaction"] = (
+            bool((raw_metadata or {}).get("requires_interaction"))
+            if isinstance(raw_metadata, dict)
+            else False
+        )
+        if isinstance(raw_metadata, dict):
+            if raw_metadata.get("approval_scope") is not None:
+                request.hints.user_style["approval_scope"] = raw_metadata.get("approval_scope")
+            if raw_metadata.get("approval_target_step") is not None:
+                request.hints.user_style["approval_target_step"] = raw_metadata.get("approval_target_step")
         request.hints.user_style["primary_failtax"] = task.get("primary_failtax")
         request.hints.user_style["failtaxes"] = list(task.get("failtaxes", []))
         request.hints.user_style["failure_step"] = task.get("failure_step")
@@ -1509,6 +1555,9 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
     request.hints.user_style["gold_tool"] = workflow.metadata.get("gold_tool")
     request.hints.user_style["state_slots"] = list(workflow.metadata.get("state_slots", []))
     request.hints.user_style["dependency_edges"] = list(workflow.metadata.get("dependency_edges", []))
+    request.hints.user_style["approval_scope"] = workflow.metadata.get("approval_scope")
+    request.hints.user_style["approval_target_step"] = workflow.metadata.get("approval_target_step")
+    request.hints.user_style["requires_interaction"] = workflow.metadata.get("requires_interaction")
     request.hints.user_style["reuse_family_id"] = workflow.metadata.get("reuse_family_id")
     request.hints.user_style["semantic_reuse_family"] = workflow.metadata.get("semantic_reuse_family")
     request.hints.user_style["reuse_override_inputs"] = dict(workflow.metadata.get("reuse_override_inputs", {}))
@@ -2109,6 +2158,12 @@ def execute_system(
 
     seed_workflow = build_workflow_from_task(task, mode="planner", spec=spec)
     benchmark = str(seed_workflow.metadata.get("benchmark") or "").strip().lower()
+    if (
+        benchmark == "tau2_bench"
+        and spec.execution_mode == "interaction"
+        and scenario in {"approval_required", "policy_failure", "dual_control"}
+    ):
+        seed_workflow.metadata["disable_simulated_auto_approval"] = True
     bfcl_direct_executor_only = benchmark == "bfcl" and bool(seed_workflow.metadata.get("bfcl_abstained"))
     if not seed_workflow.execution_plan or bfcl_direct_executor_only:
         runtime.executor.run_until_blocked(

@@ -755,8 +755,25 @@ class Tau2BenchAdapter:
 
         user_queries = sum(1 for event in events if event.get("event_type") == "user_query")
         user_replies = sum(1 for event in events if event.get("event_type") == "user_reply")
-        approval_requests = sum(1 for event in events if event.get("event_type") == "approval_request")
-        approval_responses = sum(1 for event in events if event.get("event_type") == "approval_response")
+        approval_requests = sum(
+            1
+            for event in events
+            if event.get("event_type") == "approval_request"
+            or (
+                event.get("event_type") == "user_query"
+                and "approval" in str(event.get("output", {}).get("expected_answer_type") or "").lower()
+            )
+        )
+        approval_responses = sum(
+            1
+            for event in events
+            if event.get("event_type") == "approval_response"
+            or (
+                event.get("event_type") == "user_reply"
+                and isinstance(event.get("output"), dict)
+                and "approved" in event.get("output", {})
+            )
+        )
         interaction_events = user_queries + user_replies + approval_requests + approval_responses
 
         expected_interaction = self._expected_interaction(sample)

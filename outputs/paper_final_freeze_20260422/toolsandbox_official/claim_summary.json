@@ -1,0 +1,11 @@
+{
+  "suite": "toolsandbox_official",
+  "status": "completed",
+  "claims": [
+    {
+      "claim_id": "interaction_headline",
+      "paper_role": "headline"
+    }
+  ],
+  "paper_role": "headline"
+}

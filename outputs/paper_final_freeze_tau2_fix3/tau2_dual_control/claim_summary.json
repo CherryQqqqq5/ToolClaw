@@ -1,0 +1,11 @@
+{
+  "suite": "tau2_dual_control",
+  "status": "completed",
+  "claims": [
+    {
+      "claim_id": "dual_control_interaction",
+      "paper_role": "headline"
+    }
+  ],
+  "paper_role": "headline"
+}

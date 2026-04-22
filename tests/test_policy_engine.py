@@ -52,3 +52,18 @@ def test_policy_engine_blocks_when_time_limit_would_be_exceeded() -> None:
     assert decision.allow is False
     assert decision.abort is True
     assert decision.reason == "time_limit_exceeded"
+
+
+def test_policy_engine_scopes_approval_to_failure_step_when_configured() -> None:
+    workflow = Workflow.demo()
+    workflow.task.constraints.requires_user_approval = True
+    workflow.metadata["approval_scope"] = "failure_step"
+    workflow.metadata["approval_target_step"] = "step_02"
+
+    first_step = PolicyEngine().evaluate_before_step(workflow.execution_plan[0], workflow, {})
+    second_step = PolicyEngine().evaluate_before_step(workflow.execution_plan[1], workflow, {})
+
+    assert first_step.allow is True
+    assert first_step.require_confirmation is False
+    assert second_step.allow is False
+    assert second_step.require_confirmation is True

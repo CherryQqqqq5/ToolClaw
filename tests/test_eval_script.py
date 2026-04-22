@@ -244,6 +244,46 @@ def test_build_workflow_from_task_restores_toolsandbox_goal_from_messages() -> N
     assert "query" not in workflow.execution_plan[0].inputs
 
 
+def test_build_workflow_from_task_planner_preserves_approval_scope_metadata() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_approval_scope", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "tau2_dual_control_001",
+            "scenario": "dual_control",
+            "query": "retrieve and write report",
+            "candidate_tools": ["search_tool", "write_tool", "backup_write_tool"],
+            "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool"],
+            "state_slots": ["query", "target_path", "approved"],
+            "dependency_edges": [
+                {"source": "step_01", "target": "step_02", "type": "state"},
+                {"source": "policy", "target": "step_02", "type": "approval"},
+            ],
+            "metadata": {
+                "benchmark": "tau2_bench",
+                "requires_interaction": True,
+                "approval_scope": "failure_step",
+                "approval_target_step": "step_02",
+            },
+            "constraints": {
+                "requires_user_approval": True,
+                "risk_level": "high",
+            },
+        },
+        mode="planner",
+    )
+
+    assert workflow.metadata["benchmark"] == "tau2_bench"
+    assert workflow.metadata["requires_interaction"] is True
+    assert workflow.metadata["approval_scope"] == "failure_step"
+    assert workflow.metadata["approval_target_step"] == "step_02"
+
+
 def test_build_workflow_from_task_rejects_empty_toolsandbox_tool_space() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_empty", module_path)
@@ -426,6 +466,48 @@ def test_configure_bfcl_step_metadata_preserves_existing_grounding_and_refreshes
     assert step.metadata["grounding_sources"]["query"]["source"] == "binder"
     assert step.metadata["grounding_confidence"]["query"] == 0.95
     assert step.metadata["repair_default_inputs"] == {"query": "Search memory for when is shishir's birthday"}
+
+
+def test_configure_bfcl_step_metadata_refreshes_required_inputs_for_selected_tool() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_metadata_refresh", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    step = WorkflowStep(
+        step_id="step_01",
+        capability_id="cap_retrieve",
+        tool_id="OpenWeatherMap.get_current_weather",
+        inputs={"location": "Santa Cruz, USA"},
+        metadata={
+            "required_input_keys": ["keyword"],
+            "grounding_sources": {"keyword": {"source": "binder", "confidence": 0.91}},
+            "grounding_confidence": {"keyword": 0.91},
+            "unresolved_required_inputs": ["keyword"],
+            "repair_default_inputs": {"keyword": "stale keyword"},
+        },
+    )
+    tool = ToolSpec(
+        tool_id="OpenWeatherMap.get_current_weather",
+        description="Get the current weather for a location.",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["location"],
+                "properties": {"location": {"type": "string"}},
+            }
+        },
+    )
+
+    module._configure_bfcl_step_metadata(step, tool, "What's the weather in Santa Cruz?", enable_grounding=True)
+
+    assert step.metadata["required_input_keys"] == ["location"]
+    assert step.metadata["unresolved_required_inputs"] == []
+    assert "keyword" not in step.metadata["grounding_sources"]
+    assert "keyword" not in step.metadata["grounding_confidence"]
+    assert step.metadata["repair_default_inputs"] == {"location": "Santa Cruz, USA"}
 
 
 def test_build_planning_request_preserves_toolsandbox_metadata() -> None:
@@ -724,6 +806,26 @@ def test_execute_system_interaction_uses_same_planner_workflow_as_a2(monkeypatch
 
     assert build_calls == ["planner"]
     assert row.system == "a3_interaction"
+
+
+def test_build_planning_request_preserves_approval_scope_metadata() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_approval_scope", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = Workflow.demo()
+    workflow.metadata["approval_scope"] = "failure_step"
+    workflow.metadata["approval_target_step"] = "step_02"
+    workflow.metadata["requires_interaction"] = True
+
+    request = module.build_planning_request(workflow, allow_reuse=True)
+
+    assert request.hints.user_style["approval_scope"] == "failure_step"
+    assert request.hints.user_style["approval_target_step"] == "step_02"
+    assert request.hints.user_style["requires_interaction"] is True
 
 
 def test_execute_system_recovery_executor_uses_seed_workflow(monkeypatch, tmp_path: Path) -> None:

@@ -1,0 +1,30 @@
+{
+  "suite": "tau2_dual_control",
+  "status": "completed",
+  "paper_role": "headline",
+  "generated_at": "2026-04-22T11:04:23.721680+00:00",
+  "runner": "scripts/run_tau2_bench.py",
+  "score_script": null,
+  "runner_command": [
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "/Users/cherry/mnt/ToolClaw/scripts/run_tau2_bench.py",
+    "--source",
+    "/Users/cherry/mnt/ToolClaw/data/tau2_bench.formal.json",
+    "--outdir",
+    "outputs/paper_final_freeze_tau2_fix3/tau2_dual_control",
+    "--mode",
+    "planner",
+    "--systems",
+    "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+    "--num-runs",
+    "3",
+    "--slice-by",
+    "scenario",
+    "--slice-values",
+    "dual_control"
+  ],
+  "score_command": null,
+  "claim_summary_path": "outputs/paper_final_freeze_tau2_fix3/tau2_dual_control/claim_summary.json",
+  "comparison_raw_path": "outputs/paper_final_freeze_tau2_fix3/tau2_dual_control/comparison.raw.csv",
+  "comparison_scored_path": "outputs/paper_final_freeze_tau2_fix3/tau2_dual_control/comparison.scored.csv"
+}

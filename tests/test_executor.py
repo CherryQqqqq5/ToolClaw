@@ -166,6 +166,25 @@ def test_binding_repair_refreshes_grounding_metadata_after_patch(tmp_path: Path)
     assert write_binding.grounding_sources["target_path"]["source"] == "repair_patch"
 
 
+def test_simulated_auto_approval_can_be_disabled() -> None:
+    workflow = Workflow.demo()
+    workflow.metadata["simulated_policy"] = {"mode": "cooperative"}
+    workflow.metadata["disable_simulated_auto_approval"] = True
+    trace = Trace(run_id="run_disable_auto_approval", workflow_id=workflow.workflow_id, task_id=workflow.task.task_id)
+    state_values: dict[str, object] = {}
+
+    approved = SequentialExecutor._auto_approve_from_simulated_policy(
+        workflow=workflow,
+        step=workflow.execution_plan[0],
+        trace=trace,
+        state_values=state_values,
+    )
+
+    assert approved is False
+    assert state_values == {}
+    assert trace.events == []
+
+
 def test_state_failure_repair_overrides_wrong_write_target_for_retry(tmp_path: Path) -> None:
     workflow = Workflow.demo()
     workflow.metadata["tool_execution_backend"] = "semantic_mock"

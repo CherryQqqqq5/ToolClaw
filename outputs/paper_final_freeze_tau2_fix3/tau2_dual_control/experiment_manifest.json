@@ -1,0 +1,41 @@
+{
+  "benchmark": "tau2_bench",
+  "generated_at": "2026-04-22T11:04:19.560357+00:00",
+  "source": "/Users/cherry/mnt/ToolClaw/data/tau2_bench.formal.json",
+  "source_sha256": "e61f5ec91b1e695e535e72d03f756d3e2822f51efb0777c72aec58974a568490",
+  "normalized_taskset": "/Users/cherry/mnt/ToolClaw/outputs/paper_final_freeze_tau2_fix3/tau2_dual_control/prepared/tau2_bench.normalized.json",
+  "normalized_taskset_sha256": "79899c9b4b477f618eaf1addc0885b0e6ee0c9140459d9e8e37eb5963c329dbf",
+  "mode": "planner",
+  "systems": [
+    "a0_baseline",
+    "a1_recovery",
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_runs": 3,
+  "sample_id_checksum": "7b356acab45159a92cb9187f3ecc12f6cba3fe2cbb13c2bf8d34217a2f4b7c7a",
+  "git_commit": "280762c52057ea36ed5336e2baf2b3c7f757ab20",
+  "config_sha256": "068813804a5fc58eeb0426a73fdd10ad21416cc90583a1eb4a7b67998530896e",
+  "scoreboard_path": "/Users/cherry/mnt/ToolClaw/outputs/paper_final_freeze_tau2_fix3/tau2_dual_control/scoreboard.json",
+  "report_path": "/Users/cherry/mnt/ToolClaw/outputs/paper_final_freeze_tau2_fix3/tau2_dual_control/report.md",
+  "comparison_path": "/Users/cherry/mnt/ToolClaw/outputs/paper_final_freeze_tau2_fix3/tau2_dual_control/comparison.csv",
+  "per_system_summary_path": "/Users/cherry/mnt/ToolClaw/outputs/paper_final_freeze_tau2_fix3/tau2_dual_control/per_system_summary.json",
+  "archived_files": [
+    "/Users/cherry/mnt/ToolClaw/outputs/paper_final_freeze_tau2_fix3/tau2_dual_control/archive/tau2_cli_config.json",
+    "/Users/cherry/mnt/ToolClaw/outputs/paper_final_freeze_tau2_fix3/tau2_dual_control/archive/tau2_bench.formal.json"
+  ],
+  "archive_hashes": {
+    "/Users/cherry/mnt/ToolClaw/outputs/paper_final_freeze_tau2_fix3/tau2_dual_control/prepared/tau2_cli_config.json": "5d0948b9c19a4b4aba16db2aef0738484c28442b73fd546558147ddb2ff5f98f",
+    "/Users/cherry/mnt/ToolClaw/data/tau2_bench.formal.json": "e61f5ec91b1e695e535e72d03f756d3e2822f51efb0777c72aec58974a568490"
+  },
+  "experiment_metadata": {
+    "slice_by": "scenario",
+    "slice_values": [
+      "dual_control"
+    ],
+    "reuse_second_run": false,
+    "budget_sweep": false,
+    "config_file": "/Users/cherry/mnt/ToolClaw/outputs/paper_final_freeze_tau2_fix3/tau2_dual_control/prepared/tau2_cli_config.json"
+  }
+}

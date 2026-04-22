@@ -103,7 +103,12 @@ class PolicyEngine:
             )
 
         already_approved = step.step_id in state_values.get("__approved_steps__", [])
-        if risk.requires_confirmation and not already_approved:
+        requires_confirmation = bool(risk.requires_confirmation and not already_approved)
+        approval_scope = str(workflow.metadata.get("approval_scope") or "").strip().lower()
+        approval_target_step = str(workflow.metadata.get("approval_target_step") or "").strip()
+        if requires_confirmation and approval_scope == "failure_step" and approval_target_step:
+            requires_confirmation = step.step_id == approval_target_step
+        if requires_confirmation:
             return PolicyDecision(
                 allow=False,
                 require_confirmation=True,

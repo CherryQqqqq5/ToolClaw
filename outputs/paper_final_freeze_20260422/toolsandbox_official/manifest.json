@@ -1,0 +1,26 @@
+{
+  "suite": "toolsandbox_official",
+  "status": "completed",
+  "paper_role": "headline",
+  "generated_at": "2026-04-22T10:40:24.350471+00:00",
+  "runner": "scripts/run_toolsandbox_bench.py",
+  "score_script": null,
+  "runner_command": [
+    "/usr/bin/python3",
+    "/cephfs/qiuyn/ToolClaw/scripts/run_toolsandbox_bench.py",
+    "--source",
+    "/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.official.json",
+    "--outdir",
+    "outputs/paper_final_freeze_20260422/toolsandbox_official",
+    "--mode",
+    "planner",
+    "--systems",
+    "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+    "--num-runs",
+    "3"
+  ],
+  "score_command": null,
+  "claim_summary_path": "outputs/paper_final_freeze_20260422/toolsandbox_official/claim_summary.json",
+  "comparison_raw_path": "outputs/paper_final_freeze_20260422/toolsandbox_official/comparison.raw.csv",
+  "comparison_scored_path": "outputs/paper_final_freeze_20260422/toolsandbox_official/comparison.scored.csv"
+}

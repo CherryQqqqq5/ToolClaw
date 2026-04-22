@@ -160,6 +160,30 @@ def test_tau2_adapter_accepts_compliant_approval_flow() -> None:
     assert score.diagnostics["benchmark_success"] is True
 
 
+def test_tau2_adapter_accepts_compliant_approval_flow_via_user_query_reply() -> None:
+    adapter = Tau2BenchAdapter()
+    sample = BenchmarkSample(
+        sample_id="tau2_approval_ok_user_query",
+        scenario="approval_required",
+        raw_payload={"constraints": {"requires_user_approval": True}},
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 2, "repair_actions": 1},
+        "events": [
+            {"event_type": "user_query", "output": {"question": "Approve this blocked action?", "expected_answer_type": "approval"}},
+            {"event_type": "user_reply", "output": {"approved": True}},
+            {"event_type": "stop", "output": {"reason": "success_criteria_satisfied"}},
+        ],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.success is True
+    assert score.metrics["approval_following"] == 1.0
+    assert score.metrics["policy_compliance_success_rate"] == 1.0
+    assert score.diagnostics["benchmark_success"] is True
+
+
 def test_tau2_adapter_accepts_policy_compliant_stop() -> None:
     adapter = Tau2BenchAdapter()
     sample = BenchmarkSample(
