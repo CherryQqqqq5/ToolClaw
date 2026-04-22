@@ -11,7 +11,7 @@ import pytest
 
 from toolclaw.benchmarks.baseline_runner import run_baseline
 from toolclaw.interaction.repair_updater import InteractionRequest
-from toolclaw.schemas.workflow import Workflow
+from toolclaw.schemas.workflow import ToolSpec, Workflow, WorkflowStep
 
 
 def test_run_eval_script_generates_csv_and_report(tmp_path: Path) -> None:
@@ -312,6 +312,120 @@ def test_build_workflow_from_task_bfcl_expected_empty_calls_abstains_even_with_r
     assert workflow.metadata["bfcl_abstained"] is True
     assert workflow.execution_plan == []
     assert workflow.tool_bindings == []
+    assert workflow.context.candidate_tools == []
+
+
+def test_build_workflow_from_task_bfcl_expected_empty_calls_abstains_with_empty_candidate_tools() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_expected_empty_no_tools", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_live_irrelevance_expected_empty_002",
+            "query": "Could you tell me the current weather in Boston, MA and also in San Francisco?",
+            "candidate_tools": [],
+            "ideal_tool_calls": 0,
+            "expected_call_structure": {"pattern": "serial", "calls": []},
+            "metadata": {
+                "benchmark": "bfcl",
+                "bfcl_group": "live",
+                "bfcl_call_pattern": "serial",
+                "expected_call_structure": {"pattern": "serial", "calls": []},
+            },
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert workflow.metadata["bfcl_abstained"] is True
+    assert workflow.execution_plan == []
+    assert workflow.tool_bindings == []
+    assert workflow.context.candidate_tools == []
+
+
+def test_build_workflow_from_task_bfcl_required_query_is_not_stripped() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_required_query", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_live_multiple_query_required_001",
+            "query": "Search memory for when is shishir's birthday",
+            "candidate_tools": [
+                {
+                    "tool_id": "recall_memory_search",
+                    "description": "Search user memory with a query string.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["query"],
+                        "properties": {"query": {"type": "string"}},
+                    },
+                }
+            ],
+            "expected_call_structure": {
+                "pattern": "serial",
+                "calls": [
+                    {
+                        "tool_name": "recall_memory_search",
+                        "arguments": {"query": "Search memory for when is shishir's birthday"},
+                    }
+                ],
+            },
+            "metadata": {
+                "benchmark": "bfcl",
+                "bfcl_group": "live",
+                "bfcl_call_pattern": "serial",
+            },
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert workflow.execution_plan
+    assert workflow.execution_plan[0].inputs["query"] == "Search memory for when is shishir's birthday"
+
+
+def test_configure_bfcl_step_metadata_preserves_existing_grounding_and_refreshes_defaults() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_metadata_merge", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    step = WorkflowStep(
+        step_id="step_01",
+        capability_id="cap_retrieve",
+        tool_id="recall_memory_search",
+        inputs={"query": "Search memory for when is shishir's birthday"},
+        metadata={
+            "input_bindings": {"query": "query"},
+            "grounding_sources": {"query": {"source": "binder", "confidence": 0.95}},
+            "grounding_confidence": {"query": 0.95},
+            "unresolved_required_inputs": [],
+            "repair_default_inputs": {"query": "stale value"},
+        },
+    )
+    tool = ToolSpec(
+        tool_id="recall_memory_search",
+        description="Search user memory with a query string.",
+        metadata={"parameters": {"type": "dict", "required": ["query"], "properties": {"query": {"type": "string"}}}},
+    )
+
+    module._configure_bfcl_step_metadata(step, tool, "Search memory for when is shishir's birthday", enable_grounding=True)
+
+    assert step.metadata["input_bindings"] == {"query": "query"}
+    assert step.metadata["grounding_sources"]["query"]["source"] == "binder"
+    assert step.metadata["grounding_confidence"]["query"] == 0.95
+    assert step.metadata["repair_default_inputs"] == {"query": "Search memory for when is shishir's birthday"}
 
 
 def test_build_planning_request_preserves_toolsandbox_metadata() -> None:

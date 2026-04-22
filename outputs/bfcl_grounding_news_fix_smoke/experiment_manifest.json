@@ -1,0 +1,27 @@
+{
+  "benchmark": "bfcl",
+  "generated_at": "2026-04-22T02:08:35.079808+00:00",
+  "track": "fc_core",
+  "source": "/tmp/bfcl_grounding_news_fix_smoke.jsonl",
+  "source_manifest": null,
+  "normalized_taskset": "outputs/bfcl_grounding_news_fix_smoke/prepared/bfcl.normalized.json",
+  "comparison_path": "outputs/bfcl_grounding_news_fix_smoke/comparison.raw.csv",
+  "systems": [
+    "a0_baseline",
+    "fc_preflight_only",
+    "fc_grounding_recovery",
+    "a4_reuse"
+  ],
+  "num_runs": 1,
+  "experiment_metadata": {
+    "runner_script": "scripts/run_bfcl_bench.py",
+    "official_eval_requested": true,
+    "toolclaw_diagnostics_requested": true,
+    "mode": "planner",
+    "raw_only": true
+  },
+  "comparison_scored_path": "outputs/bfcl_grounding_news_fix_smoke/comparison.scored.csv",
+  "official_scoreboard_path": "outputs/bfcl_grounding_news_fix_smoke/official_scoreboard.json",
+  "toolclaw_diagnostics_path": "outputs/bfcl_grounding_news_fix_smoke/toolclaw_diagnostics.json",
+  "claim_summary_path": "outputs/bfcl_grounding_news_fix_smoke/claim_summary.json"
+}

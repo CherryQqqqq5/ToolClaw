@@ -1,0 +1,36 @@
+{
+  "benchmark": "bfcl",
+  "track": "fc_core",
+  "namespace": "official_bfcl_eval",
+  "per_system": {
+    "a0_baseline": {
+      "num_rows": 3.0,
+      "official_bfcl_eval_success": 1.0,
+      "official_bfcl_eval_tool_selection_correctness": 1.0,
+      "official_bfcl_eval_argument_correctness": 1.0,
+      "official_bfcl_eval_structure_correctness": 1.0
+    },
+    "fc_preflight_only": {
+      "num_rows": 3.0,
+      "official_bfcl_eval_success": 0.3333333333333333,
+      "official_bfcl_eval_tool_selection_correctness": 0.3333333333333333,
+      "official_bfcl_eval_argument_correctness": 0.3333333333333333,
+      "official_bfcl_eval_structure_correctness": 0.3333333333333333
+    },
+    "fc_grounding_recovery": {
+      "num_rows": 3.0,
+      "official_bfcl_eval_success": 1.0,
+      "official_bfcl_eval_tool_selection_correctness": 1.0,
+      "official_bfcl_eval_argument_correctness": 1.0,
+      "official_bfcl_eval_structure_correctness": 1.0
+    },
+    "a4_reuse": {
+      "num_rows": 3.0,
+      "official_bfcl_eval_success": 1.0,
+      "official_bfcl_eval_tool_selection_correctness": 1.0,
+      "official_bfcl_eval_argument_correctness": 1.0,
+      "official_bfcl_eval_structure_correctness": 1.0
+    }
+  },
+  "unsupported_strata": []
+}

@@ -788,7 +788,13 @@ def test_bfcl_adapter_records_preflight_grounding_diagnostics() -> None:
                     "missing_required_inputs": ["loc"],
                 },
                 "metadata": {"required_input_keys": ["loc", "unit"]},
-            }
+            },
+            {
+                "event_type": "repair_applied",
+                "step_id": "step_01",
+                "tool_id": "api.weather",
+                "output": {"status": "patched"},
+            },
         ],
     }
 
@@ -798,6 +804,8 @@ def test_bfcl_adapter_records_preflight_grounding_diagnostics() -> None:
     assert score.metrics["missing_required_arg_rate"] == 0.5
     assert score.metrics["preflight_interception_rate"] == 1.0
     assert score.metrics["repair_success_rate"] == 0.0
+    assert score.metrics["repair_applied_count"] == 1.0
+    assert score.metrics["repair_success_count"] == 0.0
     assert score.metrics["exec_verified"] == 0.0
     assert score.metrics["avg_tool_calls"] == 0.0
     assert score.metrics["avg_user_queries"] == 1.0
@@ -1022,6 +1030,54 @@ def test_bfcl_runtime_extracts_parallel_multiple_numeric_arguments() -> None:
     assert prime_args == {"count": 5}
 
 
+def test_bfcl_runtime_extracts_live_multiple_grounding_arguments() -> None:
+    weather_args = extract_tool_arguments(
+        "api.weather",
+        {
+            "type": "dict",
+            "properties": {"loc": {"type": "string"}},
+            "required": ["loc"],
+        },
+        "Get weather of Ha Noi for me",
+        include_defaults=False,
+    )
+    search_args = extract_tool_arguments(
+        "HNA_WQA.search",
+        {
+            "type": "dict",
+            "properties": {"keyword": {"type": "string"}},
+            "required": ["keyword"],
+        },
+        "what is Imjin war",
+        include_defaults=False,
+    )
+    command_args = extract_tool_arguments(
+        "ControlAppliance.execute",
+        {
+            "type": "dict",
+            "properties": {"command": {"type": "string"}},
+            "required": ["command"],
+        },
+        "Could you stop the washing machine in the utility room?",
+        include_defaults=False,
+    )
+    add_args = extract_tool_arguments(
+        "add",
+        {
+            "type": "dict",
+            "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+            "required": ["a", "b"],
+        },
+        "You are a helpful assistant If I have 100$ and I donated 40. How much do I have now?",
+        include_defaults=False,
+    )
+
+    assert weather_args == {"loc": "Ha Noi, Vietnam"}
+    assert search_args == {"keyword": "Imjin war"}
+    assert command_args == {"command": "다용도실, 통돌이, 중지"}
+    assert add_args == {"a": 100, "b": -40}
+
+
 def test_bfcl_runtime_extracts_repeated_parallel_argument_sets() -> None:
     arg_sets = extract_parallel_argument_sets(
         "spotify.play",
@@ -1078,3 +1134,33 @@ def test_bfcl_runtime_prefers_general_search_for_general_information_query() -> 
 
     assert selected is not None
     assert selected["tool_id"] == "HNA_WQA.search"
+
+
+def test_bfcl_runtime_prefers_news_search_for_explicit_news_query() -> None:
+    selected = select_candidate_tool(
+        "최근 박지성에 관한 뉴스를 찾아줘.",
+        [
+            {
+                "tool_id": "HNA_WQA.search",
+                "description": "Retrieve up-to-date information by searching the web using keywords.",
+                "parameters": {
+                    "type": "dict",
+                    "required": ["keyword"],
+                    "properties": {"keyword": {"type": "string"}},
+                },
+            },
+            {
+                "tool_id": "HNA_NEWS.search",
+                "description": "Searches for recent events and news based on the specified keyword.",
+                "parameters": {
+                    "type": "dict",
+                    "required": ["keyword"],
+                    "properties": {"keyword": {"type": "string"}},
+                },
+            },
+        ],
+        preferred_tool_id="HNA_WQA.search",
+    )
+
+    assert selected is not None
+    assert selected["tool_id"] == "HNA_NEWS.search"

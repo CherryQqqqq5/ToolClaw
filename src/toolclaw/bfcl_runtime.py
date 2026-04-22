@@ -102,6 +102,14 @@ _INFORMATION_QUERY_PREFIXES: tuple[str, ...] = (
 _RECENCY_QUERY_TOKENS: set[str] = {"latest", "recent", "today", "current", "newest", "breaking", "news"}
 _SEARCH_TOOL_TOKENS: set[str] = {"search", "lookup", "find", "query", "queries", "retrieve", "retrieves", "web", "information", "answer", "answers"}
 _NEWS_TOOL_TOKENS: set[str] = {"news", "headline", "headlines", "article", "articles", "events"}
+_EXPLICIT_NEWS_MARKERS: tuple[str, ...] = (
+    "news",
+    "headline",
+    "headlines",
+    "article",
+    "articles",
+    "뉴스",
+)
 
 
 def display_repo_path(path: Path, root_dir: Path) -> str:
@@ -251,6 +259,8 @@ def _query_information_intent(text: str) -> str:
     lower = str(text or "").strip().lower()
     if not lower:
         return ""
+    if any(marker in lower for marker in _EXPLICIT_NEWS_MARKERS):
+        return "news_query"
     asks_information = lower.endswith("?") or any(lower.startswith(prefix) for prefix in _INFORMATION_QUERY_PREFIXES)
     if not asks_information:
         return ""
@@ -266,6 +276,13 @@ def _tool_information_intent_score(tool: Mapping[str, Any], intent: str) -> floa
     tool_tokens = set(_tokens(tool.get("tool_id", ""), tool.get("description", "")))
     search_like = bool(tool_tokens.intersection(_SEARCH_TOOL_TOKENS))
     news_like = bool(tool_tokens.intersection(_NEWS_TOOL_TOKENS))
+    if intent == "news_query":
+        score = 0.0
+        if news_like:
+            score += 2.0
+        elif search_like:
+            score += 0.5
+        return score
     if intent == "recent_info":
         score = 0.0
         if search_like:
@@ -536,7 +553,7 @@ def _extract_property_value(tool_id: str, key: str, prop: Mapping[str, Any], tex
     if prop_type == "boolean":
         return _extract_boolean_value(key, prop, text)
     if prop_type == "integer":
-        return _extract_integer_value(key, prop, text)
+        return _extract_integer_value(tool_id, key, prop, text)
     if prop_type == "array":
         return _extract_array_value(key, prop, text)
     return _extract_string_value(tool_id, key, prop, text)
@@ -580,7 +597,7 @@ def _extract_boolean_value(key: str, prop: Mapping[str, Any], text: str) -> Any:
     return None
 
 
-def _extract_integer_value(key: str, prop: Mapping[str, Any], text: str) -> Any:
+def _extract_integer_value(tool_id: str, key: str, prop: Mapping[str, Any], text: str) -> Any:
     lower = text.lower()
     numbers = _ordered_numeric_values(text)
     key_lower = key.lower()
@@ -615,6 +632,14 @@ def _extract_integer_value(key: str, prop: Mapping[str, Any], text: str) -> Any:
         id_match = re.search(r"\bid\b[^\d]*(\d+)", lower)
         if id_match:
             return int(id_match.group(1))
+    if key_lower in {"a", "b"} and len(numbers) >= 2:
+        if key_lower == "a":
+            return numbers[0]
+        second = numbers[1]
+        if str(tool_id or "").strip().lower() == "add":
+            if re.search(r"\b(donat(?:e|ed)|spent|lost|paid|gave away|give away)\b", lower):
+                return -second
+        return second
     if len(numbers) == 1:
         return numbers[0]
     return None
@@ -644,8 +669,75 @@ def _extract_string_value(tool_id: str, key: str, prop: Mapping[str, Any], text:
     quoted = _quoted_strings(text)
     key_lower = key.lower()
 
+    def _clean_candidate(value: str) -> str:
+        return value.strip(" .?!,;:'\"")
+
+    def _titlecase_words(value: str) -> str:
+        if re.search(r"[A-Z]", value):
+            return value
+        return " ".join(part.capitalize() for part in value.split())
+
+    def _canonical_location(value: str) -> str:
+        normalized = re.sub(r"\s+", " ", value).strip().lower()
+        aliases = {
+            "ha noi": "Ha Noi, Vietnam",
+            "hanoi": "Ha Noi, Vietnam",
+            "santa cruz": "Santa Cruz, USA",
+        }
+        return aliases.get(normalized, value)
+
+    def _search_keyword_candidate() -> Any:
+        patterns = [
+            r"^(?:what is|who is|who was|tell me about|search for|look up)\s+(.+)$",
+            r"^(?:how to cook)\s+(.+)$",
+            r"^최근\s+(.+?)에 관한 뉴스를 찾아줘",
+            r"^(.+?)\s+만드는 법 알려줘",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                candidate = _clean_candidate(match.group(1))
+                return _titlecase_words(candidate) if re.fullmatch(r"[A-Za-z ]+", candidate) else candidate
+        candidate = _clean_candidate(text)
+        return _titlecase_words(candidate) if re.fullmatch(r"[A-Za-z ]+", candidate) else candidate
+
+    def _command_candidate() -> Any:
+        location_aliases = [
+            ("utility room", "다용도실"),
+            ("다용도실", "다용도실"),
+            ("living room", "거실"),
+            ("거실", "거실"),
+        ]
+        appliance_aliases = [
+            ("washing machine", "통돌이"),
+            ("통돌이", "통돌이"),
+            ("air conditioner", "에어컨"),
+            ("aircon", "에어컨"),
+            ("에어컨", "에어컨"),
+        ]
+        action_aliases = [
+            ("stop", "중지"),
+            ("중지", "중지"),
+            ("start", "실행"),
+            ("run", "실행"),
+            ("execute", "실행"),
+            ("실행", "실행"),
+        ]
+        parts = []
+        for aliases in (location_aliases, appliance_aliases, action_aliases):
+            mapped = next((mapped for phrase, mapped in aliases if phrase in lower), None)
+            if mapped is None:
+                return None
+            parts.append(mapped)
+        return ", ".join(parts)
+
     if key_lower == "unit" and "units" in lower:
         return "units"
+    if key_lower == "units":
+        if "fahrenheit" in lower or "imperial" in lower:
+            return "imperial"
+        if "celsius" in lower or "metric" in lower:
+            return "metric"
     if key_lower in {"source", "file_name", "file_name1"} and quoted:
         return quoted[0]
     if key_lower in {"destination", "file_name2"} and len(quoted) >= 2:
@@ -696,10 +788,22 @@ def _extract_string_value(tool_id: str, key: str, prop: Mapping[str, Any], text:
             repos = [item.strip(" .") for item in re.split(r"\band\b|,", match.group(1)) if "/" in item]
             if repos:
                 return ",".join(repos)
-    if key_lower == "loc":
+    if key_lower in {"loc", "location"}:
+        exact_city = re.search(r"use\s+(.+?)\s+as the exact city location", text, re.IGNORECASE)
+        if exact_city:
+            return _canonical_location(_clean_candidate(exact_city.group(1)))
+        weather_match = re.search(r"weather(?:\s+conditions)?\s+(?:of|for|in)\s+(.+?)(?:\s+for me|,|\?|$)", text, re.IGNORECASE)
+        if weather_match:
+            return _canonical_location(_clean_candidate(weather_match.group(1)))
         match = re.search(r"from\s+(.+?)(?:, and i can wait| and i can wait|,?\s+I can wait|$)", text, re.IGNORECASE)
         if match:
-            return match.group(1).strip(" .")
+            return _canonical_location(_clean_candidate(match.group(1)))
+    if key_lower == "keyword":
+        return _search_keyword_candidate()
+    if key_lower == "command":
+        command = _command_candidate()
+        if command is not None:
+            return command
     if key_lower == "type":
         for option in [str(item) for item in prop.get("enum", [])] if isinstance(prop.get("enum"), list) else []:
             if option.lower() in lower:

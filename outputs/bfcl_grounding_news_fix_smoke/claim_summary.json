@@ -1,0 +1,140 @@
+{
+  "suite": "bfcl_fc_core",
+  "status": "completed",
+  "track": "fc_core",
+  "paper_safe_for_claim": true,
+  "official_bfcl_eval": {
+    "a0_baseline": {
+      "num_rows": 3.0,
+      "official_bfcl_eval_success": 1.0,
+      "official_bfcl_eval_tool_selection_correctness": 1.0,
+      "official_bfcl_eval_argument_correctness": 1.0,
+      "official_bfcl_eval_structure_correctness": 1.0
+    },
+    "fc_preflight_only": {
+      "num_rows": 3.0,
+      "official_bfcl_eval_success": 0.3333333333333333,
+      "official_bfcl_eval_tool_selection_correctness": 0.3333333333333333,
+      "official_bfcl_eval_argument_correctness": 0.3333333333333333,
+      "official_bfcl_eval_structure_correctness": 0.3333333333333333
+    },
+    "fc_grounding_recovery": {
+      "num_rows": 3.0,
+      "official_bfcl_eval_success": 1.0,
+      "official_bfcl_eval_tool_selection_correctness": 1.0,
+      "official_bfcl_eval_argument_correctness": 1.0,
+      "official_bfcl_eval_structure_correctness": 1.0
+    },
+    "a4_reuse": {
+      "num_rows": 3.0,
+      "official_bfcl_eval_success": 1.0,
+      "official_bfcl_eval_tool_selection_correctness": 1.0,
+      "official_bfcl_eval_argument_correctness": 1.0,
+      "official_bfcl_eval_structure_correctness": 1.0
+    }
+  },
+  "toolclaw_diagnostics": {
+    "a0_baseline": {
+      "num_rows": 3.0,
+      "toolclaw_diagnostics_binder_selection_match": 1.0,
+      "toolclaw_diagnostics_tool_sequence_match": 0.6666666666666666,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.7333333333333334,
+      "toolclaw_diagnostics_policy_format_compliance": 1.0,
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.0,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.0,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 1.0,
+      "toolclaw_diagnostics_avg_tool_calls": 0.6666666666666666,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
+    },
+    "fc_preflight_only": {
+      "num_rows": 3.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.3333333333333333,
+      "toolclaw_diagnostics_tool_sequence_match": 0.0,
+      "toolclaw_diagnostics_parameter_fill_ratio": 1.0,
+      "toolclaw_diagnostics_policy_format_compliance": 1.0,
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.6666666666666666,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.6666666666666666,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 0.3333333333333333,
+      "toolclaw_diagnostics_avg_tool_calls": 0.0,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
+    },
+    "fc_grounding_recovery": {
+      "num_rows": 3.0,
+      "toolclaw_diagnostics_binder_selection_match": 1.0,
+      "toolclaw_diagnostics_tool_sequence_match": 0.6666666666666666,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.7333333333333334,
+      "toolclaw_diagnostics_policy_format_compliance": 1.0,
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.0,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.0,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 1.0,
+      "toolclaw_diagnostics_avg_tool_calls": 0.6666666666666666,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
+    },
+    "a4_reuse": {
+      "num_rows": 3.0,
+      "toolclaw_diagnostics_binder_selection_match": 1.0,
+      "toolclaw_diagnostics_tool_sequence_match": 0.6666666666666666,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.7333333333333334,
+      "toolclaw_diagnostics_policy_format_compliance": 1.0,
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.0,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.0,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 1.0,
+      "toolclaw_diagnostics_avg_tool_calls": 0.6666666666666666,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
+    }
+  },
+  "unsupported_strata": [],
+  "claims": [
+    {
+      "claim_id": "planner_binding_headline",
+      "paper_safe_for_claim": true,
+      "metric_snapshot": {
+        "a0_baseline": {
+          "num_rows": 3.0,
+          "official_bfcl_eval_success": 1.0,
+          "official_bfcl_eval_tool_selection_correctness": 1.0,
+          "official_bfcl_eval_argument_correctness": 1.0,
+          "official_bfcl_eval_structure_correctness": 1.0
+        },
+        "fc_preflight_only": {
+          "num_rows": 3.0,
+          "official_bfcl_eval_success": 0.3333333333333333,
+          "official_bfcl_eval_tool_selection_correctness": 0.3333333333333333,
+          "official_bfcl_eval_argument_correctness": 0.3333333333333333,
+          "official_bfcl_eval_structure_correctness": 0.3333333333333333
+        },
+        "fc_grounding_recovery": {
+          "num_rows": 3.0,
+          "official_bfcl_eval_success": 1.0,
+          "official_bfcl_eval_tool_selection_correctness": 1.0,
+          "official_bfcl_eval_argument_correctness": 1.0,
+          "official_bfcl_eval_structure_correctness": 1.0
+        },
+        "a4_reuse": {
+          "num_rows": 3.0,
+          "official_bfcl_eval_success": 1.0,
+          "official_bfcl_eval_tool_selection_correctness": 1.0,
+          "official_bfcl_eval_argument_correctness": 1.0,
+          "official_bfcl_eval_structure_correctness": 1.0
+        }
+      },
+      "interpretation": "BFCL fc_core is paper-safe only when the official evaluator covers all included strata."
+    }
+  ]
+}

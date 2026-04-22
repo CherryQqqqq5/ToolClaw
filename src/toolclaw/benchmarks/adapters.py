@@ -167,6 +167,7 @@ class BFCLAdapter:
         repairs = int(trace_payload.get("metrics", {}).get("repair_actions", 0) or 0)
         tool_calls = int(trace_payload.get("metrics", {}).get("tool_calls", 0) or 0)
         user_queries = int(trace_payload.get("metrics", {}).get("user_queries", 0) or 0)
+        repair_applied_count = sum(1 for event in trace_payload.get("events", []) if event.get("event_type") == "repair_applied")
         missing_required_input_events = self._missing_required_input_events(trace_payload)
         missing_required_input_count = sum(len(event.get("missing_required_inputs", [])) for event in missing_required_input_events)
         required_input_total = sum(
@@ -182,6 +183,7 @@ class BFCLAdapter:
         benchmark_success = bool(trace_payload.get("metrics", {}).get("success")) and tool_selection_overlap >= 1.0 and parameter_fill_ratio >= 1.0
         exec_verified = 1.0 if bool(trace_payload.get("metrics", {}).get("success")) and not missing_required_input_events else 0.0
         repair_success_rate = 1.0 if repairs > 0 and benchmark_success else 0.0
+        repair_success_count = 1.0 if repair_applied_count > 0 and benchmark_success else 0.0
         return BenchmarkTraceScore(
             benchmark=self.benchmark_name,
             sample_id=sample.sample_id,
@@ -195,6 +197,8 @@ class BFCLAdapter:
                 "missing_required_arg_rate": missing_required_arg_rate,
                 "preflight_interception_rate": preflight_interception_rate,
                 "repair_success_rate": repair_success_rate,
+                "repair_applied_count": float(repair_applied_count),
+                "repair_success_count": repair_success_count,
                 "exec_verified": exec_verified,
                 "avg_tool_calls": float(tool_calls),
                 "avg_user_queries": float(user_queries),
@@ -205,6 +209,7 @@ class BFCLAdapter:
                 "expected_call_count": len(expected_calls),
                 "actual_call_count": len(actual_calls),
                 "repair_actions": repairs,
+                "repair_applied_count": repair_applied_count,
                 "missing_required_input_events": missing_required_input_events,
             },
         )

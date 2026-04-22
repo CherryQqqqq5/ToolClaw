@@ -308,6 +308,48 @@ def _bfcl_grounding_metadata(
     }
 
 
+_DYNAMIC_GROUNDING_METADATA_KEYS = {
+    "required_input_keys",
+    "input_bindings",
+    "grounding_sources",
+    "grounding_confidence",
+    "unresolved_required_inputs",
+    "state_bindings",
+    "required_state_slots",
+    "repair_default_inputs",
+    "simulated_missing_arg_values",
+    "bfcl_abstained",
+}
+
+
+def _nonempty_metadata_value(value: Any) -> bool:
+    return value not in (None, "", {}, [])
+
+
+def _filter_runtime_safe_metadata(raw_metadata: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        str(key): value
+        for key, value in raw_metadata.items()
+        if str(key) not in _DYNAMIC_GROUNDING_METADATA_KEYS
+    }
+
+
+def _finalize_bfcl_repair_defaults(step: Any) -> None:
+    step.metadata["repair_default_inputs"] = dict(step.inputs)
+
+
+def _sync_bfcl_binding_metadata(workflow: Workflow, step: Any, index: int) -> None:
+    if index >= len(workflow.tool_bindings):
+        return
+    binding = workflow.tool_bindings[index]
+    metadata = step.metadata if isinstance(step.metadata, dict) else {}
+    binding.required_input_keys = list(metadata.get("required_input_keys", []))
+    binding.input_bindings = dict(metadata.get("input_bindings", {}))
+    binding.grounding_sources = dict(metadata.get("grounding_sources", {}))
+    binding.grounding_confidence = dict(metadata.get("grounding_confidence", {}))
+    binding.unresolved_required_inputs = list(metadata.get("unresolved_required_inputs", []))
+
+
 def _bfcl_build_step_inputs(
     tool: Optional[ToolSpec],
     text: str,
@@ -467,27 +509,27 @@ def _configure_bfcl_step_metadata(
     enable_grounding: bool = True,
 ) -> None:
     parameters = _bfcl_tool_parameters(tool)
-    preserved_defaults = (
-        dict(step.metadata.get("repair_default_inputs", {}))
-        if isinstance(step.metadata.get("repair_default_inputs"), dict)
-        else {}
-    )
+    existing_metadata = dict(step.metadata) if isinstance(step.metadata, dict) else {}
     grounding_metadata = _bfcl_grounding_metadata(
         tool=tool,
         text=text,
         inputs=dict(step.inputs) if enable_grounding else {},
     )
-    step.metadata = {
-        "bfcl_query_text": text,
-        "bfcl_schema": dict(parameters),
-        "bfcl_benchmark": True,
-        "implicit_state_fallback_slots": [],
-        "required_state_slots": [],
-        "state_bindings": {},
-        **grounding_metadata,
-    }
-    if preserved_defaults:
-        step.metadata["repair_default_inputs"] = preserved_defaults
+    merged_metadata = dict(existing_metadata)
+    merged_metadata["bfcl_query_text"] = text
+    merged_metadata["bfcl_schema"] = dict(parameters)
+    merged_metadata["bfcl_benchmark"] = True
+    merged_metadata.setdefault("implicit_state_fallback_slots", [])
+    merged_metadata.setdefault("required_state_slots", [])
+    merged_metadata.setdefault("state_bindings", {})
+    for key, value in grounding_metadata.items():
+        existing_value = merged_metadata.get(key)
+        if not _nonempty_metadata_value(existing_value) and _nonempty_metadata_value(value):
+            merged_metadata[key] = value
+        elif key not in merged_metadata:
+            merged_metadata[key] = value
+    step.metadata = merged_metadata
+    _finalize_bfcl_repair_defaults(step)
 
 
 def _bfcl_capability_id(_tool: Optional[ToolSpec]) -> str:
@@ -519,6 +561,7 @@ def _configure_bfcl_abstain_workflow(workflow: Workflow) -> Workflow:
     workflow.workflow_graph.edges = []
     workflow.workflow_graph.entry_nodes = []
     workflow.workflow_graph.exit_nodes = []
+    workflow.context.candidate_tools = []
     workflow.metadata["bfcl_abstained"] = True
     return workflow
 
@@ -564,6 +607,7 @@ def _configure_bfcl_seed_steps(
         step.expected_output = expected_output
         step.rollback_to = None
         _configure_bfcl_step_metadata(step, tool, text, enable_grounding=enable_grounding)
+        _sync_bfcl_binding_metadata(workflow, step, index - 1)
 
         node = workflow.workflow_graph.nodes[index - 1]
         node.node_id = step_id
@@ -766,8 +810,6 @@ def _adapt_bfcl_workflow(
     mode: str,
     enable_grounding: bool,
 ) -> Workflow:
-    if not candidate_tools:
-        return workflow
     metadata = task.get("metadata", {}) if isinstance(task.get("metadata"), dict) else {}
     tool_lookup = _bfcl_tool_lookup(candidate_tools)
     query = str(task.get("query") or workflow.task.user_goal or "")
@@ -775,6 +817,8 @@ def _adapt_bfcl_workflow(
     call_pattern = str(metadata.get("bfcl_call_pattern") or "serial")
     if _bfcl_should_abstain_task(task, candidate_tools, query):
         return _configure_bfcl_abstain_workflow(workflow)
+    if not candidate_tools:
+        return workflow
 
     if call_pattern == "parallel":
         parallel_specs = _bfcl_seed_specs(task, candidate_tools, query)
@@ -826,6 +870,7 @@ def _adapt_bfcl_workflow(
         if selected_tool is None:
             continue
         capability_id = _bfcl_capability_id(selected_tool)
+        required_input_keys = set(_bfcl_required_input_keys(selected_tool))
         step.capability_id = capability_id
         step.tool_id = selected_tool.tool_id
         step.inputs = (
@@ -838,19 +883,21 @@ def _adapt_bfcl_workflow(
             if enable_grounding
             else {}
         ) or _bfcl_build_step_inputs(selected_tool, text, enable_grounding=enable_grounding)
-        step.inputs.pop("query", None)
-        step.inputs.pop("target_path", None)
-        step.metadata["repair_default_inputs"] = dict(step.inputs)
+        if "query" not in required_input_keys:
+            step.inputs.pop("query", None)
+        if "target_path" not in required_input_keys:
+            step.inputs.pop("target_path", None)
         _configure_bfcl_step_metadata(step, selected_tool, text, enable_grounding=enable_grounding)
         if index < len(workflow.tool_bindings):
             workflow.tool_bindings[index].capability_id = capability_id
             workflow.tool_bindings[index].primary_tool = selected_tool.tool_id
+            _sync_bfcl_binding_metadata(workflow, step, index)
         if index < len(workflow.workflow_graph.nodes):
             workflow.workflow_graph.nodes[index].capability_id = capability_id
             workflow.workflow_graph.nodes[index].selected_tool = selected_tool.tool_id
             workflow.workflow_graph.nodes[index].tool_candidates = [selected_tool.tool_id]
             workflow.workflow_graph.nodes[index].inputs = dict(step.inputs)
-    workflow.context.candidate_tools = list(candidate_tools)
+    workflow.context.candidate_tools = [] if workflow.metadata.get("bfcl_abstained") else list(candidate_tools)
     return workflow
 
 
@@ -1183,14 +1230,14 @@ def build_workflow_from_task(
         workflow.task.constraints = constraints
 
     if raw_tools is not None:
-        workflow.context.candidate_tools = candidate_tools
+        workflow.context.candidate_tools = [] if workflow.metadata.get("bfcl_abstained") else candidate_tools
     if toolsandbox_metadata and not workflow.context.candidate_tools:
         raise ValueError(
             f"ToolSandbox task '{workflow.task.task_id}' has empty candidate_tools/tool_allow_list; refusing to fall back to demo tools."
         )
 
     if isinstance(raw_metadata, dict):
-        workflow.metadata.update(raw_metadata)
+        workflow.metadata.update(_filter_runtime_safe_metadata(raw_metadata))
     configured_tool_backend = None
     if isinstance(raw_metadata, dict):
         configured_tool_backend = raw_metadata.get("tool_execution_backend") or raw_metadata.get("tool_backend")

@@ -134,3 +134,25 @@ outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/*
 !outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/toolclaw_diagnostics.json
 !outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/report.md
 !outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/latest_run_report.md
+
+# Keep BFCL grounding repair validation summary bundles only.
+!outputs/bfcl_grounding_fix_smoke_v4/
+outputs/bfcl_grounding_fix_smoke_v4/*
+!outputs/bfcl_grounding_fix_smoke_v4/experiment_manifest.json
+!outputs/bfcl_grounding_fix_smoke_v4/official_scoreboard.json
+!outputs/bfcl_grounding_fix_smoke_v4/toolclaw_diagnostics.json
+!outputs/bfcl_grounding_fix_smoke_v4/claim_summary.json
+
+!outputs/bfcl_grounding_news_fix_smoke/
+outputs/bfcl_grounding_news_fix_smoke/*
+!outputs/bfcl_grounding_news_fix_smoke/experiment_manifest.json
+!outputs/bfcl_grounding_news_fix_smoke/official_scoreboard.json
+!outputs/bfcl_grounding_news_fix_smoke/toolclaw_diagnostics.json
+!outputs/bfcl_grounding_news_fix_smoke/claim_summary.json
+
+!outputs/bfcl_grounding_fix_medium_v4/
+outputs/bfcl_grounding_fix_medium_v4/*
+!outputs/bfcl_grounding_fix_medium_v4/experiment_manifest.json
+!outputs/bfcl_grounding_fix_medium_v4/official_scoreboard.json
+!outputs/bfcl_grounding_fix_medium_v4/toolclaw_diagnostics.json
+!outputs/bfcl_grounding_fix_medium_v4/claim_summary.json

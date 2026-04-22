@@ -758,6 +758,52 @@ class SequentialExecutor:
             return RepairApplyResult(applied=False, message="no tool available for re-execution")
 
         step.inputs = patched_inputs
+        if isinstance(step.metadata, dict):
+            repaired_keys = []
+            for action in repair.actions:
+                if action.action_type.value == "state_patch" and isinstance(action.metadata, dict):
+                    repaired_keys.extend(str(key) for key in action.metadata.get("patched_keys", []) if str(key))
+            if repaired_keys:
+                unresolved = [
+                    str(key)
+                    for key in step.metadata.get("unresolved_required_inputs", [])
+                    if str(key) and str(key) not in repaired_keys
+                ] if isinstance(step.metadata.get("unresolved_required_inputs"), list) else []
+                step.metadata["unresolved_required_inputs"] = unresolved
+                grounding_sources = (
+                    dict(step.metadata.get("grounding_sources", {}))
+                    if isinstance(step.metadata.get("grounding_sources"), dict)
+                    else {}
+                )
+                grounding_confidence = (
+                    dict(step.metadata.get("grounding_confidence", {}))
+                    if isinstance(step.metadata.get("grounding_confidence"), dict)
+                    else {}
+                )
+                for key in repaired_keys:
+                    grounding_sources[key] = {
+                        "source": "repair_patch",
+                        "confidence": 0.7,
+                    }
+                    grounding_confidence[key] = max(float(grounding_confidence.get(key, 0.0) or 0.0), 0.7)
+                step.metadata["grounding_sources"] = grounding_sources
+                step.metadata["grounding_confidence"] = grounding_confidence
+            step.metadata["repair_default_inputs"] = dict(step.inputs)
+            for binding in workflow.tool_bindings:
+                if binding.capability_id != step.capability_id:
+                    continue
+                binding.unresolved_required_inputs = list(step.metadata.get("unresolved_required_inputs", []))
+                binding.grounding_sources = (
+                    dict(step.metadata.get("grounding_sources", {}))
+                    if isinstance(step.metadata.get("grounding_sources"), dict)
+                    else {}
+                )
+                binding.grounding_confidence = (
+                    dict(step.metadata.get("grounding_confidence", {}))
+                    if isinstance(step.metadata.get("grounding_confidence"), dict)
+                    else {}
+                )
+                break
         trace.metadata.task_annotations["chosen_tool"] = selected_tool
         retry_state_values = dict(state_values)
         retry_state_values.update(extra_state_patch)
@@ -1265,6 +1311,9 @@ class SequentialExecutor:
                 metadata={
                     "required_input_keys": self._required_input_keys(step),
                     "missing_input_keys": list(missing_required_inputs),
+                    "unresolved_required_inputs": list(step.metadata.get("unresolved_required_inputs", []))
+                    if isinstance(step.metadata.get("unresolved_required_inputs"), list)
+                    else [],
                     "input_bindings": self._input_bindings(step),
                     "grounding_sources": dict(step.metadata.get('grounding_sources', {}))
                     if isinstance(step.metadata.get("grounding_sources"), dict)

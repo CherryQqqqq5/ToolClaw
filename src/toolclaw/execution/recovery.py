@@ -82,7 +82,6 @@ class RecoveryEngine:
 
     def _repair_binding_failure(self, error: ToolClawError) -> Repair:
         step_id = error.step_id or "unknown_step"
-        missing_target = None
         raw_message = str(error.evidence.raw_message or "")
         repaired_inputs = self._sanitize_binding_inputs(
             tool_id=error.evidence.tool_id,
@@ -100,40 +99,67 @@ class RecoveryEngine:
             if isinstance(evidence_metadata.get("simulated_missing_arg_values", {}), dict)
             else {}
         )
+        input_bindings = (
+            dict(evidence_metadata.get("input_bindings", {}))
+            if isinstance(evidence_metadata.get("input_bindings"), dict)
+            else {}
+        )
+        grounding_sources = (
+            dict(evidence_metadata.get("grounding_sources", {}))
+            if isinstance(evidence_metadata.get("grounding_sources"), dict)
+            else {}
+        )
         missing_input_keys = (
             [str(item) for item in evidence_metadata.get("missing_input_keys", []) if str(item)]
             if isinstance(evidence_metadata.get("missing_input_keys"), list)
             else []
         )
+        unresolved_required_inputs = (
+            [str(item) for item in evidence_metadata.get("unresolved_required_inputs", []) if str(item)]
+            if isinstance(evidence_metadata.get("unresolved_required_inputs"), list)
+            else []
+        )
 
         parsed_missing = self._extract_missing_required_fields(raw_message)
-        if parsed_missing:
-            missing_target = parsed_missing[0]
-        elif missing_input_keys:
-            missing_target = missing_input_keys[0]
+        missing_targets: list[str] = []
+        for candidate in [
+            *parsed_missing,
+            *missing_input_keys,
+            *unresolved_required_inputs,
+            *[str(item) for item in error.state_context.missing_assets if str(item)],
+        ]:
+            if candidate and candidate not in missing_targets:
+                missing_targets.append(candidate)
 
-        if error.state_context.missing_assets:
-            missing_target = error.state_context.missing_assets[0]
-
-        if not missing_target:
+        if not missing_targets:
             for candidate in ("target_path", "retrieved_info", "retrieved_summary"):
                 if candidate not in repaired_inputs and (
                     candidate in repair_default_inputs or candidate in simulated_missing_arg_values
                 ):
-                    missing_target = candidate
+                    missing_targets.append(candidate)
                     break
 
-        candidate_value = None
-        if missing_target:
-            candidate_value = repair_default_inputs.get(missing_target, simulated_missing_arg_values.get(missing_target))
+        recoverable_values: dict[str, object] = {}
+        for missing_target in missing_targets:
+            candidate_value = self._resolve_binding_candidate_value(
+                key=missing_target,
+                repaired_inputs=repaired_inputs,
+                repair_default_inputs=repair_default_inputs,
+                simulated_missing_arg_values=simulated_missing_arg_values,
+                input_bindings=input_bindings,
+                grounding_sources=grounding_sources,
+                state_values=error.state_context.state_values,
+            )
+            if self._is_concrete_repair_value(candidate_value):
+                recoverable_values[missing_target] = candidate_value
 
         if (
             self.config.prefer_user_mediated_binding_repair
-            and missing_target
+            and missing_targets
             and repaired_inputs == error.evidence.inputs
-            and self._binding_slot_prefers_user_input(missing_target)
+            and any(self._binding_slot_prefers_user_input(target) for target in missing_targets)
         ):
-            suggested_values = {missing_target: candidate_value} if candidate_value not in (None, "") else {}
+            suggested_values = dict(recoverable_values)
             return Repair(
                 repair_id=f"rep_{error.error_id}",
                 run_id=error.run_id,
@@ -150,19 +176,19 @@ class RecoveryEngine:
                         action_id=f"act_ask_{error.error_id}",
                         action_type=RepairActionType.ASK_USER,
                         target=step_id,
-                        metadata={"missing_target": missing_target},
+                        metadata={"missing_targets": list(missing_targets)},
                     )
                 ],
                 interaction=RepairInteraction(
                     ask_user=True,
-                    question=f"Provide `{missing_target}` so step {step_id} can continue.",
-                    expected_answer_type="target_path_patch" if missing_target == "target_path" else "missing_asset_patch",
+                    question=f"Provide `{', '.join(missing_targets)}` so step {step_id} can continue.",
+                    expected_answer_type="target_path_patch" if missing_targets == ["target_path"] else "missing_asset_patch",
                     user_response=None,
                 ),
                 workflow_patch=WorkflowPatch(modified_steps=[step_id] if error.step_id else []),
                 post_conditions=RepairPostConditions(
                     expected_effects=[
-                        f"{missing_target} is explicitly confirmed or supplied",
+                        f"{', '.join(missing_targets)} is explicitly confirmed or supplied",
                         "the failed step can be retried with a user-mediated patch",
                     ],
                     stop_if=[
@@ -173,42 +199,71 @@ class RecoveryEngine:
                 result=RepairResult(status=RepairStatus.PENDING, success=None),
                 metadata={
                     "mapped_from_error_category": error.category.value,
-                    "missing_assets": [missing_target],
+                    "missing_assets": list(missing_targets),
                     "missing_input_keys": list(missing_input_keys),
                     "suggested_values": suggested_values,
                     "phase": "phase1_training_free",
                 },
             )
 
-        target_expr = f"{step_id}.inputs.{missing_target}" if missing_target else f"{step_id}.inputs"
-        patch_value: object = missing_target or "auto_filled_value"
-        rationale = "Binding failure is treated as an argument-mapping error and patched by rebinding inputs."
-        expected_effects = [
-            "tool arguments become valid",
-            "the failed step can be re-executed",
-        ]
-        if missing_target:
-            if candidate_value not in (None, ""):
-                patch_value = candidate_value
-                rationale = "Binding failure exposes a missing argument, so the repair restores the known default input before retry."
-                expected_effects = [
-                    f"{missing_target} is restored from benchmark defaults",
-                    "the failed step can be re-executed with a concrete patch",
-                ]
-        if repaired_inputs and repaired_inputs != error.evidence.inputs:
-            target_expr = f"{step_id}.inputs"
-            patch_value = repaired_inputs
-            rationale = "Binding failure matches an invalid-argument pattern, so placeholder and malformed filters are stripped before retry."
-            expected_effects = [
-                "invalid optional arguments are removed",
-                "the failed step can be re-executed with sanitized inputs",
-            ]
-        elif missing_target and isinstance(patch_value, str) and patch_value == missing_target:
-            patch_value = (
-                repair_default_inputs.get(missing_target)
-                or simulated_missing_arg_values.get(missing_target)
-                or self._default_binding_value_for_slot(missing_target)
+        patch_inputs = dict(recoverable_values)
+        for key, value in repaired_inputs.items():
+            if self._is_concrete_repair_value(value):
+                patch_inputs.setdefault(key, value)
+
+        if not patch_inputs and missing_targets:
+            return Repair(
+                repair_id=f"rep_{error.error_id}",
+                run_id=error.run_id,
+                workflow_id=error.workflow_id,
+                triggered_error_ids=[error.error_id],
+                repair_type=RepairType.ASK_USER,
+                decision=RepairDecision(
+                    strategy=RepairStrategy.USER_IN_THE_LOOP,
+                    rationale="Binding failure has unresolved required inputs without concrete repair values, so execution blocks instead of inventing placeholders.",
+                    confidence=0.78,
+                ),
+                actions=[
+                    RepairAction(
+                        action_id=f"act_ask_{error.error_id}",
+                        action_type=RepairActionType.ASK_USER,
+                        target=step_id,
+                        metadata={"missing_targets": list(missing_targets)},
+                    )
+                ],
+                interaction=RepairInteraction(
+                    ask_user=True,
+                    question=f"Provide `{', '.join(missing_targets)}` so step {step_id} can continue.",
+                    expected_answer_type="missing_asset_patch",
+                    user_response=None,
+                ),
+                workflow_patch=WorkflowPatch(modified_steps=[step_id] if error.step_id else []),
+                post_conditions=RepairPostConditions(
+                    expected_effects=[
+                        "required missing inputs are concretely supplied",
+                        "the failed step can be retried without placeholder arguments",
+                    ],
+                    stop_if=[
+                        "same binding_failure repeats twice",
+                        "patched value is still rejected by tool constraints",
+                    ],
+                ),
+                result=RepairResult(status=RepairStatus.PENDING, success=None),
+                metadata={
+                    "mapped_from_error_category": error.category.value,
+                    "missing_input_keys": list(missing_input_keys),
+                    "unresolved_required_inputs": list(unresolved_required_inputs),
+                    "phase": "phase1_training_free",
+                },
             )
+
+        target_expr = f"{step_id}.inputs"
+        patch_value: object = patch_inputs
+        rationale = "Binding failure exposes unresolved required inputs, so the repair patches all concrete recoverable values before retry."
+        expected_effects = [
+            "concrete missing arguments are restored",
+            "the failed step can be re-executed with a targeted patch",
+        ]
 
         repair = Repair(
             repair_id=f"rep_{error.error_id}",
@@ -231,6 +286,8 @@ class RecoveryEngine:
                     metadata={
                         "category": error.category.value,
                         "subtype": error.subtype,
+                        "patched_keys": sorted(patch_inputs),
+                        "unresolved_required_inputs": list(unresolved_required_inputs),
                     },
                 ),
                 RepairAction(
@@ -262,10 +319,52 @@ class RecoveryEngine:
             metadata={
                 "mapped_from_error_category": error.category.value,
                 "missing_input_keys": list(missing_input_keys),
+                "unresolved_required_inputs": list(unresolved_required_inputs),
+                "patched_keys": sorted(patch_inputs),
                 "phase": "phase1_training_free",
             },
         )
         return repair
+
+    @staticmethod
+    def _is_concrete_repair_value(value: object) -> bool:
+        if value in (None, "", {}):
+            return False
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in PLACEHOLDER_ARGUMENT_STRINGS or lowered == "auto_filled_value":
+                return False
+        return True
+
+    def _resolve_binding_candidate_value(
+        self,
+        *,
+        key: str,
+        repaired_inputs: dict,
+        repair_default_inputs: dict,
+        simulated_missing_arg_values: dict,
+        input_bindings: dict,
+        grounding_sources: dict,
+        state_values: dict,
+    ) -> object:
+        if key in repaired_inputs and self._is_concrete_repair_value(repaired_inputs.get(key)):
+            return repaired_inputs.get(key)
+        binding_key = input_bindings.get(key)
+        if isinstance(binding_key, str) and binding_key and self._is_concrete_repair_value(state_values.get(binding_key)):
+            return state_values.get(binding_key)
+        if key in repair_default_inputs and self._is_concrete_repair_value(repair_default_inputs.get(key)):
+            return repair_default_inputs.get(key)
+        if key in simulated_missing_arg_values and self._is_concrete_repair_value(simulated_missing_arg_values.get(key)):
+            return simulated_missing_arg_values.get(key)
+        if self._is_concrete_repair_value(state_values.get(key)):
+            return state_values.get(key)
+        if key == "query":
+            source_payload = grounding_sources.get(key)
+            if isinstance(source_payload, dict):
+                query_text = source_payload.get("query_text")
+                if self._is_concrete_repair_value(query_text):
+                    return query_text
+        return None
 
     @staticmethod
     def _extract_missing_required_fields(raw_message: str) -> list[str]:

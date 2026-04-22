@@ -127,6 +127,43 @@ def test_binding_repair_restores_default_target_path_for_write_step(tmp_path: Pa
 
     assert trace.metrics.success is True
     assert workflow.execution_plan[1].inputs["target_path"] == "outputs/reports/restored.txt"
+    assert workflow.execution_plan[1].metadata["repair_default_inputs"]["target_path"] == "outputs/reports/restored.txt"
+
+
+def test_binding_repair_refreshes_grounding_metadata_after_patch(tmp_path: Path) -> None:
+    workflow = Workflow.demo()
+    workflow.metadata["tool_execution_backend"] = "semantic_mock"
+    workflow.context.candidate_tools = [
+        ToolSpec(tool_id="search_tool", description="Search information."),
+        ToolSpec(tool_id="write_tool", description="Write report to disk."),
+    ]
+    workflow.execution_plan[1].inputs.pop("target_path", None)
+    workflow.execution_plan[1].metadata.update(
+        {
+            "required_input_keys": ["target_path"],
+            "unresolved_required_inputs": ["target_path"],
+            "grounding_sources": {"target_path": {"source": "unresolved", "confidence": 0.0}},
+            "grounding_confidence": {"target_path": 0.0},
+            "repair_default_inputs": {"target_path": "outputs/reports/restored.txt"},
+        }
+    )
+    write_binding = next(binding for binding in workflow.tool_bindings if binding.capability_id == "cap_write")
+    write_binding.unresolved_required_inputs = ["target_path"]
+    write_binding.grounding_sources = {"target_path": {"source": "unresolved", "confidence": 0.0}}
+    write_binding.grounding_confidence = {"target_path": 0.0}
+
+    trace = SequentialExecutor().run(
+        workflow=workflow,
+        run_id="run_binding_refresh_001",
+        output_path=str(tmp_path / "run_binding_refresh.json"),
+    )
+
+    assert trace.metrics.success is True
+    assert workflow.execution_plan[1].metadata["unresolved_required_inputs"] == []
+    assert workflow.execution_plan[1].metadata["grounding_sources"]["target_path"]["source"] == "repair_patch"
+    assert workflow.execution_plan[1].metadata["grounding_confidence"]["target_path"] >= 0.7
+    assert write_binding.unresolved_required_inputs == []
+    assert write_binding.grounding_sources["target_path"]["source"] == "repair_patch"
 
 
 def test_state_failure_repair_overrides_wrong_write_target_for_retry(tmp_path: Path) -> None:
