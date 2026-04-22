@@ -1164,3 +1164,150 @@ def test_bfcl_runtime_prefers_news_search_for_explicit_news_query() -> None:
 
     assert selected is not None
     assert selected["tool_id"] == "HNA_NEWS.search"
+
+
+def test_bfcl_runtime_extracts_uber_address_and_time_from_multilingual_query() -> None:
+    arguments = extract_tool_arguments(
+        "uber.ride",
+        {
+            "type": "dict",
+            "required": ["loc", "type", "time"],
+            "properties": {
+                "loc": {"type": "string"},
+                "type": {"type": "string", "enum": ["plus", "comfort", "black"]},
+                "time": {"type": "integer"},
+            },
+        },
+        "Tôi cần một chuyến xe Uber loại 'Plus' từ địa chỉ '2150 Shattuck Ave, Berkeley, CA' và tôi có thể chờ tối đa 10 phút.",
+        include_defaults=False,
+    )
+
+    assert arguments == {
+        "loc": "2150 Shattuck Ave, Berkeley, CA",
+        "type": "plus",
+        "time": 10,
+    }
+
+
+def test_bfcl_runtime_extracts_string_identifier_from_agent_query() -> None:
+    arguments = extract_tool_arguments(
+        "host_agent_api.HostAgentApi.get_agent_snapshot",
+        {
+            "type": "dict",
+            "required": ["id"],
+            "properties": {
+                "id": {"type": "string"},
+                "to": {"type": "string"},
+                "windowSize": {"type": "integer"},
+            },
+        },
+        "Give the snapshot for host agent zzwzeem, up to the current time",
+        include_defaults=False,
+    )
+
+    assert arguments["id"] == "zzwzeem"
+
+
+def test_bfcl_runtime_extracts_email_and_column_arrays() -> None:
+    email_args = extract_tool_arguments(
+        "update_user_profile",
+        {
+            "type": "dict",
+            "required": ["profile_data"],
+            "properties": {
+                "profile_data": {
+                    "type": "dict",
+                    "properties": {
+                        "email": {"type": "array", "items": {"type": "string"}},
+                    },
+                }
+            },
+        },
+        "I need to update my profile with my new email, john.doe@example.com, and my new age, 30.",
+        include_defaults=False,
+    )
+    column_args = extract_tool_arguments(
+        "database.modify_columns",
+        {
+            "type": "dict",
+            "required": ["columns"],
+            "properties": {
+                "columns": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+        "I need to delete some columns from my employees database on personal_data table. I want to remove their email addresses and social security numbers to respect privacy.",
+        include_defaults=False,
+    )
+
+    assert email_args == {"profile_data": {"email": ["john.doe@example.com"]}}
+    assert column_args == {"columns": ["email", "ssn"]}
+
+
+def test_bfcl_runtime_extracts_node_and_pod_integer_ids() -> None:
+    arguments = extract_tool_arguments(
+        "telemetry.flowrules.interfaceInfo.get",
+        {
+            "type": "dict",
+            "required": ["fabricName", "nodeId", "podId"],
+            "properties": {
+                "fabricName": {"type": "string"},
+                "nodeId": {"type": "integer"},
+                "podId": {"type": "integer"},
+            },
+        },
+        "Can you retrieve the status information for the Ethernet interface on fabric 'Global-Fabric', node 1200, and pod 3?",
+        include_defaults=False,
+    )
+
+    assert arguments["nodeId"] == 1200
+    assert arguments["podId"] == 3
+
+
+def test_bfcl_runtime_extracts_weight_and_travel_destination() -> None:
+    bmi_arguments = extract_tool_arguments(
+        "calculate_bmi",
+        {
+            "type": "dict",
+            "required": ["weight", "height"],
+            "properties": {
+                "weight": {"type": "integer"},
+                "height": {"type": "integer"},
+            },
+        },
+        "Calculate the Body Mass Index (BMI) of a person with a weight of 85 kilograms and height of 180 cm.",
+        include_defaults=False,
+    )
+    travel_arguments = extract_tool_arguments(
+        "Hotels_2_SearchHouse",
+        {
+            "type": "dict",
+            "required": ["where_to", "number_of_adults"],
+            "properties": {
+                "where_to": {"type": "string"},
+                "number_of_adults": {"type": "integer"},
+            },
+        },
+        "Search for a house accommodation in Delhi that has a review rating of at least 4.6 for two?",
+        include_defaults=False,
+    )
+
+    assert bmi_arguments["weight"] == 85
+    assert travel_arguments["where_to"] == "Delhi"
+
+
+def test_bfcl_runtime_extracts_explicit_ticker_symbol() -> None:
+    arguments = extract_tool_arguments(
+        "stock_price.get",
+        {
+            "type": "dict",
+            "required": ["ticker"],
+            "properties": {
+                "ticker": {"type": "string"},
+                "exchange": {"type": "string"},
+            },
+        },
+        "What is the price for ticker AAPL on NYSE?",
+        include_defaults=False,
+    )
+
+    assert arguments["ticker"] == "AAPL"

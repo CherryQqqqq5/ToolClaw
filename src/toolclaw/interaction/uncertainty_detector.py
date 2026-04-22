@@ -302,7 +302,8 @@ class UncertaintyDetector:
             key_text = str(key).strip()
             if not key_text:
                 continue
-            if key_text in missing or step.inputs.get(key_text) not in {None, ""}:
+            current_value = step.inputs.get(key_text)
+            if key_text in missing or (current_value is not None and current_value != ""):
                 continue
             if key_text in input_bindings or key_text in state_bindings or key_text in implicit_fallbacks:
                 continue
@@ -326,7 +327,8 @@ class UncertaintyDetector:
                 slot_text = str(slot)
                 if not slot_text:
                     continue
-                if slot_text not in state_values or state_values.get(slot_text) in {None, ""}:
+                current_state_value = state_values.get(slot_text)
+                if slot_text not in state_values or current_state_value is None or current_state_value == "":
                     if slot_text not in missing_assets:
                         missing_assets.append(slot_text)
         for source in (
@@ -352,7 +354,8 @@ class UncertaintyDetector:
         if not state_slot:
             return []
         required_value = preflight_policy.get("required_value")
-        if state_slot not in state_values or state_values.get(state_slot) in {None, ""}:
+        current_state_value = state_values.get(state_slot)
+        if state_slot not in state_values or current_state_value is None or current_state_value == "":
             return []
         if required_value is not None and state_values.get(state_slot) != required_value:
             return [state_slot]

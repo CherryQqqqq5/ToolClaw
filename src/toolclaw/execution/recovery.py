@@ -121,6 +121,15 @@ class RecoveryEngine:
         )
 
         parsed_missing = self._extract_missing_required_fields(raw_message)
+        explicit_required_targets = [
+            candidate
+            for candidate in [
+                *parsed_missing,
+                *missing_input_keys,
+                *unresolved_required_inputs,
+            ]
+            if candidate
+        ]
         missing_targets: list[str] = []
         for candidate in [
             *parsed_missing,
@@ -206,10 +215,24 @@ class RecoveryEngine:
                 },
             )
 
-        patch_inputs = dict(recoverable_values)
-        for key, value in repaired_inputs.items():
-            if self._is_concrete_repair_value(value):
-                patch_inputs.setdefault(key, value)
+        patch_inputs = {
+            key: value
+            for key, value in recoverable_values.items()
+            if key in missing_targets and self._is_concrete_repair_value(value)
+        }
+
+        allow_default_for_required_targets = bool(explicit_required_targets) and all(
+            not self._binding_slot_prefers_user_input(target) for target in explicit_required_targets
+        )
+
+        if not explicit_required_targets:
+            for key, value in repaired_inputs.items():
+                if self._is_concrete_repair_value(value):
+                    patch_inputs.setdefault(key, value)
+
+        if not patch_inputs and missing_targets and (not explicit_required_targets or allow_default_for_required_targets):
+            for missing_target in missing_targets:
+                patch_inputs.setdefault(missing_target, self._default_binding_value_for_slot(missing_target))
 
         if not patch_inputs and missing_targets:
             return Repair(
@@ -257,8 +280,13 @@ class RecoveryEngine:
                 },
             )
 
-        target_expr = f"{step_id}.inputs"
-        patch_value: object = patch_inputs
+        if len(patch_inputs) == 1 and next(iter(patch_inputs)) in missing_targets:
+            only_key, only_value = next(iter(patch_inputs.items()))
+            target_expr = f"{step_id}.inputs.{only_key}"
+            patch_value = only_value
+        else:
+            target_expr = f"{step_id}.inputs"
+            patch_value = patch_inputs
         rationale = "Binding failure exposes unresolved required inputs, so the repair patches all concrete recoverable values before retry."
         expected_effects = [
             "concrete missing arguments are restored",

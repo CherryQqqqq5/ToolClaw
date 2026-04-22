@@ -26,6 +26,7 @@ MULTI_TURN_FUNC_DOC_FILE_MAPPING: Dict[str, str] = {
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 _QUOTED_PATTERN = re.compile(r"""['"]([^'"]+)['"]""")
 _INTEGER_PATTERN = re.compile(r"\b\d+\b")
+_EMAIL_PATTERN = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
 _NUMBER_WORDS: Dict[str, int] = {
     "zero": 0,
     "one": 1,
@@ -110,6 +111,41 @@ _EXPLICIT_NEWS_MARKERS: tuple[str, ...] = (
     "articles",
     "뉴스",
 )
+
+
+def _normalized_key_phrases(key: str) -> List[str]:
+    raw = str(key or "").strip()
+    if not raw:
+        return []
+    spaced = re.sub(r"(?<!^)(?=[A-Z])", " ", raw)
+    lowered = spaced.replace("_", " ").replace("-", " ").strip().lower()
+    collapsed = re.sub(r"[\s_-]+", "", lowered)
+    phrases = [lowered]
+    if collapsed and collapsed != lowered:
+        phrases.append(collapsed)
+    return [phrase for phrase in phrases if phrase]
+
+
+def _extract_number_after_patterns(text: str, patterns: Sequence[str]) -> int | None:
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            value = _number_from_token(match.group(1))
+            if value is not None:
+                return value
+    return None
+
+
+def _generic_location_candidate(text: str, prefixes: Sequence[str]) -> str | None:
+    for prefix in prefixes:
+        match = re.search(
+            rf"{prefix}\s+([A-Za-z][A-Za-z .,'/-]*?)(?:\s+(?:that|with|for|from|on|at|of|and)\b|[.?!,]|$)",
+            text,
+            re.IGNORECASE,
+        )
+        if match:
+            return match.group(1).strip(" .?!,;:'\"")
+    return None
 
 
 def display_repo_path(path: Path, root_dir: Path) -> str:
@@ -601,11 +637,12 @@ def _extract_integer_value(tool_id: str, key: str, prop: Mapping[str, Any], text
     lower = text.lower()
     numbers = _ordered_numeric_values(text)
     key_lower = key.lower()
+    key_phrases = _normalized_key_phrases(key)
     patterns = {
         "base": r"base(?:\s+of)?\s+(\d+)",
         "height": r"height(?:\s+of)?\s+(\d+)",
         "duration": r"(\d+)\s*minutes?",
-        "time": r"(\d+)\s*(?:seconds?|minutes?)",
+        "time": r"(\d+)\s*(?:seconds?|minutes?|phút)",
         "lines": r"(\d+)\s*lines?",
         "count": r"(?:first|top|last)\s+(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b",
         "lower_limit": r"between\s+(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+and\s+",
@@ -617,6 +654,31 @@ def _extract_integer_value(tool_id: str, key: str, prop: Mapping[str, Any], text
             value = _number_from_token(match.group(1))
             if value is not None:
                 return value
+    if key_lower == "weight":
+        value = _extract_number_after_patterns(
+            lower,
+            [r"weight(?:\s+of)?\s+(\d+)", r"(\d+)\s*(?:kg|kilograms?)"],
+        )
+        if value is not None:
+            return value
+    if key_lower == "distance":
+        value = _extract_number_after_patterns(
+            lower,
+            [r"distance(?:\s+between us)?(?:\s+is)?\s+(\d+)", r"(\d+)\s*meters?\s+away"],
+        )
+        if value is not None:
+            return value
+    if key_lower == "perpage":
+        value = _extract_number_after_patterns(
+            lower,
+            [r"per\s*page[^\d]*(\d+)", r"(\d+)\s+(?:entries|results)\s+per\s+page"],
+        )
+        if value is not None:
+            return value
+    if key_lower == "days":
+        value = _extract_number_after_patterns(lower, [r"(\d+)\s*days?"])
+        if value is not None:
+            return value
     indexed_key = re.match(r"([a-z_]+?)(\d+)$", key_lower)
     if indexed_key and numbers:
         candidate_numbers = list(numbers)
@@ -626,12 +688,18 @@ def _extract_integer_value(tool_id: str, key: str, prop: Mapping[str, Any], text
         if 0 <= ordinal < len(candidate_numbers):
             return candidate_numbers[ordinal]
     if key_lower.endswith("id") or "identifier" in str(prop.get("description") or "").lower():
-        match = re.search(rf"{re.escape(key_lower.replace('_', ' '))}[^\d]*(\d+)", lower)
-        if match:
-            return int(match.group(1))
+        for phrase in key_phrases:
+            match = re.search(rf"{re.escape(phrase)}[^\d]*(\d+)", lower)
+            if match:
+                return int(match.group(1))
         id_match = re.search(r"\bid\b[^\d]*(\d+)", lower)
         if id_match:
             return int(id_match.group(1))
+        noun = key_lower[:-2]
+        if noun in {"node", "pod", "lane", "user", "device", "account"}:
+            noun_match = re.search(rf"\b{re.escape(noun)}\b[^\d]*(\d+)", lower)
+            if noun_match:
+                return int(noun_match.group(1))
     if key_lower in {"a", "b"} and len(numbers) >= 2:
         if key_lower == "a":
             return numbers[0]
@@ -659,6 +727,28 @@ def _extract_array_value(key: str, prop: Mapping[str, Any], text: str) -> Any:
         values = _ordered_numeric_values(text)
         return values or None
     if item_type == "string":
+        key_lower = key.lower()
+        if "email" in key_lower:
+            emails = _EMAIL_PATTERN.findall(text)
+            if emails:
+                return emails
+        if key_lower in {"columns", "fields"}:
+            extracted: List[str] = []
+            alias_map = {
+                "email address": "email",
+                "email addresses": "email",
+                "emails": "email",
+                "email": "email",
+                "social security number": "ssn",
+                "social security numbers": "ssn",
+                "ssn": "ssn",
+                "ssns": "ssn",
+            }
+            for phrase, canonical in alias_map.items():
+                if phrase in lower and canonical not in extracted:
+                    extracted.append(canonical)
+            if extracted:
+                return extracted
         quoted = _quoted_strings(text)
         return quoted or None
     return None
@@ -668,6 +758,7 @@ def _extract_string_value(tool_id: str, key: str, prop: Mapping[str, Any], text:
     lower = text.lower()
     quoted = _quoted_strings(text)
     key_lower = key.lower()
+    key_phrases = _normalized_key_phrases(key)
 
     def _clean_candidate(value: str) -> str:
         return value.strip(" .?!,;:'\"")
@@ -789,6 +880,16 @@ def _extract_string_value(tool_id: str, key: str, prop: Mapping[str, Any], text:
             if repos:
                 return ",".join(repos)
     if key_lower in {"loc", "location"}:
+        explicit_address = re.search(r"(?:địa chỉ|address)\s*[:：]?\s*['\"]([^'\"]+)['\"]", text, re.IGNORECASE)
+        if explicit_address:
+            return _canonical_location(_clean_candidate(explicit_address.group(1)))
+        explicit_address = re.search(
+            r"(?:địa chỉ|address)\s*[:：]?\s*([a-zA-Z0-9 .,'/-]+?)(?:\s+(?:and|và|with|for)\b|[.?!]|$)",
+            text,
+            re.IGNORECASE,
+        )
+        if explicit_address:
+            return _canonical_location(_clean_candidate(explicit_address.group(1)))
         exact_city = re.search(r"use\s+(.+?)\s+as the exact city location", text, re.IGNORECASE)
         if exact_city:
             return _canonical_location(_clean_candidate(exact_city.group(1)))
@@ -798,6 +899,51 @@ def _extract_string_value(tool_id: str, key: str, prop: Mapping[str, Any], text:
         match = re.search(r"from\s+(.+?)(?:, and i can wait| and i can wait|,?\s+I can wait|$)", text, re.IGNORECASE)
         if match:
             return _canonical_location(_clean_candidate(match.group(1)))
+    if key_lower == "where_to":
+        candidate = _generic_location_candidate(text, (r"in", r"to", r"for"))
+        if candidate:
+            return _canonical_location(candidate)
+    if key_lower == "city":
+        candidate = _generic_location_candidate(text, (r"in", r"for", r"of"))
+        if candidate:
+            parts = [part.strip() for part in candidate.split(",") if part.strip()]
+            return parts[0] if parts else candidate
+    if key_lower == "country":
+        candidate = _generic_location_candidate(text, (r"in", r"for", r"of"))
+        if candidate and "," in candidate:
+            parts = [part.strip() for part in candidate.split(",") if part.strip()]
+            if len(parts) >= 2:
+                return parts[-1]
+    if key_lower == "ticker":
+        ticker_patterns = [
+            r"(?:ticker|symbol)\s*(?:is\s*)?([A-Z]{1,5})\b",
+            r"\b([A-Z]{1,5})\b\s*(?:stock|shares?)",
+        ]
+        for pattern in ticker_patterns:
+            match = re.search(pattern, text)
+            if match:
+                return match.group(1)
+    if key_lower.endswith("id") or "identifier" in str(prop.get("description") or "").lower():
+        id_patterns = [
+            *(rf"{re.escape(phrase)}\s+(?:is\s+)?['\"]?([a-zA-Z0-9_.-]+)['\"]?" for phrase in key_phrases),
+            r"\bid(?:entifier)?\s+(?:is\s+)?['\"]?([a-zA-Z0-9_.-]+)['\"]?",
+            r"\b(?:host agent|agent|user|device|account|lane)\s+(?:id\s+)?['\"]?([a-zA-Z0-9_.-]+)['\"]?",
+        ]
+        for pattern in id_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                candidate = match.group(1).strip(" .")
+                if candidate and not candidate.isdigit():
+                    return candidate
+        if quoted:
+            for candidate in quoted:
+                stripped = candidate.strip()
+                if stripped and re.fullmatch(r"[A-Za-z0-9_.-]+", stripped):
+                    return stripped
+    if "email" in key_lower:
+        email_match = _EMAIL_PATTERN.search(text)
+        if email_match:
+            return email_match.group(0)
     if key_lower == "keyword":
         return _search_keyword_candidate()
     if key_lower == "command":

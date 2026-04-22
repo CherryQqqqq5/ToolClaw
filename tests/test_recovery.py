@@ -164,3 +164,43 @@ def test_binding_failure_can_prefer_user_mediated_patch_for_user_facing_slot() -
     assert repair.interaction.expected_answer_type == "target_path_patch"
     assert repair.metadata["missing_assets"] == ["target_path"]
     assert repair.metadata["suggested_values"] == {"target_path": "outputs/reports/recovered.txt"}
+
+
+def test_binding_failure_does_not_patch_unrelated_existing_inputs() -> None:
+    engine = RecoveryEngine()
+    error = make_error(ErrorCategory.BINDING_FAILURE, error_id="err_binding_missing_id_001")
+    error.evidence.tool_id = "host_agent_api.HostAgentApi.get_agent_snapshot"
+    error.evidence.raw_message = "missing required input(s): id"
+    error.evidence.inputs = {"to": "the"}
+    error.evidence.metadata["missing_input_keys"] = ["id"]
+    error.evidence.metadata["repair_default_inputs"] = {"to": "the"}
+    error.state_context.missing_assets = []
+
+    repair = engine.plan_repair(error)
+
+    assert repair.repair_type == RepairType.ASK_USER
+    assert repair.interaction.ask_user is True
+    assert repair.metadata["missing_input_keys"] == ["id"]
+
+
+def test_binding_failure_patches_only_missing_required_keys() -> None:
+    engine = RecoveryEngine()
+    error = make_error(ErrorCategory.BINDING_FAILURE, error_id="err_binding_patch_required_only_001")
+    error.evidence.tool_id = "host_agent_api.HostAgentApi.get_agent_snapshot"
+    error.evidence.raw_message = "missing required input(s): id, windowSize"
+    error.evidence.inputs = {"to": "the"}
+    error.evidence.metadata["missing_input_keys"] = ["id", "windowSize"]
+    error.evidence.metadata["repair_default_inputs"] = {
+        "id": "agent-123",
+        "windowSize": 60,
+        "to": "the",
+    }
+    error.state_context.missing_assets = []
+
+    repair = engine.plan_repair(error)
+
+    assert repair.repair_type == RepairType.REBIND_ARGS
+    assert repair.actions[0].value == {
+        "id": "agent-123",
+        "windowSize": 60,
+    }

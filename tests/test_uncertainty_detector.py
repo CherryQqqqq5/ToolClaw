@@ -59,6 +59,39 @@ def test_uncertainty_detector_marks_missing_asset_for_ask_user() -> None:
     assert report.metadata["missing_input_keys"] == ["target_path"]
 
 
+def test_uncertainty_detector_handles_list_valued_inputs_for_required_keys() -> None:
+    workflow = Workflow.demo()
+    step = workflow.execution_plan[1]
+    step.metadata["required_input_keys"] = ["target_path", "bboxes"]
+    step.inputs["bboxes"] = [{"x": 1, "y": 2, "w": 3, "h": 4}]
+    repair = Repair.demo()
+    repair.repair_type = RepairType.ASK_USER
+    step.inputs.pop("target_path", None)
+
+    report = UncertaintyDetector().analyze_failure(workflow, repair, {})
+
+    assert report.primary_label == "missing_asset"
+    assert report.metadata["missing_input_keys"] == ["target_path"]
+
+
+def test_uncertainty_detector_handles_dict_valued_state_slots() -> None:
+    workflow = Workflow.demo()
+    step = workflow.execution_plan[1]
+    step.metadata["required_state_slots"] = ["ego_info", "target_path"]
+    repair = Repair.demo()
+    repair.repair_type = RepairType.ASK_USER
+    step.inputs.pop("target_path", None)
+
+    report = UncertaintyDetector().analyze_failure(
+        workflow,
+        repair,
+        {"ego_info": {"position": [1, 2, 3], "velocity": 4.0}},
+    )
+
+    assert report.primary_label == "missing_asset"
+    assert "target_path" in report.metadata["missing_assets"]
+
+
 def test_uncertainty_detector_marks_constraint_conflict_for_permission_failures() -> None:
     workflow = Workflow.demo()
     repair = Repair.demo()
