@@ -653,6 +653,7 @@ class SequentialExecutor:
     def _execute_step(self, workflow: Workflow, step: WorkflowStep, trace: Trace, state_values: Dict[str, Any]) -> StepExecutionResult:
         trace.metadata.task_annotations["chosen_tool"] = step.tool_id
         tool_args = self._materialize_tool_args(step=step, state_values=state_values)
+        tool_args = self._filter_unknown_schema_args(workflow=workflow, step=step, tool_args=tool_args)
         # Persist inferred dependency fills so retries/replans keep consistent inputs.
         for key in self._persistable_materialized_keys(step, tool_args):
             if key in tool_args and key not in step.inputs:
@@ -808,6 +809,7 @@ class SequentialExecutor:
         retry_state_values = dict(state_values)
         retry_state_values.update(extra_state_patch)
         retry_tool_args = self._materialize_tool_args(step=step, state_values=retry_state_values)
+        retry_tool_args = self._filter_unknown_schema_args(workflow=workflow, step=step, tool_args=retry_tool_args)
         trace.add_event(
             event_id=f"evt_repair_call_{step.step_id}",
             event_type=EventType.TOOL_CALL,
@@ -1578,6 +1580,38 @@ class SequentialExecutor:
                 sanitized.pop("is_self", None)
 
         return sanitized
+
+    @staticmethod
+    def _tool_parameter_schema(workflow: Workflow, step: WorkflowStep) -> Dict[str, Any]:
+        metadata_schema = step.metadata.get("bfcl_schema")
+        if isinstance(metadata_schema, dict):
+            return dict(metadata_schema)
+        for tool in workflow.context.candidate_tools:
+            if tool.tool_id != step.tool_id:
+                continue
+            metadata = tool.metadata if isinstance(tool.metadata, dict) else {}
+            parameters = metadata.get("parameters") or metadata.get("schema") or {}
+            if isinstance(parameters, dict):
+                return dict(parameters)
+        return {}
+
+    @classmethod
+    def _filter_unknown_schema_args(
+        cls,
+        *,
+        workflow: Workflow,
+        step: WorkflowStep,
+        tool_args: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        schema = cls._tool_parameter_schema(workflow, step)
+        properties = schema.get("properties")
+        if not isinstance(properties, dict) or not properties:
+            return dict(tool_args)
+        additional = schema.get("additionalProperties")
+        if additional is True:
+            return dict(tool_args)
+        allowed_keys = {str(key) for key in properties.keys() if str(key)}
+        return {key: value for key, value in tool_args.items() if key in allowed_keys}
 
     @staticmethod
     def _tool_uses_outbound_cellular(tool_id: Optional[str]) -> bool:

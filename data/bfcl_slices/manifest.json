@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-04-22",
+  "source_aligned_taskset": "data/bfcl_formal/bfcl_v4.fc_core.aligned.jsonl",
+  "source_scored_reference": "outputs/paper_suite_grounding_formal_20260421_fix1/bfcl_fc_core/comparison.scored.csv",
+  "selection_rule": "triggered_preflight defined by fc_preflight_only preflight_interception_rate > 0 in grounding formal fix1; plus irrelevance/live_irrelevance guard rows",
+  "slices": {
+    "grounding_triggered_preflight_v1": {
+      "path": "data/bfcl_slices/grounding_triggered_preflight_v1.jsonl",
+      "num_rows": 256,
+      "selection_summary": {
+        "live_multiple": {
+          "available": 820,
+          "selected": 128
+        },
+        "live_simple": {
+          "available": 194,
+          "selected": 32
+        },
+        "multiple": {
+          "available": 200,
+          "selected": 24
+        },
+        "parallel_multiple": {
+          "available": 200,
+          "selected": 24
+        },
+        "parallel": {
+          "available": 196,
+          "selected": 24
+        },
+        "simple_python": {
+          "available": 378,
+          "selected": 16
+        },
+        "irrelevance": {
+          "available": 240,
+          "selected": 4
+        },
+        "live_irrelevance": {
+          "available": 884,
+          "selected": 4
+        }
+      }
+    },
+    "grounding_delta_cases_v1": {
+      "path": "data/bfcl_slices/grounding_delta_cases_v1.jsonl",
+      "num_rows": 3,
+      "task_ids": [
+        "live_irrelevance_120-9-0",
+        "live_multiple_2-1-0",
+        "live_multiple_4-2-1"
+      ]
+    }
+  }
+}

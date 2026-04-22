@@ -554,3 +554,30 @@ def test_executor_materialize_tool_args_allows_explicit_opt_out_for_write_steps(
     )
 
     assert tool_args == {"target_path": "outputs/reports/demo.txt"}
+
+
+def test_executor_filters_unknown_args_when_step_schema_is_available() -> None:
+    workflow = Workflow.demo()
+    step = WorkflowStep(
+        step_id="step_schema_01",
+        capability_id="cap_update",
+        tool_id="set_volume",
+        inputs={"volume": 50, "query": "set volume to 50"},
+        metadata={
+            "bfcl_schema": {
+                "type": "dict",
+                "required": ["volume"],
+                "properties": {
+                    "volume": {"type": "integer"},
+                },
+            }
+        },
+    )
+
+    filtered = SequentialExecutor._filter_unknown_schema_args(
+        workflow=workflow,
+        step=step,
+        tool_args={"volume": 50, "query": "set volume to 50"},
+    )
+
+    assert filtered == {"volume": 50}

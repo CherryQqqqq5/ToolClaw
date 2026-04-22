@@ -1,0 +1,71 @@
+{
+  "benchmark": "bfcl",
+  "track": "fc_core",
+  "namespace": "toolclaw_diagnostics",
+  "per_system": {
+    "a0_baseline": {
+      "num_rows": 256.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.822265625,
+      "toolclaw_diagnostics_tool_sequence_match": 0.73046875,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.255859375,
+      "toolclaw_diagnostics_policy_format_compliance": 1.0,
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.0,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.0,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 1.0,
+      "toolclaw_diagnostics_avg_tool_calls": 1.00390625,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
+    },
+    "fc_preflight_only": {
+      "num_rows": 256.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.03515625,
+      "toolclaw_diagnostics_tool_sequence_match": 0.00390625,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.9921875,
+      "toolclaw_diagnostics_policy_format_compliance": 1.0,
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.958984375,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.9609375,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 0.0390625,
+      "toolclaw_diagnostics_avg_tool_calls": 0.0078125,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
+    },
+    "fc_grounding_recovery": {
+      "num_rows": 256.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.6432291666666666,
+      "toolclaw_diagnostics_tool_sequence_match": 0.55859375,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.4541015625,
+      "toolclaw_diagnostics_policy_format_compliance": 1.0,
+      "toolclaw_diagnostics_repair_overhead": 0.23046875,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.3450520833333333,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.42578125,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.23046875,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 0.57421875,
+      "toolclaw_diagnostics_avg_tool_calls": 0.8125,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
+    },
+    "a4_reuse": {
+      "num_rows": 256.0,
+      "toolclaw_diagnostics_binder_selection_match": 0.8203125,
+      "toolclaw_diagnostics_tool_sequence_match": 0.7265625,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.2548828125,
+      "toolclaw_diagnostics_policy_format_compliance": 1.0,
+      "toolclaw_diagnostics_repair_overhead": 0.34375,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.32027994791666664,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.42578125,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.34375,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 0.57421875,
+      "toolclaw_diagnostics_avg_tool_calls": 1.02734375,
+      "toolclaw_diagnostics_avg_user_queries": 0.203125
+    }
+  }
+}

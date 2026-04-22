@@ -31,6 +31,11 @@ data/bfcl/*
 !data/bfcl_formal/
 data/bfcl_formal/*
 !data/bfcl_formal/manifest.json
+!data/bfcl_slices/
+data/bfcl_slices/*
+!data/bfcl_slices/manifest.json
+!data/bfcl_slices/grounding_triggered_preflight_v1.jsonl
+!data/bfcl_slices/grounding_delta_cases_v1.jsonl
 
 # Keep repo-curated benchmark datasets used in the paper
 !data/toolsandbox.formal.json
@@ -174,3 +179,11 @@ outputs/bfcl_grounding_delta_smoke_v1/*
 !outputs/bfcl_grounding_delta_smoke_v1/claim_summary.json
 !outputs/bfcl_grounding_delta_smoke_v1/report.md
 !outputs/bfcl_grounding_delta_smoke_v1/latest_run_report.md
+!outputs/bfcl_grounding_triggered_preflight_v3/
+outputs/bfcl_grounding_triggered_preflight_v3/*
+!outputs/bfcl_grounding_triggered_preflight_v3/experiment_manifest.json
+!outputs/bfcl_grounding_triggered_preflight_v3/official_scoreboard.json
+!outputs/bfcl_grounding_triggered_preflight_v3/toolclaw_diagnostics.json
+!outputs/bfcl_grounding_triggered_preflight_v3/claim_summary.json
+!outputs/bfcl_grounding_triggered_preflight_v3/report.md
+!outputs/bfcl_grounding_triggered_preflight_v3/latest_run_report.md

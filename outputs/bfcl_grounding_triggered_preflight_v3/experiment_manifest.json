@@ -1,0 +1,27 @@
+{
+  "benchmark": "bfcl",
+  "generated_at": "2026-04-22T06:51:56.562118+00:00",
+  "track": "fc_core",
+  "source": "data/bfcl_slices/grounding_triggered_preflight_v1.jsonl",
+  "source_manifest": "data/bfcl_slices/manifest.json",
+  "normalized_taskset": "outputs/bfcl_grounding_triggered_preflight_v3/prepared/bfcl.normalized.json",
+  "comparison_path": "outputs/bfcl_grounding_triggered_preflight_v3/comparison.raw.csv",
+  "systems": [
+    "a0_baseline",
+    "fc_preflight_only",
+    "fc_grounding_recovery",
+    "a4_reuse"
+  ],
+  "num_runs": 1,
+  "experiment_metadata": {
+    "runner_script": "scripts/run_bfcl_bench.py",
+    "official_eval_requested": true,
+    "toolclaw_diagnostics_requested": true,
+    "mode": "planner",
+    "raw_only": true
+  },
+  "comparison_scored_path": "outputs/bfcl_grounding_triggered_preflight_v3/comparison.scored.csv",
+  "official_scoreboard_path": "outputs/bfcl_grounding_triggered_preflight_v3/official_scoreboard.json",
+  "toolclaw_diagnostics_path": "outputs/bfcl_grounding_triggered_preflight_v3/toolclaw_diagnostics.json",
+  "claim_summary_path": "outputs/bfcl_grounding_triggered_preflight_v3/claim_summary.json"
+}
