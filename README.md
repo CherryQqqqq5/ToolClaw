@@ -16,7 +16,7 @@ Paper-facing benchmark planning now lives in [docs/paper_benchmark_portfolio.md]
 
 - Phase-1 contract: implemented and reproducible
 - Phase-2 follow-ups: partially implemented and partially validated
-- Main headline benchmark result: frozen in `outputs/paper_final_freeze_20260423/toolsandbox_official_a2_fallback_fix`
+- Main headline benchmark result: frozen in `outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1`
 - Reuse-specific regression on the targeted core follow-up bench: fixed
 - Evidence for exact-match reuse cost reduction on high-headroom recovery cases: established on targeted Tau2 follow-ups, but not yet reproduced by the ToolSandbox persistent-reuse V1 suite
 - ToolSandbox persistent-reuse V1: implemented, but current smoke is gated by sham false positives and missing cost headroom
@@ -100,7 +100,7 @@ Current repository-non-claims:
 
 ### Official 88-sample ToolSandbox benchmark
 
-The current paper-facing frozen headline result is `outputs/paper_final_freeze_20260423/toolsandbox_official_a2_fallback_fix`.
+The current paper-facing frozen headline result is `outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1`.
 
 Current repo-supported headline numbers:
 

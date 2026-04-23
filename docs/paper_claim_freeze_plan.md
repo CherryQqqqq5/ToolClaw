@@ -134,7 +134,7 @@ Main evidence:
 
 Paper-safe summary:
 
-- `a3_interaction` and `a4_reuse` reach `1.000` mean success on the official ToolSandbox benchmark, while non-interaction variants remain in the `0.636` to `0.693` range on the 2026-04-23 a2 structural-fallback confirmation run.
+- `a3_interaction` and `a4_reuse` reach `1.000` mean success on the official ToolSandbox benchmark, while non-interaction variants remain in the `0.636` to `0.693` range on the post-8249ee1 structural-fallback confirmation run.
 
 ### 5.2 Planner claim
 
@@ -144,7 +144,7 @@ Supported:
 
 Main evidence:
 
-- `a2 = a1` on official ToolSandbox
+- `a2 > a1` on official ToolSandbox after the planner structural-fallback fix
 - `a2 > a1` on bundled core slice
 - matched ablation shows planner-only is insufficient without repair/interaction
 

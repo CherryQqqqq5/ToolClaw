@@ -6,7 +6,7 @@ This audit records the current paper-facing result bundles checked against repos
 
 | Area | Current result bundle | Checked status |
 | --- | --- | --- |
-| ToolSandbox official headline | `outputs/paper_final_freeze_20260423/toolsandbox_official_a2_fallback_fix` | aligned after a2 structural-fallback confirmation |
+| ToolSandbox official headline | `outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1` | aligned after post-8249ee1 rerun |
 | ToolSandbox interaction causality | `outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal` | aligned |
 | Interaction Live V1 | `outputs/interaction_live_v1_formal` | aligned |
 | BFCL `fc_core` formal | `outputs/paper_suite_formal/bfcl_fc_core` | aligned |
@@ -34,7 +34,7 @@ Current superseded 2026-04-22 frozen bundle reported:
 - `a3_interaction = 1.000`
 - `a4_reuse = 1.000`
 
-The 2026-04-23 a2 structural-fallback confirmation bundle reports:
+The post-8249ee1 structural-fallback confirmation bundle reports:
 
 - `a0_baseline = 0.636`
 - `a1_recovery = 0.682`
@@ -43,6 +43,7 @@ The 2026-04-23 a2 structural-fallback confirmation bundle reports:
 - `a4_reuse = 1.000`
 
 This fixes the earlier `a2_planner < a1_recovery` anomaly caused by planner-generated workflows with unbound steps on low-battery state-dependency tasks.
+The current bundle manifest records `git_commit = 8249ee1cd1ffffe7355d2f561664b75a214fc7dc`, so the result is tied to the commit that contains the fallback code.
 
 Updated docs:
 

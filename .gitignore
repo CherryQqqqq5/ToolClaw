@@ -252,6 +252,14 @@ outputs/paper_final_freeze_20260423/toolsandbox_official_a2_fallback_fix/*
 !outputs/paper_final_freeze_20260423/toolsandbox_official_a2_fallback_fix/comparison.scored.csv
 !outputs/paper_final_freeze_20260423/toolsandbox_official_a2_fallback_fix/report.md
 
+!outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/
+outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/*
+!outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/manifest.json
+!outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/experiment_manifest.json
+!outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/claim_summary.json
+!outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/comparison.scored.csv
+!outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/report.md
+
 # Keep Interaction Live v1 mechanism benchmark formal summary bundle.
 !outputs/interaction_live_v1_formal/
 outputs/interaction_live_v1_formal/*

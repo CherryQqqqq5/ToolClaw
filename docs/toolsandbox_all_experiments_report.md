@@ -98,7 +98,7 @@ Important interpretation rule:
 - from `a1` onward, each layer now adds one mechanism family to the previous layer
 - this is a **design property**, not a guarantee of strictly monotonic success on every slice
 - in the current final results:
-  - `a2 = a1` on the official benchmark
+  - `a2 > a1` on the official benchmark after the planner structural-fallback fix
   - `a2 > a1` on the historical bundled core slice
   - `a4 < a3` on the historical bundled core slice
   - `a4 = a3` on the later targeted gatefix follow-up bench
@@ -124,12 +124,12 @@ Measure end-to-end ToolClaw performance on the restored 88-sample ToolSandbox fr
 ### 5.3 Inputs and outputs
 
 - Source: `data/toolsandbox.formal.official.json`
-- Normalized taskset: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/prepared/toolsandbox.normalized.json`
-- Outdir: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix`
-- Report: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/report.md`
-- Scoreboard: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/scoreboard.json`
-- Per-system summary: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/per_system_summary.json`
-- Scored comparison: `outputs/paper_clean_v1/exp_toolsandbox_true_official_r3_openrouter_a2fix/comparison.scored.csv`
+- Normalized taskset: `outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/prepared/toolsandbox.normalized.json`
+- Outdir: `outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1`
+- Report: `outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/report.md`
+- Scoreboard: `outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/scoreboard.json`
+- Per-system summary: `outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/per_system_summary.json`
+- Scored comparison: `outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/comparison.scored.csv`
 
 ### 5.4 Process
 
@@ -156,9 +156,9 @@ Failtax breakdown:
 
 | system | ordering | selection | state |
 | --- | ---: | ---: | ---: |
-| `a0_baseline` | 0.429 | 0.700 | 0.714 |
+| `a0_baseline` | 0.429 | 0.667 | 0.714 |
 | `a1_recovery` | 0.429 | 0.733 | 0.714 |
-| `a2_planner` | 0.429 | 0.750 | 0.286 |
+| `a2_planner` | 0.429 | 0.750 | 0.714 |
 | `a3_interaction` | 1.000 | 1.000 | 1.000 |
 | `a4_reuse` | 1.000 | 1.000 | 1.000 |
 
@@ -168,7 +168,7 @@ High-signal categories:
 | --- | ---: | ---: | ---: | ---: | ---: |
 | `multiple_user_turn` | 0.000 | 0.000 | 0.000 | 1.000 | 1.000 |
 | `insufficient_information` | 0.000 | 0.000 | 0.000 | 1.000 | 1.000 |
-| `single_user_turn` | 0.918 | 0.984 | 0.902 | 1.000 | 1.000 |
+| `single_user_turn` | 0.918 | 0.984 | 1.000 | 1.000 | 1.000 |
 
 Validation status:
 
@@ -189,7 +189,7 @@ Supported conclusions:
 
 Paper-safe claim:
 
-- ToolClaw's interaction-enabled variants (`a3`, `a4`) solve the restored 88-sample ToolSandbox benchmark perfectly, while non-interaction variants remain in the `0.636` to `0.693` range on the 2026-04-23 a2 structural-fallback confirmation run.
+- ToolClaw's interaction-enabled variants (`a3`, `a4`) solve the restored 88-sample ToolSandbox benchmark perfectly, while non-interaction variants remain in the `0.636` to `0.693` range on the post-8249ee1 structural-fallback confirmation run.
 
 ## 6. Experiment B: ToolSandbox explicit bundled core-slice benchmark (historical pre-gatefix mechanism slice)
 

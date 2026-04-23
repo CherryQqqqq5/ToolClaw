@@ -1,0 +1,24 @@
+{
+  "suite": "toolsandbox_official_post8249ee1",
+  "source": "data/toolsandbox.formal.official.json",
+  "source_sha256": "bab1b727cda11cb548f45f798a19275cf6a683691ee93ae9f729664b43864470",
+  "git_commit": "8249ee1cd1ffffe7355d2f561664b75a214fc7dc",
+  "systems": [
+    "a0_baseline",
+    "a1_recovery",
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_runs": 3,
+  "num_samples": 88,
+  "output_files": [
+    "experiment_manifest.json",
+    "scoreboard.json",
+    "per_system_summary.json",
+    "claim_summary.json",
+    "comparison.scored.csv",
+    "report.md"
+  ],
+  "notes": "Provenance-clean ToolSandbox official confirmation generated after planner structural fallback commit."
+}
