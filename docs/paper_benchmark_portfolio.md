@@ -77,6 +77,31 @@ This means the current evidence supports the following boundary:
 
 The paper-facing causality suite therefore needs to be frozen separately from the main `toolsandbox_official` headline run.
 
+Formal freeze on 2026-04-23:
+
+- frozen bundle: `outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal`
+- verdicts:
+  - `overall_interaction_query_contribution_supported = true`
+  - `repair_semantic_usefulness_supported = true`
+  - `probe_only_success_caveat_present = true`
+  - `interaction_not_cheating_supported = true`
+- repair-semantic slice:
+  - `a2_planner.strict_scored_success = 0.50`
+  - `a3_full_interaction.strict_scored_success = 1.00`
+  - `a3_no_query.strict_scored_success = 0.50`
+  - `a3_noisy_user.strict_scored_success = 0.50`
+  - `a3_full_interaction.reply_usable_rate = 0.50`
+  - `a3_full_interaction.target_aligned_patch_rate = 0.50`
+  - `a3_full_interaction.effective_patch_rate = 0.50`
+  - `a3_full_interaction.post_query_progress_rate = 0.50`
+  - `a3_full_interaction.useful_interaction_round_rate = 0.50`
+  - `a3_noisy_user` usefulness metrics remain `0.00`
+- probe-only slice:
+  - `a3_full_interaction.strict_scored_success = 1.00`
+  - `a3_noisy_user.strict_scored_success = 1.00`
+  - both arms keep usefulness metrics at `0.00`
+  - this slice therefore remains contract/probe evidence, not semantic patch evidence
+
 ## BFCL status on 2026-04-21
 
 BFCL `fc_core` protocol and the official-eval bridge are implemented. A full formal `bfcl_fc_core` run has completed at [outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json](../outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json), and the earlier all-zero official result was traced to two scorer-side failures: the scorer launched the upstream wrapper with server-default `python3.8`, and the wrapper escalated per-row multi-turn dependency failures into a process-wide crash. Both issues are now fixed in benchmark-side code. The current formal bundle yields non-zero official metrics on supported strata, but `paper_safe_for_claim` remains `false` because multi-turn strata still require missing upstream dependency `mpmath`.

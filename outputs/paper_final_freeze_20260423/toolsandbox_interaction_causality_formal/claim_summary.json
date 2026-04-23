@@ -1,0 +1,11 @@
+{
+  "suite": "toolsandbox_interaction_causality_formal",
+  "status": "completed",
+  "claims": [
+    {
+      "claim_id": "interaction_semantic_usefulness_mechanism",
+      "paper_role": "mechanism_supporting"
+    }
+  ],
+  "paper_role": "mechanism_supporting"
+}

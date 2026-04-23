@@ -52,7 +52,7 @@ def _default_source() -> Path:
 DEFAULT_SOURCE = _default_source()
 DEFAULT_OFFICIAL_DATA_ROOT = ROOT_DIR / "data" / "external" / "ToolSandbox" / "data"
 CAUSAL_SLICE_POLICY_VERSION = "toolsandbox_causality_v1"
-CAUSAL_CLAIM_IDS = ["interaction_headline", "interaction_semantic_usefulness_mechanism"]
+CAUSAL_CLAIM_IDS = ["interaction_semantic_usefulness_mechanism"]
 SMOKE_SAMPLE_IDS = [
     "toolsandbox_env_backup_001",
     "toolsandbox_binding_repair_001",

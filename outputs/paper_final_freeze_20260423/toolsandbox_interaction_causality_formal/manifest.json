@@ -1,0 +1,26 @@
+{
+  "suite": "toolsandbox_interaction_causality_formal",
+  "status": "completed",
+  "paper_role": "mechanism_supporting",
+  "generated_at": "2026-04-23T08:59:37.616124+00:00",
+  "runner": "scripts/run_toolsandbox_bench.py",
+  "score_script": null,
+  "runner_command": [
+    "/usr/bin/python3",
+    "/cephfs/qiuyn/ToolClaw/scripts/run_toolsandbox_bench.py",
+    "--source",
+    "/cephfs/qiuyn/ToolClaw/data/toolsandbox.formal.official.json",
+    "--outdir",
+    "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal",
+    "--mode",
+    "planner",
+    "--systems",
+    "a2_planner,a3_full_interaction,a3_no_query,a3_noisy_user",
+    "--num-runs",
+    "3"
+  ],
+  "score_command": null,
+  "claim_summary_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal/claim_summary.json",
+  "comparison_raw_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal/comparison.raw.csv",
+  "comparison_scored_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal/comparison.scored.csv"
+}

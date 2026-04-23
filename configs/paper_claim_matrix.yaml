@@ -18,7 +18,7 @@
       }
     },
     "interaction_semantic_usefulness_mechanism": {
-      "status": "evidence_pending_formal_freeze",
+      "status": "supported_current_evidence",
       "benchmark_suite": "toolsandbox_interaction_causality_formal",
       "claim": "ToolSandbox causality ablation should support a mechanism claim only: on repair-sensitive state-dependency tasks, interaction gains align with semantic-usefulness and target-aligned patch, while must-query slices remain probe-only and contract-sensitive.",
       "metrics": {

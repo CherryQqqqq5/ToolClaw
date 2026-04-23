@@ -261,6 +261,25 @@ def _materialize_claim_summary(
     return payload
 
 
+def _update_runner_experiment_manifest(
+    *,
+    outdir: Path,
+    suite: str,
+    suite_cfg: Dict[str, Any],
+) -> None:
+    experiment_manifest_path = outdir / "experiment_manifest.json"
+    if not experiment_manifest_path.exists():
+        return
+    payload = _load_json(experiment_manifest_path)
+    payload["suite"] = suite
+    payload["paper_role"] = suite_cfg.get("paper_role")
+    if suite_cfg.get("claim_ids"):
+        payload["claim_ids"] = list(suite_cfg["claim_ids"])
+    if suite_cfg.get("slice_policy_version"):
+        payload["slice_policy_version"] = suite_cfg.get("slice_policy_version")
+    experiment_manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
 def _write_suite_manifest(
     *,
     outdir: Path,
@@ -319,6 +338,11 @@ def main() -> None:
     )
     claim_summary_path = outdir / "claim_summary.json"
     claim_summary_path.write_text(json.dumps(claim_summary, indent=2), encoding="utf-8")
+    _update_runner_experiment_manifest(
+        outdir=outdir,
+        suite=args.suite,
+        suite_cfg=suite_cfg,
+    )
     _write_suite_manifest(
         outdir=outdir,
         suite=args.suite,
