@@ -75,6 +75,16 @@ def _aggregate(rows: List[Dict[str, str]]) -> Dict[str, float]:
             "success_per_repair_attempt": 0.0,
         }
     reuse_rows = [row for row in rows if _bool(row.get("reused_artifact"))]
+    exact_reuse_rows = [
+        row
+        for row in reuse_rows
+        if str(row.get("reuse_tier") or "").strip() == "exact_match_reuse"
+    ]
+    transfer_reuse_rows = [
+        row
+        for row in reuse_rows
+        if str(row.get("reuse_tier") or "").strip() == "cross_family_transfer_reuse"
+    ]
     correct_reuse_rows = [
         row
         for row in reuse_rows
@@ -91,6 +101,8 @@ def _aggregate(rows: List[Dict[str, str]]) -> Dict[str, float]:
         "avg_repair_actions": _mean(_float(row.get("repair_actions")) for row in rows),
         "avg_wall_clock_ms": _mean(_float(row.get("wall_clock_ms")) for row in rows),
         "reuse_hit_rate": _mean(1.0 if _bool(row.get("reused_artifact")) else 0.0 for row in rows),
+        "exact_reuse_hit_rate": float(len(exact_reuse_rows) / len(rows)),
+        "transfer_reuse_hit_rate": float(len(transfer_reuse_rows) / len(rows)),
         "correct_source_match_rate": float(len(correct_reuse_rows) / len(reuse_rows)) if reuse_rows else 0.0,
         "success_per_user_turn": float(successes / user_turns) if user_turns else float(successes),
         "success_per_repair_attempt": float(successes / repairs) if repairs else float(successes),
@@ -210,6 +222,21 @@ def _claim_summary(
     ci_ok = any(float(stats.get(metric, {}).get("ci_low", 0.0) or 0.0) >= -0.05 for metric in PRIMARY_REDUCTION_METRICS)
     any_reduction = any(value > 0.0 for value in reductions.values())
     success_guard = float(warm.get("success_rate", 0.0) or 0.0) >= float(cold.get("success_rate", 0.0) or 0.0) - 0.02
+    gate_failures: List[str] = []
+    if not bool(manifest.get("registry_preflight_passed", False)):
+        gate_failures.append("registry_preflight_failed")
+    if float(warm.get("reuse_hit_rate", 0.0) or 0.0) < 0.50:
+        gate_failures.append("warm_reuse_hit_rate_below_0.50")
+    if float(warm.get("correct_source_match_rate", 0.0) or 0.0) < 0.90:
+        gate_failures.append("warm_correct_source_match_rate_below_0.90")
+    if float(sham.get("reuse_hit_rate", 0.0) or 0.0) > 0.05:
+        gate_failures.append("sham_false_positive_rate_above_0.05")
+    if not any_reduction:
+        gate_failures.append("no_positive_primary_cost_reduction")
+    if not ci_ok:
+        gate_failures.append("primary_reduction_ci_lower_bound_negative")
+    if not success_guard:
+        gate_failures.append("warm_success_below_cold_guard")
     paper_safe = (
         bool(manifest.get("registry_preflight_passed", False))
         and float(warm.get("reuse_hit_rate", 0.0) or 0.0) >= 0.50
@@ -230,6 +257,11 @@ def _claim_summary(
         "warm_correct_source_match_rate": float(warm.get("correct_source_match_rate", 0.0) or 0.0),
         "sham_false_positive_rate": float(sham.get("reuse_hit_rate", 0.0) or 0.0),
         "reuse_false_positive_rate": float(sham.get("reuse_hit_rate", 0.0) or 0.0),
+        "warm_exact_reuse_hit_rate": float(warm.get("exact_reuse_hit_rate", 0.0) or 0.0),
+        "warm_transfer_reuse_hit_rate": float(warm.get("transfer_reuse_hit_rate", 0.0) or 0.0),
+        "sham_exact_reuse_hit_rate": float(sham.get("exact_reuse_hit_rate", 0.0) or 0.0),
+        "sham_transfer_reuse_hit_rate": float(sham.get("transfer_reuse_hit_rate", 0.0) or 0.0),
+        "gate_failures": gate_failures,
         "a4_reuse_warm": warm,
         "a4_reuse_cold": cold,
         "a4_reuse_sham": sham,
@@ -252,12 +284,16 @@ def _write_report(path: Path, summary: Dict[str, Any], effects_summary: Dict[str
     for key, value in summary.items():
         if isinstance(value, bool):
             lines.append(f"| {key} | {str(value).lower()} |")
+    if summary.get("gate_failures"):
+        lines.extend(["", "Gate failures:", ""])
+        for reason in summary.get("gate_failures", []):
+            lines.append(f"- `{reason}`")
     lines.extend(["", "## Pass2 Systems", ""])
-    lines.append("| system | success | tool_calls | user_turns | repair_actions | reuse_hit | correct_source_match |")
-    lines.append("|---|---:|---:|---:|---:|---:|---:|")
+    lines.append("| system | success | tool_calls | user_turns | repair_actions | reuse_hit | exact_hit | transfer_hit | correct_source_match |")
+    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|")
     for system, stats_row in sorted(effects_summary.get("pass2_by_system", {}).items()):
         lines.append(
-            f"| {system} | {stats_row.get('success_rate', 0.0):.3f} | {stats_row.get('avg_tool_calls', 0.0):.2f} | {stats_row.get('avg_user_turns', 0.0):.2f} | {stats_row.get('avg_repair_actions', 0.0):.2f} | {stats_row.get('reuse_hit_rate', 0.0):.3f} | {stats_row.get('correct_source_match_rate', 0.0):.3f} |"
+            f"| {system} | {stats_row.get('success_rate', 0.0):.3f} | {stats_row.get('avg_tool_calls', 0.0):.2f} | {stats_row.get('avg_user_turns', 0.0):.2f} | {stats_row.get('avg_repair_actions', 0.0):.2f} | {stats_row.get('reuse_hit_rate', 0.0):.3f} | {stats_row.get('exact_reuse_hit_rate', 0.0):.3f} | {stats_row.get('transfer_reuse_hit_rate', 0.0):.3f} | {stats_row.get('correct_source_match_rate', 0.0):.3f} |"
         )
     lines.extend(["", "## Paired Reductions", ""])
     lines.append("| metric | mean | median | ci_low | ci_high | sign_p |")
