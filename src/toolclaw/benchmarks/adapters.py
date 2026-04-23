@@ -1139,6 +1139,25 @@ class ToolSandboxAdapter:
 
         tool_calls = int(trace_metrics.get("tool_calls", 0))
         user_queries = sum(1 for event in trace_events if event.get("event_type") == "user_query")
+        approval_requests = sum(
+            1
+            for event in trace_events
+            if event.get("event_type") == "approval_request"
+            or (
+                event.get("event_type") == "user_query"
+                and "approval" in str(event.get("output", {}).get("expected_answer_type") or "").lower()
+            )
+        )
+        approval_responses = sum(
+            1
+            for event in trace_events
+            if event.get("event_type") == "approval_response"
+            or (
+                event.get("event_type") == "user_reply"
+                and isinstance(event.get("output"), dict)
+                and "approved" in event.get("output", {})
+            )
+        )
         probe_user_queries = 0
         repair_user_queries = 0
         probe_user_replies = 0
@@ -1207,8 +1226,13 @@ class ToolSandboxAdapter:
             write_target_verified=write_target_verified,
         )
         must_interact_expected = self._must_interact_expected(sample.raw_payload, categories)
-        interaction_contract_satisfied = (user_queries > 0) if must_interact_expected else True
-        repair_interaction_satisfied = (repair_user_queries > 0 or repair_user_replies > 0)
+        interaction_contract_satisfied = (user_queries > 0 or approval_requests > 0) if must_interact_expected else True
+        repair_interaction_satisfied = (
+            repair_user_queries > 0
+            or repair_user_replies > 0
+            or approval_requests > 0
+            or approval_responses > 0
+        )
         interaction_gate_blocked = must_interact_expected and not interaction_contract_satisfied
         strict_scored_success = execution_verified_success and interaction_contract_satisfied
         repair_scored_success = strict_scored_success and repair_interaction_satisfied
@@ -1233,7 +1257,7 @@ class ToolSandboxAdapter:
                     expected_turns=expected_turns,
                 ),
                 "hallucination_avoidance": hallucination_free,
-                "execution_verified_success": 1.0 if strict_scored_success else 0.0,
+                "execution_verified_success": 1.0 if execution_verified_success else 0.0,
                 "strict_scored_success": 1.0 if strict_scored_success else 0.0,
                 "repair_scored_success": 1.0 if repair_scored_success else 0.0,
                 "raw_execution_success": 1.0 if raw_trace_success else 0.0,
@@ -1259,7 +1283,7 @@ class ToolSandboxAdapter:
                 "similarity": similarity,
                 "raw_trace_success": raw_trace_success,
                 "raw_execution_success": raw_trace_success,
-                "execution_verified_success": strict_scored_success,
+                "execution_verified_success": execution_verified_success,
                 "strict_scored_success": strict_scored_success,
                 "repair_scored_success": repair_scored_success,
                 "interaction_contract_satisfied": interaction_contract_satisfied,
@@ -1274,6 +1298,8 @@ class ToolSandboxAdapter:
                 "expected_tool_calls": expected_tool_calls,
                 "tool_calls": tool_calls,
                 "user_queries": user_queries,
+                "approval_requests": approval_requests,
+                "approval_responses": approval_responses,
                 "probe_user_queries": probe_user_queries,
                 "repair_user_queries": repair_user_queries,
                 "probe_user_replies": probe_user_replies,

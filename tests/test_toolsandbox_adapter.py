@@ -430,3 +430,72 @@ def test_toolsandbox_adapter_counts_non_probe_interaction_as_repair_success() ->
     assert score.metrics["repair_scored_success"] == 1.0
     assert score.diagnostics["probe_user_queries"] == 0
     assert score.diagnostics["repair_user_queries"] == 1
+
+
+def test_toolsandbox_adapter_accepts_approval_request_as_interaction_contract() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_approval_contract_001",
+        raw_payload={
+            "categories": ["Multiple User Turn"],
+            "milestones": ["approve", "complete"],
+            "constraints": {"requires_user_approval": True},
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "metadata": {
+            "toolsandbox_result": {
+                "similarity": 1.0,
+                "milestone_mapping": [0, 1],
+                "source": "toolclaw_proxy",
+            }
+        },
+        "events": [
+            {
+                "event_type": "approval_request",
+                "output": {"expected_answer_type": "approval"},
+            },
+            {
+                "event_type": "approval_response",
+                "output": {"approved": True},
+            },
+        ],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.metrics["execution_verified_success"] == 1.0
+    assert score.metrics["interaction_contract_satisfied"] == 1.0
+    assert score.metrics["strict_scored_success"] == 1.0
+    assert score.metrics["repair_interaction_satisfied"] == 1.0
+    assert score.diagnostics["approval_requests"] == 1
+    assert score.diagnostics["approval_responses"] == 1
+
+
+def test_toolsandbox_adapter_keeps_execution_verified_separate_from_interaction_gate() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_gate_split_001",
+        raw_payload={
+            "categories": ["Multiple User Turn"],
+            "milestones": ["ask", "complete"],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "metadata": {
+            "toolsandbox_result": {
+                "similarity": 1.0,
+                "milestone_mapping": [0, 1],
+                "source": "toolclaw_proxy",
+            }
+        },
+        "events": [],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.metrics["execution_verified_success"] == 1.0
+    assert score.metrics["interaction_contract_satisfied"] == 0.0
+    assert score.metrics["strict_scored_success"] == 0.0

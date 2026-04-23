@@ -399,6 +399,7 @@ class InteractionShell:
     ) -> None:
         events = trace_payload.setdefault("events", [])
         metrics = trace_payload.setdefault("metrics", {})
+        is_approval_query = InteractionShell._is_approval_query(query)
         events.append(
             {
                 "event_id": f"evt_user_query_{turn_index:02d}",
@@ -429,6 +430,28 @@ class InteractionShell:
                 },
             }
         )
+        if is_approval_query:
+            events.append(
+                {
+                    "event_id": f"evt_approval_request_{turn_index:02d}",
+                    "timestamp": utc_now_iso(),
+                    "step_id": query.context_summary.get("step_id"),
+                    "event_type": EventType.APPROVAL_REQUEST.value,
+                    "actor": "interaction_shell",
+                    "tool_id": None,
+                    "input_ref": None,
+                    "tool_args": None,
+                    "output": {
+                        "question": query.question,
+                        "expected_answer_type": query.expected_answer_type,
+                    },
+                    "message": query.question,
+                    "metadata": {
+                        "interaction_id": query.interaction_id,
+                        "query_metadata": dict(query.metadata),
+                    },
+                }
+            )
         reply_status = str(getattr(reply, "status", "accept"))
         events.append(
             {
@@ -461,13 +484,51 @@ class InteractionShell:
                 },
             }
         )
+        if is_approval_query:
+            approval_output = dict(reply.payload)
+            if "approved" not in approval_output:
+                approval_output["approved"] = bool(reply_status == "accept" and reply.accepted)
+            events.append(
+                {
+                    "event_id": f"evt_approval_response_{turn_index:02d}",
+                    "timestamp": utc_now_iso(),
+                    "step_id": query.context_summary.get("step_id"),
+                    "event_type": EventType.APPROVAL_RESPONSE.value,
+                    "actor": "user_simulator",
+                    "tool_id": None,
+                    "input_ref": None,
+                    "tool_args": None,
+                    "output": approval_output,
+                    "message": reply.raw_text,
+                    "metadata": {
+                        "interaction_id": reply.interaction_id,
+                        "status": reply_status,
+                        "reply_metadata": dict(reply.metadata),
+                    },
+                }
+            )
         metrics["user_queries"] = int(metrics.get("user_queries", 0)) + 1
+        if is_approval_query:
+            metrics["approval_requests"] = int(metrics.get("approval_requests", 0)) + 1
+            metrics["approval_responses"] = int(metrics.get("approval_responses", 0)) + 1
         metadata = trace_payload.setdefault("metadata", {})
         reply_metadata = dict(getattr(reply, "metadata", {}) or {})
         if bool(reply_metadata.get("oracle_reply_consumed")):
             metadata["oracle_reply_consumed_count"] = int(metadata.get("oracle_reply_consumed_count", 0)) + 1
         if bool(reply_metadata.get("oracle_reply_mismatch")):
             metadata["oracle_reply_mismatch_count"] = int(metadata.get("oracle_reply_mismatch_count", 0)) + 1
+
+    @staticmethod
+    def _is_approval_query(query: Any) -> bool:
+        expected_answer_type = str(getattr(query, "expected_answer_type", "") or "").lower()
+        if "approval" in expected_answer_type or "permission" in expected_answer_type:
+            return True
+        query_policy = dict(getattr(query, "metadata", {}).get("query_policy", {}) or {})
+        question_type = str(query_policy.get("question_type") or "").lower()
+        if "approval" in question_type or "permission" in question_type:
+            return True
+        patch_targets = dict(getattr(query, "metadata", {}).get("patch_targets", {}) or {})
+        return "approved" in patch_targets
 
     @staticmethod
     def _append_interaction_round_outcome(

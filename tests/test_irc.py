@@ -15,6 +15,7 @@ from toolclaw.planner.htgp import PlanningHints, PlanningRequest, build_default_
 from toolclaw.registry import InMemoryAssetRegistry
 from toolclaw.schemas.workflow import Permissions, TaskConstraints, TaskSpec, ToolSpec, Workflow, WorkflowContext
 from toolclaw.interaction.repair_updater import InteractionRequest, UserReply
+from toolclaw.schemas.trace import EventType
 
 
 class SlowReplyProvider:
@@ -255,6 +256,36 @@ def test_unknown_approval_reply_does_not_generate_default_approval_signal() -> N
 
     assert "approved" not in reply.payload
     assert reply.metadata["decoded_is_usable"] is False
+
+
+def test_append_interaction_events_emits_explicit_approval_roundtrip() -> None:
+    trace_payload = {"events": [], "metrics": {}}
+    query = InteractionRequest(
+        interaction_id="int_approval_001",
+        question="Approve this blocked action?",
+        expected_answer_type="approval",
+        metadata={"patch_targets": {"approved": "policy.approved"}},
+    )
+    reply = UserReply(
+        interaction_id=query.interaction_id,
+        payload={"approved": True},
+        raw_text="yes",
+        accepted=True,
+        status="accept",
+        metadata={"patch_targets": {"approved": "policy.approved"}},
+    )
+
+    InteractionShell._append_interaction_events(trace_payload, query=query, reply=reply, turn_index=1)
+
+    event_types = [event["event_type"] for event in trace_payload["events"]]
+    assert event_types == [
+        EventType.USER_QUERY.value,
+        EventType.APPROVAL_REQUEST.value,
+        EventType.USER_REPLY.value,
+        EventType.APPROVAL_RESPONSE.value,
+    ]
+    assert trace_payload["metrics"]["approval_requests"] == 1
+    assert trace_payload["metrics"]["approval_responses"] == 1
 
 
 def test_misaligned_reply_patch_is_not_effective() -> None:

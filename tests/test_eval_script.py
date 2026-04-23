@@ -654,7 +654,7 @@ def test_execute_system_planner_executor_skips_second_planner(monkeypatch, tmp_p
     assert row["system"] == "a2_planner"
 
 
-def test_execute_system_baseline_uses_planner_workflow(monkeypatch, tmp_path: Path) -> None:
+def test_execute_system_baseline_uses_demo_executor_without_repair(monkeypatch, tmp_path: Path) -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_baseline", module_path)
     assert spec is not None and spec.loader is not None
@@ -664,46 +664,32 @@ def test_execute_system_baseline_uses_planner_workflow(monkeypatch, tmp_path: Pa
 
     workflow = Workflow.demo()
     build_calls: list[str] = []
-    run_calls: dict[str, object] = {}
+    executed: dict[str, object] = {}
 
     def fake_build_workflow_from_task(task, mode="demo", spec=None, **kwargs):
         build_calls.append(mode)
         return workflow
 
-    def fake_run_baseline(*, workflow, run_id, output_path):
-        run_calls["workflow"] = workflow
-        return SimpleNamespace(
-            metrics=SimpleNamespace(
-                success=True,
-                tool_calls=1,
-                repair_actions=0,
-                total_steps=1,
-                token_cost=0.0,
-                latency_ms=0,
-                clarification_precision=0.0,
-                clarification_recall=0.0,
-                unnecessary_question_rate=0.0,
-                patch_success_rate=0.0,
-                post_answer_retry_count=0,
-                budget_violation=False,
-                budget_violation_reason="",
-                recovery_budget_used=0.0,
-            )
-        ), "success_criteria_satisfied"
+    def fake_run_until_blocked(*, workflow, run_id, output_path, backup_tool_map):
+        executed["workflow"] = workflow
 
     monkeypatch.setattr(module, "build_workflow_from_task", fake_build_workflow_from_task)
-    monkeypatch.setattr(module, "run_baseline", fake_run_baseline)
+    monkeypatch.setattr(
+        module,
+        "row_from_trace",
+        lambda **kwargs: SimpleNamespace(system=kwargs["system"], task_id=kwargs["task"]["task_id"]),
+    )
 
     row = module.execute_system(
         spec=module.SYSTEM_SPECS["a0_baseline"],
         task={"task_id": "toolsandbox_baseline_001", "query": "Send a message"},
         task_index=1,
         traces_dir=tmp_path,
-        runtime=None,
+        runtime=SimpleNamespace(executor=SimpleNamespace(run_until_blocked=fake_run_until_blocked)),
     )
 
     assert build_calls == ["demo"]
-    assert run_calls["workflow"] is workflow
+    assert executed["workflow"] is workflow
     assert row.system == "a0_baseline"
 
 
@@ -1027,11 +1013,51 @@ def test_execute_system_rolls_back_transfer_reuse_to_a3_behavior(monkeypatch, tm
     )
 
     assert [entry["use_reuse"] for entry in call_log] == [True, False]
-    assert all(entry["compile_on_success"] is False for entry in call_log)
-    assert compile_calls == [True]
+    assert all(entry["compile_on_success"] is True for entry in call_log)
+    assert compile_calls == []
     assert row["reused_artifact"] is False
     trace_payload = json.loads(Path(row["trace_path"]).read_text(encoding="utf-8"))
     assert trace_payload["metadata"]["reuse_rollback"]["fallback_behavior"] == "a3_interaction"
+
+
+def test_layered_a0_to_a4_specs_are_monotonic_by_construction() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_layered_specs", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    a0 = module.SYSTEM_SPECS["a0_baseline"]
+    a1 = module.SYSTEM_SPECS["a1_recovery"]
+    a2 = module.SYSTEM_SPECS["a2_planner"]
+    a3 = module.SYSTEM_SPECS["a3_interaction"]
+    a4 = module.SYSTEM_SPECS["a4_reuse"]
+
+    assert a0.workflow_mode == "demo"
+    assert a0.execution_mode == "executor"
+    assert a0.allow_repair is False
+    assert a0.allow_fallback is False
+
+    assert a1.workflow_mode == a0.workflow_mode
+    assert a1.execution_mode == a0.execution_mode
+    assert a1.allow_repair is True
+    assert a1.allow_fallback is True
+
+    assert a2.execution_mode == a1.execution_mode
+    assert a2.workflow_mode == "planner"
+    assert a2.allow_repair == a1.allow_repair
+    assert a2.allow_fallback == a1.allow_fallback
+
+    assert a3.workflow_mode == a2.workflow_mode
+    assert a3.execution_mode == "interaction"
+    assert a3.use_reuse is False
+    assert a3.compile_on_success is False
+
+    assert a4.workflow_mode == a3.workflow_mode
+    assert a4.execution_mode == a3.execution_mode
+    assert a4.use_reuse is True
+    assert a4.compile_on_success is True
 
 
 def test_build_runtime_for_spec_detaches_executor_planner_for_non_replan_specs(monkeypatch) -> None:

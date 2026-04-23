@@ -85,7 +85,13 @@ class SystemSpec:
 
 
 SYSTEM_SPECS: Dict[str, SystemSpec] = {
-    "a0_baseline": SystemSpec(system_id="a0_baseline", workflow_mode="demo", execution_mode="baseline"),
+    "a0_baseline": SystemSpec(
+        system_id="a0_baseline",
+        workflow_mode="demo",
+        execution_mode="executor",
+        allow_repair=False,
+        allow_fallback=False,
+    ),
     "a1_recovery": SystemSpec(
         system_id="a1_recovery",
         workflow_mode="demo",
@@ -2238,7 +2244,7 @@ def execute_system(
         output_path=str(trace_path),
         backup_tool_map=backup_tool_map,
         use_reuse=spec.use_reuse,
-        compile_on_success=False if spec.use_reuse else spec.compile_on_success,
+        compile_on_success=spec.compile_on_success,
         seed_workflow=seed_workflow if not spec.use_reuse else None,
     )
     if spec.use_reuse:
@@ -2254,7 +2260,7 @@ def execute_system(
                 output_path=str(trace_path),
                 backup_tool_map=backup_tool_map,
                 use_reuse=False,
-                compile_on_success=False,
+                compile_on_success=spec.compile_on_success,
             )
             trace_payload = _load_trace_payload(trace_path)
             trace_payload.setdefault("metadata", {})
@@ -2263,8 +2269,6 @@ def execute_system(
         reused_artifact = bool(request.hints.reusable_asset_ids) and not bool(
             request.hints.user_style.get("reuse_fallback_applied")
         )
-        if spec.compile_on_success:
-            runtime._compile_and_store_if_success(outcome, enabled=True)
     _persist_reuse_provenance(
         trace_path,
         build_reuse_provenance(
