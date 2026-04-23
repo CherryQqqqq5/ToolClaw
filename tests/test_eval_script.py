@@ -156,6 +156,49 @@ def test_build_workflow_from_task_plans_with_toolsandbox_candidate_tools() -> No
     assert workflow.metadata["tool_execution_backend"] == "semantic_mock"
 
 
+def test_build_workflow_from_task_planner_falls_back_when_toolsandbox_plan_is_unbound() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_planner_structural_fallback", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "toolsandbox_state_admin_unbound_001",
+            "query": "Turn on cellular",
+            "tool_allow_list": [
+                "set_cellular_service_status",
+                "set_low_battery_mode_status",
+                "get_cellular_service_status",
+                "get_low_battery_mode_status",
+            ],
+            "candidate_tools": [
+                "set_cellular_service_status",
+                "set_low_battery_mode_status",
+                "get_cellular_service_status",
+                "get_low_battery_mode_status",
+            ],
+            "messages": [{"sender": "user", "recipient": "agent", "content": "Turn on cellular"}],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["state_dependency", "multiple_tool"],
+            },
+            "milestones": [
+                "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SETTING, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'low_battery_mode': False}))])",
+                "Milestone(snapshot_constraints=[SnapshotConstraint(database_namespace=DatabaseNamespace.SETTING, snapshot_constraint=snapshot_similarity, target_dataframe=pl.DataFrame({'cellular': True}))])",
+            ],
+        },
+        mode="planner",
+    )
+
+    assert workflow.metadata["planner_structural_fallback_applied"] is True
+    assert workflow.metadata["planner_structural_fallback_reason"] == "unbound_steps"
+    assert [step.tool_id for step in workflow.execution_plan] == ["search_tool", "write_tool"]
+    assert workflow.execution_plan[0].inputs["query"] == "Turn on cellular"
+
+
 def test_build_workflow_from_task_planner_single_write_respects_target_path() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_single_write_target", module_path)

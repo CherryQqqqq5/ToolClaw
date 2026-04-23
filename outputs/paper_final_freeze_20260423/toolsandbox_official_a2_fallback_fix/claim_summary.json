@@ -1,0 +1,24 @@
+{
+  "suite": "toolsandbox_official_a2_fallback_fix",
+  "status": "completed",
+  "claims": [
+    {
+      "claim_id": "interaction_headline",
+      "paper_role": "headline"
+    }
+  ],
+  "paper_role": "headline",
+  "paper_safe_for_claim": true,
+  "system_success_means": {
+    "a0_baseline": 0.6363636363636364,
+    "a1_recovery": 0.6818181818181818,
+    "a2_planner": 0.6931818181818182,
+    "a3_interaction": 1.0,
+    "a4_reuse": 1.0
+  },
+  "monotonicity_check": {
+    "a2_planner_gte_a1_recovery": true,
+    "a4_reuse_gte_a3_interaction": true
+  },
+  "interpretation": "Planner structural fallback removes unbound-plan regression; a2 is no longer below a1 on ToolSandbox official frozen confirmation."
+}

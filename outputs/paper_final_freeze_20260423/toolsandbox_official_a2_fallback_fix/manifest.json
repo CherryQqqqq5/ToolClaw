@@ -1,0 +1,24 @@
+{
+  "suite": "toolsandbox_official_a2_fallback_fix",
+  "source": "data/toolsandbox.formal.official.json",
+  "source_sha256": "bab1b727cda11cb548f45f798a19275cf6a683691ee93ae9f729664b43864470",
+  "git_commit_before_result_commit": "2bb0941630cce46df8832ed1aa0f03a6ccca348d",
+  "systems": [
+    "a0_baseline",
+    "a1_recovery",
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_runs": 3,
+  "num_samples": 88,
+  "output_files": [
+    "experiment_manifest.json",
+    "scoreboard.json",
+    "per_system_summary.json",
+    "claim_summary.json",
+    "comparison.scored.csv",
+    "report.md"
+  ],
+  "notes": "Frozen ToolSandbox official confirmation after planner structural fallback for unbound planner workflows."
+}

@@ -1262,6 +1262,57 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
     return _completion
 
 
+def _planner_structural_fallback_reason(workflow: Workflow, *, benchmark: str) -> Optional[str]:
+    """Return a generic fallback reason when a planner output is not executable."""
+    if benchmark == "bfcl":
+        return None
+    if not workflow.execution_plan:
+        return "empty_execution_plan"
+    unbound_steps = [
+        str(step.step_id)
+        for step in workflow.execution_plan
+        if not str(step.tool_id or "").strip()
+    ]
+    if unbound_steps:
+        return "unbound_steps"
+    return None
+
+
+def _apply_planner_structural_fallback(
+    *,
+    planned_workflow: Workflow,
+    task: Dict[str, Any],
+    planner_goal: str,
+    benchmark: str,
+) -> Workflow:
+    reason = _planner_structural_fallback_reason(planned_workflow, benchmark=benchmark)
+    if not reason:
+        return planned_workflow
+    fallback = Workflow.demo()
+    fallback.workflow_id = f"wf_{canonical_task_id(task)}"
+    fallback.task.task_id = canonical_task_id(task)
+    fallback.task.user_goal = planner_goal
+    fallback.metadata.update(
+        {
+            "planner_mode": "planner_structural_fallback_to_recovery_seed",
+            "planner_structural_fallback_applied": True,
+            "planner_structural_fallback_reason": reason,
+            "planner_original_step_count": len(planned_workflow.execution_plan),
+            "planner_unbound_steps": [
+                str(step.step_id)
+                for step in planned_workflow.execution_plan
+                if not str(step.tool_id or "").strip()
+            ],
+            "planner_unresolved_bindings": [
+                str(binding.capability_id)
+                for binding in planned_workflow.tool_bindings
+                if not str(binding.primary_tool or "").strip()
+            ],
+        }
+    )
+    return fallback
+
+
 def build_workflow_from_task(
     task: Dict[str, Any],
     mode: str = "demo",
@@ -1327,7 +1378,18 @@ def build_workflow_from_task(
         request.hints.user_style["tool_execution_backend"] = (
             str(task.get("tool_execution_backend") or (raw_metadata or {}).get("tool_execution_backend") or ("semantic_mock" if toolsandbox_metadata else "mock"))
         )
-        workflow = planner.plan(request).workflow
+        planned_workflow = planner.plan(request).workflow
+        benchmark = (
+            str(raw_metadata.get("benchmark"))
+            if isinstance(raw_metadata, dict) and raw_metadata.get("benchmark")
+            else ""
+        ).strip().lower()
+        workflow = _apply_planner_structural_fallback(
+            planned_workflow=planned_workflow,
+            task=task,
+            planner_goal=planner_goal,
+            benchmark=benchmark,
+        )
     elif mode == "seed":
         workflow = _build_seed_workflow(
             task,
@@ -1356,7 +1418,11 @@ def build_workflow_from_task(
             if sender == "user" and message.get("content"):
                 retrieve_query = str(message["content"])
                 break
-    if retrieve_query and mode != "planner" and workflow.execution_plan:
+    if (
+        retrieve_query
+        and (mode != "planner" or workflow.metadata.get("planner_structural_fallback_applied"))
+        and workflow.execution_plan
+    ):
         workflow.execution_plan[0].inputs["query"] = retrieve_query
 
     if task.get("target_path") is not None and workflow.execution_plan:

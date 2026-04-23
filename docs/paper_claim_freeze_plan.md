@@ -134,7 +134,7 @@ Main evidence:
 
 Paper-safe summary:
 
-- `a3_interaction` and `a4_reuse` reach `1.000` mean success on the official ToolSandbox benchmark, while non-interaction variants remain in the `0.625` to `0.682` range on the 2026-04-22 frozen run.
+- `a3_interaction` and `a4_reuse` reach `1.000` mean success on the official ToolSandbox benchmark, while non-interaction variants remain in the `0.636` to `0.693` range on the 2026-04-23 a2 structural-fallback confirmation run.
 
 ### 5.2 Planner claim
 

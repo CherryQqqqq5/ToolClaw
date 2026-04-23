@@ -148,7 +148,7 @@ Aggregate:
 | --- | ---: | ---: | ---: |
 | `a0_baseline` | 0.636 | 0.636 | 1.000 |
 | `a1_recovery` | 0.682 | 0.682 | 1.000 |
-| `a2_planner` | 0.625 | 0.625 | 1.000 |
+| `a2_planner` | 0.693 | 0.693 | 1.000 |
 | `a3_interaction` | 1.000 | 1.000 | 1.000 |
 | `a4_reuse` | 1.000 | 1.000 | 1.000 |
 
@@ -183,13 +183,13 @@ This is the current headline ToolSandbox benchmark result.
 Supported conclusions:
 
 - interaction is the decisive capability jump
-- planner on top of recovery does not yet produce a headline lift on the frozen official benchmark
+- planner on top of recovery is no longer below recovery-only after the structural fallback fix, but its visible lift is small relative to interaction
 - both non-interaction recovery variants remain substantially below interaction
 - reuse matches interaction but does not exceed it on this benchmark
 
 Paper-safe claim:
 
-- ToolClaw's interaction-enabled variants (`a3`, `a4`) solve the restored 88-sample ToolSandbox benchmark perfectly, while non-interaction variants remain in the `0.625` to `0.682` range on the 2026-04-22 frozen run.
+- ToolClaw's interaction-enabled variants (`a3`, `a4`) solve the restored 88-sample ToolSandbox benchmark perfectly, while non-interaction variants remain in the `0.636` to `0.693` range on the 2026-04-23 a2 structural-fallback confirmation run.
 
 ## 6. Experiment B: ToolSandbox explicit bundled core-slice benchmark (historical pre-gatefix mechanism slice)
 
@@ -597,7 +597,7 @@ Not supported:
 ### 10.1 Strongly supported
 
 1. **Interaction is the main ToolClaw performance driver.**
-   - Official ToolSandbox: `a3=1.0`, `a4=1.0`, `a1=0.682`, `a2=0.625`, `a0=0.636`
+   - Official ToolSandbox: `a3=1.0`, `a4=1.0`, `a2=0.693`, `a1=0.682`, `a0=0.636`
 
 2. **The official ToolSandbox benchmark now provides a provenance-clean headline result.**
    - 88 samples
