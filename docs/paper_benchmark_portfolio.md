@@ -78,7 +78,8 @@ Initial smoke status:
 
 - registry preflight passes and `a4_reuse_warm` can hit persistent assets.
 - `a4_reuse_cold` has no reuse hits, so same-invocation cache contamination is controlled.
-- `a4_reuse_sham` still shows high reuse hits with wrong source-family matches.
+- paper-scope reuse is now exact-only: `a4_reuse_warm` exact hits count toward the claim, while transfer hits remain diagnostic.
+- `a4_reuse_sham` still shows high transfer hits with wrong source-family matches, so it remains a false-positive risk.
 - the current curated slice has no visible cost headroom: success, tool-call count, repair count, and user turns are already identical across cold and warm arms.
 
 This means the current suite is implemented, but the formal run is intentionally gated. It currently supports a diagnostic statement that persistent reuse is triggerable, while also exposing an over-broad retrieval / false-positive risk. It does not yet support a second-run cost-reduction paper claim.

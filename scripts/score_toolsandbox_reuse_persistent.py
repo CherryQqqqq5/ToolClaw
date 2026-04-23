@@ -15,6 +15,7 @@ from typing import Any, Dict, Iterable, List, Tuple
 
 
 PRIMARY_REDUCTION_METRICS = ("repair_reduction", "turn_reduction", "tool_call_reduction", "wall_clock_reduction")
+REUSE_SCOPES = {"exact", "transfer", "all"}
 
 
 def _float(value: Any) -> float:
@@ -56,6 +57,14 @@ def _success(row: Dict[str, str]) -> float:
     return 1.0 if _bool(row.get("success")) else 0.0
 
 
+def _has_cost_headroom(row: Dict[str, str]) -> bool:
+    return (
+        _float(row.get("tool_calls")) > 1.0
+        or _float(row.get("user_turns")) > 0.0
+        or _float(row.get("repair_actions")) > 0.0
+    )
+
+
 def _family(row: Dict[str, str]) -> str:
     return str(row.get("reuse_target_family") or row.get("family_id") or row.get("task_id", "").split("__pass", 1)[0])
 
@@ -70,7 +79,12 @@ def _aggregate(rows: List[Dict[str, str]]) -> Dict[str, float]:
             "avg_repair_actions": 0.0,
             "avg_wall_clock_ms": 0.0,
             "reuse_hit_rate": 0.0,
+            "exact_reuse_hit_rate": 0.0,
+            "transfer_reuse_hit_rate": 0.0,
             "correct_source_match_rate": 0.0,
+            "exact_correct_source_match_rate": 0.0,
+            "transfer_correct_source_match_rate": 0.0,
+            "cost_headroom_rate": 0.0,
             "success_per_user_turn": 0.0,
             "success_per_repair_attempt": 0.0,
         }
@@ -90,6 +104,16 @@ def _aggregate(rows: List[Dict[str, str]]) -> Dict[str, float]:
         for row in reuse_rows
         if str(row.get("reuse_source_family") or "") and str(row.get("reuse_source_family") or "") == str(row.get("reuse_target_family") or "")
     ]
+    exact_correct_reuse_rows = [
+        row
+        for row in exact_reuse_rows
+        if str(row.get("reuse_source_family") or "") and str(row.get("reuse_source_family") or "") == str(row.get("reuse_target_family") or "")
+    ]
+    transfer_correct_reuse_rows = [
+        row
+        for row in transfer_reuse_rows
+        if str(row.get("reuse_source_family") or "") and str(row.get("reuse_source_family") or "") == str(row.get("reuse_target_family") or "")
+    ]
     successes = sum(_success(row) for row in rows)
     user_turns = sum(_float(row.get("user_turns")) for row in rows)
     repairs = sum(_float(row.get("repair_actions")) for row in rows)
@@ -104,6 +128,9 @@ def _aggregate(rows: List[Dict[str, str]]) -> Dict[str, float]:
         "exact_reuse_hit_rate": float(len(exact_reuse_rows) / len(rows)),
         "transfer_reuse_hit_rate": float(len(transfer_reuse_rows) / len(rows)),
         "correct_source_match_rate": float(len(correct_reuse_rows) / len(reuse_rows)) if reuse_rows else 0.0,
+        "exact_correct_source_match_rate": float(len(exact_correct_reuse_rows) / len(exact_reuse_rows)) if exact_reuse_rows else 0.0,
+        "transfer_correct_source_match_rate": float(len(transfer_correct_reuse_rows) / len(transfer_reuse_rows)) if transfer_reuse_rows else 0.0,
+        "cost_headroom_rate": _mean(1.0 if _has_cost_headroom(row) else 0.0 for row in rows),
         "success_per_user_turn": float(successes / user_turns) if user_turns else float(successes),
         "success_per_repair_attempt": float(successes / repairs) if repairs else float(successes),
     }
@@ -133,6 +160,7 @@ def _pair_effects(rows: List[Dict[str, str]]) -> List[Dict[str, Any]]:
             "sham_success": _success(sham) if sham else 0.0,
             "warm_reused_artifact": 1.0 if _bool(warm.get("reused_artifact")) else 0.0,
             "sham_reused_artifact": 1.0 if sham and _bool(sham.get("reused_artifact")) else 0.0,
+            "cold_has_cost_headroom": 1.0 if _has_cost_headroom(cold) else 0.0,
             "warm_correct_source_match": 1.0
             if _bool(warm.get("reused_artifact"))
             and str(warm.get("reuse_source_family") or "") == str(warm.get("reuse_target_family") or "")
@@ -206,13 +234,24 @@ def _stat_tests(effects: List[Dict[str, Any]]) -> Dict[str, Any]:
     return result
 
 
+def _scoped_rate(stats_row: Dict[str, float], scope: str, *, metric: str) -> float:
+    if scope == "exact":
+        return float(stats_row.get(f"exact_{metric}", 0.0) or 0.0)
+    if scope == "transfer":
+        return float(stats_row.get(f"transfer_{metric}", 0.0) or 0.0)
+    return float(stats_row.get(metric, 0.0) or 0.0)
+
+
 def _claim_summary(
     *,
     rows: List[Dict[str, str]],
     effects: List[Dict[str, Any]],
     stats: Dict[str, Any],
     manifest: Dict[str, Any],
+    reuse_scope: str = "exact",
 ) -> Dict[str, Any]:
+    if reuse_scope not in REUSE_SCOPES:
+        reuse_scope = "exact"
     pass2_rows = [row for row in rows if str(row.get("stage")) == "pass2_eval"]
     by_system = {system: _aggregate([row for row in pass2_rows if row.get("system") == system]) for system in sorted({row.get("system", "") for row in pass2_rows})}
     warm = by_system.get("a4_reuse_warm", {})
@@ -222,15 +261,26 @@ def _claim_summary(
     ci_ok = any(float(stats.get(metric, {}).get("ci_low", 0.0) or 0.0) >= -0.05 for metric in PRIMARY_REDUCTION_METRICS)
     any_reduction = any(value > 0.0 for value in reductions.values())
     success_guard = float(warm.get("success_rate", 0.0) or 0.0) >= float(cold.get("success_rate", 0.0) or 0.0) - 0.02
+    headroom_pair_count = sum(1 for item in effects if float(item.get("cold_has_cost_headroom", 0.0) or 0.0) > 0.0)
+    headroom_filter_passed = bool(effects) and headroom_pair_count == len(effects)
+    warm_claim_reuse_hit_rate = _scoped_rate(warm, reuse_scope, metric="reuse_hit_rate")
+    if reuse_scope == "exact":
+        warm_claim_correct_source_match_rate = float(warm.get("exact_correct_source_match_rate", 0.0) or 0.0)
+    elif reuse_scope == "transfer":
+        warm_claim_correct_source_match_rate = float(warm.get("transfer_correct_source_match_rate", 0.0) or 0.0)
+    else:
+        warm_claim_correct_source_match_rate = float(warm.get("correct_source_match_rate", 0.0) or 0.0)
     gate_failures: List[str] = []
     if not bool(manifest.get("registry_preflight_passed", False)):
         gate_failures.append("registry_preflight_failed")
-    if float(warm.get("reuse_hit_rate", 0.0) or 0.0) < 0.50:
-        gate_failures.append("warm_reuse_hit_rate_below_0.50")
-    if float(warm.get("correct_source_match_rate", 0.0) or 0.0) < 0.90:
-        gate_failures.append("warm_correct_source_match_rate_below_0.90")
+    if warm_claim_reuse_hit_rate < 0.50:
+        gate_failures.append(f"warm_{reuse_scope}_reuse_hit_rate_below_0.50")
+    if warm_claim_correct_source_match_rate < 0.90:
+        gate_failures.append(f"warm_{reuse_scope}_correct_source_match_rate_below_0.90")
     if float(sham.get("reuse_hit_rate", 0.0) or 0.0) > 0.05:
         gate_failures.append("sham_false_positive_rate_above_0.05")
+    if not headroom_filter_passed:
+        gate_failures.append("cold_headroom_filter_failed")
     if not any_reduction:
         gate_failures.append("no_positive_primary_cost_reduction")
     if not ci_ok:
@@ -239,9 +289,10 @@ def _claim_summary(
         gate_failures.append("warm_success_below_cold_guard")
     paper_safe = (
         bool(manifest.get("registry_preflight_passed", False))
-        and float(warm.get("reuse_hit_rate", 0.0) or 0.0) >= 0.50
-        and float(warm.get("correct_source_match_rate", 0.0) or 0.0) >= 0.90
+        and warm_claim_reuse_hit_rate >= 0.50
+        and warm_claim_correct_source_match_rate >= 0.90
         and float(sham.get("reuse_hit_rate", 0.0) or 0.0) <= 0.05
+        and headroom_filter_passed
         and any_reduction
         and ci_ok
         and success_guard
@@ -251,8 +302,11 @@ def _claim_summary(
         "strong_second_run_claim_supported": paper_safe and bool(manifest.get("statistical_claim_allowed", False)),
         "mechanism_evidence_only": not paper_safe or not bool(manifest.get("statistical_claim_allowed", False)),
         "registry_preflight_passed": bool(manifest.get("registry_preflight_passed", False)),
+        "reuse_scope": reuse_scope,
         "family_count": int(manifest.get("family_count", 0) or 0),
         "statistical_claim_allowed": bool(manifest.get("statistical_claim_allowed", False)),
+        "warm_claim_reuse_hit_rate": warm_claim_reuse_hit_rate,
+        "warm_claim_correct_source_match_rate": warm_claim_correct_source_match_rate,
         "warm_reuse_hit_rate": float(warm.get("reuse_hit_rate", 0.0) or 0.0),
         "warm_correct_source_match_rate": float(warm.get("correct_source_match_rate", 0.0) or 0.0),
         "sham_false_positive_rate": float(sham.get("reuse_hit_rate", 0.0) or 0.0),
@@ -261,6 +315,8 @@ def _claim_summary(
         "warm_transfer_reuse_hit_rate": float(warm.get("transfer_reuse_hit_rate", 0.0) or 0.0),
         "sham_exact_reuse_hit_rate": float(sham.get("exact_reuse_hit_rate", 0.0) or 0.0),
         "sham_transfer_reuse_hit_rate": float(sham.get("transfer_reuse_hit_rate", 0.0) or 0.0),
+        "headroom_pair_count": int(headroom_pair_count),
+        "headroom_filter_passed": headroom_filter_passed,
         "gate_failures": gate_failures,
         "a4_reuse_warm": warm,
         "a4_reuse_cold": cold,
@@ -311,6 +367,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset", default="")
     parser.add_argument("--comparison", default="")
     parser.add_argument("--outdir", required=True)
+    parser.add_argument("--reuse-scope", choices=sorted(REUSE_SCOPES), default=None)
     parser.add_argument("--official-eval", default=None, help=argparse.SUPPRESS)
     parser.add_argument("--toolclaw-diagnostics", default=None, help=argparse.SUPPRESS)
     return parser.parse_args()
@@ -321,6 +378,7 @@ def main() -> None:
     outdir = Path(args.outdir)
     manifest_path = outdir / "experiment_manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+    reuse_scope = str(args.reuse_scope or manifest.get("reuse_scope") or "exact")
     dataset_path = Path(args.dataset or manifest.get("source") or "")
     comparison_path = Path(args.comparison or outdir / "comparison.scored.csv")
     if not dataset_path.exists():
@@ -340,7 +398,7 @@ def main() -> None:
     (outdir / "reuse_effect_summary.json").write_text(json.dumps(effect_summary, indent=2), encoding="utf-8")
     stats = _stat_tests(effects)
     (outdir / "reuse_stat_tests.json").write_text(json.dumps(stats, indent=2), encoding="utf-8")
-    summary = _claim_summary(rows=rows, effects=effects, stats=stats, manifest=manifest)
+    summary = _claim_summary(rows=rows, effects=effects, stats=stats, manifest=manifest, reuse_scope=reuse_scope)
     (outdir / "claim_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     _write_report(outdir / "report.md", summary, effect_summary, stats)
 

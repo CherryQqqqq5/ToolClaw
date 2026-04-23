@@ -68,6 +68,7 @@ def test_reuse_persistent_scorer_accepts_clean_warm_cost_reduction() -> None:
             "repair_actions": "0",
             "wall_clock_ms": "10",
             "reused_artifact": "true",
+            "reuse_tier": "exact_match_reuse",
         },
         {
             "stage": "pass2_eval",
@@ -109,7 +110,11 @@ def test_reuse_persistent_scorer_accepts_clean_warm_cost_reduction() -> None:
     assert effects[0]["turn_reduction"] == 1.0
     assert effects[0]["tool_call_reduction"] == 2.0
     assert summary["paper_safe_reuse_evidence"] is True
+    assert summary["reuse_scope"] == "exact"
+    assert summary["headroom_filter_passed"] is True
+    assert summary["warm_claim_reuse_hit_rate"] == 1.0
     assert summary["warm_reuse_hit_rate"] == 1.0
+    assert summary["warm_exact_reuse_hit_rate"] == 1.0
     assert summary["warm_correct_source_match_rate"] == 1.0
     assert summary["sham_false_positive_rate"] == 0.0
 
@@ -141,6 +146,7 @@ def test_reuse_persistent_scorer_blocks_sham_false_positive() -> None:
             "repair_actions": "0",
             "wall_clock_ms": "10",
             "reused_artifact": "true",
+            "reuse_tier": "exact_match_reuse",
         },
         {
             "stage": "pass2_eval",
@@ -154,6 +160,7 @@ def test_reuse_persistent_scorer_blocks_sham_false_positive() -> None:
             "repair_actions": "0",
             "wall_clock_ms": "10",
             "reused_artifact": "true",
+            "reuse_tier": "cross_family_transfer_reuse",
         },
     ]
 
@@ -166,5 +173,61 @@ def test_reuse_persistent_scorer_blocks_sham_false_positive() -> None:
     )
 
     assert summary["sham_false_positive_rate"] == 1.0
+    assert summary["sham_transfer_reuse_hit_rate"] == 1.0
     assert summary["reuse_false_positive_rate"] == 1.0
+    assert "sham_false_positive_rate_above_0.05" in summary["gate_failures"]
+    assert summary["paper_safe_reuse_evidence"] is False
+
+
+def test_reuse_persistent_scorer_blocks_no_headroom_pairs() -> None:
+    module = _load_script("score_toolsandbox_reuse_persistent.py")
+    rows = [
+        {
+            "stage": "pass2_eval",
+            "run_index": "1",
+            "system": "a4_reuse_cold",
+            "reuse_target_family": "holiday_time",
+            "success": "true",
+            "tool_calls": "1",
+            "user_turns": "0",
+            "repair_actions": "0",
+            "reused_artifact": "false",
+        },
+        {
+            "stage": "pass2_eval",
+            "run_index": "1",
+            "system": "a4_reuse_warm",
+            "reuse_target_family": "holiday_time",
+            "reuse_source_family": "holiday_time",
+            "success": "true",
+            "tool_calls": "1",
+            "user_turns": "0",
+            "repair_actions": "0",
+            "reused_artifact": "true",
+            "reuse_tier": "exact_match_reuse",
+        },
+        {
+            "stage": "pass2_eval",
+            "run_index": "1",
+            "system": "a4_reuse_sham",
+            "reuse_target_family": "holiday_time",
+            "success": "true",
+            "tool_calls": "1",
+            "user_turns": "0",
+            "repair_actions": "0",
+            "reused_artifact": "false",
+        },
+    ]
+
+    effects = module._pair_effects(rows)
+    summary = module._claim_summary(
+        rows=rows,
+        effects=effects,
+        stats=module._stat_tests(effects),
+        manifest={"registry_preflight_passed": True, "family_count": 1, "statistical_claim_allowed": True},
+    )
+
+    assert summary["headroom_pair_count"] == 0
+    assert summary["headroom_filter_passed"] is False
+    assert "cold_headroom_filter_failed" in summary["gate_failures"]
     assert summary["paper_safe_reuse_evidence"] is False

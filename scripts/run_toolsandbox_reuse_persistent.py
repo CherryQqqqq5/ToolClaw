@@ -177,6 +177,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--outdir", default="outputs/reuse_persistent_v1")
     parser.add_argument("--num-runs", type=int, default=1)
     parser.add_argument("--limit-families", type=int, default=0)
+    parser.add_argument("--reuse-scope", choices=["exact", "transfer", "all"], default="exact")
     parser.add_argument("--mode", default="planner", help=argparse.SUPPRESS)
     parser.add_argument("--systems", default="a3_interaction,a4_reuse_cold,a4_reuse_warm,a4_reuse_sham", help=argparse.SUPPRESS)
     parser.add_argument("--quiet-progress", action="store_true")
@@ -266,6 +267,7 @@ def main() -> None:
         "systems": list(PASS2_ARMS),
         "num_runs": max(args.num_runs, 1),
         "family_count": len(families),
+        "reuse_scope": str(args.reuse_scope),
         "statistical_claim_allowed": bool(source_manifest.get("statistical_claim_allowed", len(families) >= 20)),
         "registry_preflight_passed": bool(registry_preflight_passed),
         "comparison_raw": str(comparison_raw),
@@ -282,6 +284,8 @@ def main() -> None:
         str(comparison_scored),
         "--outdir",
         str(outdir),
+        "--reuse-scope",
+        str(args.reuse_scope),
     ]
     completed = subprocess.run(score_cmd, cwd=ROOT_DIR, env={**os.environ, "PYTHONPATH": str(SRC_DIR)}, check=False)
     if completed.returncode != 0:

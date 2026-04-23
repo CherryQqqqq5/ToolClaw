@@ -276,6 +276,7 @@
       "score_script": "scripts/score_toolsandbox_reuse_persistent.py",
       "default_source": "data/toolsandbox_reuse_persistent_v1.jsonl",
       "default_mode": "planner",
+      "reuse_scope": "exact",
       "default_systems": "a3_interaction,a4_reuse_cold,a4_reuse_warm,a4_reuse_sham",
       "default_num_runs": 3,
       "claim_ids": [
