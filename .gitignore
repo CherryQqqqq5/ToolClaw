@@ -260,6 +260,27 @@ outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/*
 !outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/comparison.scored.csv
 !outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1/report.md
 
+# Keep ToolSandbox causal v2 full-r1 summary bundle only.
+!outputs/paper_causal_v2_full_r1/
+outputs/paper_causal_v2_full_r1/*
+!outputs/paper_causal_v2_full_r1/experiment_manifest.json
+!outputs/paper_causal_v2_full_r1/causal_claim_summary.json
+!outputs/paper_causal_v2_full_r1/causal_claim_report.md
+!outputs/paper_causal_v2_full_r1/scoreboard.json
+!outputs/paper_causal_v2_full_r1/per_system_summary.json
+!outputs/paper_causal_v2_full_r1/per_category_summary.json
+!outputs/paper_causal_v2_full_r1/per_category_summary.md
+!outputs/paper_causal_v2_full_r1/per_failure_type_summary.json
+!outputs/paper_causal_v2_full_r1/per_failure_type_summary.md
+!outputs/paper_causal_v2_full_r1/per_failtax_summary.json
+!outputs/paper_causal_v2_full_r1/focused_slice_summary.json
+!outputs/paper_causal_v2_full_r1/focused_slice_summary.md
+!outputs/paper_causal_v2_full_r1/repair_loop_summary.json
+!outputs/paper_causal_v2_full_r1/repair_loop_summary.md
+!outputs/paper_causal_v2_full_r1/statistical_robustness_summary.json
+!outputs/paper_causal_v2_full_r1/comparison.scored.csv
+!outputs/paper_causal_v2_full_r1/report.md
+
 # Keep Interaction Live v1 mechanism benchmark formal summary bundle.
 !outputs/interaction_live_v1_formal/
 outputs/interaction_live_v1_formal/*

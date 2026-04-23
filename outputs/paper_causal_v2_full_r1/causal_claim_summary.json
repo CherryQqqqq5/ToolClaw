@@ -1,0 +1,203 @@
+{
+  "systems_expected": [
+    "a1_recovery",
+    "a2_planner",
+    "a3_full_interaction",
+    "a3_no_query",
+    "a3_noisy_user"
+  ],
+  "systems_observed": [
+    "a2_planner",
+    "a3_full_interaction",
+    "a3_no_query",
+    "a3_noisy_user"
+  ],
+  "system_summary": {
+    "a2_planner": {
+      "rows": 88.0,
+      "strict_scored_success": 0.625,
+      "execution_verified_success": 0.625,
+      "raw_execution_success": 0.9318181818181818,
+      "repair_scored_success": 0.0,
+      "interaction_contract_satisfied": 0.6931818181818182,
+      "mean_user_queries": 0.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "repair_user_queries": 0.0,
+      "probe_user_queries": 0.0,
+      "milestone_similarity": 0.7904276983600075,
+      "state_dependency_score": 0.9769396296066425
+    },
+    "a3_full_interaction": {
+      "rows": 88.0,
+      "strict_scored_success": 1.0,
+      "execution_verified_success": 1.0,
+      "raw_execution_success": 1.0,
+      "repair_scored_success": 0.375,
+      "interaction_contract_satisfied": 1.0,
+      "mean_user_queries": 0.375,
+      "reply_usable_rate": 0.06818181818181818,
+      "target_aligned_patch_rate": 0.06818181818181818,
+      "effective_patch_rate": 0.06818181818181818,
+      "post_query_progress_rate": 0.06818181818181818,
+      "useful_interaction_round_rate": 0.06818181818181818,
+      "repair_user_queries": 0.06818181818181818,
+      "probe_user_queries": 0.3068181818181818,
+      "milestone_similarity": 0.7904276983600075,
+      "state_dependency_score": 0.9769396296066425
+    },
+    "a3_no_query": {
+      "rows": 88.0,
+      "strict_scored_success": 0.625,
+      "execution_verified_success": 0.625,
+      "raw_execution_success": 0.9318181818181818,
+      "repair_scored_success": 0.0,
+      "interaction_contract_satisfied": 0.6931818181818182,
+      "mean_user_queries": 0.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "repair_user_queries": 0.0,
+      "probe_user_queries": 0.0,
+      "milestone_similarity": 0.7904276983600075,
+      "state_dependency_score": 0.9769396296066425
+    },
+    "a3_noisy_user": {
+      "rows": 88.0,
+      "strict_scored_success": 0.9318181818181818,
+      "execution_verified_success": 0.9318181818181818,
+      "raw_execution_success": 0.9318181818181818,
+      "repair_scored_success": 0.3068181818181818,
+      "interaction_contract_satisfied": 1.0,
+      "mean_user_queries": 0.375,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "repair_user_queries": 0.06818181818181818,
+      "probe_user_queries": 0.3068181818181818,
+      "milestone_similarity": 0.7904276983600075,
+      "state_dependency_score": 0.9769396296066425
+    }
+  },
+  "failtax_summary": {
+    "a2_planner": {
+      "selection": {
+        "success_rate": 0.75,
+        "error_rate": 0.25,
+        "num_rows": 60.0
+      },
+      "state": {
+        "success_rate": 0.2857142857142857,
+        "error_rate": 0.7142857142857143,
+        "num_rows": 14.0
+      },
+      "ordering": {
+        "success_rate": 0.42857142857142855,
+        "error_rate": 0.5714285714285714,
+        "num_rows": 14.0
+      }
+    },
+    "a3_full_interaction": {
+      "selection": {
+        "success_rate": 1.0,
+        "error_rate": 0.0,
+        "num_rows": 60.0
+      },
+      "state": {
+        "success_rate": 1.0,
+        "error_rate": 0.0,
+        "num_rows": 14.0
+      },
+      "ordering": {
+        "success_rate": 1.0,
+        "error_rate": 0.0,
+        "num_rows": 14.0
+      }
+    },
+    "a3_no_query": {
+      "selection": {
+        "success_rate": 0.75,
+        "error_rate": 0.25,
+        "num_rows": 60.0
+      },
+      "state": {
+        "success_rate": 0.2857142857142857,
+        "error_rate": 0.7142857142857143,
+        "num_rows": 14.0
+      },
+      "ordering": {
+        "success_rate": 0.42857142857142855,
+        "error_rate": 0.5714285714285714,
+        "num_rows": 14.0
+      }
+    },
+    "a3_noisy_user": {
+      "selection": {
+        "success_rate": 1.0,
+        "error_rate": 0.0,
+        "num_rows": 60.0
+      },
+      "state": {
+        "success_rate": 0.5714285714285714,
+        "error_rate": 0.4285714285714286,
+        "num_rows": 14.0
+      },
+      "ordering": {
+        "success_rate": 1.0,
+        "error_rate": 0.0,
+        "num_rows": 14.0
+      }
+    }
+  },
+  "verdicts": {
+    "interaction_query_contribution_supported": true,
+    "no_query_repair_mechanism_supported": false,
+    "interaction_not_cheating_supported": true,
+    "htgp_structural_reduction_supported": true,
+    "interaction_success_metric_caveat": false
+  },
+  "risk_flags": [
+    "noisy_user_above_planner"
+  ],
+  "comparisons": {
+    "exp1_full_vs_no_query": {
+      "a3_full_interaction_strict": 1.0,
+      "a3_no_query_strict": 0.625,
+      "a3_no_query_execution_verified": 0.625,
+      "a2_planner_execution_verified": 0.625
+    },
+    "exp2_full_vs_noisy": {
+      "a3_full_interaction_strict": 1.0,
+      "a3_noisy_user_strict": 0.9318181818181818,
+      "a2_planner_strict": 0.625,
+      "a3_full_interaction_useful_interaction_round_rate": 0.06818181818181818,
+      "a3_noisy_user_reply_usable_rate": 0.0,
+      "a3_noisy_user_target_aligned_patch_rate": 0.0,
+      "a3_noisy_user_effective_patch_rate": 0.0,
+      "a3_noisy_user_post_query_progress_rate": 0.0,
+      "a3_noisy_user_useful_interaction_round_rate": 0.0,
+      "a3_full_interaction_probe_user_queries": 0.3068181818181818,
+      "a3_noisy_user_probe_user_queries": 0.3068181818181818,
+      "a3_full_interaction_repair_user_queries": 0.06818181818181818,
+      "a3_noisy_user_repair_user_queries": 0.06818181818181818,
+      "probe_only_success_caveat": false
+    },
+    "exp3_htgp_structural": {
+      "a1_recovery_ordering_success": 0.0,
+      "a2_planner_ordering_success": 0.42857142857142855,
+      "a1_recovery_state_success": 0.0,
+      "a2_planner_state_success": 0.2857142857142857,
+      "a1_recovery_milestone_similarity": 0.0,
+      "a2_planner_milestone_similarity": 0.7904276983600075,
+      "a1_recovery_state_dependency_score": 0.0,
+      "a2_planner_state_dependency_score": 0.9769396296066425
+    }
+  }
+}

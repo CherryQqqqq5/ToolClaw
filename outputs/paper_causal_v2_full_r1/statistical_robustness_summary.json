@@ -1,0 +1,180 @@
+{
+  "deterministic_warning": "consistency_is_replication_stability_not_uncertainty_estimation",
+  "paired_overall": [
+    {
+      "right_system": "a2_planner",
+      "left_system": "a3_interaction",
+      "num_tasks": 0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 0,
+      "mean_delta": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    },
+    {
+      "right_system": "a4_reuse",
+      "left_system": "a3_interaction",
+      "num_tasks": 0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 0,
+      "mean_delta": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    },
+    {
+      "right_system": "a4_reuse",
+      "left_system": "a0_baseline",
+      "num_tasks": 0,
+      "wins": 0,
+      "losses": 0,
+      "ties": 0,
+      "mean_delta": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    }
+  ],
+  "paired_focused_slices": {
+    "approval": [
+      {
+        "right_system": "a2_planner",
+        "left_system": "a3_interaction",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a4_reuse",
+        "left_system": "a3_interaction",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a4_reuse",
+        "left_system": "a0_baseline",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      }
+    ],
+    "state_repair": [
+      {
+        "right_system": "a2_planner",
+        "left_system": "a3_interaction",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a4_reuse",
+        "left_system": "a3_interaction",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a4_reuse",
+        "left_system": "a0_baseline",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      }
+    ],
+    "repeated_reusable": [
+      {
+        "right_system": "a2_planner",
+        "left_system": "a3_interaction",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a4_reuse",
+        "left_system": "a3_interaction",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a4_reuse",
+        "left_system": "a0_baseline",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      }
+    ],
+    "planner_distractor_hard": [
+      {
+        "right_system": "a2_planner",
+        "left_system": "a3_interaction",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a4_reuse",
+        "left_system": "a3_interaction",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a4_reuse",
+        "left_system": "a0_baseline",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      }
+    ]
+  }
+}
