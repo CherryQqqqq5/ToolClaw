@@ -51,6 +51,8 @@ def _default_source() -> Path:
 
 DEFAULT_SOURCE = _default_source()
 DEFAULT_OFFICIAL_DATA_ROOT = ROOT_DIR / "data" / "external" / "ToolSandbox" / "data"
+CAUSAL_SLICE_POLICY_VERSION = "toolsandbox_causality_v1"
+CAUSAL_CLAIM_IDS = ["interaction_headline", "interaction_semantic_usefulness_mechanism"]
 SMOKE_SAMPLE_IDS = [
     "toolsandbox_env_backup_001",
     "toolsandbox_binding_repair_001",
@@ -645,7 +647,7 @@ def _write_toolsandbox_artifacts(summary: Dict[str, Any], outdir: Path) -> None:
 
 
 def _maybe_write_causal_ablation_outputs(outdir: Path, systems: List[str]) -> None:
-    causal_systems = {"a3_full_interaction", "a3_no_query", "a3_noisy_user"}
+    causal_systems = {"a2_planner", "a3_full_interaction", "a3_no_query", "a3_noisy_user"}
     if not causal_systems.issubset(set(systems)):
         return
     subprocess.run(
@@ -1687,6 +1689,10 @@ def main() -> None:
             "causal_claim_report_path": str((outdir / "causal_claim_report.md").resolve())
             if (outdir / "causal_claim_report.md").exists()
             else None,
+            "slice_policy_version": CAUSAL_SLICE_POLICY_VERSION
+            if (outdir / "causal_claim_summary.json").exists()
+            else None,
+            "claim_ids": CAUSAL_CLAIM_IDS if (outdir / "causal_claim_summary.json").exists() else None,
         },
     )
 

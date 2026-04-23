@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-04-20",
+  "updated_at": "2026-04-23",
   "claims": {
     "interaction_headline": {
       "status": "supported_current_evidence",
@@ -14,6 +14,25 @@
           "interaction_contract_satisfied",
           "success_rate@multiple_user_turn",
           "success_rate@insufficient_information"
+        ]
+      }
+    },
+    "interaction_semantic_usefulness_mechanism": {
+      "status": "evidence_pending_formal_freeze",
+      "benchmark_suite": "toolsandbox_interaction_causality_formal",
+      "claim": "ToolSandbox causality ablation should support a mechanism claim only: on repair-sensitive state-dependency tasks, interaction gains align with semantic-usefulness and target-aligned patch, while must-query slices remain probe-only and contract-sensitive.",
+      "metrics": {
+        "primary": [
+          "repair_semantic_usefulness_supported",
+          "interaction_not_cheating_supported"
+        ],
+        "supporting": [
+          "reply_usable_rate@repair_semantic",
+          "target_aligned_patch_rate@repair_semantic",
+          "effective_patch_rate@repair_semantic",
+          "post_query_progress_rate@repair_semantic",
+          "useful_interaction_round_rate@repair_semantic",
+          "probe_only_success_caveat_present"
         ]
       }
     },
@@ -126,6 +145,19 @@
         "interaction_headline"
       ],
       "paper_role": "headline"
+    },
+    "toolsandbox_interaction_causality_formal": {
+      "status": "implemented",
+      "runner": "scripts/run_toolsandbox_bench.py",
+      "default_source": "data/toolsandbox.formal.official.json",
+      "default_mode": "planner",
+      "default_systems": "a2_planner,a3_full_interaction,a3_no_query,a3_noisy_user",
+      "default_num_runs": 3,
+      "claim_ids": [
+        "interaction_semantic_usefulness_mechanism"
+      ],
+      "slice_policy_version": "toolsandbox_causality_v1",
+      "paper_role": "mechanism_supporting"
     },
     "bfcl_fc_core": {
       "status": "implemented",

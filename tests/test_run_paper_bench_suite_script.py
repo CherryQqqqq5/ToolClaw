@@ -196,6 +196,7 @@ def test_paper_claim_matrix_is_json_compatible() -> None:
     payload = json.loads((ROOT_DIR / "configs" / "paper_claim_matrix.yaml").read_text(encoding="utf-8"))
     assert set(payload["claims"]) == {
         "interaction_headline",
+        "interaction_semantic_usefulness_mechanism",
         "planner_binding_headline",
         "bfcl_agentic_supporting",
         "dual_control_interaction",
@@ -204,6 +205,7 @@ def test_paper_claim_matrix_is_json_compatible() -> None:
     }
     assert set(payload["suites"]) == {
         "toolsandbox_official",
+        "toolsandbox_interaction_causality_formal",
         "bfcl_fc_core_smoke",
         "bfcl_fc_core",
         "bfcl_agentic_ext",
@@ -260,6 +262,53 @@ def test_run_paper_bench_suite_toolsandbox_official(tmp_path: Path) -> None:
     claim_summary = json.loads((suite_outdir / "claim_summary.json").read_text(encoding="utf-8"))
     assert claim_summary["suite"] == "toolsandbox_official"
     assert claim_summary["claims"][0]["claim_id"] == "interaction_headline"
+
+
+def test_run_paper_bench_suite_toolsandbox_interaction_causality_formal(tmp_path: Path) -> None:
+    source_path = tmp_path / "toolsandbox_causality.json"
+    source_path.write_text(
+        json.dumps(
+            [
+                {
+                    "name": "toolsandbox_state_failure_001",
+                    "query": "Enable location when low battery mode is active.",
+                    "messages": [{"sender": "user", "recipient": "agent", "content": "Please turn location on."}],
+                    "tool_allow_list": ["settings_tool"],
+                    "candidate_tools": [
+                        {"tool_id": "settings_tool", "description": "Update device settings"},
+                    ],
+                    "categories": ["State Dependency", "Single Tool"],
+                    "milestones": ["resolve blocked setting change", "apply setting"],
+                    "ideal_turn_count": 2,
+                    "ideal_tool_calls": 1,
+                    "execution_scenario": "state_failure",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    out_root = tmp_path / "paper_suite"
+    completed = _run(
+        [
+            sys.executable,
+            "scripts/run_paper_bench_suite.py",
+            "toolsandbox_interaction_causality_formal",
+            "--source",
+            str(source_path),
+            "--out-root",
+            str(out_root),
+            "--num-runs",
+            "1",
+        ]
+    )
+    assert completed.returncode == 0
+    suite_outdir = out_root / "toolsandbox_interaction_causality_formal"
+    assert (suite_outdir / "manifest.json").exists()
+    assert (suite_outdir / "claim_summary.json").exists()
+    assert (suite_outdir / "causal_claim_summary.json").exists()
+    claim_summary = json.loads((suite_outdir / "claim_summary.json").read_text(encoding="utf-8"))
+    assert claim_summary["suite"] == "toolsandbox_interaction_causality_formal"
+    assert claim_summary["claims"][0]["claim_id"] == "interaction_semantic_usefulness_mechanism"
 
 
 def test_run_paper_bench_suite_tau2_and_reuse(tmp_path: Path) -> None:

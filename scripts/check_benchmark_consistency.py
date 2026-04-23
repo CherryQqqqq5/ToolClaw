@@ -149,16 +149,20 @@ def _check_category_summary(
 
     per_category = _load_json(per_category_path)
     category_counts: Dict[tuple[str, str], int] = defaultdict(int)
-    category_success: Dict[tuple[str, str], int] = defaultdict(int)
+    category_success: Dict[tuple[str, str], float] = defaultdict(float)
     for row in rows:
         categories = _normalize_csv_categories(row.get("categories", ""))
         if not categories:
             continue
-        success = _bool_from_value(row.get("success", "False"))
+        success = row.get("execution_verified_success_rate")
+        if success in (None, ""):
+            success_value = 1.0 if _bool_from_value(row.get("success", "False")) else 0.0
+        else:
+            success_value = float(success)
         for category in categories:
             key = (row["system"], category)
             category_counts[key] += 1
-            category_success[key] += int(success)
+            category_success[key] += success_value
 
     for system, category_map in per_category.items():
         if not isinstance(category_map, dict):

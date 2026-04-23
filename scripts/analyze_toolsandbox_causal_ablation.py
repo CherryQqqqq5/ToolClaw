@@ -19,6 +19,13 @@ SYSTEMS = (
     "a3_noisy_user",
 )
 
+SLICE_POLICY_VERSION = "toolsandbox_causality_v1"
+SLICE_DEFINITIONS = {
+    "overall": None,
+    "repair_semantic": {"state_dependency"},
+    "probe_only": {"multiple_user_turn", "insufficient_information"},
+}
+
 
 def _float(value: Any) -> float:
     if isinstance(value, bool):
@@ -73,6 +80,12 @@ def _system_summary(rows: List[Dict[str, str]]) -> Dict[str, Dict[str, float]]:
     return summary
 
 
+def _slice_rows(rows: List[Dict[str, str]], failure_types: set[str] | None) -> List[Dict[str, str]]:
+    if failure_types is None:
+        return list(rows)
+    return [row for row in rows if str(row.get("failure_type") or "").strip() in failure_types]
+
+
 def _failtax_summary(scoreboard: Dict[str, Any]) -> Dict[str, Dict[str, Dict[str, float]]]:
     result: Dict[str, Dict[str, Dict[str, float]]] = {}
     per_system = scoreboard.get("per_system_summary", {})
@@ -104,9 +117,36 @@ def _failtax_metric(failtax: Dict[str, Dict[str, Dict[str, float]]], system: str
     return float(failtax.get(system, {}).get(bucket, {}).get(key, 0.0))
 
 
+def _slice_verdict(summary: Dict[str, Dict[str, float]]) -> Dict[str, float]:
+    return {
+        "a2_planner_strict": _metric(summary, "a2_planner", "strict_scored_success"),
+        "a3_full_interaction_strict": _metric(summary, "a3_full_interaction", "strict_scored_success"),
+        "a3_no_query_strict": _metric(summary, "a3_no_query", "strict_scored_success"),
+        "a3_noisy_user_strict": _metric(summary, "a3_noisy_user", "strict_scored_success"),
+        "a3_full_interaction_reply_usable_rate": _metric(summary, "a3_full_interaction", "reply_usable_rate"),
+        "a3_full_interaction_target_aligned_patch_rate": _metric(summary, "a3_full_interaction", "target_aligned_patch_rate"),
+        "a3_full_interaction_effective_patch_rate": _metric(summary, "a3_full_interaction", "effective_patch_rate"),
+        "a3_full_interaction_post_query_progress_rate": _metric(summary, "a3_full_interaction", "post_query_progress_rate"),
+        "a3_full_interaction_useful_interaction_round_rate": _metric(summary, "a3_full_interaction", "useful_interaction_round_rate"),
+        "a3_full_interaction_probe_user_queries": _metric(summary, "a3_full_interaction", "probe_user_queries"),
+        "a3_full_interaction_repair_user_queries": _metric(summary, "a3_full_interaction", "repair_user_queries"),
+        "a3_noisy_user_reply_usable_rate": _metric(summary, "a3_noisy_user", "reply_usable_rate"),
+        "a3_noisy_user_target_aligned_patch_rate": _metric(summary, "a3_noisy_user", "target_aligned_patch_rate"),
+        "a3_noisy_user_effective_patch_rate": _metric(summary, "a3_noisy_user", "effective_patch_rate"),
+        "a3_noisy_user_post_query_progress_rate": _metric(summary, "a3_noisy_user", "post_query_progress_rate"),
+        "a3_noisy_user_useful_interaction_round_rate": _metric(summary, "a3_noisy_user", "useful_interaction_round_rate"),
+        "a3_noisy_user_probe_user_queries": _metric(summary, "a3_noisy_user", "probe_user_queries"),
+        "a3_noisy_user_repair_user_queries": _metric(summary, "a3_noisy_user", "repair_user_queries"),
+    }
+
+
 def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str, Any]:
     system_summary = _system_summary(rows)
     failtax = _failtax_summary(scoreboard)
+    slice_summaries = {
+        slice_name: _system_summary(_slice_rows(rows, failure_types))
+        for slice_name, failure_types in SLICE_DEFINITIONS.items()
+    }
 
     full_strict = _metric(system_summary, "a3_full_interaction", "strict_scored_success")
     no_query_strict = _metric(system_summary, "a3_no_query", "strict_scored_success")
@@ -143,22 +183,56 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
     state_a1 = _failtax_metric(failtax, "a1_recovery", "state", "success_rate")
     state_a2 = _failtax_metric(failtax, "a2_planner", "state", "success_rate")
 
+    repair_semantic_summary = slice_summaries["repair_semantic"]
+    probe_only_summary = slice_summaries["probe_only"]
+    repair_semantic_metrics = _slice_verdict(repair_semantic_summary)
+    probe_only_metrics = _slice_verdict(probe_only_summary)
+    repair_semantic_usefulness_supported = (
+        repair_semantic_metrics["a3_full_interaction_strict"] > repair_semantic_metrics["a3_no_query_strict"]
+        and repair_semantic_metrics["a3_full_interaction_strict"] > repair_semantic_metrics["a3_noisy_user_strict"]
+        and repair_semantic_metrics["a3_full_interaction_reply_usable_rate"] > 0.0
+        and repair_semantic_metrics["a3_full_interaction_target_aligned_patch_rate"] > 0.0
+        and repair_semantic_metrics["a3_full_interaction_effective_patch_rate"] > 0.0
+        and repair_semantic_metrics["a3_full_interaction_post_query_progress_rate"] > 0.0
+        and repair_semantic_metrics["a3_full_interaction_useful_interaction_round_rate"] > 0.0
+        and repair_semantic_metrics["a3_noisy_user_reply_usable_rate"] <= 0.2
+        and repair_semantic_metrics["a3_noisy_user_target_aligned_patch_rate"] <= 0.2
+        and repair_semantic_metrics["a3_noisy_user_effective_patch_rate"] <= 0.1
+        and repair_semantic_metrics["a3_noisy_user_post_query_progress_rate"] <= 0.1
+        and repair_semantic_metrics["a3_noisy_user_useful_interaction_round_rate"] <= 0.1
+    )
+    probe_only_success_caveat_present = (
+        probe_only_metrics["a3_full_interaction_strict"] > probe_only_metrics["a2_planner_strict"]
+        and probe_only_metrics["a3_noisy_user_strict"] > probe_only_metrics["a2_planner_strict"]
+        and probe_only_metrics["a3_full_interaction_reply_usable_rate"] <= 0.2
+        and probe_only_metrics["a3_full_interaction_target_aligned_patch_rate"] <= 0.2
+        and probe_only_metrics["a3_full_interaction_effective_patch_rate"] <= 0.1
+        and probe_only_metrics["a3_full_interaction_post_query_progress_rate"] <= 0.1
+        and probe_only_metrics["a3_full_interaction_useful_interaction_round_rate"] <= 0.1
+        and probe_only_metrics["a3_noisy_user_reply_usable_rate"] <= 0.2
+        and probe_only_metrics["a3_noisy_user_target_aligned_patch_rate"] <= 0.2
+        and probe_only_metrics["a3_noisy_user_effective_patch_rate"] <= 0.1
+        and probe_only_metrics["a3_noisy_user_post_query_progress_rate"] <= 0.1
+        and probe_only_metrics["a3_noisy_user_useful_interaction_round_rate"] <= 0.1
+        and probe_only_metrics["a3_full_interaction_probe_user_queries"] > 0.0
+        and probe_only_metrics["a3_noisy_user_probe_user_queries"] > 0.0
+    )
+
     verdicts = {
-        "interaction_query_contribution_supported": full_strict > no_query_strict,
+        "overall_interaction_query_contribution_supported": full_strict > no_query_strict,
+        "repair_semantic_usefulness_supported": repair_semantic_usefulness_supported,
+        "probe_only_success_caveat_present": probe_only_success_caveat_present,
         "no_query_repair_mechanism_supported": no_query_exec > planner_exec,
         "interaction_not_cheating_supported": (
             noisy_usefulness_low
-            and (
-                (full_strict > noisy_strict and full_useful_round > noisy_useful_round)
-                or probe_only_success_caveat
-            )
+            and repair_semantic_usefulness_supported
         ),
         "htgp_structural_reduction_supported": (
             ordering_a2 >= ordering_a1
             and state_a2 >= state_a1
             and (ordering_a2 > ordering_a1 or state_a2 > state_a1)
         ),
-        "interaction_success_metric_caveat": probe_only_success_caveat,
+        "interaction_success_metric_caveat": probe_only_success_caveat or probe_only_success_caveat_present,
     }
 
     risk_flags: List[str] = []
@@ -176,15 +250,23 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
         risk_flags.append("noisy_effective_patch_too_high")
     if full_useful_round <= noisy_useful_round and not probe_only_success_caveat:
         risk_flags.append("full_usefulness_not_above_noisy")
-    if probe_only_success_caveat:
+    if probe_only_success_caveat or probe_only_success_caveat_present:
         risk_flags.append("success_metric_probe_only_caveat")
+    if not repair_semantic_usefulness_supported:
+        risk_flags.append("repair_semantic_usefulness_not_supported")
     if not verdicts["htgp_structural_reduction_supported"]:
         risk_flags.append("htgp_structural_claim_not_supported")
 
     return {
+        "slice_policy_version": SLICE_POLICY_VERSION,
+        "slice_definitions": {
+            key: sorted(value) if value is not None else "all"
+            for key, value in SLICE_DEFINITIONS.items()
+        },
         "systems_expected": list(SYSTEMS),
         "systems_observed": sorted(system_summary),
         "system_summary": system_summary,
+        "slice_summaries": slice_summaries,
         "failtax_summary": failtax,
         "verdicts": verdicts,
         "risk_flags": risk_flags,
@@ -211,6 +293,8 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
                 "a3_noisy_user_repair_user_queries": noisy_repair_queries,
                 "probe_only_success_caveat": probe_only_success_caveat,
             },
+            "repair_semantic": repair_semantic_metrics,
+            "probe_only": probe_only_metrics,
             "exp3_htgp_structural": {
                 "a1_recovery_ordering_success": ordering_a1,
                 "a2_planner_ordering_success": ordering_a2,
@@ -236,7 +320,12 @@ def _write_report(summary: Dict[str, Any], out_path: Path) -> None:
     ]
     for key, value in sorted(summary.get("verdicts", {}).items()):
         lines.append(f"| {key} | {str(bool(value)).lower()} |")
-    lines.extend(["", "## System Summary", ""])
+    lines.extend(["", "## Slice Policy", ""])
+    lines.append(f"- version: `{summary.get('slice_policy_version', 'unknown')}`")
+    for key, value in summary.get("slice_definitions", {}).items():
+        lines.append(f"- `{key}`: `{value}`")
+
+    lines.extend(["", "## Overall System Summary", ""])
     lines.append(
         "| system | strict_scored_success | execution_verified_success | raw_execution_success | repair_scored_success | interaction_contract_satisfied | mean_user_queries | reply_usable_rate | target_aligned_patch_rate | effective_patch_rate | post_query_progress_rate | useful_interaction_round_rate |"
     )
@@ -245,6 +334,17 @@ def _write_report(summary: Dict[str, Any], out_path: Path) -> None:
         lines.append(
             f"| {system} | {stats.get('strict_scored_success', 0.0):.3f} | {stats.get('execution_verified_success', 0.0):.3f} | {stats.get('raw_execution_success', 0.0):.3f} | {stats.get('repair_scored_success', 0.0):.3f} | {stats.get('interaction_contract_satisfied', 0.0):.3f} | {stats.get('mean_user_queries', 0.0):.3f} | {stats.get('reply_usable_rate', 0.0):.3f} | {stats.get('target_aligned_patch_rate', 0.0):.3f} | {stats.get('effective_patch_rate', 0.0):.3f} | {stats.get('post_query_progress_rate', 0.0):.3f} | {stats.get('useful_interaction_round_rate', 0.0):.3f} |"
         )
+    for slice_name in ("repair_semantic", "probe_only"):
+        lines.extend(["", f"## {slice_name.replace('_', ' ').title()} Slice", ""])
+        lines.append(
+            "| system | strict_scored_success | execution_verified_success | reply_usable_rate | target_aligned_patch_rate | effective_patch_rate | post_query_progress_rate | useful_interaction_round_rate | probe_user_queries | repair_user_queries |"
+        )
+        lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+        slice_summary = summary.get("slice_summaries", {}).get(slice_name, {})
+        for system, stats in sorted(slice_summary.items()):
+            lines.append(
+                f"| {system} | {stats.get('strict_scored_success', 0.0):.3f} | {stats.get('execution_verified_success', 0.0):.3f} | {stats.get('reply_usable_rate', 0.0):.3f} | {stats.get('target_aligned_patch_rate', 0.0):.3f} | {stats.get('effective_patch_rate', 0.0):.3f} | {stats.get('post_query_progress_rate', 0.0):.3f} | {stats.get('useful_interaction_round_rate', 0.0):.3f} | {stats.get('probe_user_queries', 0.0):.3f} | {stats.get('repair_user_queries', 0.0):.3f} |"
+            )
     lines.extend(["", "## Risk Flags", ""])
     risk_flags = list(summary.get("risk_flags", []))
     if risk_flags:

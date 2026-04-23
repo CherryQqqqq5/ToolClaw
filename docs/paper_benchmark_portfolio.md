@@ -9,6 +9,15 @@ This note updates the paper-facing benchmark plan after reviewing the current re
   - current claim: `interaction_headline`
   - reason: the archived official run already makes interaction/stateful control visible, while `a2_planner = a1_recovery` keeps planner lift non-headline here
 
+- `toolsandbox_interaction_causality_formal`
+  - role: mechanism-only ToolSandbox causality suite
+  - current claim: `interaction_semantic_usefulness_mechanism`
+  - reason: semantic-usefulness is not a safe whole-benchmark claim on ToolSandbox aggregate; it should be anchored only to repair-sensitive `state_dependency` slices, with `multiple_user_turn` and `insufficient_information` treated as probe-only / contract-sensitive supporting strata
+  - protocol:
+    - `overall`: retained for interaction headline context only
+    - `repair_semantic`: `failure_type == state_dependency`
+    - `probe_only`: `failure_type in {multiple_user_turn, insufficient_information}`
+
 - `bfcl_fc_core`
   - role: headline planner / binder / parameter correctness benchmark
   - current claim: `planner_binding_headline`
@@ -39,10 +48,34 @@ This note updates the paper-facing benchmark plan after reviewing the current re
 ## Current evidence boundary
 
 - ToolSandbox official should stay the main headline benchmark.
+- ToolSandbox semantic-usefulness should be treated as a mechanism claim, not a whole-benchmark headline claim.
 - Planner should not be sold as a headline lift on ToolSandbox official until a planner-visible benchmark is added.
 - Reuse should stay scoped to matched-signature cost reduction.
 - ToolGym is best treated as a later supplementary stress test, not the main paper anchor.
 - WebArena, WorkArena, and OSWorld are strong benchmarks, but they move the paper toward browser or computer-use agents rather than workflow intelligence over tool calling.
+
+## ToolSandbox causality boundary on 2026-04-23
+
+The current ToolSandbox causality instrumentation is implemented in the benchmark runner and analyzer:
+
+- `reply_usable_rate`
+- `target_aligned_patch_rate`
+- `effective_patch_rate`
+- `post_query_progress_rate`
+- `useful_interaction_round_rate`
+
+Exploratory bundle [outputs/paper_causal_v2_full_r1/causal_claim_summary.json](../outputs/paper_causal_v2_full_r1/causal_claim_summary.json) already shows that `interaction_not_cheating_supported = true`, but it also shows that the semantic-usefulness signal is sparse and concentrated in `state_dependency` rows. In that exploratory run, the useful interaction rounds are confined to six repair-sensitive tasks, while `multiple_user_turn` and `insufficient_information` mostly behave as probe-only / contract-satisfaction slices.
+
+This means the current evidence supports the following boundary:
+
+- supported after formal freeze:
+  - a mechanism claim that semantic-usefulness and target-aligned patch explain interaction gains on repair-sensitive ToolSandbox slices
+  - a caveat claim that must-query slices are not clean semantic-usefulness evidence
+- not supported:
+  - a claim that all ToolSandbox interaction gain comes from semantic-usefulness
+  - a claim that noisy-user collapse should occur across the whole benchmark aggregate
+
+The paper-facing causality suite therefore needs to be frozen separately from the main `toolsandbox_official` headline run.
 
 ## BFCL status on 2026-04-21
 

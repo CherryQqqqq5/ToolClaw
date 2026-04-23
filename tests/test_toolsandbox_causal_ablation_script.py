@@ -14,20 +14,23 @@ def test_toolsandbox_causal_ablation_analyzer_outputs_verdicts() -> None:
     rows = [
         {
             "system": "a3_full_interaction",
+            "failure_type": "multiple_user_turn",
             "strict_scored_success_rate": "1.0",
             "execution_verified_success_rate": "1.0",
             "raw_execution_success_rate": "1.0",
             "repair_scored_success_rate": "0.5",
             "interaction_contract_satisfied": "1.0",
             "mean_user_queries": "1.0",
-            "reply_usable_rate": "0.75",
-            "target_aligned_patch_rate": "0.75",
-            "effective_patch_rate": "0.75",
-            "post_query_progress_rate": "0.75",
-            "useful_interaction_round_rate": "0.75",
+            "reply_usable_rate": "0.0",
+            "target_aligned_patch_rate": "0.0",
+            "effective_patch_rate": "0.0",
+            "post_query_progress_rate": "0.0",
+            "useful_interaction_round_rate": "0.0",
+            "probe_user_queries": "1.0",
         },
         {
             "system": "a3_no_query",
+            "failure_type": "multiple_user_turn",
             "strict_scored_success_rate": "0.0",
             "execution_verified_success_rate": "0.75",
             "raw_execution_success_rate": "0.75",
@@ -42,9 +45,10 @@ def test_toolsandbox_causal_ablation_analyzer_outputs_verdicts() -> None:
         },
         {
             "system": "a3_noisy_user",
-            "strict_scored_success_rate": "0.25",
-            "execution_verified_success_rate": "0.25",
-            "raw_execution_success_rate": "0.25",
+            "failure_type": "multiple_user_turn",
+            "strict_scored_success_rate": "0.5",
+            "execution_verified_success_rate": "0.5",
+            "raw_execution_success_rate": "0.5",
             "repair_scored_success_rate": "0.0",
             "interaction_contract_satisfied": "1.0",
             "mean_user_queries": "1.0",
@@ -53,12 +57,76 @@ def test_toolsandbox_causal_ablation_analyzer_outputs_verdicts() -> None:
             "effective_patch_rate": "0.0",
             "post_query_progress_rate": "0.0",
             "useful_interaction_round_rate": "0.0",
+            "probe_user_queries": "1.0",
         },
         {
             "system": "a2_planner",
+            "failure_type": "multiple_user_turn",
             "strict_scored_success_rate": "0.25",
             "execution_verified_success_rate": "0.25",
             "raw_execution_success_rate": "0.25",
+            "repair_scored_success_rate": "0.0",
+            "interaction_contract_satisfied": "1.0",
+            "mean_user_queries": "0.0",
+            "reply_usable_rate": "0.0",
+            "target_aligned_patch_rate": "0.0",
+            "effective_patch_rate": "0.0",
+            "post_query_progress_rate": "0.0",
+            "useful_interaction_round_rate": "0.0",
+        },
+        {
+            "system": "a3_full_interaction",
+            "failure_type": "state_dependency",
+            "strict_scored_success_rate": "1.0",
+            "execution_verified_success_rate": "1.0",
+            "raw_execution_success_rate": "1.0",
+            "repair_scored_success_rate": "1.0",
+            "interaction_contract_satisfied": "1.0",
+            "mean_user_queries": "1.0",
+            "reply_usable_rate": "1.0",
+            "target_aligned_patch_rate": "1.0",
+            "effective_patch_rate": "1.0",
+            "post_query_progress_rate": "1.0",
+            "useful_interaction_round_rate": "1.0",
+            "repair_user_queries": "1.0",
+        },
+        {
+            "system": "a3_no_query",
+            "failure_type": "state_dependency",
+            "strict_scored_success_rate": "0.0",
+            "execution_verified_success_rate": "0.0",
+            "raw_execution_success_rate": "0.0",
+            "repair_scored_success_rate": "0.0",
+            "interaction_contract_satisfied": "0.0",
+            "mean_user_queries": "0.0",
+            "reply_usable_rate": "0.0",
+            "target_aligned_patch_rate": "0.0",
+            "effective_patch_rate": "0.0",
+            "post_query_progress_rate": "0.0",
+            "useful_interaction_round_rate": "0.0",
+        },
+        {
+            "system": "a3_noisy_user",
+            "failure_type": "state_dependency",
+            "strict_scored_success_rate": "0.0",
+            "execution_verified_success_rate": "0.0",
+            "raw_execution_success_rate": "0.0",
+            "repair_scored_success_rate": "0.0",
+            "interaction_contract_satisfied": "1.0",
+            "mean_user_queries": "1.0",
+            "reply_usable_rate": "0.0",
+            "target_aligned_patch_rate": "0.0",
+            "effective_patch_rate": "0.0",
+            "post_query_progress_rate": "0.0",
+            "useful_interaction_round_rate": "0.0",
+            "repair_user_queries": "1.0",
+        },
+        {
+            "system": "a2_planner",
+            "failure_type": "state_dependency",
+            "strict_scored_success_rate": "0.0",
+            "execution_verified_success_rate": "0.0",
+            "raw_execution_success_rate": "0.0",
             "repair_scored_success_rate": "0.0",
             "interaction_contract_satisfied": "1.0",
             "mean_user_queries": "0.0",
@@ -88,9 +156,14 @@ def test_toolsandbox_causal_ablation_analyzer_outputs_verdicts() -> None:
 
     summary = module.analyze(rows, scoreboard)
 
-    assert summary["verdicts"]["interaction_query_contribution_supported"] is True
+    assert summary["verdicts"]["overall_interaction_query_contribution_supported"] is True
+    assert summary["verdicts"]["repair_semantic_usefulness_supported"] is True
+    assert summary["verdicts"]["probe_only_success_caveat_present"] is True
     assert summary["verdicts"]["interaction_not_cheating_supported"] is True
     assert summary["verdicts"]["htgp_structural_reduction_supported"] is True
+    assert summary["slice_policy_version"] == "toolsandbox_causality_v1"
+    assert "repair_semantic" in summary["slice_summaries"]
+    assert "probe_only" in summary["slice_summaries"]
 
 
 def test_toolsandbox_causal_ablation_analyzer_flags_high_noisy_usefulness() -> None:
@@ -104,6 +177,7 @@ def test_toolsandbox_causal_ablation_analyzer_flags_high_noisy_usefulness() -> N
     rows = [
         {
             "system": "a3_full_interaction",
+            "failure_type": "state_dependency",
             "strict_scored_success_rate": "0.8",
             "execution_verified_success_rate": "0.8",
             "raw_execution_success_rate": "0.8",
@@ -118,6 +192,7 @@ def test_toolsandbox_causal_ablation_analyzer_flags_high_noisy_usefulness() -> N
         },
         {
             "system": "a3_noisy_user",
+            "failure_type": "state_dependency",
             "strict_scored_success_rate": "0.1",
             "execution_verified_success_rate": "0.1",
             "raw_execution_success_rate": "0.1",
@@ -132,6 +207,7 @@ def test_toolsandbox_causal_ablation_analyzer_flags_high_noisy_usefulness() -> N
         },
         {
             "system": "a2_planner",
+            "failure_type": "state_dependency",
             "strict_scored_success_rate": "0.2",
             "execution_verified_success_rate": "0.2",
             "raw_execution_success_rate": "0.2",
@@ -144,6 +220,7 @@ def test_toolsandbox_causal_ablation_analyzer_flags_high_noisy_usefulness() -> N
     summary = module.analyze(rows, {"per_system_summary": {}})
 
     assert summary["verdicts"]["interaction_not_cheating_supported"] is False
+    assert summary["verdicts"]["repair_semantic_usefulness_supported"] is False
     assert "noisy_reply_usable_too_high" in summary["risk_flags"]
     assert "noisy_patch_alignment_too_high" in summary["risk_flags"]
     assert "noisy_progress_too_high" in summary["risk_flags"]
