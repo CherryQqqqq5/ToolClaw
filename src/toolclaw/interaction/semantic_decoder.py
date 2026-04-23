@@ -330,6 +330,7 @@ def compile_decoded_signal_to_user_reply(
         metadata={
             **dict(raw_reply.metadata or {}),
             "patch_targets": patch_targets,
+            "expected_answer_type": str(request.expected_answer_type or ""),
             "decoded_intent_type": signal.intent_type,
             "decoded_slot_updates": dict(signal.slot_updates),
             "decoded_approvals": dict(signal.approvals),

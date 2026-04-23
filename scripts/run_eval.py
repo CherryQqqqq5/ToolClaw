@@ -2213,10 +2213,14 @@ def execute_system(
 
     seed_workflow = build_workflow_from_task(task, mode="planner", spec=spec)
     benchmark = str(seed_workflow.metadata.get("benchmark") or "").strip().lower()
+    approval_declared = bool(seed_workflow.task.constraints.requires_user_approval) or any(
+        isinstance(edge, dict) and str(edge.get("type") or "").strip().lower() == "approval"
+        for edge in task.get("dependency_edges", [])
+    )
     if (
         benchmark == "tau2_bench"
         and spec.execution_mode == "interaction"
-        and scenario in {"approval_required", "policy_failure", "dual_control"}
+        and (scenario in {"approval_required", "policy_failure", "dual_control"} or approval_declared)
     ):
         seed_workflow.metadata["disable_simulated_auto_approval"] = True
     bfcl_direct_executor_only = benchmark == "bfcl" and bool(seed_workflow.metadata.get("bfcl_abstained"))

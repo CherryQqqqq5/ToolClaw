@@ -1,6 +1,8 @@
 from pathlib import Path
 import time
+from typing import List
 
+from toolclaw.execution.recovery import RecoveryEngine
 from toolclaw.execution.executor import SequentialExecutor
 from toolclaw.interaction.irc import InteractionLoopConfig, InteractionShell
 from toolclaw.interaction.query_policy import QueryPolicy
@@ -13,6 +15,15 @@ from toolclaw.main import ToolClawRuntime
 from toolclaw.compiler.swpc import SWPCCompiler
 from toolclaw.planner.htgp import PlanningHints, PlanningRequest, build_default_planner
 from toolclaw.registry import InMemoryAssetRegistry
+from toolclaw.schemas.error import (
+    ErrorCategory,
+    ErrorEvidence,
+    ErrorSeverity,
+    ErrorStage,
+    Recoverability,
+    StateContext,
+    ToolClawError,
+)
 from toolclaw.schemas.workflow import Permissions, TaskConstraints, TaskSpec, ToolSpec, Workflow, WorkflowContext
 from toolclaw.interaction.repair_updater import InteractionRequest, UserReply
 from toolclaw.schemas.trace import EventType
@@ -25,6 +36,35 @@ class SlowReplyProvider:
     def reply(self, request: InteractionRequest):
         time.sleep(self.delay_s)
         return UserSimulator(SimulatedPolicy()).reply(request)
+
+
+def _make_test_error(
+    workflow: Workflow,
+    *,
+    error_id: str,
+    run_id: str,
+    category: ErrorCategory,
+    subtype: str,
+    symptoms: List[str],
+    root_cause_hypothesis: List[str],
+    failtax_label: str,
+) -> ToolClawError:
+    return ToolClawError(
+        error_id=error_id,
+        run_id=run_id,
+        workflow_id=workflow.workflow_id,
+        step_id="step_02",
+        category=category,
+        subtype=subtype,
+        severity=ErrorSeverity.MEDIUM,
+        stage=ErrorStage.EXECUTION,
+        symptoms=symptoms,
+        evidence=ErrorEvidence(tool_id="write_tool"),
+        root_cause_hypothesis=root_cause_hypothesis,
+        state_context=StateContext(active_step_id="step_02"),
+        recoverability=Recoverability(recoverable=True),
+        failtax_label=failtax_label,
+    )
 
 
 def test_executor_blocks_on_ask_user_and_returns_pending_interaction(tmp_path: Path) -> None:
@@ -82,26 +122,20 @@ def test_repair_updater_ingests_reply_and_resumes_workflow(tmp_path: Path) -> No
 def test_repair_updater_accepts_fallback_path_and_tool_switch_reply() -> None:
     workflow = Workflow.demo()
     updater = RepairUpdater()
-    repair = __import__("toolclaw.execution.recovery", fromlist=["RecoveryEngine"]).RecoveryEngine()._repair_environment_failure(
-        __import__("toolclaw.schemas.error", fromlist=["ToolClawError", "ErrorCategory", "ErrorEvidence", "StateContext", "Recoverability", "ErrorSeverity", "ErrorStage"]).ToolClawError(
+    repair = RecoveryEngine()._repair_environment_failure(
+        _make_test_error(
+            workflow,
             error_id="err_test_env",
             run_id="run_test_env",
-            workflow_id=workflow.workflow_id,
-            step_id="step_02",
-            category=__import__("toolclaw.schemas.error", fromlist=["ErrorCategory"]).ErrorCategory.ENVIRONMENT_FAILURE,
+            category=ErrorCategory.ENVIRONMENT_FAILURE,
             subtype="tool_execution_error",
-            severity=__import__("toolclaw.schemas.error", fromlist=["ErrorSeverity"]).ErrorSeverity.MEDIUM,
-            stage=__import__("toolclaw.schemas.error", fromlist=["ErrorStage"]).ErrorStage.EXECUTION,
             symptoms=["environment unavailable for write operation"],
-            evidence=__import__("toolclaw.schemas.error", fromlist=["ErrorEvidence"]).ErrorEvidence(tool_id="write_tool"),
             root_cause_hypothesis=["tool invocation failed"],
-            state_context=__import__("toolclaw.schemas.error", fromlist=["StateContext"]).StateContext(active_step_id="step_02"),
-            recoverability=__import__("toolclaw.schemas.error", fromlist=["Recoverability"]).Recoverability(recoverable=True),
             failtax_label="environment_failure",
         )
     )
     repair.metadata["backup_tool_id"] = "backup_write_tool"
-    reply = __import__("toolclaw.interaction.repair_updater", fromlist=["UserReply"]).UserReply(
+    reply = UserReply(
         interaction_id=f"int_{repair.repair_id}",
         payload={
             "use_backup_tool": True,
@@ -118,21 +152,15 @@ def test_repair_updater_accepts_fallback_path_and_tool_switch_reply() -> None:
 
 def test_semantic_decoder_and_repair_updater_support_compound_approval_patch() -> None:
     workflow = Workflow.demo()
-    repair = __import__("toolclaw.execution.recovery", fromlist=["RecoveryEngine"]).RecoveryEngine()._repair_environment_failure(
-        __import__("toolclaw.schemas.error", fromlist=["ToolClawError", "ErrorCategory", "ErrorEvidence", "StateContext", "Recoverability", "ErrorSeverity", "ErrorStage"]).ToolClawError(
+    repair = RecoveryEngine()._repair_environment_failure(
+        _make_test_error(
+            workflow,
             error_id="err_test_env_compound",
             run_id="run_test_env_compound",
-            workflow_id=workflow.workflow_id,
-            step_id="step_02",
-            category=__import__("toolclaw.schemas.error", fromlist=["ErrorCategory"]).ErrorCategory.ENVIRONMENT_FAILURE,
+            category=ErrorCategory.ENVIRONMENT_FAILURE,
             subtype="tool_execution_error",
-            severity=__import__("toolclaw.schemas.error", fromlist=["ErrorSeverity"]).ErrorSeverity.MEDIUM,
-            stage=__import__("toolclaw.schemas.error", fromlist=["ErrorStage"]).ErrorStage.EXECUTION,
             symptoms=["environment unavailable for write operation"],
-            evidence=__import__("toolclaw.schemas.error", fromlist=["ErrorEvidence"]).ErrorEvidence(tool_id="write_tool"),
             root_cause_hypothesis=["tool invocation failed"],
-            state_context=__import__("toolclaw.schemas.error", fromlist=["StateContext"]).StateContext(active_step_id="step_02"),
-            recoverability=__import__("toolclaw.schemas.error", fromlist=["Recoverability"]).Recoverability(recoverable=True),
             failtax_label="environment_failure",
         ),
         backup_tool_id="backup_write_tool",
@@ -188,6 +216,109 @@ def test_semantic_decoder_and_repair_updater_support_compound_approval_patch() -
     assert resume_patch.metadata["answer_patch"]["decoded_is_usable"] is True
     assert resume_patch.metadata["answer_patch"]["target_alignment"] == 1.0
     assert resume_patch.metadata["answer_patch"]["effective_patch"] is True
+
+
+def test_repair_updater_exposes_repair_defaults_as_suggested_values_for_approval() -> None:
+    workflow = Workflow.demo()
+    step = workflow.execution_plan[1]
+    step.inputs.pop("target_path", None)
+    step.metadata["repair_default_inputs"] = {"target_path": "outputs/reports/compound_default.txt"}
+    repair = RecoveryEngine()._repair_policy_failure(
+        _make_test_error(
+            workflow,
+            error_id="err_test_policy_compound",
+            run_id="run_test_policy_compound",
+            category=ErrorCategory.POLICY_FAILURE,
+            subtype="approval_required",
+            symptoms=["approval required"],
+            root_cause_hypothesis=["policy requires approval"],
+            failtax_label="policy_failure",
+        )
+    )
+
+    request = RepairUpdater().build_query(workflow, repair, {"query": "retrieve and write report"})
+
+    assert request.metadata["patch_targets"] == {
+        "target_path": "step.inputs.target_path",
+        "approved": "policy.approved",
+    }
+    assert request.metadata["suggested_values"] == {
+        "target_path": "outputs/reports/compound_default.txt",
+    }
+
+
+def test_user_simulator_fills_compound_approval_and_patch_from_suggestions() -> None:
+    request = InteractionRequest(
+        interaction_id="int_compound_suggested_001",
+        question="Approve this blocked action and provide target_path.",
+        expected_answer_type="approval_and_patch",
+        allowed_response_schema={
+            "type": "object",
+            "properties": {
+                "approved": {"type": "boolean"},
+                "target_path": {"type": "string"},
+            },
+            "required": ["approved", "target_path"],
+        },
+        metadata={
+            "patch_targets": {
+                "approved": "policy.approved",
+                "target_path": "step.inputs.target_path",
+            },
+            "suggested_values": {"target_path": "outputs/reports/compound_suggested.txt"},
+        },
+    )
+
+    reply = UserSimulator(SimulatedPolicy()).reply(request)
+
+    assert reply.payload == {
+        "target_path": "outputs/reports/compound_suggested.txt",
+        "approved": True,
+    }
+
+
+def test_incomplete_compound_reply_is_not_counted_as_effective_patch() -> None:
+    workflow = Workflow.demo()
+    repair = RecoveryEngine()._repair_policy_failure(
+        _make_test_error(
+            workflow,
+            error_id="err_test_policy_incomplete_compound",
+            run_id="run_test_policy_incomplete_compound",
+            category=ErrorCategory.POLICY_FAILURE,
+            subtype="approval_required",
+            symptoms=["approval required"],
+            root_cause_hypothesis=["policy requires approval"],
+            failtax_label="policy_failure",
+        )
+    )
+    request = InteractionRequest(
+        interaction_id=f"int_{repair.repair_id}",
+        question="Approve this blocked action and provide target_path.",
+        expected_answer_type="approval_and_patch",
+        metadata={
+            "patch_targets": {
+                "approved": "policy.approved",
+                "target_path": "step.inputs.target_path",
+            },
+            "query_policy": {"question_type": "approval_and_patch"},
+        },
+    )
+    raw_reply = RawUserReply(
+        interaction_id=request.interaction_id,
+        raw_text="yes",
+        raw_payload={"approved": True},
+        accepted=True,
+        status="accept",
+    )
+
+    decoded = SemanticDecoder().decode(request, raw_reply)
+    reply = compile_decoded_signal_to_user_reply(request, raw_reply, decoded)
+    resume_patch = RepairUpdater().ingest_reply(workflow, repair, reply, {})
+    answer_patch = resume_patch.metadata["answer_patch"]
+
+    assert answer_patch["compound_reply_incomplete"] is True
+    assert answer_patch["missing_compound_fields"] == ["target_path"]
+    assert answer_patch["effective_patch"] is False
 
 
 def test_irrelevant_text_reply_is_not_semantically_usable() -> None:

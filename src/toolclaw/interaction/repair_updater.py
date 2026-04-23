@@ -63,6 +63,14 @@ class RepairUpdater:
             branch_options = [str(item) for item in repair.metadata.get("branch_options", []) if str(item)]
         stale_assets = [str(item) for item in repair.metadata.get("stale_assets", []) if str(item)]
         missing_assets = [str(item) for item in repair.metadata.get("missing_assets", []) if str(item)]
+        patch_targets = self._default_patch_targets(repair=repair, missing_input_keys=missing_input_keys)
+        suggested_values = self._suggested_values(
+            step=step,
+            repair=repair,
+            state_values=state_values,
+            patch_targets=patch_targets,
+            missing_input_keys=missing_input_keys,
+        )
         return InteractionRequest(
             interaction_id=f"int_{repair.repair_id}",
             question=self._default_question(repair=repair, step_id=step_id, missing_input_keys=missing_input_keys),
@@ -99,7 +107,8 @@ class RepairUpdater:
                 "branch_options": branch_options,
                 "missing_assets": missing_assets,
                 "stale_assets": stale_assets,
-                "patch_targets": self._default_patch_targets(repair=repair, missing_input_keys=missing_input_keys),
+                "patch_targets": patch_targets,
+                "suggested_values": suggested_values,
                 "primary_failtax": workflow.metadata.get("primary_failtax"),
                 "budget_profile": dict(workflow.metadata.get("budget_profile", {}))
                 if isinstance(workflow.metadata.get("budget_profile"), dict)
@@ -150,12 +159,24 @@ class RepairUpdater:
             policy_updates=policy_updates,
             binding_patch=binding_patch,
         )
+        expected_answer_type = str(reply.metadata.get("expected_answer_type") or "").strip().lower()
+        is_compound_reply = expected_answer_type == "approval_and_patch"
+        missing_compound_fields = self._missing_compound_fields(
+            expected_patch_targets=expected_patch_targets,
+            actual_patch_targets=actual_patch_targets,
+            is_compound_reply=is_compound_reply,
+        )
+        target_complete = (
+            not missing_compound_fields
+            if is_compound_reply
+            else self._targets_overlap(expected_patch_targets, actual_patch_targets)
+        )
         effective_patch = (
             bool(effect_scope)
             and decoded_is_usable
             and not semantic_conflict
             and target_alignment >= 0.5
-            and self._targets_overlap(expected_patch_targets, actual_patch_targets)
+            and target_complete
         )
         return ResumePatch(
             workflow=workflow,
@@ -188,6 +209,8 @@ class RepairUpdater:
                     "effect_scope": effect_scope or "none",
                     "expected_patch_targets": expected_patch_targets,
                     "actual_patch_targets": actual_patch_targets,
+                    "compound_reply_incomplete": bool(missing_compound_fields),
+                    "missing_compound_fields": missing_compound_fields,
                 },
             },
         )
@@ -337,6 +360,25 @@ class RepairUpdater:
         return bool(set(expected_patch_targets).intersection(set(actual_patch_targets)))
 
     @staticmethod
+    def _missing_compound_fields(
+        *,
+        expected_patch_targets: list[str],
+        actual_patch_targets: list[str],
+        is_compound_reply: bool,
+    ) -> list[str]:
+        if not is_compound_reply:
+            return []
+        expected = {str(item) for item in expected_patch_targets if str(item)}
+        actual = {str(item) for item in actual_patch_targets if str(item)}
+        missing: list[str] = []
+        if "approved" in expected and "approved" not in actual:
+            missing.append("approved")
+        non_approval_expected = sorted(expected - {"approved"})
+        if non_approval_expected and not actual.intersection(non_approval_expected):
+            missing.extend(non_approval_expected)
+        return missing
+
+    @staticmethod
     def _effect_scope(
         *,
         state_updates: Dict[str, Any],
@@ -403,6 +445,55 @@ class RepairUpdater:
         if repair.repair_type.value == "request_approval":
             patch_targets["approved"] = "policy.approved"
         return patch_targets
+
+    @staticmethod
+    def _suggested_values(
+        *,
+        step: Any,
+        repair: Repair,
+        state_values: Dict[str, Any],
+        patch_targets: Dict[str, str],
+        missing_input_keys: list[str],
+    ) -> Dict[str, Any]:
+        allowed_keys = {str(key) for key in missing_input_keys if str(key)}
+        for key, target in patch_targets.items():
+            key_text = str(key or "").strip()
+            target_text = str(target or "").strip()
+            if key_text and key_text != "approved":
+                allowed_keys.add(key_text)
+            if target_text.startswith("step.inputs."):
+                allowed_keys.add(target_text.split("step.inputs.", 1)[1])
+            elif target_text.startswith("state."):
+                allowed_keys.add(target_text.split("state.", 1)[1])
+        suggestions: Dict[str, Any] = {}
+
+        def merge_candidate(source: Any) -> None:
+            if not isinstance(source, dict):
+                return
+            for key, value in source.items():
+                key_text = str(key)
+                if key_text not in allowed_keys:
+                    continue
+                if key_text in suggestions:
+                    continue
+                if RepairUpdater._is_concrete_suggested_value(value):
+                    suggestions[key_text] = value
+
+        if step is not None:
+            merge_candidate(getattr(step, "metadata", {}).get("repair_default_inputs", {}))
+            merge_candidate(getattr(step, "metadata", {}).get("simulated_missing_arg_values", {}))
+        merge_candidate(repair.metadata.get("suggested_values", {}))
+        merge_candidate(state_values)
+        return suggestions
+
+    @staticmethod
+    def _is_concrete_suggested_value(value: Any) -> bool:
+        if value in (None, "", {}):
+            return False
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            return lowered not in {"unknown", "auto_filled_value", "placeholder", "none", "null"}
+        return True
 
     @staticmethod
     def _resolve_repair_step_id(workflow: Workflow, repair: Repair) -> str:
