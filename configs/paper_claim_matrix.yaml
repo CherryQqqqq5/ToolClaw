@@ -105,16 +105,19 @@
     },
     "reuse_exact_match_cost": {
       "status": "supported_narrow_evidence",
-      "benchmark_suite": "reuse_exact_match",
-      "claim": "Reuse currently supports a narrow exact-match cost-reduction claim under matched task signatures.",
+      "benchmark_suite": "toolsandbox_reuse_persistent_v1",
+      "claim": "Reuse supports a narrow exact/matched-signature second-run cost-reduction claim when persistent assets from pass1 reduce pass2 cost without lowering success.",
       "metrics": {
         "primary": [
-          "delta_tool_calls@exact_match_reuse",
-          "delta_repair_actions@exact_match_reuse"
+          "tool_call_reduction@warm_vs_cold",
+          "repair_reduction@warm_vs_cold",
+          "turn_reduction@warm_vs_cold"
         ],
         "supporting": [
-          "delta_user_turns@exact_match_reuse",
-          "delta_success@cross_family_transfer_reuse"
+          "reuse_hit_rate@warm",
+          "correct_source_match_rate@warm",
+          "reuse_false_positive_rate@sham",
+          "second_run_success_delta@warm_vs_cold"
         ]
       }
     }
@@ -264,6 +267,19 @@
       "post_analysis": [
         "reuse_strata",
         "reuse_headroom"
+      ],
+      "paper_role": "supporting_only"
+    },
+    "toolsandbox_reuse_persistent_v1": {
+      "status": "implemented",
+      "runner": "scripts/run_toolsandbox_reuse_persistent.py",
+      "score_script": "scripts/score_toolsandbox_reuse_persistent.py",
+      "default_source": "data/toolsandbox_reuse_persistent_v1.jsonl",
+      "default_mode": "planner",
+      "default_systems": "a3_interaction,a4_reuse_cold,a4_reuse_warm,a4_reuse_sham",
+      "default_num_runs": 3,
+      "claim_ids": [
+        "reuse_exact_match_cost"
       ],
       "paper_role": "supporting_only"
     }

@@ -45,6 +45,8 @@ data/bfcl_slices/*
 !data/toolsandbox.formal.eval.json
 !data/toolsandbox_interaction_live_v1.jsonl
 !data/toolsandbox_interaction_live_v1.manifest.json
+!data/toolsandbox_reuse_persistent_v1.jsonl
+!data/toolsandbox_reuse_persistent_v1.manifest.json
 !data/tau2_bench.formal.json
 !data/tau2_bench.approval_only.json
 !data/tau2_bench.binding_plus_approval_only.json
@@ -254,3 +256,15 @@ outputs/interaction_live_v1_formal/*
 !outputs/interaction_live_v1_formal/slice_summary.json
 !outputs/interaction_live_v1_formal/claim_summary.json
 !outputs/interaction_live_v1_formal/report.md
+
+# Keep ToolSandbox persistent reuse v1 formal summary bundle.
+!outputs/reuse_persistent_v1_formal/
+outputs/reuse_persistent_v1_formal/*
+!outputs/reuse_persistent_v1_formal/experiment_manifest.json
+!outputs/reuse_persistent_v1_formal/comparison.raw.csv
+!outputs/reuse_persistent_v1_formal/comparison.scored.csv
+!outputs/reuse_persistent_v1_formal/reuse_pair_effects.jsonl
+!outputs/reuse_persistent_v1_formal/reuse_effect_summary.json
+!outputs/reuse_persistent_v1_formal/reuse_stat_tests.json
+!outputs/reuse_persistent_v1_formal/claim_summary.json
+!outputs/reuse_persistent_v1_formal/report.md

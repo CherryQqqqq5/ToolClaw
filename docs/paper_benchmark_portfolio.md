@@ -59,9 +59,29 @@ This note updates the paper-facing benchmark plan after reviewing the current re
 - ToolSandbox official should stay the main headline benchmark.
 - ToolSandbox semantic-usefulness should be treated as a mechanism claim, not a whole-benchmark headline claim.
 - Planner should not be sold as a headline lift on ToolSandbox official until a planner-visible benchmark is added.
-- Reuse should stay scoped to matched-signature cost reduction.
+- Reuse should stay scoped to exact/matched-signature cost reduction, and persistent-reuse claims must use a two-stage registry protocol rather than same-process cache hits.
 - ToolGym is best treated as a later supplementary stress test, not the main paper anchor.
 - WebArena, WorkArena, and OSWorld are strong benchmarks, but they move the paper toward browser or computer-use agents rather than workflow intelligence over tool calling.
+
+## ToolSandbox persistent reuse boundary on 2026-04-23
+
+The paper-facing reuse path is now `toolsandbox_reuse_persistent_v1`, backed by a versioned paired source:
+
+- source: `data/toolsandbox_reuse_persistent_v1.jsonl`
+- manifest: `data/toolsandbox_reuse_persistent_v1.manifest.json`
+- runner: `scripts/run_toolsandbox_reuse_persistent.py`
+- scorer: `scripts/score_toolsandbox_reuse_persistent.py`
+
+The suite separates pass-1 asset compilation from pass-2 evaluation and compares four pass-2 arms: `a3_interaction`, `a4_reuse_cold`, `a4_reuse_warm`, and `a4_reuse_sham`. The `sham` arm is mandatory because a paper-safe persistent-reuse claim requires showing that unrelated registries do not produce the same benefit.
+
+Initial smoke status:
+
+- registry preflight passes and `a4_reuse_warm` can hit persistent assets.
+- `a4_reuse_cold` has no reuse hits, so same-invocation cache contamination is controlled.
+- `a4_reuse_sham` still shows high reuse hits with wrong source-family matches.
+- the current curated slice has no visible cost headroom: success, tool-call count, repair count, and user turns are already identical across cold and warm arms.
+
+This means the current suite is implemented, but the formal run is intentionally gated. It currently supports a diagnostic statement that persistent reuse is triggerable, while also exposing an over-broad retrieval / false-positive risk. It does not yet support a second-run cost-reduction paper claim.
 
 ## ToolSandbox causality boundary on 2026-04-23
 

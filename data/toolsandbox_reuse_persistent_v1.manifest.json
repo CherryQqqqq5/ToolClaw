@@ -1,0 +1,16 @@
+{
+  "dataset": "data/toolsandbox_reuse_persistent_v1.jsonl",
+  "source": "data/bench_slices/reuse_persistent.json",
+  "source_commit": "ef84d18db2d9dd30f4fffd225b629d627bce8a9b",
+  "pair_rule": "group rows named {family}__pass1/2 from data/bench_slices/reuse_persistent.json",
+  "signature_key": "sorted candidate tools plus normalized categories",
+  "family_count": 8,
+  "row_count": 8,
+  "anti_leakage_passed": true,
+  "statistical_claim_allowed": false,
+  "statistical_claim_note": "family_count < 20; report effect sizes and paired CIs, not strong significance claims",
+  "expansion_attempted": true,
+  "expansion_added": 0,
+  "expansion_note": "v1 uses the existing curated ToolSandbox reuse_persistent slice as the paper-safe source.",
+  "errors": []
+}
