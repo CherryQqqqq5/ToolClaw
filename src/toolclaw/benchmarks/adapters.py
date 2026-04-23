@@ -1219,6 +1219,7 @@ class ToolSandboxAdapter:
                 "repair_scored_success": 1.0 if repair_scored_success else 0.0,
                 "raw_execution_success": 1.0 if raw_trace_success else 0.0,
                 "interaction_contract_satisfied": 1.0 if interaction_contract_satisfied else 0.0,
+                "mean_user_queries": float(user_queries),
                 "repair_interaction_satisfied": 1.0 if repair_interaction_satisfied else 0.0,
                 "must_interact_query_rate": 1.0 if interaction_contract_satisfied else 0.0 if must_interact_expected else 1.0,
                 "success_given_query": 1.0 if (user_queries > 0 and strict_scored_success) else 0.0,

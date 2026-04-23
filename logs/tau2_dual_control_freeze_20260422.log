@@ -1,0 +1,47 @@
+[run_eval] start total_jobs=5 tasks=1 systems=5 outdir=outputs/paper_final_freeze_20260422/tau2_dual_control/runs/run_01
+[run_eval] start job=1/5 task=tau2_dual_control_001 system=a0_baseline
+[run_eval] done  job=1/5 task=tau2_dual_control_001 system=a0_baseline success=0 stop_reason=awaiting_user_interaction
+[run_eval] start job=2/5 task=tau2_dual_control_001 system=a1_recovery
+[run_eval] done  job=2/5 task=tau2_dual_control_001 system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=3/5 task=tau2_dual_control_001 system=a2_planner
+[run_eval] done  job=3/5 task=tau2_dual_control_001 system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=4/5 task=tau2_dual_control_001 system=a3_interaction
+[run_eval] done  job=4/5 task=tau2_dual_control_001 system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=5/5 task=tau2_dual_control_001 system=a4_reuse
+[run_eval] done  job=5/5 task=tau2_dual_control_001 system=a4_reuse success=0 stop_reason=max_user_turns_exceeded
+wrote: outputs/paper_final_freeze_20260422/tau2_dual_control/runs/run_01/comparison.csv
+wrote: outputs/paper_final_freeze_20260422/tau2_dual_control/runs/run_01/report.md
+[run_eval] start total_jobs=5 tasks=1 systems=5 outdir=outputs/paper_final_freeze_20260422/tau2_dual_control/runs/run_02
+[run_eval] start job=1/5 task=tau2_dual_control_001 system=a0_baseline
+[run_eval] done  job=1/5 task=tau2_dual_control_001 system=a0_baseline success=0 stop_reason=awaiting_user_interaction
+[run_eval] start job=2/5 task=tau2_dual_control_001 system=a1_recovery
+[run_eval] done  job=2/5 task=tau2_dual_control_001 system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=3/5 task=tau2_dual_control_001 system=a2_planner
+[run_eval] done  job=3/5 task=tau2_dual_control_001 system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=4/5 task=tau2_dual_control_001 system=a3_interaction
+[run_eval] done  job=4/5 task=tau2_dual_control_001 system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=5/5 task=tau2_dual_control_001 system=a4_reuse
+[run_eval] done  job=5/5 task=tau2_dual_control_001 system=a4_reuse success=0 stop_reason=max_user_turns_exceeded
+wrote: outputs/paper_final_freeze_20260422/tau2_dual_control/runs/run_02/comparison.csv
+wrote: outputs/paper_final_freeze_20260422/tau2_dual_control/runs/run_02/report.md
+[run_eval] start total_jobs=5 tasks=1 systems=5 outdir=outputs/paper_final_freeze_20260422/tau2_dual_control/runs/run_03
+[run_eval] start job=1/5 task=tau2_dual_control_001 system=a0_baseline
+[run_eval] done  job=1/5 task=tau2_dual_control_001 system=a0_baseline success=0 stop_reason=awaiting_user_interaction
+[run_eval] start job=2/5 task=tau2_dual_control_001 system=a1_recovery
+[run_eval] done  job=2/5 task=tau2_dual_control_001 system=a1_recovery success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=3/5 task=tau2_dual_control_001 system=a2_planner
+[run_eval] done  job=3/5 task=tau2_dual_control_001 system=a2_planner success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=4/5 task=tau2_dual_control_001 system=a3_interaction
+[run_eval] done  job=4/5 task=tau2_dual_control_001 system=a3_interaction success=1 stop_reason=success_criteria_satisfied
+[run_eval] start job=5/5 task=tau2_dual_control_001 system=a4_reuse
+[run_eval] done  job=5/5 task=tau2_dual_control_001 system=a4_reuse success=0 stop_reason=max_user_turns_exceeded
+wrote: outputs/paper_final_freeze_20260422/tau2_dual_control/runs/run_03/comparison.csv
+wrote: outputs/paper_final_freeze_20260422/tau2_dual_control/runs/run_03/report.md
+prepared tau2-bench taskset: outputs/paper_final_freeze_20260422/tau2_dual_control/prepared/tau2_bench.normalized.json
+outputs written under: outputs/paper_final_freeze_20260422/tau2_dual_control
+scoreboard: outputs/paper_final_freeze_20260422/tau2_dual_control/scoreboard.json
+per-system summary: outputs/paper_final_freeze_20260422/tau2_dual_control/per_system_summary.json
+suite: tau2_dual_control
+outdir: outputs/paper_final_freeze_20260422/tau2_dual_control
+manifest: outputs/paper_final_freeze_20260422/tau2_dual_control/manifest.json
+claim_summary: outputs/paper_final_freeze_20260422/tau2_dual_control/claim_summary.json

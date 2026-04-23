@@ -51,7 +51,13 @@ from toolclaw.compiler.swpc import SWPCCompiler, build_task_signature_candidates
 from toolclaw.execution.executor import ExecutorConfig, SequentialExecutor
 from toolclaw.execution.recovery import RecoveryConfig, RecoveryEngine
 from toolclaw.interaction.irc import InteractionLoopConfig, InteractionShell
-from toolclaw.interaction.reply_provider import CLIReplyProvider, HumanReplyProvider, LLMReplyProvider, OracleReplayProvider
+from toolclaw.interaction.reply_provider import (
+    CLIReplyProvider,
+    DeterministicNoisyReplyProvider,
+    HumanReplyProvider,
+    LLMReplyProvider,
+    OracleReplayProvider,
+)
 from toolclaw.interaction.repair_updater import RepairUpdater
 from toolclaw.interaction.semantic_decoder import SemanticDecoder
 from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
@@ -74,6 +80,8 @@ class SystemSpec:
     allow_suffix_replan: bool = True
     enable_core_grounding: bool = True
     enable_schema_preflight: bool = True
+    disable_user_queries: bool = False
+    noisy_user_replies: bool = False
 
 
 SYSTEM_SPECS: Dict[str, SystemSpec] = {
@@ -101,6 +109,38 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         allow_repair=True,
         allow_fallback=True,
         allow_suffix_replan=False,
+    ),
+    "a3_full_interaction": SystemSpec(
+        system_id="a3_full_interaction",
+        workflow_mode="planner",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=False,
+    ),
+    "a3_no_query": SystemSpec(
+        system_id="a3_no_query",
+        workflow_mode="planner",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=False,
+        disable_user_queries=True,
+    ),
+    "a3_noisy_user": SystemSpec(
+        system_id="a3_noisy_user",
+        workflow_mode="planner",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=False,
+        noisy_user_replies=True,
     ),
     "a4_reuse": SystemSpec(
         system_id="a4_reuse",
@@ -215,6 +255,9 @@ SYSTEM_ALIASES: Dict[str, str] = {
     "planning": "a2_planner",
     "interactive": "a3_interaction",
     "toolclaw_lite": "a3_interaction",
+    "full_interaction": "a3_full_interaction",
+    "no_query": "a3_no_query",
+    "noisy_user": "a3_noisy_user",
 }
 
 BFCL_ADAPTER = BFCLAdapter()
@@ -1443,7 +1486,8 @@ def parse_args() -> argparse.Namespace:
         default="a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
         help=(
             "Comma-separated systems to run: "
-            "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse. "
+            "a0_baseline,a1_recovery,a2_planner,a3_interaction,a3_full_interaction,"
+            "a3_no_query,a3_noisy_user,a4_reuse. "
             "Supported legacy aliases: baseline,planning,interactive,toolclaw_lite."
         ),
     )
@@ -1618,7 +1662,9 @@ def _reuse_rollback_decision(outcome: Any, trace_payload: Dict[str, Any]) -> Opt
     }
 
 
-def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any]) -> InteractionShell:
+def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any], spec: SystemSpec | None = None) -> InteractionShell:
+    if spec is None and isinstance(task.get("_system_spec"), SystemSpec):
+        spec = task["_system_spec"]
     policy_cfg = task.get("simulated_policy", {})
     simulator_policy = SimulatedPolicy(
         mode=policy_cfg.get("mode", "cooperative"),
@@ -1653,10 +1699,13 @@ def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any]) -> InteractionSh
             oracle_replies=list(task.get("oracle_user_replies", [])),
             fallback_provider=UserSimulator(simulator_policy),
         )
+    if spec is not None and spec.noisy_user_replies:
+        reply_provider = DeterministicNoisyReplyProvider()
     return InteractionShell(
         runtime=runtime,
         config=InteractionLoopConfig(
-            simulator_policy=simulator_policy
+            simulator_policy=simulator_policy,
+            disable_user_queries=bool(spec.disable_user_queries) if spec is not None else False,
         ),
         reply_provider=reply_provider,
         semantic_decoder=SemanticDecoder(),
@@ -2180,7 +2229,9 @@ def execute_system(
             reused_artifact=False,
         )
     request = build_planning_request(seed_workflow, allow_reuse=spec.use_reuse)
-    shell = build_shell(runtime, task)
+    shell_task = dict(task)
+    shell_task["_system_spec"] = spec
+    shell = build_shell(runtime, shell_task)
     outcome = shell.run(
         request=request,
         run_id=f"{spec.system_id}_{task_id}",

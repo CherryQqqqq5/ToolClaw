@@ -39,6 +39,38 @@ def _recompute_mean_success_rate(rows: list[dict[str, str]], system: str) -> flo
     return sum(sum(values) / len(values) for values in per_task.values()) / len(per_task)
 
 
+def test_build_scored_row_includes_mean_user_queries() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_toolsandbox_bench.py"
+    spec = importlib.util.spec_from_file_location("run_toolsandbox_bench_module_mean_user_queries", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    row = module._build_scored_row(
+        run_index=1,
+        raw_row={
+            "task_id": "toolsandbox_query_metric_001",
+            "system": "a3_full_interaction",
+            "success": "True",
+            "tool_calls": "1",
+            "user_turns": "2",
+            "trace_path": "trace.json",
+        },
+        score_payload={
+            "success": True,
+            "metrics": {
+                "strict_scored_success": 1.0,
+                "execution_verified_success": 1.0,
+                "mean_user_queries": 2.0,
+            },
+            "diagnostics": {"user_queries": 2, "categories": ["multiple_user_turn"]},
+        },
+    )
+
+    assert row["mean_user_queries"] == 2.0
+
+
 def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(tmp_path: Path) -> None:
     taskset = [
         {
@@ -170,6 +202,7 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "strict_scored_success" in report
     assert "repair_scored_success" in report
     assert "interaction_contract_satisfied" in report
+    assert "mean_user_queries" in report
     assert "proxy_summary_success" in report
     assert "raw_trace_success_rate" in report
     assert "raw_execution_success_rate" in report

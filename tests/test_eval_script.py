@@ -808,6 +808,51 @@ def test_execute_system_interaction_uses_same_planner_workflow_as_a2(monkeypatch
     assert row.system == "a3_interaction"
 
 
+def test_parse_systems_supports_interaction_causality_ablation_systems() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_causal_systems", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    systems = module.parse_systems("a3_full_interaction,a3_no_query,a3_noisy_user")
+
+    assert [system.system_id for system in systems] == [
+        "a3_full_interaction",
+        "a3_no_query",
+        "a3_noisy_user",
+    ]
+    assert systems[1].disable_user_queries is True
+    assert systems[2].noisy_user_replies is True
+
+
+def test_build_shell_applies_noisy_provider_from_system_spec() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_noisy_shell", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    shell = module.build_shell(
+        module.build_runtime(),
+        {"_system_spec": module.SYSTEM_SPECS["a3_noisy_user"]},
+    )
+    reply = shell.reply_provider.reply(
+        InteractionRequest(
+            interaction_id="int_noisy_001",
+            question="Provide the target path.",
+            expected_answer_type="target_path_patch",
+            metadata={"patch_targets": {"target_path": "step.inputs.target_path"}},
+        )
+    )
+
+    assert reply.status == "accept"
+    assert reply.metadata["noisy_reply"] is True
+    assert reply.payload
+
+
 def test_build_planning_request_preserves_approval_scope_metadata() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_approval_scope", module_path)

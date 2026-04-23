@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 import shlex
 import subprocess
@@ -84,6 +85,37 @@ class HumanStdinProvider:
 
 class HumanReplyProvider(HumanStdinProvider):
     """Compatibility alias for a human-backed reply provider."""
+
+
+@dataclass
+class DeterministicNoisyReplyProvider:
+    """Deterministic adversarial replies for interaction causality ablations."""
+
+    provider_name: str = "deterministic_noisy"
+
+    def reply(self, request: InteractionRequest) -> RawUserReply:
+        patch_targets = dict(request.metadata.get("patch_targets", {}))
+        choices = [
+            ("I don't know", {"raw_text": "I don't know"}),
+            ("irrelevant answer", {"raw_text": "irrelevant answer"}),
+            ("wrong parameter", {"input_patch": {"value": "wrong_parameter"}}),
+        ]
+        digest = hashlib.sha256(str(request.interaction_id).encode("utf-8")).hexdigest()
+        index = int(digest[:8], 16) % len(choices)
+        raw_text, payload = choices[index]
+        return RawUserReply(
+            interaction_id=request.interaction_id,
+            raw_text=raw_text,
+            raw_payload=payload,
+            status="accept",
+            accepted=True,
+            metadata={
+                "provider": self.provider_name,
+                "noisy_reply": True,
+                "noise_index": index,
+                "patch_targets": patch_targets,
+            },
+        )
 
 
 @dataclass

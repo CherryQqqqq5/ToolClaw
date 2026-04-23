@@ -27,6 +27,7 @@ class InteractionLoopConfig:
     max_turns: int = 3
     reply_timeout_s: float = 45.0
     simulator_policy: SimulatedPolicy = field(default_factory=SimulatedPolicy)
+    disable_user_queries: bool = False
 
 
 class InteractionShell:
@@ -133,6 +134,17 @@ class InteractionShell:
                     "interaction_probe": True,
                 },
             )
+            if self.config.disable_user_queries:
+                self._append_query_suppressed_event(
+                    combined_trace,
+                    query=probe_query,
+                    turn_index=turns,
+                    reason="query_disabled",
+                    necessary=True,
+                )
+                self._finalize_interaction_metrics(combined_trace, interaction_stats)
+                self._write_trace(output_path, combined_trace)
+                return outcome
             probe_reply = self._decode_to_user_reply(probe_query, self._reply_with_timeout(probe_query))
             self._append_interaction_events(combined_trace, query=probe_query, reply=probe_reply, turn_index=turns)
             self._finalize_interaction_metrics(combined_trace, interaction_stats)
@@ -186,6 +198,32 @@ class InteractionShell:
                 repeat_count=repeat_count,
                 backup_tool_map=backup_tool_map or {},
             )
+            if self.config.disable_user_queries:
+                self._append_query_suppressed_event(
+                    combined_trace,
+                    query=query,
+                    turn_index=turns,
+                    reason="query_disabled",
+                    necessary=necessary_question,
+                )
+                self._finalize_interaction_metrics(combined_trace, interaction_stats)
+                self._finalize_combined_trace(
+                    combined_trace,
+                    output_path=output_path,
+                    success=False,
+                    stop_reason="query_disabled",
+                )
+                return ExecutionOutcome(
+                    run_id=outcome.run_id,
+                    workflow=outcome.workflow,
+                    success=False,
+                    blocked=False,
+                    pending_interaction=None,
+                    final_state=outcome.final_state,
+                    trace_path=outcome.trace_path,
+                    last_error_id=outcome.last_error_id,
+                    metadata={"stopped_reason": "query_disabled"},
+                )
             auto_reply = self._repeat_failure_reply(
                 query=query,
                 outcome=outcome,
@@ -406,6 +444,44 @@ class InteractionShell:
             metadata["oracle_reply_consumed_count"] = int(metadata.get("oracle_reply_consumed_count", 0)) + 1
         if bool(reply_metadata.get("oracle_reply_mismatch")):
             metadata["oracle_reply_mismatch_count"] = int(metadata.get("oracle_reply_mismatch_count", 0)) + 1
+
+    @staticmethod
+    def _append_query_suppressed_event(
+        trace_payload: Dict[str, Any],
+        *,
+        query: Any,
+        turn_index: int,
+        reason: str,
+        necessary: bool,
+    ) -> None:
+        events = trace_payload.setdefault("events", [])
+        metadata = trace_payload.setdefault("metadata", {})
+        metadata["query_suppressed_count"] = int(metadata.get("query_suppressed_count", 0)) + 1
+        events.append(
+            {
+                "event_id": f"evt_query_suppressed_{turn_index:02d}",
+                "timestamp": utc_now_iso(),
+                "step_id": query.context_summary.get("step_id"),
+                "event_type": "query_suppressed",
+                "actor": "interaction_shell",
+                "tool_id": None,
+                "input_ref": None,
+                "tool_args": None,
+                "output": {
+                    "reason": reason,
+                    "question": query.question,
+                    "expected_answer_type": query.expected_answer_type,
+                    "necessary": bool(necessary),
+                },
+                "message": query.question,
+                "metadata": {
+                    "interaction_id": query.interaction_id,
+                    "query_metadata": dict(query.metadata),
+                    "query_policy_decision": dict(query.metadata.get("query_policy", {})),
+                    "patch_targets": dict(query.metadata.get("patch_targets", {})),
+                },
+            }
+        )
 
     @staticmethod
     def _merge_trace_payloads(base_trace: Dict[str, Any], new_trace: Dict[str, Any]) -> Dict[str, Any]:

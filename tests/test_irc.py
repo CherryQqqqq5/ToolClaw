@@ -427,6 +427,46 @@ def test_interaction_shell_reply_timeout_abstains_instead_of_hanging(tmp_path: P
     assert outcome.metadata.get("stopped_reason") in {"policy_compliant_stop", "repeat_failure_abort", "interaction_turn_limit"}
 
 
+def test_interaction_shell_can_suppress_user_queries_without_fake_reply(tmp_path: Path) -> None:
+    registry = InMemoryAssetRegistry()
+    runtime = ToolClawRuntime(
+        planner=build_default_planner(asset_registry=registry),
+        executor=SequentialExecutor(),
+        repair_updater=RepairUpdater(),
+        compiler=SWPCCompiler(),
+        asset_registry=registry,
+    )
+    shell = InteractionShell(
+        runtime=runtime,
+        config=InteractionLoopConfig(max_turns=1, disable_user_queries=True),
+    )
+    workflow = Workflow.demo()
+    workflow.execution_plan[1].inputs["force_environment_failure"] = True
+    request = PlanningRequest(
+        task=workflow.task,
+        context=workflow.context,
+        policy=workflow.policy,
+    )
+    trace_path = tmp_path / "no_query_trace.json"
+
+    outcome = shell.run(
+        request=request,
+        run_id="run_no_query_001",
+        output_path=str(trace_path),
+        seed_workflow=workflow,
+        compile_on_success=False,
+    )
+
+    assert outcome.success is False
+    assert outcome.metadata["stopped_reason"] == "query_disabled"
+    trace_payload = __import__("json").loads(trace_path.read_text(encoding="utf-8"))
+    event_types = [event["event_type"] for event in trace_payload["events"]]
+    assert "query_suppressed" in event_types
+    assert "user_query" not in event_types
+    assert "user_reply" not in event_types
+    assert trace_payload["metadata"]["query_suppressed_count"] == 1
+
+
 def test_interaction_shell_resolves_approval_and_required_state_slot_in_one_turn(tmp_path: Path) -> None:
     registry = InMemoryAssetRegistry()
     runtime = ToolClawRuntime(
