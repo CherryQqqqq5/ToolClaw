@@ -31,7 +31,7 @@
 
 这次用了一个版本化的小切片：
 
-- [grounding_repair_applied_audit_v1.jsonl](/Users/cherry/mnt/ToolClaw/data/bfcl_slices/grounding_repair_applied_audit_v1.jsonl)
+- [grounding_repair_applied_audit_v1.jsonl](../data/bfcl_slices/grounding_repair_applied_audit_v1.jsonl)
 
 组成：
 
@@ -60,17 +60,17 @@
 
 相关文件：
 
-- [recovery.py](/Users/cherry/mnt/ToolClaw/src/toolclaw/execution/recovery.py)
-- [uncertainty_detector.py](/Users/cherry/mnt/ToolClaw/src/toolclaw/interaction/uncertainty_detector.py)
-- [test_recovery.py](/Users/cherry/mnt/ToolClaw/tests/test_recovery.py)
-- [test_uncertainty_detector.py](/Users/cherry/mnt/ToolClaw/tests/test_uncertainty_detector.py)
+- [recovery.py](../src/toolclaw/execution/recovery.py)
+- [uncertainty_detector.py](../src/toolclaw/interaction/uncertainty_detector.py)
+- [test_recovery.py](../tests/test_recovery.py)
+- [test_uncertainty_detector.py](../tests/test_uncertainty_detector.py)
 
 ### v1 结果
 
 结果文件：
 
-- [official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v1/official_scoreboard.json)
-- [toolclaw_diagnostics.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v1/toolclaw_diagnostics.json)
+- [official_scoreboard.json](../outputs/bfcl_grounding_repair_audit_v1/official_scoreboard.json)
+- [toolclaw_diagnostics.json](../outputs/bfcl_grounding_repair_audit_v1/toolclaw_diagnostics.json)
 
 official success：
 
@@ -113,15 +113,15 @@ official success：
 
 相关文件：
 
-- [bfcl_runtime.py](/Users/cherry/mnt/ToolClaw/src/toolclaw/bfcl_runtime.py)
-- [test_bfcl_scripts.py](/Users/cherry/mnt/ToolClaw/tests/test_bfcl_scripts.py)
+- [bfcl_runtime.py](../src/toolclaw/bfcl_runtime.py)
+- [test_bfcl_scripts.py](../tests/test_bfcl_scripts.py)
 
 ### v2 结果
 
 结果文件：
 
-- [official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v2/official_scoreboard.json)
-- [toolclaw_diagnostics.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v2/toolclaw_diagnostics.json)
+- [official_scoreboard.json](../outputs/bfcl_grounding_repair_audit_v2/official_scoreboard.json)
+- [toolclaw_diagnostics.json](../outputs/bfcl_grounding_repair_audit_v2/toolclaw_diagnostics.json)
 
 official success：
 
@@ -165,16 +165,16 @@ official success：
 
 相关文件：
 
-- [bfcl_runtime.py](/Users/cherry/mnt/ToolClaw/src/toolclaw/bfcl_runtime.py)
-- [test_bfcl_scripts.py](/Users/cherry/mnt/ToolClaw/tests/test_bfcl_scripts.py)
+- [bfcl_runtime.py](../src/toolclaw/bfcl_runtime.py)
+- [test_bfcl_scripts.py](../tests/test_bfcl_scripts.py)
 
 ### v3 结果
 
 结果文件：
 
-- [official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v3/official_scoreboard.json)
-- [toolclaw_diagnostics.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v3/toolclaw_diagnostics.json)
-- [claim_summary.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v3/claim_summary.json)
+- [official_scoreboard.json](../outputs/bfcl_grounding_repair_audit_v3/official_scoreboard.json)
+- [toolclaw_diagnostics.json](../outputs/bfcl_grounding_repair_audit_v3/toolclaw_diagnostics.json)
+- [claim_summary.json](../outputs/bfcl_grounding_repair_audit_v3/claim_summary.json)
 
 official success：
 

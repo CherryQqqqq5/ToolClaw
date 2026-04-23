@@ -104,9 +104,9 @@
       }
     },
     "reuse_exact_match_cost": {
-      "status": "supported_narrow_evidence",
+      "status": "evidence_pending_headroom_and_false_positive_fix",
       "benchmark_suite": "toolsandbox_reuse_persistent_v1",
-      "claim": "Reuse supports a narrow exact/matched-signature second-run cost-reduction claim when persistent assets from pass1 reduce pass2 cost without lowering success.",
+      "claim": "Reuse is being tested under a narrow exact/matched-signature second-run cost-reduction protocol; current ToolSandbox persistent-reuse V1 smoke is diagnostic only until sham false positives and missing cost headroom are resolved.",
       "metrics": {
         "primary": [
           "tool_call_reduction@warm_vs_cold",

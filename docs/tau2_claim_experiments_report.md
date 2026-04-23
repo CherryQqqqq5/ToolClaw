@@ -8,7 +8,8 @@ Included experiments:
 
 - `exp09_tau2_a2fix_r3_openrouter`
 - `exp07_tau2_approval_only_r3_openrouter`
-- `exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter`
+- historical: `exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter`
+- current fixed rerun: `outputs/tau2_compound_approval_fix_r10_20260423_v2`
 
 Excluded from this report:
 
@@ -31,7 +32,7 @@ The concrete claim questions were:
 
 1. Can interaction-enabled systems solve approval-gated Tau2 tasks after the semantic fix?
 2. After the `a2` fix, does `a2_planner` behave like `a1_recovery + planner` on the full benchmark?
-3. Is the apparent `a4_reuse` advantage on `tau2_binding_plus_approval_001` stable, or only a reuse-state artifact?
+3. After the compound-approval fix, do interaction-enabled systems solve `tau2_binding_plus_approval_001` in isolated repeated evaluation?
 
 ## 3. Relevant code changes
 
@@ -235,10 +236,23 @@ Generated file:
 
 ### 7.3 Entry
 
+Historical run:
+
 ```bash
 python3 scripts/run_tau2_bench.py \
   --source data/tau2_bench.binding_plus_approval_only.json \
   --outdir outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter \
+  --mode planner \
+  --systems a3_interaction,a4_reuse \
+  --num-runs 10
+```
+
+Current fixed rerun:
+
+```bash
+python3 scripts/run_tau2_bench.py \
+  --source data/tau2_bench.binding_plus_approval_only.json \
+  --outdir outputs/tau2_compound_approval_fix_r10_20260423_v2 \
   --mode planner \
   --systems a3_interaction,a4_reuse \
   --num-runs 10
@@ -250,37 +264,35 @@ Recorded result:
 
 ### 7.4 Output files
 
-- Outdir: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter`
-- Scoreboard: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/scoreboard.json`
-- Comparison CSV: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/comparison.csv`
-- Per-system summary: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter/per_system_summary.json`
+- Historical outdir: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter`
+- Current fixed outdir: `outputs/tau2_compound_approval_fix_r10_20260423_v2`
+- Current scoreboard: `outputs/tau2_compound_approval_fix_r10_20260423_v2/scoreboard.json`
+- Current comparison CSV: `outputs/tau2_compound_approval_fix_r10_20260423_v2/comparison.csv`
+- Current per-system summary: `outputs/tau2_compound_approval_fix_r10_20260423_v2/per_system_summary.json`
 
 ### 7.5 Final results
 
 | System | Mean success rate | Pass@k | Consistency |
 | --- | ---: | ---: | ---: |
-| `a3_interaction` | 0.0000 | 0.0000 | 1.0000 |
-| `a4_reuse` | 0.0000 | 0.0000 | 1.0000 |
+| `a3_interaction` | 1.0000 | 1.0000 | 1.0000 |
+| `a4_reuse` | 1.0000 | 1.0000 | 1.0000 |
 
-Per-sample result for both systems:
+Per-sample result for both systems in the current fixed rerun:
 
 - `tau2_binding_plus_approval_001`
-  - `success_rate = 0.0`
-  - `stop_reason = max_user_turns_exceeded` in all 10 runs
+  - `success_rate = 1.0`
   - `approval_following = 1.0`
-  - `interaction_efficiency = 1.0`
-  - `repair_triggered = 2`
-  - `reused_artifact = False`
+  - `interactive_correction = 6.0`
 
 ### 7.6 Conclusion
 
-This experiment overturns the earlier tentative interpretation that `a4_reuse` robustly solves `tau2_binding_plus_approval_001`.
+The current fixed rerun overturns the historical `exp08` limitation. After the compound-approval fix, both interaction-enabled systems robustly solve `tau2_binding_plus_approval_001` in isolated repeated evaluation.
 
-What `exp08` shows:
+What the current fixed rerun shows:
 
-- in isolated repeated evaluation, both `a3_interaction` and `a4_reuse` fail `tau2_binding_plus_approval_001` with the same failure mode
-- the earlier `a4_reuse` success in mixed-task runs is therefore not stable evidence of an intrinsic per-sample capability
-- the most defensible interpretation is that the earlier `a4_reuse` success depended on reuse state induced by the surrounding multi-task slice
+- `a3_interaction` and `a4_reuse` both solve the compound approval + binding task from cold start
+- `a4_reuse` does not improve over `a3_interaction` on this isolated task
+- the supported claim is interaction-enabled compound approval repair, not an independent reuse gain
 
 ## 8. Final claim status
 
@@ -289,8 +301,8 @@ What `exp08` shows:
 1. The step-local approval fix is real and necessary.
    - Approval handling must be attached to the Tau2 failure step rather than applied as a task-global gate.
 
-2. `a3_interaction` and `a4_reuse` both solve pure approval-gated Tau2 tasks after the fix.
-   - Supported by `tau2_approval_gate_001` and `tau2_dual_control_001`.
+2. `a3_interaction` and `a4_reuse` both solve approval-gated Tau2 tasks after the fix.
+   - Supported by `tau2_approval_gate_001`, `tau2_dual_control_001`, and the fixed isolated `tau2_binding_plus_approval_001` 10-run rerun.
 
 3. After the system-definition fix, `a2_planner` behaves like `a1_recovery + planner` on the full Tau2 benchmark.
    - In `exp09`, `a1_recovery` and `a2_planner` tie at `0.5000`.
@@ -300,19 +312,16 @@ What `exp08` shows:
 
 ### 8.2 Claims not currently supported
 
-1. "`a4_reuse` robustly solves `tau2_binding_plus_approval_001`."
-   - `exp08` directly falsifies this as a stable claim.
-
-2. "`reuse` currently provides a stable advantage on compound approval + binding recovery."
-   - There is a mixed-slice positive result in `exp07`, but it does not survive isolated repetition.
+1. "`reuse` currently provides a stable advantage over interaction on compound approval + binding recovery."
+   - The fixed isolated rerun has `a3_interaction = 1.0` and `a4_reuse = 1.0`, so it supports interaction capability but not reuse lift.
 
 ### 8.3 Most defensible paper-facing summary
 
 The strongest paper-safe interpretation of the current Tau2 evidence is:
 
 - the approval bug was first separated into an accounting problem and then corrected at the execution-semantics level
-- after the semantic fix, interaction-enabled systems (`a3`, `a4`) can reliably solve pure approval-gated Tau2 tasks
+- after the semantic and compound-approval fixes, interaction-enabled systems (`a3`, `a4`) can reliably solve pure approval-gated Tau2 tasks and the isolated compound approval + binding stress task
 - after the `a2` system-definition fix, `a2` now matches `a1` on the full benchmark, so the previous `a2` deficit was an implementation error rather than a meaningful scientific result
-- however, the compound task `tau2_binding_plus_approval_001` remains unsolved under isolated repeated evaluation, including for `a4_reuse`
+- however, the fixed compound result does not show an independent `a4_reuse` advantage over `a3_interaction`
 
-Therefore the current Tau2 evidence supports a claim about approval semantics and pure approval recovery, but it does not support a strong claim about robust compound approval + repair recovery.
+Therefore the current Tau2 evidence supports a claim about interaction-enabled approval semantics and compound approval repair, but it does not support a reuse-over-interaction claim.

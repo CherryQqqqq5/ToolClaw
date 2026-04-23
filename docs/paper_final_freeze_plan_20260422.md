@@ -43,11 +43,11 @@ It does **not** yet support:
 ### Appendix / analysis
 
 - BFCL grounded slice analysis
-  - [/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_triggered_preflight_v3/official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_triggered_preflight_v3/official_scoreboard.json)
-  - [/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_medium_v5/official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_medium_v5/official_scoreboard.json)
-  - [/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v3/official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v3/official_scoreboard.json)
+  - [outputs/bfcl_grounding_triggered_preflight_v3/official_scoreboard.json](../outputs/bfcl_grounding_triggered_preflight_v3/official_scoreboard.json)
+  - [outputs/bfcl_grounding_fix_medium_v5/official_scoreboard.json](../outputs/bfcl_grounding_fix_medium_v5/official_scoreboard.json)
+  - [outputs/bfcl_grounding_repair_audit_v3/official_scoreboard.json](../outputs/bfcl_grounding_repair_audit_v3/official_scoreboard.json)
 - BFCL repair evolution analysis
-  - [/Users/cherry/mnt/ToolClaw/docs/bfcl_grounding_repair_audit_progress_20260422_zh.md](/Users/cherry/mnt/ToolClaw/docs/bfcl_grounding_repair_audit_progress_20260422_zh.md)
+  - [docs/bfcl_grounding_repair_audit_progress_20260422_zh.md](../docs/bfcl_grounding_repair_audit_progress_20260422_zh.md)
 - Tau-bench supporting-only results
 - reuse exact-match narrow evidence
 
@@ -55,16 +55,16 @@ It does **not** yet support:
 
 ### Versioned inputs
 
-- [/Users/cherry/mnt/ToolClaw/data/bfcl_slices/grounding_triggered_preflight_v1.jsonl](/Users/cherry/mnt/ToolClaw/data/bfcl_slices/grounding_triggered_preflight_v1.jsonl)
-- [/Users/cherry/mnt/ToolClaw/data/bfcl_slices/grounding_delta_cases_v1.jsonl](/Users/cherry/mnt/ToolClaw/data/bfcl_slices/grounding_delta_cases_v1.jsonl)
-- [/Users/cherry/mnt/ToolClaw/data/bfcl_slices/grounding_repair_applied_audit_v1.jsonl](/Users/cherry/mnt/ToolClaw/data/bfcl_slices/grounding_repair_applied_audit_v1.jsonl)
-- [/Users/cherry/mnt/ToolClaw/data/bfcl_slices/manifest.json](/Users/cherry/mnt/ToolClaw/data/bfcl_slices/manifest.json)
+- [data/bfcl_slices/grounding_triggered_preflight_v1.jsonl](../data/bfcl_slices/grounding_triggered_preflight_v1.jsonl)
+- [data/bfcl_slices/grounding_delta_cases_v1.jsonl](../data/bfcl_slices/grounding_delta_cases_v1.jsonl)
+- [data/bfcl_slices/grounding_repair_applied_audit_v1.jsonl](../data/bfcl_slices/grounding_repair_applied_audit_v1.jsonl)
+- [data/bfcl_slices/manifest.json](../data/bfcl_slices/manifest.json)
 
 ### Summary bundles
 
-- [/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_triggered_preflight_v3/claim_summary.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_triggered_preflight_v3/claim_summary.json)
-- [/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_medium_v5/claim_summary.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_medium_v5/claim_summary.json)
-- [/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v3/claim_summary.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v3/claim_summary.json)
+- [outputs/bfcl_grounding_triggered_preflight_v3/claim_summary.json](../outputs/bfcl_grounding_triggered_preflight_v3/claim_summary.json)
+- [outputs/bfcl_grounding_fix_medium_v5/claim_summary.json](../outputs/bfcl_grounding_fix_medium_v5/claim_summary.json)
+- [outputs/bfcl_grounding_repair_audit_v3/claim_summary.json](../outputs/bfcl_grounding_repair_audit_v3/claim_summary.json)
 
 ## Remaining Work
 
@@ -93,4 +93,4 @@ If not, do **not** continue iterating broadly on BFCL.
   - `report.md`
   - `latest_run_report.md`
 - ensure no paper-facing BFCL bundle depends on `/tmp/...` inputs
-- ensure the final claim wording in [/Users/cherry/mnt/ToolClaw/configs/paper_claim_matrix.yaml](/Users/cherry/mnt/ToolClaw/configs/paper_claim_matrix.yaml) matches the frozen evidence level
+- ensure the final claim wording in [configs/paper_claim_matrix.yaml](../configs/paper_claim_matrix.yaml) matches the frozen evidence level

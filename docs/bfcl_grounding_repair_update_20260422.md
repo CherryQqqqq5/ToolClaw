@@ -32,9 +32,9 @@ Implemented changes:
 ## Focused smoke results
 
 Result bundle:
-- [outputs/bfcl_grounding_fix_smoke_v4/official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_smoke_v4/official_scoreboard.json)
-- [outputs/bfcl_grounding_fix_smoke_v4/toolclaw_diagnostics.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_smoke_v4/toolclaw_diagnostics.json)
-- [outputs/bfcl_grounding_fix_smoke_v4/claim_summary.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_smoke_v4/claim_summary.json)
+- [outputs/bfcl_grounding_fix_smoke_v4/official_scoreboard.json](../outputs/bfcl_grounding_fix_smoke_v4/official_scoreboard.json)
+- [outputs/bfcl_grounding_fix_smoke_v4/toolclaw_diagnostics.json](../outputs/bfcl_grounding_fix_smoke_v4/toolclaw_diagnostics.json)
+- [outputs/bfcl_grounding_fix_smoke_v4/claim_summary.json](../outputs/bfcl_grounding_fix_smoke_v4/claim_summary.json)
 
 Official success:
 
@@ -52,7 +52,7 @@ Key interpretation:
 ## Targeted news-routing validation
 
 Result bundle:
-- [outputs/bfcl_grounding_news_fix_smoke/official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_news_fix_smoke/official_scoreboard.json)
+- [outputs/bfcl_grounding_news_fix_smoke/official_scoreboard.json](../outputs/bfcl_grounding_news_fix_smoke/official_scoreboard.json)
 
 This smoke specifically included:
 
@@ -75,9 +75,9 @@ Important consequence:
 
 Latest credible medium bundle:
 
-- [outputs/bfcl_grounding_fix_medium_v4/official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_medium_v4/official_scoreboard.json)
-- [outputs/bfcl_grounding_fix_medium_v4/toolclaw_diagnostics.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_medium_v4/toolclaw_diagnostics.json)
-- [outputs/bfcl_grounding_fix_medium_v4/claim_summary.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_medium_v4/claim_summary.json)
+- [outputs/bfcl_grounding_fix_medium_v4/official_scoreboard.json](../outputs/bfcl_grounding_fix_medium_v4/official_scoreboard.json)
+- [outputs/bfcl_grounding_fix_medium_v4/toolclaw_diagnostics.json](../outputs/bfcl_grounding_fix_medium_v4/toolclaw_diagnostics.json)
+- [outputs/bfcl_grounding_fix_medium_v4/claim_summary.json](../outputs/bfcl_grounding_fix_medium_v4/claim_summary.json)
 
 Official success:
 

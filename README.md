@@ -16,9 +16,10 @@ Paper-facing benchmark planning now lives in [docs/paper_benchmark_portfolio.md]
 
 - Phase-1 contract: implemented and reproducible
 - Phase-2 follow-ups: partially implemented and partially validated
-- Main headline benchmark result: unchanged from the current archived official ToolSandbox report
+- Main headline benchmark result: frozen in `outputs/paper_final_freeze_20260422/toolsandbox_official`
 - Reuse-specific regression on the targeted core follow-up bench: fixed
-- Evidence for exact-match reuse cost reduction on high-headroom recovery cases: established on targeted Tau2 follow-ups
+- Evidence for exact-match reuse cost reduction on high-headroom recovery cases: established on targeted Tau2 follow-ups, but not yet reproduced by the ToolSandbox persistent-reuse V1 suite
+- ToolSandbox persistent-reuse V1: implemented, but current smoke is gated by sham false positives and missing cost headroom
 - Evidence for `a4 > a3`: still not established
 - Evidence for broad transfer-reuse gains: still not established
 
@@ -99,22 +100,22 @@ Current repository-non-claims:
 
 ### Official 88-sample ToolSandbox benchmark
 
-The current archived headline result remains the official report in [docs/toolsandbox_all_experiments_report.md](docs/toolsandbox_all_experiments_report.md).
+The current paper-facing frozen headline result is `outputs/paper_final_freeze_20260422/toolsandbox_official`.
 
 Current repo-supported headline numbers:
 
 | system | mean_success_rate | pass@k | consistency |
 | --- | ---: | ---: | ---: |
-| `a0_baseline` | 0.659 | 0.659 | 1.000 |
-| `a1_recovery` | 0.693 | 0.693 | 1.000 |
-| `a2_planner` | 0.693 | 0.693 | 1.000 |
+| `a0_baseline` | 0.636 | 0.636 | 1.000 |
+| `a1_recovery` | 0.682 | 0.682 | 1.000 |
+| `a2_planner` | 0.625 | 0.625 | 1.000 |
 | `a3_interaction` | 1.000 | 1.000 | 1.000 |
 | `a4_reuse` | 1.000 | 1.000 | 1.000 |
 
 Interpretation:
 
 - interaction is still the dominant capability jump
-- planner does not yet show a visible main-benchmark lift over recovery-only
+- planner does not show a visible main-benchmark lift over recovery-only in the frozen run
 - reuse matches interaction on the official benchmark but does not exceed it
 
 ### Historical core-slice reuse problem
@@ -123,7 +124,7 @@ The historical pre-fix mechanism analysis showed:
 
 - on the bundled 14-sample core slice, `a4_reuse = 0.857 < a3_interaction = 0.929`
 - reuse held-out split did not show a stable success gain
-- Tau2 evidence did not justify a strong claim that `a4` could reliably solve compound approval+repair from cold start
+- older Tau2 evidence did not justify a strong compound approval+repair claim; the 2026-04-23 v2 rerun now solves the isolated compound task for `a3` and `a4`, but reuse still does not exceed interaction
 
 These older results should still be treated as the historical reason the reuse and interaction fixes were added.
 

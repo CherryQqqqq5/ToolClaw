@@ -134,7 +134,7 @@ Main evidence:
 
 Paper-safe summary:
 
-- `a3_interaction` and `a4_reuse` reach `1.000` mean success on the official ToolSandbox benchmark, while non-interaction variants remain in the `0.659` to `0.693` range.
+- `a3_interaction` and `a4_reuse` reach `1.000` mean success on the official ToolSandbox benchmark, while non-interaction variants remain in the `0.625` to `0.682` range on the 2026-04-22 frozen run.
 
 ### 5.2 Planner claim
 
@@ -207,7 +207,7 @@ Reason:
 
 - on the bundled core slice, `a4 < a3`
 - the reuse split is saturated and shows no held-out success gain
-- isolated Tau2 stress (`exp08`) falsifies a strong compound approval+repair reuse claim
+- the current fixed Tau2 isolated stress solves compound approval+repair for both `a3` and `a4`, but still falsifies a reuse-over-interaction claim
 
 ### 6.2 Strict monotonic ladder claim
 
@@ -346,8 +346,8 @@ Use:
 Main message:
 
 - approval semantics matter
-- interaction solves pure approval tasks
-- compound approval+repair remains a limitation
+- interaction solves pure approval tasks and the fixed isolated compound approval+repair stress
+- reuse-over-interaction on compound approval+repair remains unsupported
 
 ### 8.5 Limitations
 
@@ -393,10 +393,10 @@ BFCL should currently be frozen as **mechanism evidence**, not as a guaranteed t
 
 Frozen BFCL analysis assets:
 
-- [/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_triggered_preflight_v3/official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_triggered_preflight_v3/official_scoreboard.json)
-- [/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_medium_v5/official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_fix_medium_v5/official_scoreboard.json)
-- [/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v3/official_scoreboard.json](/Users/cherry/mnt/ToolClaw/outputs/bfcl_grounding_repair_audit_v3/official_scoreboard.json)
-- [/Users/cherry/mnt/ToolClaw/docs/bfcl_grounding_repair_audit_progress_20260422_zh.md](/Users/cherry/mnt/ToolClaw/docs/bfcl_grounding_repair_audit_progress_20260422_zh.md)
+- [outputs/bfcl_grounding_triggered_preflight_v3/official_scoreboard.json](../outputs/bfcl_grounding_triggered_preflight_v3/official_scoreboard.json)
+- [outputs/bfcl_grounding_fix_medium_v5/official_scoreboard.json](../outputs/bfcl_grounding_fix_medium_v5/official_scoreboard.json)
+- [outputs/bfcl_grounding_repair_audit_v3/official_scoreboard.json](../outputs/bfcl_grounding_repair_audit_v3/official_scoreboard.json)
+- [docs/bfcl_grounding_repair_audit_progress_20260422_zh.md](../docs/bfcl_grounding_repair_audit_progress_20260422_zh.md)
 
 Current interpretation:
 

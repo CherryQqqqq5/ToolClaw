@@ -146,9 +146,9 @@ Aggregate:
 
 | system | mean_success_rate | pass@k | consistency |
 | --- | ---: | ---: | ---: |
-| `a0_baseline` | 0.659 | 0.659 | 1.000 |
-| `a1_recovery` | 0.693 | 0.693 | 1.000 |
-| `a2_planner` | 0.693 | 0.693 | 1.000 |
+| `a0_baseline` | 0.636 | 0.636 | 1.000 |
+| `a1_recovery` | 0.682 | 0.682 | 1.000 |
+| `a2_planner` | 0.625 | 0.625 | 1.000 |
 | `a3_interaction` | 1.000 | 1.000 | 1.000 |
 | `a4_reuse` | 1.000 | 1.000 | 1.000 |
 
@@ -157,8 +157,8 @@ Failtax breakdown:
 | system | ordering | selection | state |
 | --- | ---: | ---: | ---: |
 | `a0_baseline` | 0.429 | 0.700 | 0.714 |
-| `a1_recovery` | 0.429 | 0.750 | 0.714 |
-| `a2_planner` | 0.429 | 0.750 | 0.714 |
+| `a1_recovery` | 0.429 | 0.733 | 0.714 |
+| `a2_planner` | 0.429 | 0.750 | 0.286 |
 | `a3_interaction` | 1.000 | 1.000 | 1.000 |
 | `a4_reuse` | 1.000 | 1.000 | 1.000 |
 
@@ -168,7 +168,7 @@ High-signal categories:
 | --- | ---: | ---: | ---: | ---: | ---: |
 | `multiple_user_turn` | 0.000 | 0.000 | 0.000 | 1.000 | 1.000 |
 | `insufficient_information` | 0.000 | 0.000 | 0.000 | 1.000 | 1.000 |
-| `single_user_turn` | 0.951 | 1.000 | 1.000 | 1.000 | 1.000 |
+| `single_user_turn` | 0.918 | 0.984 | 0.902 | 1.000 | 1.000 |
 
 Validation status:
 
@@ -183,13 +183,13 @@ This is the current headline ToolSandbox benchmark result.
 Supported conclusions:
 
 - interaction is the decisive capability jump
-- planner on top of recovery does not hurt and matches recovery-only on the official benchmark
+- planner on top of recovery does not yet produce a headline lift on the frozen official benchmark
 - both non-interaction recovery variants remain substantially below interaction
 - reuse matches interaction but does not exceed it on this benchmark
 
 Paper-safe claim:
 
-- ToolClaw's interaction-enabled variants (`a3`, `a4`) solve the restored 88-sample ToolSandbox benchmark perfectly, while non-interaction variants remain in the `0.659` to `0.693` range.
+- ToolClaw's interaction-enabled variants (`a3`, `a4`) solve the restored 88-sample ToolSandbox benchmark perfectly, while non-interaction variants remain in the `0.625` to `0.682` range on the 2026-04-22 frozen run.
 
 ## 6. Experiment B: ToolSandbox explicit bundled core-slice benchmark (historical pre-gatefix mechanism slice)
 
@@ -530,7 +530,8 @@ Use Tau2 to separate failure modes that ToolSandbox alone cannot isolate cleanly
 #### E3. Isolated repeated `binding_plus_approval`
 
 - Source: `data/tau2_bench.binding_plus_approval_only.json`
-- Outdir: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter`
+- Historical outdir: `outputs/paper_clean_v1/exp08_tau2_binding_plus_approval_a3_a4_r10_openrouter`
+- Current fixed outdir: `outputs/tau2_compound_approval_fix_r10_20260423_v2`
 
 ### 9.4 Final results
 
@@ -568,15 +569,14 @@ E3:
 
 | system | mean_success_rate | consistency |
 | --- | ---: | ---: |
-| `a3_interaction` | 0.0000 | 1.0000 |
-| `a4_reuse` | 0.0000 | 1.0000 |
+| `a3_interaction` | 1.0000 | 1.0000 |
+| `a4_reuse` | 1.0000 | 1.0000 |
 
-For both systems in E3, all 10 runs had:
+For both systems in the current fixed E3 rerun:
 
-- `stop_reason = max_user_turns_exceeded`
 - `approval_following = 1.0`
-- `repair_triggered = 2`
-- `reused_artifact = False`
+- `interactive_correction = 6.0`
+- `pass@k = 1.0`
 
 ### 9.5 Conclusion
 
@@ -584,19 +584,20 @@ Supported conclusions:
 
 - the approval semantic fix was necessary and effective
 - `a3` and `a4` both solve pure approval-gated tasks
+- after the 2026-04-23 compound-approval fix, `a3` and `a4` also solve the isolated `tau2_binding_plus_approval_001` 10-run stress test
 - after the `a2` fix, `a2` matches `a1` on the full Tau2 benchmark
 - `a1` and `a2` still fail valid approval request/response behavior under Tau2 scoring
 
 Not supported:
 
-- a stable claim that `a4` solves compound approval + repair from cold start
+- a claim that reuse independently improves over interaction on compound approval + repair
 
 ## 10. Overall conclusions
 
 ### 10.1 Strongly supported
 
 1. **Interaction is the main ToolClaw performance driver.**
-   - Official ToolSandbox: `a3=1.0`, `a4=1.0`, `a1=a2=0.693`, `a0=0.659`
+   - Official ToolSandbox: `a3=1.0`, `a4=1.0`, `a1=0.682`, `a2=0.625`, `a0=0.636`
 
 2. **The official ToolSandbox benchmark now provides a provenance-clean headline result.**
    - 88 samples
@@ -629,7 +630,7 @@ Not supported:
 8. **The reuse split does not currently show held-out success gains.**
    - `a3=1.0`, `a4=1.0` on eval
 
-9. **Tau2 supports approval-semantic claims but not compound cold-start approval+repair claims.**
+9. **Tau2 now supports the interaction-enabled compound approval+repair fix, but not an independent reuse-over-interaction claim.**
 
 10. **The `a0-a4` ladder is now implementation-correct from `a1` onward, but not numerically monotonic on every slice.**
    - `a2 = a1 + planner`
