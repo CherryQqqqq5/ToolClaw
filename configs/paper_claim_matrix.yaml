@@ -37,9 +37,9 @@
       }
     },
     "planner_binding_headline": {
-      "status": "evidence_pending_formal_freeze",
+      "status": "headline_not_supported_mechanism_only",
       "benchmark_suite": "bfcl_fc_core",
-      "claim": "Planner, binder, and grounding should be anchored to BFCL function-calling core only. Current frozen BFCL slices support a mechanism-level grounding claim; a formal freeze is still required before treating BFCL as headline evidence beyond mechanism confirmation.",
+      "claim": "BFCL fc_core is now paper-safe after official evaluator dependency preflight, but current full formal results do not support a headline planner/binder lift: a2_planner remains below a0_baseline/a1_recovery on official success, tool selection, argument correctness, and structure. BFCL should be used as mechanism evidence only until a future formal run shows stable positive separation.",
       "metrics": {
         "primary": [
           "official_bfcl_eval_success",
@@ -175,7 +175,7 @@
       "claim_ids": [
         "planner_binding_headline"
       ],
-      "paper_role": "mechanism_headline_candidate"
+      "paper_role": "mechanism_evidence_only"
     },
     "bfcl_agentic_ext": {
       "status": "implemented",

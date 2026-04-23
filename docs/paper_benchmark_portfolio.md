@@ -102,9 +102,9 @@ Formal freeze on 2026-04-23:
   - both arms keep usefulness metrics at `0.00`
   - this slice therefore remains contract/probe evidence, not semantic patch evidence
 
-## BFCL status on 2026-04-21
+## BFCL status on 2026-04-23
 
-BFCL `fc_core` protocol and the official-eval bridge are implemented. A full formal `bfcl_fc_core` run has completed at [outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json](../outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json), and the earlier all-zero official result was traced to two scorer-side failures: the scorer launched the upstream wrapper with server-default `python3.8`, and the wrapper escalated per-row multi-turn dependency failures into a process-wide crash. Both issues are now fixed in benchmark-side code. The current formal bundle yields non-zero official metrics on supported strata, but `paper_safe_for_claim` remains `false` because multi-turn strata still require missing upstream dependency `mpmath`.
+BFCL `fc_core` protocol and the official-eval bridge are implemented. A full formal `bfcl_fc_core` run has completed at [outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json](../outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json), and the earlier all-zero official result was traced to two scorer-side failures: the scorer launched the upstream wrapper with server-default `python3.8`, and the wrapper escalated per-row multi-turn dependency failures into a process-wide crash. Both issues are now fixed in benchmark-side code. The current formal bundle is now `paper_safe_for_claim = true` after installing the upstream multi-turn dependency `mpmath` and adding a fail-fast dependency preflight to [scripts/score_bfcl_outputs.py](../scripts/score_bfcl_outputs.py).
 
 ### Prepared dataset status
 
@@ -128,7 +128,10 @@ BFCL `fc_core` protocol and the official-eval bridge are implemented. A full for
   - [outputs/paper_suite_formal/bfcl_fc_core/official_scoreboard.json](../outputs/paper_suite_formal/bfcl_fc_core/official_scoreboard.json)
   - [outputs/paper_suite_formal/bfcl_fc_core/toolclaw_diagnostics.json](../outputs/paper_suite_formal/bfcl_fc_core/toolclaw_diagnostics.json)
   - [outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json](../outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json)
-- The current BFCL headline claim is still not paper-safe because the official evaluator remains unsupported for several multi-turn strata.
+- The current BFCL full formal bundle is paper-safe, but it does not support a headline planner/binder lift.
+- Diagnostic slices are frozen at:
+  - [outputs/paper_suite_formal/bfcl_fc_core/bfcl_failure_slice_summary.json](../outputs/paper_suite_formal/bfcl_fc_core/bfcl_failure_slice_summary.json)
+  - [outputs/paper_suite_formal/bfcl_fc_core/bfcl_failure_slice_summary.md](../outputs/paper_suite_formal/bfcl_fc_core/bfcl_failure_slice_summary.md)
 
 ### Formal `bfcl_fc_core` observations
 
@@ -140,25 +143,27 @@ The full formal run now exposes meaningful official scores on supported strata i
 - `a3_interaction`: success `0.0221`, tool selection `0.3409`, structure `0.3018`
 - `a4_reuse`: success `0.0221`, tool selection `0.3409`, structure `0.3018`
 
-Unsupported official strata are currently:
-
-- `multi_turn_base`
-- `multi_turn_long_context`
-- `multi_turn_miss_func`
-- `multi_turn_miss_param`
-
-All four are blocked by the same upstream runtime dependency gap: `missing_multi_turn_dependency:mpmath`.
+Unsupported official strata are now empty after the `mpmath` dependency fix.
 
 These formal observations support a competence-check framing only:
 
 - supported:
   - BFCL `fc_core` is implemented as a protocol path for planner/binder competence evaluation
-  - official evaluator connectivity is now working for supported strata on the full formal run
+  - official evaluator connectivity is now working for all included `fc_core` strata on the full formal run
   - the earlier all-zero BFCL result was a scorer artifact, not a faithful system result
 - not yet supported:
-  - a paper-safe headline BFCL claim
   - a headline claim that ToolClaw already shows clear BFCL lift
   - a strong multi-turn BFCL claim
+  - a headline-level planner/binder claim where `a2_planner` beats `a0_baseline` or `a1_recovery`
+
+The failure-slice diagnostic shows the main performance gap clearly:
+
+- `a0/a1` retain higher tool-selection and structure scores on the full formal run.
+- `a2/a3/a4` reduce `missing_required` failures but introduce many more `wrong_func_name` failures.
+- `a2_planner.wrong_func_name = 642`, compared with `a0_baseline.wrong_func_name = 265`.
+- `a2_planner.tool_selection = 0.3407`, compared with `a0_baseline.tool_selection = 0.4265`.
+
+This means the remaining BFCL issue is not paper safety. It is planner-path behavior: the planner/adapter path currently introduces enough function-selection error to offset any parameter-grounding improvement.
 
 ### Why BFCL still shows weak system separation in local pilots
 

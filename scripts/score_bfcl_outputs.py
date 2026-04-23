@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections import Counter, defaultdict
 from pathlib import Path
 from statistics import mean
 from typing import Any, Dict, Iterable, List, Tuple
@@ -185,6 +186,45 @@ def _discover_official_python() -> Tuple[str, Tuple[int, int, int] | None]:
     fallback = str(Path(sys.executable))
     return fallback, _python_version(fallback)
 
+
+def _bfcl_requires_multi_turn_dependency(normalized_taskset: Path) -> bool:
+    try:
+        payload = json.loads(normalized_taskset.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return True
+    if not isinstance(payload, list):
+        return True
+    for task in payload:
+        if not isinstance(task, dict):
+            continue
+        metadata = task.get("metadata", {})
+        if isinstance(metadata, dict) and str(metadata.get("bfcl_group") or "") == "multi_turn":
+            return True
+    return False
+
+
+def _check_official_python_dependencies(executable: str, required_modules: List[str]) -> List[str]:
+    if not required_modules:
+        return []
+    code = (
+        "import importlib.util, json; "
+        f"mods={required_modules!r}; "
+        "print(json.dumps([m for m in mods if importlib.util.find_spec(m) is None]))"
+    )
+    completed = subprocess.run(
+        [executable, "-c", code],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        return list(required_modules)
+    try:
+        payload = json.loads(completed.stdout.strip() or "[]")
+    except json.JSONDecodeError:
+        return list(required_modules)
+    return [str(item) for item in payload if str(item)]
+
 def _run_official_evaluator(
     *,
     evaluator_script: Path | None,
@@ -199,6 +239,22 @@ def _run_official_evaluator(
         return {}, [{"stratum": "all", "reason": "official_evaluator_unavailable", "paper_safe": False}]
 
     evaluator_python, evaluator_version = _discover_official_python()
+    required_modules = ["mpmath"] if _bfcl_requires_multi_turn_dependency(normalized_taskset) else []
+    missing_modules = _check_official_python_dependencies(evaluator_python, required_modules)
+    if missing_modules:
+        reason = "missing_official_eval_dependency:" + ",".join(sorted(missing_modules))
+        error_row: Dict[str, Any] = {
+            "stratum": "all",
+            "reason": reason,
+            "paper_safe": False,
+            "python_executable": evaluator_python,
+        }
+        if evaluator_version is not None:
+            error_row["python_version"] = ".".join(str(part) for part in evaluator_version)
+        raise SystemExit(
+            "BFCL official evaluator dependency preflight failed: "
+            f"{reason}. Install the missing module(s) in {evaluator_python} before scoring."
+        )
     with tempfile.TemporaryDirectory(prefix="toolclaw_bfcl_eval_") as tmp:
         output_path = Path(tmp) / "official_eval.json"
         completed = subprocess.run(
@@ -290,6 +346,138 @@ def _aggregate(rows: List[Dict[str, Any]], metric_keys: List[str]) -> Dict[str, 
     return summary
 
 
+def _decode_reasons(raw_value: Any) -> List[str]:
+    if isinstance(raw_value, list):
+        return [str(item) for item in raw_value if str(item)]
+    text = str(raw_value or "").strip()
+    if not text:
+        return []
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return [text]
+    if isinstance(payload, list):
+        return [str(item) for item in payload if str(item)]
+    return [str(payload)] if str(payload) else []
+
+
+def _reason_bucket(reasons: List[str]) -> str:
+    if not reasons:
+        return "official_success_or_safe_failure"
+    joined = " ".join(reasons)
+    if "wrong_func_name" in joined:
+        return "wrong_func_name"
+    if "missing_required" in joined:
+        return "missing_required"
+    if "wrong_count" in joined:
+        return "wrong_count"
+    if "value_error" in joined:
+        return "value_error"
+    if "missing_multi_turn_dependency" in joined or "missing_official_eval_dependency" in joined:
+        return "missing_multi_turn_dependency"
+    if "multi_turn" in joined and "mismatch" in joined:
+        return "multi_turn_mismatch"
+    if "multi_turn" in joined:
+        return "multi_turn_other"
+    return "other_official_failure"
+
+
+def _bfcl_failure_slice_summary(scored_rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    group_fields = [
+        ("system",),
+        ("system", "bfcl_group"),
+        ("system", "bfcl_call_pattern"),
+        ("system", "bfcl_group", "bfcl_call_pattern"),
+        ("system", "official_failure_bucket"),
+    ]
+    enriched: List[Dict[str, Any]] = []
+    for row in scored_rows:
+        reasons = _decode_reasons(row.get("official_bfcl_eval_unsupported_reasons"))
+        enriched.append(
+            {
+                **row,
+                "official_failure_bucket": _reason_bucket(reasons),
+                "official_failure_reasons": reasons,
+            }
+        )
+
+    summaries: Dict[str, List[Dict[str, Any]]] = {}
+    for fields in group_fields:
+        grouped: Dict[Tuple[str, ...], List[Dict[str, Any]]] = defaultdict(list)
+        for row in enriched:
+            grouped[tuple(str(row.get(field) or "") for field in fields)].append(row)
+        rows_out: List[Dict[str, Any]] = []
+        for key, rows in sorted(grouped.items()):
+            bucket_counts = Counter(str(row.get("official_failure_bucket") or "") for row in rows)
+            rows_out.append(
+                {
+                    **{field: value for field, value in zip(fields, key)},
+                    "num_rows": float(len(rows)),
+                    "official_bfcl_eval_success": _mean(float(row.get("official_bfcl_eval_success", 0.0)) for row in rows),
+                    "official_bfcl_eval_tool_selection_correctness": _mean(float(row.get("official_bfcl_eval_tool_selection_correctness", 0.0)) for row in rows),
+                    "official_bfcl_eval_argument_correctness": _mean(float(row.get("official_bfcl_eval_argument_correctness", 0.0)) for row in rows),
+                    "official_bfcl_eval_structure_correctness": _mean(float(row.get("official_bfcl_eval_structure_correctness", 0.0)) for row in rows),
+                    "toolclaw_diagnostics_binder_selection_match": _mean(float(row.get("toolclaw_diagnostics_binder_selection_match", 0.0)) for row in rows),
+                    "toolclaw_diagnostics_parameter_fill_ratio": _mean(float(row.get("toolclaw_diagnostics_parameter_fill_ratio", 0.0)) for row in rows),
+                    "failure_bucket_counts": dict(bucket_counts),
+                }
+            )
+        summaries["__".join(fields)] = rows_out
+    return {
+        "benchmark": "bfcl",
+        "diagnostic": "failure_slice_summary",
+        "reason_buckets": [
+            "wrong_func_name",
+            "missing_required",
+            "wrong_count",
+            "value_error",
+            "multi_turn_mismatch",
+            "missing_multi_turn_dependency",
+            "other_official_failure",
+        ],
+        "summaries": summaries,
+    }
+
+
+def _write_bfcl_failure_slice_markdown(summary: Dict[str, Any], path: Path) -> None:
+    lines = [
+        "# BFCL Failure Slice Diagnostic",
+        "",
+        "This report is diagnostic only. It is used to decide whether planner/binder evidence is headline-safe, not to redefine official BFCL correctness.",
+        "",
+    ]
+    for section, rows in summary.get("summaries", {}).items():
+        lines.extend([f"## {section}", ""])
+        lines.append("| slice | rows | success | tool_selection | argument | structure | binder_match | param_fill | failure_bucket_counts |")
+        lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---|")
+        for row in rows:
+            labels = [
+                f"{key}={value}"
+                for key, value in row.items()
+                if key
+                in {
+                    "system",
+                    "bfcl_group",
+                    "bfcl_call_pattern",
+                    "official_failure_bucket",
+                }
+            ]
+            lines.append(
+                "| "
+                + " / ".join(labels)
+                + f" | {int(float(row.get('num_rows', 0.0)))}"
+                + f" | {float(row.get('official_bfcl_eval_success', 0.0)):.4f}"
+                + f" | {float(row.get('official_bfcl_eval_tool_selection_correctness', 0.0)):.4f}"
+                + f" | {float(row.get('official_bfcl_eval_argument_correctness', 0.0)):.4f}"
+                + f" | {float(row.get('official_bfcl_eval_structure_correctness', 0.0)):.4f}"
+                + f" | {float(row.get('toolclaw_diagnostics_binder_selection_match', 0.0)):.4f}"
+                + f" | {float(row.get('toolclaw_diagnostics_parameter_fill_ratio', 0.0)):.4f}"
+                + f" | `{json.dumps(row.get('failure_bucket_counts', {}), sort_keys=True)}` |"
+            )
+        lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def _paper_safe_for_fc_core(rows: List[Dict[str, Any]], unsupported: List[Dict[str, Any]]) -> bool:
     if unsupported:
         return False
@@ -308,19 +496,59 @@ def _claim_summary(
     unsupported: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     official_metrics = official_scoreboard.get("per_system", {})
+    a0 = official_metrics.get("a0_baseline", {}) if isinstance(official_metrics, dict) else {}
+    a1 = official_metrics.get("a1_recovery", {}) if isinstance(official_metrics, dict) else {}
+    a2 = official_metrics.get("a2_planner", {}) if isinstance(official_metrics, dict) else {}
+    a2_success = float(a2.get("official_bfcl_eval_success", 0.0) or 0.0)
+    a0_success = float(a0.get("official_bfcl_eval_success", 0.0) or 0.0)
+    a1_success = float(a1.get("official_bfcl_eval_success", 0.0) or 0.0)
+    headline_metric_keys = [
+        "official_bfcl_eval_tool_selection_correctness",
+        "official_bfcl_eval_argument_correctness",
+        "official_bfcl_eval_structure_correctness",
+    ]
+    headline_metric_improvements = [
+        key
+        for key in headline_metric_keys
+        if float(a2.get(key, 0.0) or 0.0) > max(float(a0.get(key, 0.0) or 0.0), float(a1.get(key, 0.0) or 0.0))
+    ]
     if track == "fc_core":
         claim_id = "planner_binding_headline"
         paper_safe = _paper_safe_for_fc_core(scored_rows, unsupported)
-        interpretation = "BFCL fc_core is paper-safe only when the official evaluator covers all included strata."
+        headline_supported = (
+            paper_safe
+            and a2_success > a0_success
+            and a2_success > a1_success
+            and len(headline_metric_improvements) >= 2
+        )
+        headline_blockers: List[str] = []
+        if not paper_safe:
+            headline_blockers.append("official_evaluator_not_paper_safe")
+        if a2_success <= a0_success:
+            headline_blockers.append("a2_success_not_above_a0")
+        if a2_success <= a1_success:
+            headline_blockers.append("a2_success_not_above_a1")
+        if len(headline_metric_improvements) < 2:
+            headline_blockers.append("a2_not_better_on_two_headline_submetrics")
+        interpretation = (
+            "BFCL fc_core is paper-safe after official evaluator dependency preflight, "
+            "but planner/binder headline support additionally requires a2_planner to beat a0/a1 on success "
+            "and improve at least two headline submetrics."
+        )
     else:
         claim_id = "bfcl_agentic_supporting"
         paper_safe = False
+        headline_supported = False
+        headline_blockers = ["agentic_ext_supporting_only"]
         interpretation = "BFCL agentic extension is supporting-only and must not be used as the planner/binder headline claim."
     return {
         "suite": suite,
         "status": "completed",
         "track": track,
         "paper_safe_for_claim": paper_safe,
+        "headline_supported": headline_supported,
+        "headline_blockers": headline_blockers,
+        "headline_metric_improvements": headline_metric_improvements,
         "official_bfcl_eval": official_metrics,
         "toolclaw_diagnostics": toolclaw_diagnostics.get("per_system", {}),
         "unsupported_strata": unsupported,
@@ -328,6 +556,8 @@ def _claim_summary(
             {
                 "claim_id": claim_id,
                 "paper_safe_for_claim": paper_safe,
+                "headline_supported": headline_supported,
+                "headline_blockers": headline_blockers,
                 "metric_snapshot": official_metrics,
                 "interpretation": interpretation,
             }
@@ -468,15 +698,19 @@ def main() -> None:
         scored_rows=scored_rows,
         unsupported=unsupported,
     )
+    failure_slice_summary = _bfcl_failure_slice_summary(scored_rows)
 
     (outdir / "official_scoreboard.json").write_text(json.dumps(official_scoreboard, indent=2), encoding="utf-8")
     (outdir / "toolclaw_diagnostics.json").write_text(json.dumps(toolclaw_diagnostics, indent=2), encoding="utf-8")
     (outdir / "claim_summary.json").write_text(json.dumps(claim_summary, indent=2), encoding="utf-8")
+    (outdir / "bfcl_failure_slice_summary.json").write_text(json.dumps(failure_slice_summary, indent=2), encoding="utf-8")
+    _write_bfcl_failure_slice_markdown(failure_slice_summary, outdir / "bfcl_failure_slice_summary.md")
 
     manifest["comparison_scored_path"] = _display_path(comparison_scored_path)
     manifest["official_scoreboard_path"] = _display_path(outdir / "official_scoreboard.json")
     manifest["toolclaw_diagnostics_path"] = _display_path(outdir / "toolclaw_diagnostics.json")
     manifest["claim_summary_path"] = _display_path(outdir / "claim_summary.json")
+    manifest["bfcl_failure_slice_summary_path"] = _display_path(outdir / "bfcl_failure_slice_summary.json")
     (outdir / "experiment_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     print(f"official_scoreboard: {outdir / 'official_scoreboard.json'}")

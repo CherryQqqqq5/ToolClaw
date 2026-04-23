@@ -2,7 +2,7 @@
   "benchmark": "bfcl_v4",
   "track": "fc_core",
   "artifact_role": "formal_source_lock",
-  "evidence_status": "full_formal_bfcl_evidence_pending",
+  "evidence_status": "paper_safe_formal_scored_no_headline_lift",
   "prepared_manifest": "data/bfcl_formal/manifest.json",
   "source": "data/external/bfcl_official",
   "outputs": {
@@ -49,6 +49,7 @@
   "paper_bundle_outdir": "outputs/paper_suite_formal/bfcl_fc_core",
   "notes": [
     "This lock makes the formal BFCL prepared source repository-verifiable even when aligned payload files remain generated artifacts.",
-    "Formal BFCL claim evidence remains pending until a paper-grade bfcl_fc_core run is frozen with official_scoreboard.json, toolclaw_diagnostics.json, and claim_summary.json."
+    "The paper-grade bfcl_fc_core run is now paper-safe after installing the official multi-turn dependency mpmath.",
+    "Current full formal BFCL evidence should be used as mechanism evidence only because a2_planner does not beat a0_baseline or a1_recovery on the official headline metrics."
   ]
 }

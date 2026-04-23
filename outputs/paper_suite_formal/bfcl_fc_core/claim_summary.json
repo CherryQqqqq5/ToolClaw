@@ -2,7 +2,14 @@
   "suite": "bfcl_fc_core",
   "status": "completed",
   "track": "fc_core",
-  "paper_safe_for_claim": false,
+  "paper_safe_for_claim": true,
+  "headline_supported": false,
+  "headline_blockers": [
+    "a2_success_not_above_a0",
+    "a2_success_not_above_a1",
+    "a2_not_better_on_two_headline_submetrics"
+  ],
+  "headline_metric_improvements": [],
   "official_bfcl_eval": {
     "a0_baseline": {
       "num_rows": 4291.0,
@@ -47,7 +54,15 @@
       "toolclaw_diagnostics_tool_sequence_match": 0.3835935679328828,
       "toolclaw_diagnostics_parameter_fill_ratio": 0.38047455276539405,
       "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
-      "toolclaw_diagnostics_repair_overhead": 0.0
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.0,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.0,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 0.99836867862969,
+      "toolclaw_diagnostics_avg_tool_calls": 1.0,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
     },
     "a1_recovery": {
       "num_rows": 4291.0,
@@ -55,7 +70,15 @@
       "toolclaw_diagnostics_tool_sequence_match": 0.3835935679328828,
       "toolclaw_diagnostics_parameter_fill_ratio": 0.38047455276539405,
       "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
-      "toolclaw_diagnostics_repair_overhead": 0.0
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.0,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.0,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 0.99836867862969,
+      "toolclaw_diagnostics_avg_tool_calls": 1.0,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
     },
     "a2_planner": {
       "num_rows": 4291.0,
@@ -63,7 +86,15 @@
       "toolclaw_diagnostics_tool_sequence_match": 0.2975996271265439,
       "toolclaw_diagnostics_parameter_fill_ratio": 0.3418301182750029,
       "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
-      "toolclaw_diagnostics_repair_overhead": 0.0
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.0,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.0,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 0.9993008622698671,
+      "toolclaw_diagnostics_avg_tool_calls": 1.2414355628058729,
+      "toolclaw_diagnostics_avg_user_queries": 0.0
     },
     "a3_interaction": {
       "num_rows": 4291.0,
@@ -71,7 +102,15 @@
       "toolclaw_diagnostics_tool_sequence_match": 0.29736658121649967,
       "toolclaw_diagnostics_parameter_fill_ratio": 0.34136402645491437,
       "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
-      "toolclaw_diagnostics_repair_overhead": 0.0
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.0,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.0,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 1.0,
+      "toolclaw_diagnostics_avg_tool_calls": 1.241668608715917,
+      "toolclaw_diagnostics_avg_user_queries": 0.0006991377301328362
     },
     "a4_reuse": {
       "num_rows": 4291.0,
@@ -79,35 +118,28 @@
       "toolclaw_diagnostics_tool_sequence_match": 0.29736658121649967,
       "toolclaw_diagnostics_parameter_fill_ratio": 0.34136402645491437,
       "toolclaw_diagnostics_policy_format_compliance": 0.9990678163598229,
-      "toolclaw_diagnostics_repair_overhead": 0.0
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.0,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.0,
+      "toolclaw_diagnostics_repair_success_rate": 0.0,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
+      "toolclaw_diagnostics_repair_success_count": 0.0,
+      "toolclaw_diagnostics_exec_verified": 1.0,
+      "toolclaw_diagnostics_avg_tool_calls": 1.241668608715917,
+      "toolclaw_diagnostics_avg_user_queries": 0.0006991377301328362
     }
   },
-  "unsupported_strata": [
-    {
-      "stratum": "multi_turn_base",
-      "reason": "missing_multi_turn_dependency:mpmath",
-      "paper_safe": false
-    },
-    {
-      "stratum": "multi_turn_long_context",
-      "reason": "missing_multi_turn_dependency:mpmath",
-      "paper_safe": false
-    },
-    {
-      "stratum": "multi_turn_miss_func",
-      "reason": "missing_multi_turn_dependency:mpmath",
-      "paper_safe": false
-    },
-    {
-      "stratum": "multi_turn_miss_param",
-      "reason": "missing_multi_turn_dependency:mpmath",
-      "paper_safe": false
-    }
-  ],
+  "unsupported_strata": [],
   "claims": [
     {
       "claim_id": "planner_binding_headline",
-      "paper_safe_for_claim": false,
+      "paper_safe_for_claim": true,
+      "headline_supported": false,
+      "headline_blockers": [
+        "a2_success_not_above_a0",
+        "a2_success_not_above_a1",
+        "a2_not_better_on_two_headline_submetrics"
+      ],
       "metric_snapshot": {
         "a0_baseline": {
           "num_rows": 4291.0,
@@ -145,7 +177,7 @@
           "official_bfcl_eval_structure_correctness": 0.30179445350734097
         }
       },
-      "interpretation": "BFCL fc_core is paper-safe only when the official evaluator covers all included strata."
+      "interpretation": "BFCL fc_core is paper-safe after official evaluator dependency preflight, but planner/binder headline support additionally requires a2_planner to beat a0/a1 on success and improve at least two headline submetrics."
     }
   ]
 }

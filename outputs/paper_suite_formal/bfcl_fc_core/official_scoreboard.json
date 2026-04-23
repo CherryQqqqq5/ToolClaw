@@ -39,26 +39,5 @@
       "official_bfcl_eval_structure_correctness": 0.30179445350734097
     }
   },
-  "unsupported_strata": [
-    {
-      "stratum": "multi_turn_base",
-      "reason": "missing_multi_turn_dependency:mpmath",
-      "paper_safe": false
-    },
-    {
-      "stratum": "multi_turn_long_context",
-      "reason": "missing_multi_turn_dependency:mpmath",
-      "paper_safe": false
-    },
-    {
-      "stratum": "multi_turn_miss_func",
-      "reason": "missing_multi_turn_dependency:mpmath",
-      "paper_safe": false
-    },
-    {
-      "stratum": "multi_turn_miss_param",
-      "reason": "missing_multi_turn_dependency:mpmath",
-      "paper_safe": false
-    }
-  ]
+  "unsupported_strata": []
 }

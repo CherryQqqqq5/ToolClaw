@@ -127,6 +127,8 @@ outputs/paper_suite_formal/bfcl_fc_core/*
 !outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json
 !outputs/paper_suite_formal/bfcl_fc_core/official_scoreboard.json
 !outputs/paper_suite_formal/bfcl_fc_core/toolclaw_diagnostics.json
+!outputs/paper_suite_formal/bfcl_fc_core/bfcl_failure_slice_summary.json
+!outputs/paper_suite_formal/bfcl_fc_core/bfcl_failure_slice_summary.md
 
 # Keep the BFCL grounding formal rerun summary bundle only.
 !outputs/paper_suite_grounding_formal_20260421_fix1/
