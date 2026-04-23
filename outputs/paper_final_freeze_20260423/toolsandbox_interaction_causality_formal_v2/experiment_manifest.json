@@ -1,0 +1,72 @@
+{
+  "benchmark": "toolsandbox",
+  "generated_at": "2026-04-23T15:11:16.635281+00:00",
+  "source": "data/toolsandbox.formal.official.json",
+  "source_sha256": "bab1b727cda11cb548f45f798a19275cf6a683691ee93ae9f729664b43864470",
+  "normalized_taskset": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/prepared/toolsandbox.normalized.json",
+  "normalized_taskset_sha256": "389ad6cf28c06389bbaafb7e3a8e8063314025711b9923a3d52e4de87cf9943a",
+  "mode": "planner",
+  "systems": [
+    "a1_recovery",
+    "a2_planner",
+    "a3_full_interaction",
+    "a3_no_query",
+    "a3_noisy_user"
+  ],
+  "num_runs": 3,
+  "sample_id_checksum": "401b56c401658b0d49540a6551bca6fea434c09c1d8d6bf13d35e48f6780eb7c",
+  "git_commit": "11a93cf49571e4eefa1ef814a3c006ae1aa50d35",
+  "config_sha256": "4d1361e98b5adc74e0c84842ff8fcae94feae5a2771534f42cca2ebc454236ea",
+  "scoreboard_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/scoreboard.json",
+  "report_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/report.md",
+  "comparison_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/comparison.scored.csv",
+  "per_system_summary_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/per_system_summary.json",
+  "archived_files": [
+    "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/archive/run_toolsandbox_bench.py",
+    "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/archive/benchmark_toolsandbox.yaml",
+    "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/archive/phase1.yaml"
+  ],
+  "archived_files_scope": "local_debug_only",
+  "archive_hashes": {
+    "scripts/run_toolsandbox_bench.py": "cb7fc665f32ecd4584c8653c549a0f675a9c70003ef98ba4743bdde0de3db5c4",
+    "configs/benchmark_toolsandbox.yaml": "e62cdc54c4844f6021b8afc07cfa2b208c2cf89c6d851179d21cc0bd3ee7a71e",
+    "configs/phase1.yaml": "60f276f368e9ee75b318ee7941012640e7d53b5212b2702b716519c951280f0b"
+  },
+  "experiment_metadata": {
+    "seed": 0,
+    "model_version": "phase1_executor",
+    "budget_note": "default phase1 budget",
+    "runner_script": "scripts/run_toolsandbox_bench.py",
+    "config_file": "configs/benchmark_toolsandbox.yaml",
+    "phase_config": "configs/phase1.yaml",
+    "official_run_dir": null,
+    "official_data_root": "data/external/ToolSandbox/data",
+    "interaction_target": "simulator",
+    "cli_prompt_prefix": null,
+    "cli_command": null,
+    "cli_timeout_s": null,
+    "openrouter_model": null,
+    "openrouter_base_url": null
+  },
+  "comparison_raw_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/comparison.raw.csv",
+  "comparison_scored_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/comparison.scored.csv",
+  "latest_comparison_raw_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/latest_run_comparison.raw.csv",
+  "latest_comparison_scored_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/latest_run_comparison.scored.csv",
+  "latest_raw_report_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/latest_run_raw_report.md",
+  "raw_vs_benchmark_gap_summary_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/raw_vs_benchmark_gap_summary.json",
+  "raw_vs_benchmark_gap_report_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/raw_vs_benchmark_gap_summary.md",
+  "local_debug_only_paths": [
+    "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/comparison.raw.csv",
+    "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/latest_run_comparison.raw.csv",
+    "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/latest_run_comparison.scored.csv",
+    "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/latest_run_raw_report.md",
+    "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/archive",
+    "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/prepared"
+  ],
+  "causal_claim_summary_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/causal_claim_summary.json",
+  "causal_claim_report_path": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal_v2/causal_claim_report.md",
+  "slice_policy_version": "toolsandbox_causality_v1",
+  "claim_ids": [
+    "interaction_semantic_usefulness_mechanism"
+  ]
+}

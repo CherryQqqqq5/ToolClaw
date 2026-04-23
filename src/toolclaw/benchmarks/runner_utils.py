@@ -22,6 +22,18 @@ ROOT_DIR = Path(__file__).resolve().parents[3]
 SRC_DIR = ROOT_DIR / "src"
 
 
+def display_path(path: Path | str | None) -> Optional[str]:
+    """Return repo-relative paths for paper-facing manifests when possible."""
+    if path is None:
+        return None
+    raw = Path(path)
+    resolved = raw.resolve() if raw.exists() or raw.is_absolute() else (ROOT_DIR / raw).resolve()
+    try:
+        return resolved.relative_to(ROOT_DIR).as_posix()
+    except ValueError:
+        return str(raw)
+
+
 @dataclass(frozen=True)
 class AggregateMetric:
     key: str
@@ -178,8 +190,8 @@ def aggregate_records(
 
     return {
         "benchmark": adapter.benchmark_name,
-        "source": str(Path(source).resolve()),
-        "normalized_taskset": str(normalized_path.resolve()),
+        "source": display_path(source),
+        "normalized_taskset": display_path(normalized_path),
         "mode": mode,
         "systems": list(systems),
         "num_samples": len(samples),
@@ -322,7 +334,7 @@ def finalize_outputs(
 
     sample_ids = sorted({str(entry.get("task_id", "")) for entry in scoreboard.get("runs", []) if entry.get("task_id")})
     archive_hashes = {
-        str(Path(candidate).resolve()): file_sha256(Path(candidate))
+        display_path(Path(candidate)) or str(Path(candidate)): file_sha256(Path(candidate))
         for candidate in archive_files or []
         if Path(candidate).exists() and Path(candidate).is_file()
     }
@@ -334,9 +346,9 @@ def finalize_outputs(
 
     manifest = {
         "benchmark": benchmark_name,
-        "source": str(Path(source).resolve()),
+        "source": display_path(source),
         "source_sha256": source_hash,
-        "normalized_taskset": str(normalized_path.resolve()),
+        "normalized_taskset": display_path(normalized_path),
         "normalized_taskset_sha256": normalized_hash,
         "sample_count": scoreboard["num_samples"],
         "sample_id_checksum": sample_checksum,
@@ -345,8 +357,8 @@ def finalize_outputs(
         "num_runs": num_runs,
         "git_commit": git_commit,
         "config_sha256": config_hash,
-        "scoreboard_path": str(scoreboard_path.resolve()),
-        "per_system_summary_path": str(per_system_summary_path.resolve()),
+        "scoreboard_path": display_path(scoreboard_path),
+        "per_system_summary_path": display_path(per_system_summary_path),
     }
     (prepared_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
@@ -359,14 +371,14 @@ def finalize_outputs(
             continue
         destination = archive_dir / path.name
         shutil.copy2(path, destination)
-        archived_files.append(str(destination.resolve()))
+        archived_files.append(display_path(destination) or str(destination))
 
     experiment_manifest = {
         "benchmark": benchmark_name,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "source": str(Path(source).resolve()),
+        "source": display_path(source),
         "source_sha256": source_hash,
-        "normalized_taskset": str(normalized_path.resolve()),
+        "normalized_taskset": display_path(normalized_path),
         "normalized_taskset_sha256": normalized_hash,
         "mode": mode,
         "systems": list(systems),
@@ -374,11 +386,12 @@ def finalize_outputs(
         "sample_id_checksum": sample_checksum,
         "git_commit": git_commit,
         "config_sha256": config_hash,
-        "scoreboard_path": str(scoreboard_path.resolve()),
-        "report_path": str((outdir / "report.md").resolve()) if (outdir / "report.md").exists() else None,
-        "comparison_path": str((outdir / comparison_filename).resolve()) if comparison_filename and (outdir / comparison_filename).exists() else None,
-        "per_system_summary_path": str(per_system_summary_path.resolve()),
+        "scoreboard_path": display_path(scoreboard_path),
+        "report_path": display_path(outdir / "report.md") if (outdir / "report.md").exists() else None,
+        "comparison_path": display_path(outdir / comparison_filename) if comparison_filename and (outdir / comparison_filename).exists() else None,
+        "per_system_summary_path": display_path(per_system_summary_path),
         "archived_files": archived_files,
+        "archived_files_scope": "local_debug_only",
         "archive_hashes": archive_hashes,
         "experiment_metadata": dict(experiment_metadata or {}),
     }
@@ -397,7 +410,22 @@ def finalize_outputs(
 
 
 def write_experiment_manifest(outdir: Path, manifest: Dict[str, Any]) -> None:
-    (outdir / "experiment_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    (outdir / "experiment_manifest.json").write_text(json.dumps(_sanitize_manifest_paths(manifest), indent=2), encoding="utf-8")
+
+
+def _sanitize_manifest_paths(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _sanitize_manifest_paths(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_manifest_paths(item) for item in value]
+    if isinstance(value, str):
+        path = Path(value)
+        if path.is_absolute():
+            try:
+                return path.resolve().relative_to(ROOT_DIR).as_posix()
+            except ValueError:
+                return value
+    return value
 
 
 def update_experiment_manifest(

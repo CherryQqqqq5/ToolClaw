@@ -1,0 +1,188 @@
+{
+  "protocol": "causal_v2",
+  "systems_observed": [
+    "a1_recovery",
+    "a2_planner",
+    "a3_full_interaction",
+    "a3_no_query",
+    "a3_noisy_user"
+  ],
+  "deterministic_warning": "consistency_is_replication_stability_not_uncertainty_estimation",
+  "paired_overall": [
+    {
+      "right_system": "a3_full_interaction",
+      "left_system": "a3_no_query",
+      "num_tasks": 88,
+      "wins": 27,
+      "losses": 0,
+      "ties": 61,
+      "mean_delta": 0.3068181818181818,
+      "ci_low": 0.2159090909090909,
+      "ci_high": 0.4090909090909091
+    },
+    {
+      "right_system": "a3_full_interaction",
+      "left_system": "a3_noisy_user",
+      "num_tasks": 88,
+      "wins": 0,
+      "losses": 0,
+      "ties": 88,
+      "mean_delta": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    },
+    {
+      "right_system": "a2_planner",
+      "left_system": "a1_recovery",
+      "num_tasks": 88,
+      "wins": 1,
+      "losses": 0,
+      "ties": 87,
+      "mean_delta": 0.011363636363636364,
+      "ci_low": 0.0,
+      "ci_high": 0.03409090909090909
+    }
+  ],
+  "paired_focused_slices": {
+    "approval": [
+      {
+        "right_system": "a3_full_interaction",
+        "left_system": "a3_no_query",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a3_full_interaction",
+        "left_system": "a3_noisy_user",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a2_planner",
+        "left_system": "a1_recovery",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      }
+    ],
+    "state_repair": [
+      {
+        "right_system": "a3_full_interaction",
+        "left_system": "a3_no_query",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a3_full_interaction",
+        "left_system": "a3_noisy_user",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a2_planner",
+        "left_system": "a1_recovery",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      }
+    ],
+    "repeated_reusable": [
+      {
+        "right_system": "a3_full_interaction",
+        "left_system": "a3_no_query",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a3_full_interaction",
+        "left_system": "a3_noisy_user",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a2_planner",
+        "left_system": "a1_recovery",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      }
+    ],
+    "planner_distractor_hard": [
+      {
+        "right_system": "a3_full_interaction",
+        "left_system": "a3_no_query",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a3_full_interaction",
+        "left_system": "a3_noisy_user",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      },
+      {
+        "right_system": "a2_planner",
+        "left_system": "a1_recovery",
+        "num_tasks": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "mean_delta": 0.0,
+        "ci_low": 0.0,
+        "ci_high": 0.0
+      }
+    ]
+  }
+}

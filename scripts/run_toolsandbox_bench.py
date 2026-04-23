@@ -25,6 +25,7 @@ from toolclaw.benchmarks.runner_utils import (
     AggregateMetric,
     BenchmarkScriptConfig,
     aggregate_records,
+    display_path,
     finalize_outputs,
     invoke_run_eval,
     load_run_rows,
@@ -439,6 +440,104 @@ def _toolsandbox_benchmark_caution_flags(scoreboard: Dict[str, Any]) -> List[str
     return flags
 
 
+def _gap_group_key(row: Dict[str, Any]) -> str:
+    category = str(row.get("primary_category") or "").strip()
+    if category:
+        return category
+    categories = str(row.get("categories") or "").strip()
+    if categories:
+        try:
+            parsed = json.loads(categories)
+            if parsed:
+                return str(parsed[0])
+        except json.JSONDecodeError:
+            return categories
+    return str(row.get("scenario") or "unknown")
+
+
+def _raw_vs_benchmark_gap_summary(outdir: Path) -> Dict[str, Any]:
+    rows = _load_scored_rows(outdir)
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    for row in rows:
+        key = "|".join([
+            str(row.get("system") or "unknown"),
+            str(row.get("failure_type") or "unknown"),
+            _gap_group_key(row),
+        ])
+        groups.setdefault(key, []).append(row)
+
+    group_summaries: List[Dict[str, Any]] = []
+    for key, group_rows in sorted(groups.items()):
+        system, failure_type, category = key.split("|", 2)
+        raw_success = _mean_float(group_rows, "raw_execution_success")
+        verified_success = _mean_float(group_rows, "execution_verified_success")
+        strict_success = _mean_float(group_rows, "strict_scored_success")
+        group_summaries.append({
+            "system": system,
+            "failure_type": failure_type,
+            "category": category,
+            "num_rows": len(group_rows),
+            "raw_execution_success": raw_success,
+            "execution_verified_success": verified_success,
+            "strict_scored_success": strict_success,
+            "raw_minus_verified": raw_success - verified_success,
+            "raw_minus_strict": raw_success - strict_success,
+            "verified_minus_strict": verified_success - strict_success,
+        })
+
+    by_system: Dict[str, Dict[str, Any]] = {}
+    for system in sorted({str(row.get("system") or "unknown") for row in rows}):
+        system_rows = [row for row in rows if str(row.get("system") or "unknown") == system]
+        raw_success = _mean_float(system_rows, "raw_execution_success")
+        verified_success = _mean_float(system_rows, "execution_verified_success")
+        strict_success = _mean_float(system_rows, "strict_scored_success")
+        by_system[system] = {
+            "num_rows": len(system_rows),
+            "raw_execution_success": raw_success,
+            "execution_verified_success": verified_success,
+            "strict_scored_success": strict_success,
+            "raw_minus_verified": raw_success - verified_success,
+            "raw_minus_strict": raw_success - strict_success,
+            "verified_minus_strict": verified_success - strict_success,
+        }
+
+    return {
+        "summary_version": "raw_vs_benchmark_gap_v1",
+        "interpretation": "raw_execution_success is executor-side completion; execution_verified_success and strict_scored_success are benchmark-facing checks. Positive gaps identify where execution completed but benchmark contract or strict interaction scoring did not pass.",
+        "by_system": by_system,
+        "groups": group_summaries,
+    }
+
+
+def _write_raw_vs_benchmark_gap_markdown(summary: Dict[str, Any], out_path: Path) -> None:
+    lines = [
+        "# Raw vs Benchmark Success Gap Summary",
+        "",
+        str(summary.get("interpretation", "")),
+        "",
+        "## By System",
+        "",
+        "| system | rows | raw_execution_success | execution_verified_success | strict_scored_success | raw_minus_verified | raw_minus_strict | verified_minus_strict |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for system, stats in sorted(dict(summary.get("by_system", {})).items()):
+        lines.append(
+            f"| {system} | {int(stats.get('num_rows', 0))} | {float(stats.get('raw_execution_success', 0.0)):.3f} | {float(stats.get('execution_verified_success', 0.0)):.3f} | {float(stats.get('strict_scored_success', 0.0)):.3f} | {float(stats.get('raw_minus_verified', 0.0)):+.3f} | {float(stats.get('raw_minus_strict', 0.0)):+.3f} | {float(stats.get('verified_minus_strict', 0.0)):+.3f} |"
+        )
+    lines.extend([
+        "",
+        "## By System, Failure Type, And Category",
+        "",
+        "| system | failure_type | category | rows | raw_execution_success | execution_verified_success | strict_scored_success | raw_minus_verified | raw_minus_strict | verified_minus_strict |",
+        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
+    ])
+    for stats in sorted(summary.get("groups", []), key=lambda item: (item["system"], item["failure_type"], item["category"])):
+        lines.append(
+            f"| {stats.get('system')} | {stats.get('failure_type')} | {stats.get('category')} | {int(stats.get('num_rows', 0))} | {float(stats.get('raw_execution_success', 0.0)):.3f} | {float(stats.get('execution_verified_success', 0.0)):.3f} | {float(stats.get('strict_scored_success', 0.0)):.3f} | {float(stats.get('raw_minus_verified', 0.0)):+.3f} | {float(stats.get('raw_minus_strict', 0.0)):+.3f} | {float(stats.get('verified_minus_strict', 0.0)):+.3f} |"
+        )
+    out_path.write_text("\n".join(lines), encoding="utf-8")
+
+
 TOOLSANDBOX_GROUP_METRICS = [
     AggregateMetric("execution_verified_success"),
     AggregateMetric("strict_scored_success"),
@@ -647,7 +746,7 @@ def _write_toolsandbox_artifacts(summary: Dict[str, Any], outdir: Path) -> None:
 
 
 def _maybe_write_causal_ablation_outputs(outdir: Path, systems: List[str]) -> None:
-    causal_systems = {"a2_planner", "a3_full_interaction", "a3_no_query", "a3_noisy_user"}
+    causal_systems = {"a1_recovery", "a2_planner", "a3_full_interaction", "a3_no_query", "a3_noisy_user"}
     if not causal_systems.issubset(set(systems)):
         return
     subprocess.run(
@@ -1156,10 +1255,24 @@ def _focused_slice_filters() -> Dict[str, Any]:
 
 def _statistical_robustness_summary(scoreboard: Dict[str, Any]) -> Dict[str, Any]:
     per_system_summary = dict(scoreboard.get("per_system_summary", {}))
+    systems = set(per_system_summary)
+    if {"a1_recovery", "a2_planner", "a3_full_interaction", "a3_no_query", "a3_noisy_user"}.issubset(systems):
+        pair_specs = [
+            ("a3_full_interaction", "a3_no_query"),
+            ("a3_full_interaction", "a3_noisy_user"),
+            ("a2_planner", "a1_recovery"),
+        ]
+        protocol = "causal_v2"
+    else:
+        pair_specs = [
+            ("a2_planner", "a3_interaction"),
+            ("a4_reuse", "a3_interaction"),
+            ("a4_reuse", "a0_baseline"),
+        ]
+        protocol = "a0_a4_standard" if {"a0_baseline", "a3_interaction", "a4_reuse"}.issubset(systems) else "insufficient_protocol_coverage"
     paired_overall = [
-        _task_level_paired_summary(per_system_summary, right_system="a2_planner", left_system="a3_interaction"),
-        _task_level_paired_summary(per_system_summary, right_system="a4_reuse", left_system="a3_interaction"),
-        _task_level_paired_summary(per_system_summary, right_system="a4_reuse", left_system="a0_baseline"),
+        _task_level_paired_summary(per_system_summary, right_system=right_system, left_system=left_system)
+        for right_system, left_system in pair_specs
     ]
     focused_filters = _focused_slice_filters()
     paired_focused: Dict[str, List[Dict[str, Any]]] = {}
@@ -1167,24 +1280,15 @@ def _statistical_robustness_summary(scoreboard: Dict[str, Any]) -> Dict[str, Any
         paired_focused[slice_name] = [
             _task_level_paired_summary(
                 per_system_summary,
-                right_system="a2_planner",
-                left_system="a3_interaction",
+                right_system=right_system,
+                left_system=left_system,
                 task_filter=task_filter,
-            ),
-            _task_level_paired_summary(
-                per_system_summary,
-                right_system="a4_reuse",
-                left_system="a3_interaction",
-                task_filter=task_filter,
-            ),
-            _task_level_paired_summary(
-                per_system_summary,
-                right_system="a4_reuse",
-                left_system="a0_baseline",
-                task_filter=task_filter,
-            ),
+            )
+            for right_system, left_system in pair_specs
         ]
     return {
+        "protocol": protocol,
+        "systems_observed": sorted(systems),
         "deterministic_warning": "consistency_is_replication_stability_not_uncertainty_estimation",
         "paired_overall": paired_overall,
         "paired_focused_slices": paired_focused,
@@ -1198,23 +1302,52 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
     robustness_summary = _statistical_robustness_summary(scoreboard)
     (outdir / "statistical_robustness_summary.json").write_text(json.dumps(robustness_summary, indent=2), encoding="utf-8")
     caution_flags = list(scoreboard.get("benchmark_caution_flags", []))
+    gap_summary_exists = (outdir / "raw_vs_benchmark_gap_summary.json").exists()
+    causal_summary: Dict[str, Any] = {}
+    causal_summary_path = outdir / "causal_claim_summary.json"
+    if causal_summary_path.exists():
+        try:
+            causal_summary = json.loads(causal_summary_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            causal_summary = {}
+    unresolved_caution_flags = [
+        flag
+        for flag in caution_flags
+        if not (flag == "raw_vs_benchmark_success_gap" and gap_summary_exists)
+    ]
+    if causal_summary and not bool(causal_summary.get("protocol_complete", False)):
+        unresolved_caution_flags.append("causal_protocol_incomplete")
+    resolved_caution_flags = [
+        flag
+        for flag in caution_flags
+        if flag not in unresolved_caution_flags
+    ]
+    primary_result_ready = not unresolved_caution_flags
     lines = [
         "# ToolSandbox Benchmark Report",
         "",
         f"- source: `{scoreboard['source']}`",
-        f"- normalized_taskset: `{scoreboard['normalized_taskset']}`",
+        f"- normalized_taskset: `{scoreboard['normalized_taskset']}` (`local_debug_only` unless committed by the suite allowlist)",
         f"- samples: `{scoreboard['num_samples']}`",
         f"- runs: `{scoreboard['num_runs']}`",
         f"- systems: `{', '.join(scoreboard['systems'])}`",
-        f"- raw_execution_report: `{outdir / 'latest_run_raw_report.md'}`",
-        f"- raw_comparison: `{outdir / 'comparison.raw.csv'}`",
-        f"- scored_comparison: `{outdir / 'comparison.scored.csv'}`",
-        f"- focused_slice_summary: `{outdir / 'focused_slice_summary.md'}`",
-        f"- reuse_focused_summary: `{outdir / 'reuse_focused_summary.md'}`",
-        f"- per_failure_type_summary: `{outdir / 'per_failure_type_summary.md'}`",
-        f"- repair_loop_summary: `{outdir / 'repair_loop_summary.md'}`",
-        f"- statistical_robustness_summary: `{outdir / 'statistical_robustness_summary.json'}`",
-        f"- failtax_summary: `{outdir / 'per_failtax_summary.json'}`",
+        f"- scored_comparison: `{display_path(outdir / 'comparison.scored.csv')}`",
+        f"- focused_slice_summary: `{display_path(outdir / 'focused_slice_summary.md')}`",
+        f"- causal_claim_summary: `{display_path(outdir / 'causal_claim_summary.json') if causal_summary_path.exists() else 'not_generated'}`",
+        f"- causal_claim_report: `{display_path(outdir / 'causal_claim_report.md') if (outdir / 'causal_claim_report.md').exists() else 'not_generated'}`",
+        f"- raw_vs_benchmark_gap_summary: `{display_path(outdir / 'raw_vs_benchmark_gap_summary.md') if gap_summary_exists else 'not_generated'}`",
+        f"- per_failure_type_summary: `{display_path(outdir / 'per_failure_type_summary.md')}`",
+        f"- repair_loop_summary: `{display_path(outdir / 'repair_loop_summary.md')}`",
+        f"- statistical_robustness_summary: `{display_path(outdir / 'statistical_robustness_summary.json')}`",
+        f"- failtax_summary: `{display_path(outdir / 'per_failtax_summary.json')}`",
+        "",
+        "## Local Debug Artifacts",
+        "",
+        f"- raw_execution_report: `{display_path(outdir / 'latest_run_raw_report.md')}` (`local_debug_only`)",
+        f"- raw_comparison: `{display_path(outdir / 'comparison.raw.csv')}` (`local_debug_only`)",
+        f"- archive: `{display_path(outdir / 'archive')}` (`local_debug_only`)",
+        f"- prepared_taskset: `{scoreboard['normalized_taskset']}` (`local_debug_only` unless committed by the suite allowlist)",
+        f"- reuse_focused_summary: `{display_path(outdir / 'reuse_focused_summary.md')}` (`local_debug_only`)",
         "",
         "## Readiness",
         "",
@@ -1226,23 +1359,21 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
             "",
         ]
     )
+    lines.append(f"- primary_result_ready: `{str(primary_result_ready).lower()}`")
     if caution_flags:
-        lines.extend(
-            [
-                "- primary_result_ready: `False`",
-                "- caution_flags:",
-                *[f"  - `{flag}`" for flag in caution_flags],
-                "",
-            ]
-        )
+        lines.append("- caution_flags:")
+        lines.extend(f"  - `{flag}`" for flag in caution_flags)
     else:
-        lines.extend(
-            [
-                "- primary_result_ready: `True`",
-                "- caution_flags: none",
-                "",
-            ]
-        )
+        lines.append("- caution_flags: none")
+    if resolved_caution_flags:
+        lines.append("- resolved_caution_flags:")
+        lines.extend(f"  - `{flag}`" for flag in resolved_caution_flags)
+    if unresolved_caution_flags:
+        lines.append("- unresolved_caution_flags:")
+        lines.extend(f"  - `{flag}`" for flag in unresolved_caution_flags)
+    if causal_summary:
+        lines.append(f"- causal_protocol_complete: `{str(bool(causal_summary.get('protocol_complete'))).lower()}`")
+    lines.append("")
 
     lines.extend(
         [
@@ -1404,8 +1535,8 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
             "- `result_summary_source` is reported explicitly so proxy-derived runs are visible in the main report.",
             "- All aggregate and category tables in this report are computed from `comparison.scored.csv`, not from raw `run_eval.py` rows.",
             "- FailTax is the default slicing axis for phase-2 style failure studies; category tables remain useful but secondary.",
-            "- `comparison.raw.csv` preserves the original execution outputs from `run_eval.py` for audit and debugging.",
-            "- `latest_run_raw_report.md` preserves the raw `run_eval.py` report so it is not confused with this scored benchmark report.",
+            "- `comparison.raw.csv` is a local_debug_only artifact that preserves original execution outputs from `run_eval.py` for audit and debugging.",
+            "- `latest_run_raw_report.md` is a local_debug_only artifact that preserves the raw `run_eval.py` report so it is not confused with this scored benchmark report.",
             "- `result_summary_coverage` shows how much of the benchmark has a current ToolClaw-run ToolSandbox summary attached to the trace. This should be 1.0 for normal runs.",
             "- `reference_summary_coverage` shows how much of the benchmark also carries imported external ToolSandbox summaries for offline comparison or dataset freezing.",
             "- These scores come from ToolClaw proxy evaluation over ToolSandbox-style tasks unless you are reading outputs from the official ToolSandbox CLI directly.",
@@ -1650,6 +1781,12 @@ def main() -> None:
         encoding="utf-8",
     )
     _write_repair_loop_markdown(repair_loop_summary, outdir / "repair_loop_summary.md")
+    gap_summary = _raw_vs_benchmark_gap_summary(outdir)
+    (outdir / "raw_vs_benchmark_gap_summary.json").write_text(
+        json.dumps(gap_summary, indent=2),
+        encoding="utf-8",
+    )
+    _write_raw_vs_benchmark_gap_markdown(gap_summary, outdir / "raw_vs_benchmark_gap_summary.md")
     latest_run_index = args.num_runs
     write_csv_rows([row for row in raw_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.raw.csv")
     write_csv_rows([row for row in scored_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.scored.csv")
@@ -1659,18 +1796,29 @@ def main() -> None:
     update_experiment_manifest(
         outdir,
         updates={
-            "comparison_path": str((outdir / "comparison.scored.csv").resolve()),
-            "comparison_raw_path": str((outdir / "comparison.raw.csv").resolve()),
-            "comparison_scored_path": str((outdir / "comparison.scored.csv").resolve()),
-            "latest_comparison_raw_path": str((outdir / "latest_run_comparison.raw.csv").resolve()),
-            "latest_comparison_scored_path": str((outdir / "latest_run_comparison.scored.csv").resolve()),
-            "latest_raw_report_path": str((outdir / "latest_run_raw_report.md").resolve()) if (outdir / "latest_run_raw_report.md").exists() else None,
+            "comparison_path": display_path(outdir / "comparison.scored.csv"),
+            "comparison_raw_path": display_path(outdir / "comparison.raw.csv"),
+            "comparison_scored_path": display_path(outdir / "comparison.scored.csv"),
+            "latest_comparison_raw_path": display_path(outdir / "latest_run_comparison.raw.csv"),
+            "latest_comparison_scored_path": display_path(outdir / "latest_run_comparison.scored.csv"),
+            "latest_raw_report_path": display_path(outdir / "latest_run_raw_report.md") if (outdir / "latest_run_raw_report.md").exists() else None,
+            "raw_vs_benchmark_gap_summary_path": display_path(outdir / "raw_vs_benchmark_gap_summary.json"),
+            "raw_vs_benchmark_gap_report_path": display_path(outdir / "raw_vs_benchmark_gap_summary.md"),
+            "local_debug_only_paths": [
+                display_path(outdir / "comparison.raw.csv"),
+                display_path(outdir / "latest_run_comparison.raw.csv"),
+                display_path(outdir / "latest_run_comparison.scored.csv"),
+                display_path(outdir / "latest_run_raw_report.md") if (outdir / "latest_run_raw_report.md").exists() else None,
+                display_path(outdir / "archive"),
+                display_path(outdir / "prepared"),
+            ],
         },
     )
     for obsolete_name in ("comparison.csv", "latest_run_comparison.csv"):
         obsolete_path = outdir / obsolete_name
         if obsolete_path.exists():
             obsolete_path.unlink()
+    _maybe_write_causal_ablation_outputs(outdir, systems)
     reuse_scope = "cross_run_persistent" if args.asset_registry_root else "within_invocation"
     _write_toolsandbox_report(
         scoreboard,
@@ -1678,15 +1826,14 @@ def main() -> None:
         reuse_scope=reuse_scope,
         asset_registry_root=str(Path(args.asset_registry_root).resolve()) if args.asset_registry_root else None,
     )
-    _maybe_write_causal_ablation_outputs(outdir, systems)
     update_experiment_manifest(
         outdir,
         updates={
-            "report_path": str((outdir / "report.md").resolve()),
-            "causal_claim_summary_path": str((outdir / "causal_claim_summary.json").resolve())
+            "report_path": display_path(outdir / "report.md"),
+            "causal_claim_summary_path": display_path(outdir / "causal_claim_summary.json")
             if (outdir / "causal_claim_summary.json").exists()
             else None,
-            "causal_claim_report_path": str((outdir / "causal_claim_report.md").resolve())
+            "causal_claim_report_path": display_path(outdir / "causal_claim_report.md")
             if (outdir / "causal_claim_report.md").exists()
             else None,
             "slice_policy_version": CAUSAL_SLICE_POLICY_VERSION

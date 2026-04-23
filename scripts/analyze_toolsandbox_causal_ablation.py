@@ -142,6 +142,10 @@ def _slice_verdict(summary: Dict[str, Dict[str, float]]) -> Dict[str, float]:
 
 def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str, Any]:
     system_summary = _system_summary(rows)
+    systems_observed = sorted(system_summary)
+    missing_expected_systems = [system for system in SYSTEMS if system not in system_summary]
+    unexpected_systems = [system for system in systems_observed if system not in SYSTEMS]
+    protocol_complete = not missing_expected_systems and not unexpected_systems
     failtax = _failtax_summary(scoreboard)
     slice_summaries = {
         slice_name: _system_summary(_slice_rows(rows, failure_types))
@@ -178,10 +182,22 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
         and full_repair_queries == 0.0
     )
 
-    ordering_a1 = _failtax_metric(failtax, "a1_recovery", "ordering", "success_rate")
-    ordering_a2 = _failtax_metric(failtax, "a2_planner", "ordering", "success_rate")
-    state_a1 = _failtax_metric(failtax, "a1_recovery", "state", "success_rate")
-    state_a2 = _failtax_metric(failtax, "a2_planner", "state", "success_rate")
+    htgp_evaluable = "a1_recovery" in system_summary and "a2_planner" in system_summary
+    ordering_a1 = _failtax_metric(failtax, "a1_recovery", "ordering", "success_rate") if htgp_evaluable else None
+    ordering_a2 = _failtax_metric(failtax, "a2_planner", "ordering", "success_rate") if htgp_evaluable else None
+    state_a1 = _failtax_metric(failtax, "a1_recovery", "state", "success_rate") if htgp_evaluable else None
+    state_a2 = _failtax_metric(failtax, "a2_planner", "state", "success_rate") if htgp_evaluable else None
+    if htgp_evaluable:
+        htgp_structural_supported: bool | str = (
+            float(ordering_a2 or 0.0) >= float(ordering_a1 or 0.0)
+            and float(state_a2 or 0.0) >= float(state_a1 or 0.0)
+            and (
+                float(ordering_a2 or 0.0) > float(ordering_a1 or 0.0)
+                or float(state_a2 or 0.0) > float(state_a1 or 0.0)
+            )
+        )
+    else:
+        htgp_structural_supported = "not_evaluable"
 
     repair_semantic_summary = slice_summaries["repair_semantic"]
     probe_only_summary = slice_summaries["probe_only"]
@@ -219,6 +235,7 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
     )
 
     verdicts = {
+        "protocol_complete": protocol_complete,
         "overall_interaction_query_contribution_supported": full_strict > no_query_strict,
         "repair_semantic_usefulness_supported": repair_semantic_usefulness_supported,
         "probe_only_success_caveat_present": probe_only_success_caveat_present,
@@ -227,15 +244,17 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
             noisy_usefulness_low
             and repair_semantic_usefulness_supported
         ),
-        "htgp_structural_reduction_supported": (
-            ordering_a2 >= ordering_a1
-            and state_a2 >= state_a1
-            and (ordering_a2 > ordering_a1 or state_a2 > state_a1)
-        ),
+        "htgp_structural_reduction_supported": htgp_structural_supported,
         "interaction_success_metric_caveat": probe_only_success_caveat or probe_only_success_caveat_present,
     }
 
     risk_flags: List[str] = []
+    if not protocol_complete:
+        risk_flags.append("causal_protocol_incomplete")
+    for system in missing_expected_systems:
+        risk_flags.append(f"missing_expected_system:{system}")
+    for system in unexpected_systems:
+        risk_flags.append(f"unexpected_system:{system}")
     if full_strict <= no_query_strict:
         risk_flags.append("query_ablation_no_drop")
     if noisy_strict > planner_strict + 0.05:
@@ -254,7 +273,9 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
         risk_flags.append("success_metric_probe_only_caveat")
     if not repair_semantic_usefulness_supported:
         risk_flags.append("repair_semantic_usefulness_not_supported")
-    if not verdicts["htgp_structural_reduction_supported"]:
+    if verdicts["htgp_structural_reduction_supported"] == "not_evaluable":
+        risk_flags.append("htgp_structural_claim_not_evaluable")
+    elif not verdicts["htgp_structural_reduction_supported"]:
         risk_flags.append("htgp_structural_claim_not_supported")
 
     return {
@@ -263,8 +284,11 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
             key: sorted(value) if value is not None else "all"
             for key, value in SLICE_DEFINITIONS.items()
         },
+        "protocol_complete": protocol_complete,
         "systems_expected": list(SYSTEMS),
-        "systems_observed": sorted(system_summary),
+        "systems_observed": systems_observed,
+        "missing_expected_systems": missing_expected_systems,
+        "unexpected_systems": unexpected_systems,
         "system_summary": system_summary,
         "slice_summaries": slice_summaries,
         "failtax_summary": failtax,
@@ -296,6 +320,7 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
             "repair_semantic": repair_semantic_metrics,
             "probe_only": probe_only_metrics,
             "exp3_htgp_structural": {
+                "status": "evaluable" if htgp_evaluable else "not_evaluable",
                 "a1_recovery_ordering_success": ordering_a1,
                 "a2_planner_ordering_success": ordering_a2,
                 "a1_recovery_state_success": state_a1,
@@ -319,7 +344,14 @@ def _write_report(summary: Dict[str, Any], out_path: Path) -> None:
         "|---|---:|",
     ]
     for key, value in sorted(summary.get("verdicts", {}).items()):
-        lines.append(f"| {key} | {str(bool(value)).lower()} |")
+        display_value = str(value).lower() if isinstance(value, bool) else str(value)
+        lines.append(f"| {key} | {display_value} |")
+    lines.extend(["", "## Protocol", ""])
+    lines.append(f"- protocol_complete: `{str(bool(summary.get('protocol_complete'))).lower()}`")
+    lines.append(f"- systems_expected: `{', '.join(summary.get('systems_expected', []))}`")
+    lines.append(f"- systems_observed: `{', '.join(summary.get('systems_observed', []))}`")
+    lines.append(f"- missing_expected_systems: `{', '.join(summary.get('missing_expected_systems', [])) or 'none'}`")
+    lines.append(f"- unexpected_systems: `{', '.join(summary.get('unexpected_systems', [])) or 'none'}`")
     lines.extend(["", "## Slice Policy", ""])
     lines.append(f"- version: `{summary.get('slice_policy_version', 'unknown')}`")
     for key, value in summary.get("slice_definitions", {}).items():

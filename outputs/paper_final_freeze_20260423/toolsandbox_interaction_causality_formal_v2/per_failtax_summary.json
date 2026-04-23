@@ -1,0 +1,102 @@
+{
+  "a1_recovery": {
+    "selection": {
+      "num_rows": 60.0,
+      "success_rate": 0.7333333333333333,
+      "pass_at_k": 0.7333333333333333,
+      "consistency": 1.0
+    },
+    "state": {
+      "num_rows": 14.0,
+      "success_rate": 0.7142857142857143,
+      "pass_at_k": 0.7142857142857143,
+      "consistency": 1.0
+    },
+    "ordering": {
+      "num_rows": 14.0,
+      "success_rate": 0.42857142857142855,
+      "pass_at_k": 0.42857142857142855,
+      "consistency": 1.0
+    }
+  },
+  "a2_planner": {
+    "selection": {
+      "num_rows": 60.0,
+      "success_rate": 0.75,
+      "pass_at_k": 0.75,
+      "consistency": 1.0
+    },
+    "state": {
+      "num_rows": 14.0,
+      "success_rate": 0.7142857142857143,
+      "pass_at_k": 0.7142857142857143,
+      "consistency": 1.0
+    },
+    "ordering": {
+      "num_rows": 14.0,
+      "success_rate": 0.42857142857142855,
+      "pass_at_k": 0.42857142857142855,
+      "consistency": 1.0
+    }
+  },
+  "a3_full_interaction": {
+    "selection": {
+      "num_rows": 60.0,
+      "success_rate": 1.0,
+      "pass_at_k": 1.0,
+      "consistency": 1.0
+    },
+    "state": {
+      "num_rows": 14.0,
+      "success_rate": 1.0,
+      "pass_at_k": 1.0,
+      "consistency": 1.0
+    },
+    "ordering": {
+      "num_rows": 14.0,
+      "success_rate": 1.0,
+      "pass_at_k": 1.0,
+      "consistency": 1.0
+    }
+  },
+  "a3_no_query": {
+    "selection": {
+      "num_rows": 60.0,
+      "success_rate": 0.75,
+      "pass_at_k": 0.75,
+      "consistency": 1.0
+    },
+    "state": {
+      "num_rows": 14.0,
+      "success_rate": 0.7142857142857143,
+      "pass_at_k": 0.7142857142857143,
+      "consistency": 1.0
+    },
+    "ordering": {
+      "num_rows": 14.0,
+      "success_rate": 0.42857142857142855,
+      "pass_at_k": 0.42857142857142855,
+      "consistency": 1.0
+    }
+  },
+  "a3_noisy_user": {
+    "selection": {
+      "num_rows": 60.0,
+      "success_rate": 1.0,
+      "pass_at_k": 1.0,
+      "consistency": 1.0
+    },
+    "state": {
+      "num_rows": 14.0,
+      "success_rate": 1.0,
+      "pass_at_k": 1.0,
+      "consistency": 1.0
+    },
+    "ordering": {
+      "num_rows": 14.0,
+      "success_rate": 1.0,
+      "pass_at_k": 1.0,
+      "consistency": 1.0
+    }
+  }
+}
