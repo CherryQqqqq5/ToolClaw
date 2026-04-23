@@ -476,6 +476,168 @@ def test_build_workflow_from_task_bfcl_required_query_is_not_stripped() -> None:
     assert workflow.execution_plan[0].inputs["query"] == "Search memory for when is shishir's birthday"
 
 
+def test_bfcl_schema_ranker_overrides_weaker_planner_preference() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_schema_ranker", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    food_tool = ToolSpec(
+        tool_id="ChaFod",
+        description="Changes a food item based on the customer's request.",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["foodItem"],
+                "properties": {"foodItem": {"type": "string"}},
+            }
+        },
+    )
+    drink_tool = ToolSpec(
+        tool_id="ChaDri.change_drink",
+        description="Modifies an existing drink order and drink preferences.",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["new_preferences"],
+                "properties": {
+                    "drink_id": {"type": "string", "default": "0000-0000-0000"},
+                    "new_preferences": {
+                        "type": "dict",
+                        "properties": {
+                            "size": {"type": "string", "enum": ["small", "medium", "large"]},
+                            "milk_type": {"type": "string", "enum": ["regular", "soy", "almond", "coconut"]},
+                        },
+                    },
+                },
+            }
+        },
+    )
+
+    selected = module._bfcl_schema_ranked_tool(
+        [food_tool, drink_tool],
+        "update my latte to a large size with coconut milk",
+        preferred_tool_id="ChaFod",
+    )
+
+    assert selected is not None
+    assert selected.tool_id == "ChaDri.change_drink"
+
+
+def test_build_workflow_from_task_bfcl_planner_uses_schema_ranked_tool() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_planner_schema_ranked", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_live_multiple_drink_001",
+            "query": "update my latte to a large size with coconut milk and make it extra sweet",
+            "candidate_tools": [
+                {
+                    "tool_id": "ChaFod",
+                    "description": "Changes a food item based on the customer's request.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["foodItem"],
+                        "properties": {"foodItem": {"type": "string"}},
+                    },
+                },
+                {
+                    "tool_id": "ChaDri.change_drink",
+                    "description": "Modifies an existing drink order and drink preferences.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["new_preferences"],
+                        "properties": {
+                            "drink_id": {"type": "string", "default": "0000-0000-0000"},
+                            "new_preferences": {
+                                "type": "dict",
+                                "properties": {
+                                    "size": {"type": "string", "enum": ["small", "medium", "large"]},
+                                    "milk_type": {"type": "string", "enum": ["regular", "soy", "almond", "coconut"]},
+                                    "sweetness_level": {"type": "string", "enum": ["none", "light", "regular", "extra"]},
+                                },
+                            },
+                        },
+                    },
+                },
+            ],
+            "expected_call_structure": {
+                "pattern": "serial",
+                "calls": [{"tool_name": "ChaDri.change_drink", "arguments": {}}],
+            },
+            "metadata": {
+                "benchmark": "bfcl",
+                "bfcl_group": "live",
+                "bfcl_call_pattern": "serial",
+            },
+        },
+        mode="planner",
+    )
+
+    assert workflow.execution_plan
+    assert workflow.execution_plan[0].tool_id == "ChaDri.change_drink"
+
+
+def test_build_workflow_from_task_bfcl_planner_multi_turn_uses_protocol_seed() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_multiturn_seed", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_multi_turn_protocol_seed_001",
+            "query": "Create a temp folder and move final_report.pdf into it",
+            "candidate_tools": [
+                {
+                    "tool_id": "mkdir",
+                    "description": "Create a new directory.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["dir_name"],
+                        "properties": {"dir_name": {"type": "string"}},
+                    },
+                },
+                {
+                    "tool_id": "mv",
+                    "description": "Move a file or directory.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["source", "destination"],
+                        "properties": {"source": {"type": "string"}, "destination": {"type": "string"}},
+                    },
+                },
+            ],
+            "expected_call_structure": {
+                "pattern": "serial",
+                "calls": [
+                    {"tool_name": "mkdir", "arguments": {"dir_name": "temp"}},
+                    {"tool_name": "mv", "arguments": {"source": "final_report.pdf", "destination": "temp"}},
+                ],
+            },
+            "metadata": {
+                "benchmark": "bfcl",
+                "bfcl_group": "multi_turn",
+                "bfcl_call_pattern": "serial",
+            },
+        },
+        mode="planner",
+    )
+
+    assert workflow.metadata["bfcl_protocol_fallback_applied"] is True
+    assert workflow.metadata["bfcl_protocol_fallback_reason"] == "multi_turn_without_explicit_milestones"
+    assert len(workflow.execution_plan) == 1
+
+
 def test_configure_bfcl_step_metadata_preserves_existing_grounding_and_refreshes_defaults() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_metadata_merge", module_path)

@@ -364,6 +364,43 @@ def _bfcl_best_tool(candidate_tools: List[ToolSpec], text: str) -> Optional[Tool
     return _bfcl_tool_lookup(candidate_tools).get(best_tool_id) or (candidate_tools[0] if candidate_tools else None)
 
 
+def _bfcl_schema_ranked_tool(
+    candidate_tools: List[ToolSpec],
+    text: str,
+    *,
+    preferred_tool_id: str = "",
+) -> Optional[ToolSpec]:
+    """Select a BFCL tool by task text/schema evidence without sticky planner bias.
+
+    BFCL fc_core is an exact function-call benchmark: once the workflow reaches the
+    adapter layer, a coarse planner-selected tool should not override a stronger
+    schema/text match. The preferred tool is retained only when it is tied with or
+    stronger than the top-ranked candidate under the same generic BFCL ranker.
+    """
+    ranked = rank_candidate_tools(text, candidate_tools)
+    if not ranked:
+        return _bfcl_tool_lookup(candidate_tools).get(preferred_tool_id) or (candidate_tools[0] if candidate_tools else None)
+    lookup = _bfcl_tool_lookup(candidate_tools)
+    best = ranked[0]
+    best_tool_id = str(best.get("tool", {}).get("tool_id") or "").strip()
+    selected_tool_id = best_tool_id
+    if preferred_tool_id:
+        current = next(
+            (
+                item
+                for item in ranked
+                if str(item.get("tool", {}).get("tool_id") or "").strip() == preferred_tool_id
+            ),
+            None,
+        )
+        if current is not None:
+            current_score = float(current.get("score", 0.0) or 0.0)
+            best_score = float(best.get("score", 0.0) or 0.0)
+            if current_score >= best_score:
+                selected_tool_id = preferred_tool_id
+    return lookup.get(selected_tool_id) or (candidate_tools[0] if candidate_tools else None)
+
+
 def _bfcl_tool_parameters(tool: Optional[ToolSpec]) -> Dict[str, Any]:
     metadata = tool.metadata if tool and isinstance(tool.metadata, dict) else {}
     parameters = metadata.get("parameters")
@@ -984,10 +1021,10 @@ def _adapt_bfcl_workflow(
             return _configure_bfcl_seed_steps(workflow, parallel_specs, enable_grounding=enable_grounding)
 
     if metadata.get("bfcl_group") == "multi_turn" and (
-        mode != "planner" or any(not str(step.tool_id or "").strip() for step in workflow.execution_plan)
+        mode == "planner" or any(not str(step.tool_id or "").strip() for step in workflow.execution_plan)
     ):
         seed_specs = _bfcl_seed_specs(task, candidate_tools, query)
-        if len(seed_specs) > 1:
+        if seed_specs:
             if not enable_grounding:
                 seed_specs = [
                     {
@@ -1001,15 +1038,20 @@ def _adapt_bfcl_workflow(
                     }
                     for spec in seed_specs
                 ]
-            return _configure_bfcl_seed_steps(workflow, seed_specs, enable_grounding=enable_grounding)
+            workflow = _configure_bfcl_seed_steps(workflow, seed_specs, enable_grounding=enable_grounding)
+            workflow.metadata["bfcl_protocol_fallback_applied"] = True
+            workflow.metadata["bfcl_protocol_fallback_reason"] = "multi_turn_without_explicit_milestones"
+            return workflow
 
     for index, step in enumerate(workflow.execution_plan):
         text = milestones[index] if index < len(milestones) else query
         selected_tool = tool_lookup.get(str(step.tool_id or "").strip())
         preferred_tool_id = str(selected_tool.tool_id) if selected_tool is not None else ""
-        reranked_tool = select_candidate_tool(text, candidate_tools, preferred_tool_id=preferred_tool_id)
-        if isinstance(reranked_tool, dict):
-            selected_tool = tool_lookup.get(str(reranked_tool.get("tool_id") or "").strip()) or selected_tool
+        selected_tool = _bfcl_schema_ranked_tool(
+            candidate_tools,
+            text,
+            preferred_tool_id=preferred_tool_id,
+        )
         if selected_tool is None:
             selected_tool = _bfcl_best_tool(candidate_tools, text)
         if selected_tool is None:
@@ -2372,16 +2414,27 @@ def execute_system(
     shell_task = dict(task)
     shell_task["_system_spec"] = spec
     shell = build_shell(runtime, shell_task)
+    protocol_preserving_reuse_disabled = benchmark == "bfcl" and spec.use_reuse
+    run_use_reuse = bool(spec.use_reuse and not protocol_preserving_reuse_disabled)
     outcome = shell.run(
         request=request,
         run_id=f"{spec.system_id}_{task_id}",
         output_path=str(trace_path),
         backup_tool_map=backup_tool_map,
-        use_reuse=spec.use_reuse,
+        use_reuse=run_use_reuse,
         compile_on_success=spec.compile_on_success,
-        seed_workflow=seed_workflow if not spec.use_reuse else None,
+        seed_workflow=seed_workflow,
     )
-    if spec.use_reuse:
+    if protocol_preserving_reuse_disabled:
+        trace_payload = _load_trace_payload(trace_path)
+        trace_payload.setdefault("metadata", {})
+        trace_payload["metadata"]["reuse_protocol_guard"] = {
+            "applied": True,
+            "reason": "bfcl_function_call_protocol_preserves_seed_workflow",
+            "fallback_behavior": "a3_interaction",
+        }
+        _write_trace_payload(trace_path, trace_payload)
+    if run_use_reuse:
         rollback = _reuse_rollback_decision(outcome, _load_trace_payload(trace_path))
         if rollback is not None:
             request.hints.allow_reuse = False
