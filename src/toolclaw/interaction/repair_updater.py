@@ -136,6 +136,27 @@ class RepairUpdater:
                 remaining = [slot for slot in stale_slots if slot not in refreshed_slots]
                 state_updates["__stale_state_slots__"] = remaining
         resume_step_id = self._resolve_repair_step_id(workflow=workflow, repair=repair)
+        expected_patch_targets = self._expected_patch_targets(patch_targets)
+        actual_patch_targets = self._actual_patch_targets(
+            state_updates=state_updates,
+            policy_updates=policy_updates,
+            binding_patch=binding_patch,
+        )
+        target_alignment = float(reply.metadata.get("target_alignment", 0.0) or 0.0)
+        semantic_conflict = bool(reply.metadata.get("semantic_conflict", False))
+        decoded_is_usable = bool(reply.metadata.get("decoded_is_usable", False))
+        effect_scope = self._effect_scope(
+            state_updates=state_updates,
+            policy_updates=policy_updates,
+            binding_patch=binding_patch,
+        )
+        effective_patch = (
+            bool(effect_scope)
+            and decoded_is_usable
+            and not semantic_conflict
+            and target_alignment >= 0.5
+            and self._targets_overlap(expected_patch_targets, actual_patch_targets)
+        )
         return ResumePatch(
             workflow=workflow,
             resume_step_id=resume_step_id,
@@ -160,6 +181,13 @@ class RepairUpdater:
                     "compound_patch": bool((state_updates or binding_patch) and policy_updates),
                     "patch_confidence": 1.0 if state_updates or policy_updates or binding_patch else 0.0,
                     "compiler_status": "compiled" if state_updates or policy_updates or binding_patch else "noop",
+                    "decoded_is_usable": decoded_is_usable,
+                    "target_alignment": target_alignment,
+                    "semantic_conflict": semantic_conflict,
+                    "effective_patch": effective_patch,
+                    "effect_scope": effect_scope or "none",
+                    "expected_patch_targets": expected_patch_targets,
+                    "actual_patch_targets": actual_patch_targets,
                 },
             },
         )
@@ -254,6 +282,75 @@ class RepairUpdater:
                 continue
             state_updates[key] = value
         return state_updates
+
+    @staticmethod
+    def _expected_patch_targets(patch_targets: Dict[str, Any] | None) -> list[str]:
+        targets: list[str] = []
+        schema_targets = patch_targets if isinstance(patch_targets, dict) else {}
+        for key, target in schema_targets.items():
+            key_text = str(key or "").strip()
+            target_text = str(target or "").strip()
+            if key_text:
+                targets.append(key_text)
+            if target_text.startswith("step.inputs."):
+                targets.append(target_text.split("step.inputs.", 1)[1])
+            elif target_text.startswith("state."):
+                targets.append(target_text.split("state.", 1)[1])
+            elif target_text == "policy.approved":
+                targets.append("approved")
+            elif target_text == "binding.primary_tool":
+                targets.append("tool_id")
+        seen: set[str] = set()
+        result: list[str] = []
+        for target in targets:
+            if target and target not in seen:
+                seen.add(target)
+                result.append(target)
+        return result
+
+    @staticmethod
+    def _actual_patch_targets(
+        *,
+        state_updates: Dict[str, Any],
+        policy_updates: Dict[str, Any],
+        binding_patch: Dict[str, Any],
+    ) -> list[str]:
+        targets: list[str] = [str(key) for key in state_updates if str(key) and not str(key).startswith("__")]
+        if "approved" in policy_updates:
+            targets.append("approved")
+        if "tool_id" in binding_patch:
+            targets.append("tool_id")
+        seen: set[str] = set()
+        result: list[str] = []
+        for target in targets:
+            if target and target not in seen:
+                seen.add(target)
+                result.append(target)
+        return result
+
+    @staticmethod
+    def _targets_overlap(expected_patch_targets: list[str], actual_patch_targets: list[str]) -> bool:
+        if not actual_patch_targets:
+            return False
+        if not expected_patch_targets:
+            return True
+        return bool(set(expected_patch_targets).intersection(set(actual_patch_targets)))
+
+    @staticmethod
+    def _effect_scope(
+        *,
+        state_updates: Dict[str, Any],
+        policy_updates: Dict[str, Any],
+        binding_patch: Dict[str, Any],
+    ) -> str:
+        scopes: list[str] = []
+        if state_updates:
+            scopes.append("slot")
+        if policy_updates:
+            scopes.append("policy")
+        if binding_patch:
+            scopes.append("binding")
+        return "+".join(scopes)
 
     @staticmethod
     def _approval_from_payload(payload: Dict[str, Any], *, patch_targets: Dict[str, Any] | None = None) -> Optional[bool]:

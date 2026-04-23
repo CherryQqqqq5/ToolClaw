@@ -104,6 +104,7 @@ class ToolClawRuntime:
             resume_patch=resume_patch,
             backup_tool_map=backup_tool_map,
         )
+        outcome.metadata.setdefault("resume_patch_metadata", dict(resume_patch.metadata))
         self._compile_and_store_if_success(outcome, enabled=compile_on_success)
         return outcome
 

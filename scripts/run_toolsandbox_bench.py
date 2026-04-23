@@ -281,6 +281,11 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "repair_user_replies": int(diagnostics.get("repair_user_replies", 0) or 0),
         "interaction_contract_satisfied": bool(metrics.get("interaction_contract_satisfied", 0.0)),
         "repair_interaction_satisfied": bool(metrics.get("repair_interaction_satisfied", 0.0)),
+        "reply_usable_rate": float(metrics.get("reply_usable_rate", 0.0) or 0.0),
+        "target_aligned_patch_rate": float(metrics.get("target_aligned_patch_rate", 0.0) or 0.0),
+        "effective_patch_rate": float(metrics.get("effective_patch_rate", 0.0) or 0.0),
+        "post_query_progress_rate": float(metrics.get("post_query_progress_rate", 0.0) or 0.0),
+        "useful_interaction_round_rate": float(metrics.get("useful_interaction_round_rate", 0.0) or 0.0),
         "turn_count": int(diagnostics.get("turn_count", 0) or 0),
         "expected_turn_count": int(diagnostics.get("expected_turn_count", 0) or 0),
         "expected_tool_calls": int(diagnostics.get("expected_tool_calls", 0) or 0),
@@ -366,6 +371,11 @@ def _category_breakdown(records: List[Dict[str, Any]]) -> Dict[str, Dict[str, fl
             "repair_scored_success": mean_or_zero([float(record["row"].get("repair_scored_success_rate", 0.0)) for record in category_records]),
             "interaction_contract_satisfied": mean_or_zero([_float_cell(record["row"].get("interaction_contract_satisfied", 0.0)) for record in category_records]),
             "mean_user_queries": mean_or_zero([float(record["row"].get("mean_user_queries", 0.0)) for record in category_records]),
+            "reply_usable_rate": mean_or_zero([float(record["row"].get("reply_usable_rate", 0.0)) for record in category_records]),
+            "target_aligned_patch_rate": mean_or_zero([float(record["row"].get("target_aligned_patch_rate", 0.0)) for record in category_records]),
+            "effective_patch_rate": mean_or_zero([float(record["row"].get("effective_patch_rate", 0.0)) for record in category_records]),
+            "post_query_progress_rate": mean_or_zero([float(record["row"].get("post_query_progress_rate", 0.0)) for record in category_records]),
+            "useful_interaction_round_rate": mean_or_zero([float(record["row"].get("useful_interaction_round_rate", 0.0)) for record in category_records]),
             "repair_interaction_satisfied": mean_or_zero([_float_cell(record["row"].get("repair_interaction_satisfied", 0.0)) for record in category_records]),
             "proxy_summary_success": mean_or_zero([float(record["row"].get("proxy_summary_success_rate", 0.0)) for record in category_records]),
             "raw_trace_success_rate": mean_or_zero([float(record["row"].get("raw_trace_success_rate", 0.0)) for record in category_records]),
@@ -433,6 +443,11 @@ TOOLSANDBOX_GROUP_METRICS = [
     AggregateMetric("repair_scored_success"),
     AggregateMetric("interaction_contract_satisfied"),
     AggregateMetric("mean_user_queries"),
+    AggregateMetric("reply_usable_rate"),
+    AggregateMetric("target_aligned_patch_rate"),
+    AggregateMetric("effective_patch_rate"),
+    AggregateMetric("post_query_progress_rate"),
+    AggregateMetric("useful_interaction_round_rate"),
     AggregateMetric("repair_interaction_satisfied"),
     AggregateMetric("proxy_summary_success"),
     AggregateMetric("raw_trace_success", source="diagnostics", label="raw_trace_success_rate"),
@@ -471,6 +486,11 @@ TOOLSANDBOX_CONFIG = BenchmarkScriptConfig(
         AggregateMetric("repair_scored_success"),
         AggregateMetric("interaction_contract_satisfied"),
         AggregateMetric("mean_user_queries"),
+        AggregateMetric("reply_usable_rate"),
+        AggregateMetric("target_aligned_patch_rate"),
+        AggregateMetric("effective_patch_rate"),
+        AggregateMetric("post_query_progress_rate"),
+        AggregateMetric("useful_interaction_round_rate"),
         AggregateMetric("repair_interaction_satisfied"),
         AggregateMetric("proxy_summary_success"),
         AggregateMetric("raw_trace_success", source="diagnostics", label="raw_trace_success_rate"),
@@ -1226,13 +1246,13 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
         [
         "## Aggregate",
         "",
-        "| system | mean_success_rate | strict_scored_success | repair_scored_success | interaction_contract_satisfied | mean_user_queries | repair_interaction_satisfied | proxy_summary_success | raw_trace_success_rate | raw_execution_success_rate | consistency | milestone_similarity | milestone_coverage | milestone_signal_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | budget_violation_rate | result_summary_coverage | reference_summary_coverage | dominant_result_summary_source |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+        "| system | mean_success_rate | strict_scored_success | repair_scored_success | interaction_contract_satisfied | mean_user_queries | reply_usable_rate | target_aligned_patch_rate | effective_patch_rate | post_query_progress_rate | useful_interaction_round_rate | repair_interaction_satisfied | proxy_summary_success | raw_trace_success_rate | raw_execution_success_rate | consistency | milestone_similarity | milestone_coverage | milestone_signal_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | budget_violation_rate | result_summary_coverage | reference_summary_coverage | dominant_result_summary_source |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ])
     per_system = scoreboard["per_system_summary"]
     for system, stats in per_system.items():
         lines.append(
-            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('strict_scored_success', stats.get('execution_verified_success', 0.0))):.3f} | {float(stats.get('repair_scored_success', 0.0)):.3f} | {float(stats.get('interaction_contract_satisfied', 0.0)):.3f} | {float(stats.get('mean_user_queries', 0.0)):.3f} | {float(stats.get('repair_interaction_satisfied', 0.0)):.3f} | {float(stats.get('proxy_summary_success', 0.0)):.3f} | {float(stats.get('raw_trace_success_rate', 0.0)):.3f} | {float(stats.get('raw_execution_success_rate', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('milestone_signal_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('budget_violation_rate', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} | {float(stats.get('reference_result_summary_available', 0.0)):.3f} | {stats.get('dominant_result_summary_source', 'unknown')} |"
+            f"| {system} | {float(stats.get('mean_success_rate', 0.0)):.3f} | {float(stats.get('strict_scored_success', stats.get('execution_verified_success', 0.0))):.3f} | {float(stats.get('repair_scored_success', 0.0)):.3f} | {float(stats.get('interaction_contract_satisfied', 0.0)):.3f} | {float(stats.get('mean_user_queries', 0.0)):.3f} | {float(stats.get('reply_usable_rate', 0.0)):.3f} | {float(stats.get('target_aligned_patch_rate', 0.0)):.3f} | {float(stats.get('effective_patch_rate', 0.0)):.3f} | {float(stats.get('post_query_progress_rate', 0.0)):.3f} | {float(stats.get('useful_interaction_round_rate', 0.0)):.3f} | {float(stats.get('repair_interaction_satisfied', 0.0)):.3f} | {float(stats.get('proxy_summary_success', 0.0)):.3f} | {float(stats.get('raw_trace_success_rate', 0.0)):.3f} | {float(stats.get('raw_execution_success_rate', 0.0)):.3f} | {float(stats.get('consistency', 0.0)):.3f} | {float(stats.get('milestone_similarity', 0.0)):.3f} | {float(stats.get('milestone_coverage', 0.0)):.3f} | {float(stats.get('milestone_signal_coverage', 0.0)):.3f} | {float(stats.get('state_dependency_score', 0.0)):.3f} | {float(stats.get('hallucination_avoidance', 0.0)):.3f} | {float(stats.get('tool_efficiency', 0.0)):.3f} | {float(stats.get('turn_efficiency', 0.0)):.3f} | {float(stats.get('budget_violation_rate', 0.0)):.3f} | {float(stats.get('used_result_summary', 0.0)):.3f} | {float(stats.get('reference_result_summary_available', 0.0)):.3f} | {stats.get('dominant_result_summary_source', 'unknown')} |"
         )
 
     lines.extend(
@@ -1255,14 +1275,14 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
             "",
             "## Category Breakdown",
             "",
-            "| system | category | rows | success_rate | strict_scored_success | repair_scored_success | interaction_contract_satisfied | mean_user_queries | repair_interaction_satisfied | proxy_summary_success | raw_trace_success_rate | raw_execution_success_rate | milestone_similarity | milestone_coverage | milestone_signal_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage | reference_summary_coverage | dominant_result_summary_source |",
-            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
+            "| system | category | rows | success_rate | strict_scored_success | repair_scored_success | interaction_contract_satisfied | mean_user_queries | reply_usable_rate | target_aligned_patch_rate | effective_patch_rate | post_query_progress_rate | useful_interaction_round_rate | repair_interaction_satisfied | proxy_summary_success | raw_trace_success_rate | raw_execution_success_rate | milestone_similarity | milestone_coverage | milestone_signal_coverage | state_dependency_score | hallucination_avoidance | tool_efficiency | turn_efficiency | result_summary_coverage | reference_summary_coverage | dominant_result_summary_source |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|",
         ]
     )
     for system, stats in per_system.items():
         for category, category_stats in sorted(stats.get("per_category", {}).items()):
             lines.append(
-                f"| {system} | {category} | {int(category_stats.get('num_rows', 0))} | {float(category_stats.get('success_rate', 0.0)):.3f} | {float(category_stats.get('strict_scored_success', category_stats.get('execution_verified_success', 0.0))):.3f} | {float(category_stats.get('repair_scored_success', 0.0)):.3f} | {float(category_stats.get('interaction_contract_satisfied', 0.0)):.3f} | {float(category_stats.get('mean_user_queries', 0.0)):.3f} | {float(category_stats.get('repair_interaction_satisfied', 0.0)):.3f} | {float(category_stats.get('proxy_summary_success', 0.0)):.3f} | {float(category_stats.get('raw_trace_success_rate', 0.0)):.3f} | {float(category_stats.get('raw_execution_success_rate', 0.0)):.3f} | {float(category_stats.get('milestone_similarity', 0.0)):.3f} | {float(category_stats.get('milestone_coverage', 0.0)):.3f} | {float(category_stats.get('milestone_signal_coverage', 0.0)):.3f} | {float(category_stats.get('state_dependency_score', 0.0)):.3f} | {float(category_stats.get('hallucination_avoidance', 0.0)):.3f} | {float(category_stats.get('tool_efficiency', 0.0)):.3f} | {float(category_stats.get('turn_efficiency', 0.0)):.3f} | {float(category_stats.get('result_summary_coverage', 0.0)):.3f} | {float(category_stats.get('reference_summary_coverage', 0.0)):.3f} | {category_stats.get('dominant_result_summary_source', 'unknown')} |"
+                f"| {system} | {category} | {int(category_stats.get('num_rows', 0))} | {float(category_stats.get('success_rate', 0.0)):.3f} | {float(category_stats.get('strict_scored_success', category_stats.get('execution_verified_success', 0.0))):.3f} | {float(category_stats.get('repair_scored_success', 0.0)):.3f} | {float(category_stats.get('interaction_contract_satisfied', 0.0)):.3f} | {float(category_stats.get('mean_user_queries', 0.0)):.3f} | {float(category_stats.get('reply_usable_rate', 0.0)):.3f} | {float(category_stats.get('target_aligned_patch_rate', 0.0)):.3f} | {float(category_stats.get('effective_patch_rate', 0.0)):.3f} | {float(category_stats.get('post_query_progress_rate', 0.0)):.3f} | {float(category_stats.get('useful_interaction_round_rate', 0.0)):.3f} | {float(category_stats.get('repair_interaction_satisfied', 0.0)):.3f} | {float(category_stats.get('proxy_summary_success', 0.0)):.3f} | {float(category_stats.get('raw_trace_success_rate', 0.0)):.3f} | {float(category_stats.get('raw_execution_success_rate', 0.0)):.3f} | {float(category_stats.get('milestone_similarity', 0.0)):.3f} | {float(category_stats.get('milestone_coverage', 0.0)):.3f} | {float(category_stats.get('milestone_signal_coverage', 0.0)):.3f} | {float(category_stats.get('state_dependency_score', 0.0)):.3f} | {float(category_stats.get('hallucination_avoidance', 0.0)):.3f} | {float(category_stats.get('tool_efficiency', 0.0)):.3f} | {float(category_stats.get('turn_efficiency', 0.0)):.3f} | {float(category_stats.get('result_summary_coverage', 0.0)):.3f} | {float(category_stats.get('reference_summary_coverage', 0.0)):.3f} | {category_stats.get('dominant_result_summary_source', 'unknown')} |"
             )
 
     lines.extend(

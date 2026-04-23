@@ -25,6 +25,8 @@ class EventType(str, Enum):
     TOOL_RESULT = "tool_result"
     USER_QUERY = "user_query"
     USER_REPLY = "user_reply"
+    QUERY_SUPPRESSED = "query_suppressed"
+    INTERACTION_ROUND_OUTCOME = "interaction_round_outcome"
     PATCH_COMPILED = "patch_compiled"
     RESUME_REQUESTED = "resume_requested"
     APPROVAL_REQUEST = "approval_request"

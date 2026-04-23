@@ -1143,6 +1143,12 @@ class ToolSandboxAdapter:
         repair_user_queries = 0
         probe_user_replies = 0
         repair_user_replies = 0
+        interaction_rounds = 0
+        reply_usable_count = 0
+        target_aligned_patch_count = 0
+        effective_patch_count = 0
+        post_query_progress_count = 0
+        useful_interaction_round_count = 0
         for event in trace_events:
             event_type = str(event.get("event_type") or "")
             metadata = event.get("metadata", {}) or {}
@@ -1158,6 +1164,19 @@ class ToolSandboxAdapter:
                     probe_user_replies += 1
                 else:
                     repair_user_replies += 1
+            elif event_type == "interaction_round_outcome":
+                output = event.get("output", {}) or {}
+                interaction_rounds += 1
+                reply_usable_count += 1 if bool(output.get("decoded_is_usable")) else 0
+                target_aligned_patch_count += 1 if float(output.get("target_alignment", 0.0) or 0.0) >= 0.5 else 0
+                effective_patch_count += 1 if bool(output.get("effective_patch")) else 0
+                post_query_progress_count += 1 if bool(output.get("post_query_progress")) else 0
+                useful_interaction_round_count += 1 if bool(output.get("interaction_round_useful")) else 0
+        reply_usable_rate = (reply_usable_count / interaction_rounds) if interaction_rounds else 0.0
+        target_aligned_patch_rate = (target_aligned_patch_count / interaction_rounds) if interaction_rounds else 0.0
+        effective_patch_rate = (effective_patch_count / interaction_rounds) if interaction_rounds else 0.0
+        post_query_progress_rate = (post_query_progress_count / interaction_rounds) if interaction_rounds else 0.0
+        useful_interaction_round_rate = (useful_interaction_round_count / interaction_rounds) if interaction_rounds else 0.0
         turn_count = self._extract_turn_count(result_summary, trace_events)
         expected_turns = self._expected_turn_count(sample.raw_payload, categories)
         expected_tool_calls = self._expected_tool_calls(sample.raw_payload, categories)
@@ -1220,6 +1239,11 @@ class ToolSandboxAdapter:
                 "raw_execution_success": 1.0 if raw_trace_success else 0.0,
                 "interaction_contract_satisfied": 1.0 if interaction_contract_satisfied else 0.0,
                 "mean_user_queries": float(user_queries),
+                "reply_usable_rate": reply_usable_rate,
+                "target_aligned_patch_rate": target_aligned_patch_rate,
+                "effective_patch_rate": effective_patch_rate,
+                "post_query_progress_rate": post_query_progress_rate,
+                "useful_interaction_round_rate": useful_interaction_round_rate,
                 "repair_interaction_satisfied": 1.0 if repair_interaction_satisfied else 0.0,
                 "must_interact_query_rate": 1.0 if interaction_contract_satisfied else 0.0 if must_interact_expected else 1.0,
                 "success_given_query": 1.0 if (user_queries > 0 and strict_scored_success) else 0.0,
@@ -1254,6 +1278,17 @@ class ToolSandboxAdapter:
                 "repair_user_queries": repair_user_queries,
                 "probe_user_replies": probe_user_replies,
                 "repair_user_replies": repair_user_replies,
+                "interaction_rounds": interaction_rounds,
+                "reply_usable_count": reply_usable_count,
+                "target_aligned_patch_count": target_aligned_patch_count,
+                "effective_patch_count": effective_patch_count,
+                "post_query_progress_count": post_query_progress_count,
+                "useful_interaction_round_count": useful_interaction_round_count,
+                "reply_usable_rate": reply_usable_rate,
+                "target_aligned_patch_rate": target_aligned_patch_rate,
+                "effective_patch_rate": effective_patch_rate,
+                "post_query_progress_rate": post_query_progress_rate,
+                "useful_interaction_round_rate": useful_interaction_round_rate,
                 "milestone_signal_available": total_milestones > 0 and has_explicit_milestone_signal,
                 "used_result_summary": bool(result_summary),
                 "result_summary_source": result_summary_source,

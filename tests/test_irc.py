@@ -14,7 +14,7 @@ from toolclaw.compiler.swpc import SWPCCompiler
 from toolclaw.planner.htgp import PlanningHints, PlanningRequest, build_default_planner
 from toolclaw.registry import InMemoryAssetRegistry
 from toolclaw.schemas.workflow import Permissions, TaskConstraints, TaskSpec, ToolSpec, Workflow, WorkflowContext
-from toolclaw.interaction.repair_updater import InteractionRequest
+from toolclaw.interaction.repair_updater import InteractionRequest, UserReply
 
 
 class SlowReplyProvider:
@@ -184,6 +184,105 @@ def test_semantic_decoder_and_repair_updater_support_compound_approval_patch() -
     assert resume_patch.binding_patch["tool_id"] == "backup_write_tool"
     assert resume_patch.state_updates["target_path"] == "outputs/reports/compound.txt"
     assert resume_patch.metadata["answer_patch"]["compound_patch"] is True
+    assert resume_patch.metadata["answer_patch"]["decoded_is_usable"] is True
+    assert resume_patch.metadata["answer_patch"]["target_alignment"] == 1.0
+    assert resume_patch.metadata["answer_patch"]["effective_patch"] is True
+
+
+def test_irrelevant_text_reply_is_not_semantically_usable() -> None:
+    request = InteractionRequest(
+        interaction_id="int_irrelevant_001",
+        question="Provide the target path.",
+        expected_answer_type="target_path_patch",
+        metadata={"patch_targets": {"target_path": "step.inputs.target_path"}},
+    )
+    raw_reply = RawUserReply(
+        interaction_id=request.interaction_id,
+        raw_text="irrelevant answer",
+        raw_payload={"raw_text": "irrelevant answer"},
+        accepted=True,
+        status="accept",
+    )
+
+    decoded = SemanticDecoder().decode(request, raw_reply)
+    reply = compile_decoded_signal_to_user_reply(request, raw_reply, decoded)
+
+    assert reply.metadata["decoded_is_usable"] is False
+    assert reply.metadata["target_alignment"] == 0.0
+    assert reply.metadata["semantic_conflict"] is True
+
+
+def test_wrong_parameter_patch_fails_target_alignment() -> None:
+    request = InteractionRequest(
+        interaction_id="int_wrong_patch_001",
+        question="Provide the target path.",
+        expected_answer_type="target_path_patch",
+        metadata={"patch_targets": {"target_path": "step.inputs.target_path"}},
+    )
+    raw_reply = RawUserReply(
+        interaction_id=request.interaction_id,
+        raw_text="wrong parameter",
+        raw_payload={"input_patch": {"value": "wrong_parameter"}},
+        accepted=True,
+        status="accept",
+    )
+
+    decoded = SemanticDecoder().decode(request, raw_reply)
+    reply = compile_decoded_signal_to_user_reply(request, raw_reply, decoded)
+
+    assert reply.metadata["decoded_is_usable"] is False
+    assert reply.metadata["target_alignment"] == 0.0
+    assert reply.metadata["semantic_conflict"] is True
+
+
+def test_unknown_approval_reply_does_not_generate_default_approval_signal() -> None:
+    request = InteractionRequest(
+        interaction_id="int_unknown_approval_001",
+        question="Approve this blocked action?",
+        expected_answer_type="approval",
+        metadata={"patch_targets": {"approved": "policy.approved"}},
+    )
+    raw_reply = RawUserReply(
+        interaction_id=request.interaction_id,
+        raw_text="irrelevant answer",
+        raw_payload={"raw_text": "irrelevant answer"},
+        accepted=True,
+        status="accept",
+    )
+
+    decoded = SemanticDecoder().decode(request, raw_reply)
+    reply = compile_decoded_signal_to_user_reply(request, raw_reply, decoded)
+
+    assert "approved" not in reply.payload
+    assert reply.metadata["decoded_is_usable"] is False
+
+
+def test_misaligned_reply_patch_is_not_effective() -> None:
+    workflow = Workflow.demo()
+    repair = __import__("toolclaw.schemas.repair", fromlist=["Repair"]).Repair.demo()
+    request = InteractionRequest(
+        interaction_id=f"int_{repair.repair_id}",
+        question="Provide the target path.",
+        expected_answer_type="target_path_patch",
+        metadata={"patch_targets": {"target_path": "step.inputs.target_path"}},
+    )
+    reply = UserReply(
+        interaction_id=request.interaction_id,
+        payload={"value": "wrong_parameter"},
+        accepted=True,
+        status="accept",
+        metadata={
+            "patch_targets": dict(request.metadata["patch_targets"]),
+            "decoded_is_usable": False,
+            "target_alignment": 0.0,
+            "semantic_conflict": True,
+        },
+    )
+
+    resume_patch = RepairUpdater().ingest_reply(workflow, repair, reply, {})
+
+    assert resume_patch.metadata["answer_patch"]["compiler_status"] == "compiled"
+    assert resume_patch.metadata["answer_patch"]["effective_patch"] is False
 
 
 def test_user_reject_reply_causes_safe_stop(tmp_path: Path) -> None:
@@ -247,7 +346,7 @@ def test_interaction_shell_aborts_after_repeated_same_failure_signature(tmp_path
         runtime=runtime,
         config=InteractionLoopConfig(
             max_turns=3,
-            simulator_policy=SimulatedPolicy(constraint_overrides={"clear_failure_flag": False}),
+            simulator_policy=SimulatedPolicy(constraint_overrides={"clear_failure_flag": False, "tool_id": ""}),
         ),
     )
 

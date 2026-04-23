@@ -63,12 +63,22 @@ def test_build_scored_row_includes_mean_user_queries() -> None:
                 "strict_scored_success": 1.0,
                 "execution_verified_success": 1.0,
                 "mean_user_queries": 2.0,
+                "reply_usable_rate": 0.5,
+                "target_aligned_patch_rate": 0.5,
+                "effective_patch_rate": 0.25,
+                "post_query_progress_rate": 0.75,
+                "useful_interaction_round_rate": 0.25,
             },
             "diagnostics": {"user_queries": 2, "categories": ["multiple_user_turn"]},
         },
     )
 
     assert row["mean_user_queries"] == 2.0
+    assert row["reply_usable_rate"] == 0.5
+    assert row["target_aligned_patch_rate"] == 0.5
+    assert row["effective_patch_rate"] == 0.25
+    assert row["post_query_progress_rate"] == 0.75
+    assert row["useful_interaction_round_rate"] == 0.25
 
 
 def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(tmp_path: Path) -> None:
@@ -162,6 +172,11 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "strict_scored_success" in per_system["a0_baseline"]
     assert "repair_scored_success" in per_system["a0_baseline"]
     assert "interaction_contract_satisfied" in per_system["a0_baseline"]
+    assert "reply_usable_rate" in per_system["a0_baseline"]
+    assert "target_aligned_patch_rate" in per_system["a0_baseline"]
+    assert "effective_patch_rate" in per_system["a0_baseline"]
+    assert "post_query_progress_rate" in per_system["a0_baseline"]
+    assert "useful_interaction_round_rate" in per_system["a0_baseline"]
     assert "repair_interaction_satisfied" in per_system["a0_baseline"]
     assert "proxy_summary_success" in per_system["a0_baseline"]
     assert "raw_trace_success_rate" in per_system["a0_baseline"]
@@ -203,6 +218,11 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "repair_scored_success" in report
     assert "interaction_contract_satisfied" in report
     assert "mean_user_queries" in report
+    assert "reply_usable_rate" in report
+    assert "target_aligned_patch_rate" in report
+    assert "effective_patch_rate" in report
+    assert "post_query_progress_rate" in report
+    assert "useful_interaction_round_rate" in report
     assert "proxy_summary_success" in report
     assert "raw_trace_success_rate" in report
     assert "raw_execution_success_rate" in report

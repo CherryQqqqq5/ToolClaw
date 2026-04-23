@@ -315,11 +315,35 @@ class InteractionShell:
                 compile_on_success=compile_on_success,
             )
             next_signature = self._failure_signature(outcome)
-            if outcome.success or not outcome.blocked or next_signature != failure_signature:
+            post_query_progress = bool(outcome.success or not outcome.blocked or next_signature != failure_signature)
+            answer_patch = (
+                dict(outcome.metadata.get("resume_patch_metadata", {}).get("answer_patch", {}))
+                if isinstance(outcome.metadata.get("resume_patch_metadata"), dict)
+                else {}
+            )
+            interaction_round_useful = bool(
+                answer_patch.get("decoded_is_usable")
+                and float(answer_patch.get("target_alignment", 0.0) or 0.0) >= 0.5
+                and not bool(answer_patch.get("semantic_conflict"))
+                and post_query_progress
+            )
+            if post_query_progress:
                 interaction_stats["patch_successes"] += 1
             else:
                 interaction_stats["post_answer_retry_count"] += 1
             combined_trace = self._merge_trace_payloads(combined_trace, self._load_trace(output_path))
+            self._append_interaction_round_outcome(
+                combined_trace,
+                turn_index=turns,
+                query=query,
+                reply=reply,
+                answer_patch=answer_patch,
+                previous_failure_signature=failure_signature,
+                next_failure_signature=next_signature,
+                query_was_necessary=necessary_question,
+                post_query_progress=post_query_progress,
+                interaction_round_useful=interaction_round_useful,
+            )
             self._finalize_interaction_metrics(combined_trace, interaction_stats)
             self._write_trace(output_path, combined_trace)
 
@@ -444,6 +468,63 @@ class InteractionShell:
             metadata["oracle_reply_consumed_count"] = int(metadata.get("oracle_reply_consumed_count", 0)) + 1
         if bool(reply_metadata.get("oracle_reply_mismatch")):
             metadata["oracle_reply_mismatch_count"] = int(metadata.get("oracle_reply_mismatch_count", 0)) + 1
+
+    @staticmethod
+    def _append_interaction_round_outcome(
+        trace_payload: Dict[str, Any],
+        *,
+        turn_index: int,
+        query: Any,
+        reply: Any,
+        answer_patch: Dict[str, Any],
+        previous_failure_signature: str,
+        next_failure_signature: str,
+        query_was_necessary: bool,
+        post_query_progress: bool,
+        interaction_round_useful: bool,
+    ) -> None:
+        events = trace_payload.setdefault("events", [])
+        metrics = trace_payload.setdefault("metrics", {})
+        reply_metadata = dict(getattr(reply, "metadata", {}) or {})
+        decoded_is_usable = bool(answer_patch.get("decoded_is_usable", reply_metadata.get("decoded_is_usable", False)))
+        target_alignment = float(answer_patch.get("target_alignment", reply_metadata.get("target_alignment", 0.0)) or 0.0)
+        semantic_conflict = bool(answer_patch.get("semantic_conflict", reply_metadata.get("semantic_conflict", False)))
+        effective_patch = bool(answer_patch.get("effective_patch", False))
+        events.append(
+            {
+                "event_id": f"evt_interaction_round_outcome_{turn_index:02d}",
+                "timestamp": utc_now_iso(),
+                "step_id": query.context_summary.get("step_id"),
+                "event_type": "interaction_round_outcome",
+                "actor": "interaction_shell",
+                "tool_id": None,
+                "input_ref": None,
+                "tool_args": None,
+                "output": {
+                    "query_was_necessary": bool(query_was_necessary),
+                    "decoded_is_usable": decoded_is_usable,
+                    "target_alignment": target_alignment,
+                    "semantic_conflict": semantic_conflict,
+                    "effective_patch": effective_patch,
+                    "post_query_progress": bool(post_query_progress),
+                    "interaction_round_useful": bool(interaction_round_useful),
+                },
+                "message": None,
+                "metadata": {
+                    "interaction_id": getattr(reply, "interaction_id", query.interaction_id),
+                    "previous_failure_signature": previous_failure_signature,
+                    "next_failure_signature": next_failure_signature,
+                    "answer_patch": dict(answer_patch),
+                    "reply_metadata": reply_metadata,
+                    "query_metadata": dict(query.metadata),
+                },
+            }
+        )
+        metrics["reply_usable_count"] = int(metrics.get("reply_usable_count", 0)) + int(decoded_is_usable)
+        metrics["target_aligned_patch_count"] = int(metrics.get("target_aligned_patch_count", 0)) + int(target_alignment >= 0.5)
+        metrics["effective_patch_count"] = int(metrics.get("effective_patch_count", 0)) + int(effective_patch)
+        metrics["post_query_progress_count"] = int(metrics.get("post_query_progress_count", 0)) + int(post_query_progress)
+        metrics["useful_interaction_round_count"] = int(metrics.get("useful_interaction_round_count", 0)) + int(interaction_round_useful)
 
     @staticmethod
     def _append_query_suppressed_event(

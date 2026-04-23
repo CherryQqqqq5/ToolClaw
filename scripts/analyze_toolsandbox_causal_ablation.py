@@ -60,6 +60,11 @@ def _system_summary(rows: List[Dict[str, str]]) -> Dict[str, Dict[str, float]]:
             "repair_scored_success": _mean(system_rows, "repair_scored_success_rate"),
             "interaction_contract_satisfied": _mean(system_rows, "interaction_contract_satisfied"),
             "mean_user_queries": _mean(system_rows, "mean_user_queries"),
+            "reply_usable_rate": _mean(system_rows, "reply_usable_rate"),
+            "target_aligned_patch_rate": _mean(system_rows, "target_aligned_patch_rate"),
+            "effective_patch_rate": _mean(system_rows, "effective_patch_rate"),
+            "post_query_progress_rate": _mean(system_rows, "post_query_progress_rate"),
+            "useful_interaction_round_rate": _mean(system_rows, "useful_interaction_round_rate"),
             "repair_user_queries": _mean(system_rows, "repair_user_queries"),
             "probe_user_queries": _mean(system_rows, "probe_user_queries"),
             "milestone_similarity": _mean(system_rows, "milestone_similarity"),
@@ -109,6 +114,29 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
     planner_exec = _metric(system_summary, "a2_planner", "execution_verified_success")
     noisy_strict = _metric(system_summary, "a3_noisy_user", "strict_scored_success")
     planner_strict = _metric(system_summary, "a2_planner", "strict_scored_success")
+    full_useful_round = _metric(system_summary, "a3_full_interaction", "useful_interaction_round_rate")
+    noisy_reply_usable = _metric(system_summary, "a3_noisy_user", "reply_usable_rate")
+    noisy_patch_alignment = _metric(system_summary, "a3_noisy_user", "target_aligned_patch_rate")
+    noisy_effective_patch = _metric(system_summary, "a3_noisy_user", "effective_patch_rate")
+    noisy_progress = _metric(system_summary, "a3_noisy_user", "post_query_progress_rate")
+    noisy_useful_round = _metric(system_summary, "a3_noisy_user", "useful_interaction_round_rate")
+    full_probe_queries = _metric(system_summary, "a3_full_interaction", "probe_user_queries")
+    noisy_probe_queries = _metric(system_summary, "a3_noisy_user", "probe_user_queries")
+    full_repair_queries = _metric(system_summary, "a3_full_interaction", "repair_user_queries")
+    noisy_repair_queries = _metric(system_summary, "a3_noisy_user", "repair_user_queries")
+    noisy_usefulness_low = (
+        noisy_reply_usable <= 0.2
+        and noisy_effective_patch <= 0.1
+        and noisy_useful_round <= 0.1
+    )
+    probe_only_success_caveat = (
+        noisy_strict > planner_strict + 0.05
+        and noisy_usefulness_low
+        and noisy_probe_queries > 0.0
+        and noisy_repair_queries == 0.0
+        and full_probe_queries > 0.0
+        and full_repair_queries == 0.0
+    )
 
     ordering_a1 = _failtax_metric(failtax, "a1_recovery", "ordering", "success_rate")
     ordering_a2 = _failtax_metric(failtax, "a2_planner", "ordering", "success_rate")
@@ -118,12 +146,19 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
     verdicts = {
         "interaction_query_contribution_supported": full_strict > no_query_strict,
         "no_query_repair_mechanism_supported": no_query_exec > planner_exec,
-        "interaction_not_cheating_supported": full_strict > noisy_strict and noisy_strict <= planner_strict + 0.05,
+        "interaction_not_cheating_supported": (
+            noisy_usefulness_low
+            and (
+                (full_strict > noisy_strict and full_useful_round > noisy_useful_round)
+                or probe_only_success_caveat
+            )
+        ),
         "htgp_structural_reduction_supported": (
             ordering_a2 >= ordering_a1
             and state_a2 >= state_a1
             and (ordering_a2 > ordering_a1 or state_a2 > state_a1)
         ),
+        "interaction_success_metric_caveat": probe_only_success_caveat,
     }
 
     risk_flags: List[str] = []
@@ -131,6 +166,18 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
         risk_flags.append("query_ablation_no_drop")
     if noisy_strict > planner_strict + 0.05:
         risk_flags.append("noisy_user_above_planner")
+    if noisy_reply_usable > 0.2:
+        risk_flags.append("noisy_reply_usable_too_high")
+    if noisy_patch_alignment > 0.2:
+        risk_flags.append("noisy_patch_alignment_too_high")
+    if noisy_progress > 0.1:
+        risk_flags.append("noisy_progress_too_high")
+    if noisy_effective_patch > 0.1:
+        risk_flags.append("noisy_effective_patch_too_high")
+    if full_useful_round <= noisy_useful_round and not probe_only_success_caveat:
+        risk_flags.append("full_usefulness_not_above_noisy")
+    if probe_only_success_caveat:
+        risk_flags.append("success_metric_probe_only_caveat")
     if not verdicts["htgp_structural_reduction_supported"]:
         risk_flags.append("htgp_structural_claim_not_supported")
 
@@ -152,6 +199,17 @@ def analyze(rows: List[Dict[str, str]], scoreboard: Dict[str, Any]) -> Dict[str,
                 "a3_full_interaction_strict": full_strict,
                 "a3_noisy_user_strict": noisy_strict,
                 "a2_planner_strict": planner_strict,
+                "a3_full_interaction_useful_interaction_round_rate": full_useful_round,
+                "a3_noisy_user_reply_usable_rate": noisy_reply_usable,
+                "a3_noisy_user_target_aligned_patch_rate": noisy_patch_alignment,
+                "a3_noisy_user_effective_patch_rate": noisy_effective_patch,
+                "a3_noisy_user_post_query_progress_rate": noisy_progress,
+                "a3_noisy_user_useful_interaction_round_rate": noisy_useful_round,
+                "a3_full_interaction_probe_user_queries": full_probe_queries,
+                "a3_noisy_user_probe_user_queries": noisy_probe_queries,
+                "a3_full_interaction_repair_user_queries": full_repair_queries,
+                "a3_noisy_user_repair_user_queries": noisy_repair_queries,
+                "probe_only_success_caveat": probe_only_success_caveat,
             },
             "exp3_htgp_structural": {
                 "a1_recovery_ordering_success": ordering_a1,
@@ -180,12 +238,12 @@ def _write_report(summary: Dict[str, Any], out_path: Path) -> None:
         lines.append(f"| {key} | {str(bool(value)).lower()} |")
     lines.extend(["", "## System Summary", ""])
     lines.append(
-        "| system | strict_scored_success | execution_verified_success | raw_execution_success | repair_scored_success | interaction_contract_satisfied | mean_user_queries |"
+        "| system | strict_scored_success | execution_verified_success | raw_execution_success | repair_scored_success | interaction_contract_satisfied | mean_user_queries | reply_usable_rate | target_aligned_patch_rate | effective_patch_rate | post_query_progress_rate | useful_interaction_round_rate |"
     )
-    lines.append("|---|---:|---:|---:|---:|---:|---:|")
+    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
     for system, stats in sorted(summary.get("system_summary", {}).items()):
         lines.append(
-            f"| {system} | {stats.get('strict_scored_success', 0.0):.3f} | {stats.get('execution_verified_success', 0.0):.3f} | {stats.get('raw_execution_success', 0.0):.3f} | {stats.get('repair_scored_success', 0.0):.3f} | {stats.get('interaction_contract_satisfied', 0.0):.3f} | {stats.get('mean_user_queries', 0.0):.3f} |"
+            f"| {system} | {stats.get('strict_scored_success', 0.0):.3f} | {stats.get('execution_verified_success', 0.0):.3f} | {stats.get('raw_execution_success', 0.0):.3f} | {stats.get('repair_scored_success', 0.0):.3f} | {stats.get('interaction_contract_satisfied', 0.0):.3f} | {stats.get('mean_user_queries', 0.0):.3f} | {stats.get('reply_usable_rate', 0.0):.3f} | {stats.get('target_aligned_patch_rate', 0.0):.3f} | {stats.get('effective_patch_rate', 0.0):.3f} | {stats.get('post_query_progress_rate', 0.0):.3f} | {stats.get('useful_interaction_round_rate', 0.0):.3f} |"
         )
     lines.extend(["", "## Risk Flags", ""])
     risk_flags = list(summary.get("risk_flags", []))
