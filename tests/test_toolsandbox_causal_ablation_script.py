@@ -75,6 +75,21 @@ def test_toolsandbox_causal_ablation_analyzer_outputs_verdicts() -> None:
             "useful_interaction_round_rate": "0.0",
         },
         {
+            "system": "a1_recovery",
+            "failure_type": "multiple_user_turn",
+            "strict_scored_success_rate": "0.2",
+            "execution_verified_success_rate": "0.2",
+            "raw_execution_success_rate": "0.2",
+            "repair_scored_success_rate": "0.0",
+            "interaction_contract_satisfied": "1.0",
+            "mean_user_queries": "0.0",
+            "reply_usable_rate": "0.0",
+            "target_aligned_patch_rate": "0.0",
+            "effective_patch_rate": "0.0",
+            "post_query_progress_rate": "0.0",
+            "useful_interaction_round_rate": "0.0",
+        },
+        {
             "system": "a3_full_interaction",
             "failure_type": "state_dependency",
             "strict_scored_success_rate": "1.0",
@@ -122,6 +137,21 @@ def test_toolsandbox_causal_ablation_analyzer_outputs_verdicts() -> None:
             "repair_user_queries": "1.0",
         },
         {
+            "system": "a1_recovery",
+            "failure_type": "state_dependency",
+            "strict_scored_success_rate": "0.0",
+            "execution_verified_success_rate": "0.0",
+            "raw_execution_success_rate": "0.0",
+            "repair_scored_success_rate": "0.0",
+            "interaction_contract_satisfied": "1.0",
+            "mean_user_queries": "0.0",
+            "reply_usable_rate": "0.0",
+            "target_aligned_patch_rate": "0.0",
+            "effective_patch_rate": "0.0",
+            "post_query_progress_rate": "0.0",
+            "useful_interaction_round_rate": "0.0",
+        },
+        {
             "system": "a2_planner",
             "failure_type": "state_dependency",
             "strict_scored_success_rate": "0.0",
@@ -156,6 +186,7 @@ def test_toolsandbox_causal_ablation_analyzer_outputs_verdicts() -> None:
 
     summary = module.analyze(rows, scoreboard)
 
+    assert summary["verdicts"]["protocol_complete"] is True
     assert summary["verdicts"]["overall_interaction_query_contribution_supported"] is True
     assert summary["verdicts"]["repair_semantic_usefulness_supported"] is True
     assert summary["verdicts"]["probe_only_success_caveat_present"] is True

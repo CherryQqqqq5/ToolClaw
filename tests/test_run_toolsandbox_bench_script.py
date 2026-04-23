@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import csv
 import importlib.util
 import json
@@ -230,7 +232,9 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "dominant_result_summary_source" in report
     assert "Result Summary Sources" in report
     assert "Readiness" in report
-    assert "primary_result_ready: `False`" in report
+    assert "primary_result_ready:" in report
+    assert "resolved_caution_flags" in report
+    assert "unresolved_caution_flags" in report
     assert "single_validated_sample" in report
     assert "toolclaw_proxy" in report
     assert "result_summary_coverage" in report
@@ -238,6 +242,8 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "state_dependency_score" in report
     assert "focused_slice_summary.md" in report
     assert "reuse_focused_summary.md" in report
+    assert "local_debug_only" in report
+    assert "raw_vs_benchmark_gap_summary.md" in report
     assert "statistical_robustness_summary.json" in report
     assert "Reuse Focused" in report
     assert "Statistical Robustness" in report

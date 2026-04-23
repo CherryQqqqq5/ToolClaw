@@ -291,7 +291,26 @@ def _ast_value(node: ast.AST) -> Any:
                 continue
             payload[str(key)] = _ast_value(value_node)
         return payload
-    return ast.unparse(node)
+    rendered = _ast_render(node)
+    return rendered if rendered is not None else ast.dump(node)
+
+
+def _ast_render(node: ast.AST) -> str | None:
+    unparse = getattr(ast, "unparse", None)
+    if callable(unparse):
+        return str(unparse(node))
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        base = _ast_render(node.value)
+        return f"{base}.{node.attr}" if base else node.attr
+    if isinstance(node, ast.Constant):
+        return str(node.value)
+    if isinstance(node, ast.Call):
+        return _ast_render(node.func)
+    if isinstance(node, ast.Subscript):
+        return _ast_render(node.value)
+    return None
 
 
 def _ast_string_list(node: ast.AST | None) -> List[str]:
@@ -327,7 +346,8 @@ def _ast_milestones(node: ast.AST | None) -> List[Any]:
     for item in node.elts:
         if isinstance(item, ast.Starred):
             continue
-        milestones.append(ast.unparse(item))
+        rendered = _ast_render(item)
+        milestones.append(rendered if rendered is not None else ast.dump(item))
     return milestones
 
 
