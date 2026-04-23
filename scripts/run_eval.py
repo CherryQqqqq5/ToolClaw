@@ -53,6 +53,7 @@ from toolclaw.execution.recovery import RecoveryConfig, RecoveryEngine
 from toolclaw.interaction.irc import InteractionLoopConfig, InteractionShell
 from toolclaw.interaction.reply_provider import (
     CLIReplyProvider,
+    DeterministicModeReplyProvider,
     DeterministicNoisyReplyProvider,
     HumanReplyProvider,
     LLMReplyProvider,
@@ -82,6 +83,7 @@ class SystemSpec:
     enable_schema_preflight: bool = True
     disable_user_queries: bool = False
     noisy_user_replies: bool = False
+    interaction_live_user_mode: str = ""
 
 
 SYSTEM_SPECS: Dict[str, SystemSpec] = {
@@ -126,6 +128,16 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         allow_fallback=True,
         allow_suffix_replan=False,
     ),
+    "a3_full_interaction_oracle": SystemSpec(
+        system_id="a3_full_interaction_oracle",
+        workflow_mode="planner",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=False,
+    ),
     "a3_no_query": SystemSpec(
         system_id="a3_no_query",
         workflow_mode="planner",
@@ -147,6 +159,50 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         allow_fallback=True,
         allow_suffix_replan=False,
         noisy_user_replies=True,
+    ),
+    "a3_full_interaction_noisy": SystemSpec(
+        system_id="a3_full_interaction_noisy",
+        workflow_mode="planner",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=False,
+        interaction_live_user_mode="noisy",
+    ),
+    "a3_full_interaction_irrelevant": SystemSpec(
+        system_id="a3_full_interaction_irrelevant",
+        workflow_mode="planner",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=False,
+        interaction_live_user_mode="irrelevant",
+    ),
+    "a3_full_interaction_wrong_parameter": SystemSpec(
+        system_id="a3_full_interaction_wrong_parameter",
+        workflow_mode="planner",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=False,
+        interaction_live_user_mode="wrong_parameter",
+    ),
+    "a3_full_interaction_partial": SystemSpec(
+        system_id="a3_full_interaction_partial",
+        workflow_mode="planner",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=False,
+        interaction_live_user_mode="partial",
     ),
     "a4_reuse": SystemSpec(
         system_id="a4_reuse",
@@ -262,8 +318,12 @@ SYSTEM_ALIASES: Dict[str, str] = {
     "interactive": "a3_interaction",
     "toolclaw_lite": "a3_interaction",
     "full_interaction": "a3_full_interaction",
+    "oracle_user": "a3_full_interaction_oracle",
     "no_query": "a3_no_query",
     "noisy_user": "a3_noisy_user",
+    "irrelevant_user": "a3_full_interaction_irrelevant",
+    "wrong_parameter_user": "a3_full_interaction_wrong_parameter",
+    "partial_user": "a3_full_interaction_partial",
 }
 
 BFCL_ADAPTER = BFCLAdapter()
@@ -1493,7 +1553,9 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Comma-separated systems to run: "
             "a0_baseline,a1_recovery,a2_planner,a3_interaction,a3_full_interaction,"
-            "a3_no_query,a3_noisy_user,a4_reuse. "
+            "a3_full_interaction_oracle,a3_no_query,a3_noisy_user,"
+            "a3_full_interaction_noisy,a3_full_interaction_irrelevant,"
+            "a3_full_interaction_wrong_parameter,a3_full_interaction_partial,a4_reuse. "
             "Supported legacy aliases: baseline,planning,interactive,toolclaw_lite."
         ),
     )
@@ -1705,7 +1767,9 @@ def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any], spec: SystemSpec
             oracle_replies=list(task.get("oracle_user_replies", [])),
             fallback_provider=UserSimulator(simulator_policy),
         )
-    if spec is not None and spec.noisy_user_replies:
+    if spec is not None and spec.interaction_live_user_mode:
+        reply_provider = DeterministicModeReplyProvider(mode=spec.interaction_live_user_mode)
+    elif spec is not None and spec.noisy_user_replies:
         reply_provider = DeterministicNoisyReplyProvider()
     return InteractionShell(
         runtime=runtime,

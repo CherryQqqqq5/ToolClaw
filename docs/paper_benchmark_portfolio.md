@@ -18,6 +18,15 @@ This note updates the paper-facing benchmark plan after reviewing the current re
     - `repair_semantic`: `failure_type == state_dependency`
     - `probe_only`: `failure_type in {multiple_user_turn, insufficient_information}`
 
+- `toolsandbox_interaction_live_v1`
+  - role: mechanism benchmark for interaction as workflow control signal
+  - current claim: `interaction_semantic_usefulness_mechanism`
+  - reason: the live suite turns the causality finding into a versioned dataset with oracle, partial, noisy, irrelevant, and wrong-parameter user modes, then scores whether replies become target-aligned effective patches and post-query progress
+  - protocol:
+    - `repair_semantic_primary`: `state_dependency` tasks where the main claim is evaluated
+    - `probe_only_control`: `multiple_user_turn` and `insufficient_information` tasks used only as contract/probe caveats
+    - negative user modes must keep usefulness metrics near zero and must not count as semantic repair
+
 - `bfcl_fc_core`
   - role: headline planner / binder / parameter correctness benchmark
   - current claim: `planner_binding_headline`
@@ -101,6 +110,37 @@ Formal freeze on 2026-04-23:
   - `a3_noisy_user.strict_scored_success = 1.00`
   - both arms keep usefulness metrics at `0.00`
   - this slice therefore remains contract/probe evidence, not semantic patch evidence
+
+Interaction Live v1 formal run:
+
+- dataset: [data/toolsandbox_interaction_live_v1.jsonl](../data/toolsandbox_interaction_live_v1.jsonl)
+- manifest: [data/toolsandbox_interaction_live_v1.manifest.json](../data/toolsandbox_interaction_live_v1.manifest.json)
+- result bundle: [outputs/interaction_live_v1_formal/claim_summary.json](../outputs/interaction_live_v1_formal/claim_summary.json)
+- verdicts:
+  - `interaction_as_control_signal_supported = true`
+  - `semantic_usefulness_supported_on_repair_semantic = true`
+  - `probe_only_success_caveat_present = true`
+  - `noisy_user_not_counted_as_useful_repair = true`
+  - `irrelevant_user_not_counted_as_useful_repair = true`
+  - `wrong_parameter_not_counted_as_effective_patch = true`
+  - `extraction_f1_gate_passed = true`
+- repair-semantic success:
+  - `a2_planner = 0.375`
+  - `a3_no_query = 0.375`
+  - `a3_full_interaction_oracle = 1.000`
+  - `a3_full_interaction_noisy = 0.625`
+- oracle repair-semantic interaction rounds:
+  - `reply_usable_rate = 1.000`
+  - `target_aligned_patch_rate = 1.000`
+  - `effective_patch_rate = 1.000`
+  - `post_query_progress_rate = 1.000`
+  - `useful_interaction_round_rate = 1.000`
+- noisy repair-semantic interaction rounds:
+  - all usefulness and progress metrics remain `0.000`
+- extraction:
+  - `target_f1_oracle = 1.000`
+  - `value_f1_oracle = 1.000`
+  - `noisy_target_false_positive_rate = 0.000`
 
 ## BFCL status on 2026-04-23
 

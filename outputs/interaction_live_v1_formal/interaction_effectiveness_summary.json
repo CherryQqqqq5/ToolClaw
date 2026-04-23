@@ -1,0 +1,96 @@
+{
+  "by_system_slice": {
+    "a3_full_interaction_oracle|repair_semantic_primary": {
+      "rounds": 18,
+      "reply_usable_rate": 1.0,
+      "target_aligned_patch_rate": 1.0,
+      "effective_patch_rate": 1.0,
+      "post_query_progress_rate": 1.0,
+      "useful_interaction_round_rate": 1.0,
+      "strict_success_rate": 1.0
+    },
+    "a3_full_interaction_noisy|repair_semantic_primary": {
+      "rounds": 18,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "strict_success_rate": 0.0
+    },
+    "a3_full_interaction_irrelevant|repair_semantic_primary": {
+      "rounds": 18,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "strict_success_rate": 0.0
+    },
+    "a3_full_interaction_wrong_parameter|repair_semantic_primary": {
+      "rounds": 18,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "strict_success_rate": 0.0
+    },
+    "a3_full_interaction_partial|repair_semantic_primary": {
+      "rounds": 18,
+      "reply_usable_rate": 1.0,
+      "target_aligned_patch_rate": 1.0,
+      "effective_patch_rate": 1.0,
+      "post_query_progress_rate": 1.0,
+      "useful_interaction_round_rate": 1.0,
+      "strict_success_rate": 1.0
+    }
+  },
+  "by_user_mode_slice": {
+    "oracle_user|repair_semantic_primary": {
+      "rounds": 18,
+      "reply_usable_rate": 1.0,
+      "target_aligned_patch_rate": 1.0,
+      "effective_patch_rate": 1.0,
+      "post_query_progress_rate": 1.0,
+      "useful_interaction_round_rate": 1.0,
+      "strict_success_rate": 1.0
+    },
+    "noisy_user|repair_semantic_primary": {
+      "rounds": 18,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "strict_success_rate": 0.0
+    },
+    "irrelevant_user|repair_semantic_primary": {
+      "rounds": 18,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "strict_success_rate": 0.0
+    },
+    "wrong_parameter_user|repair_semantic_primary": {
+      "rounds": 18,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "strict_success_rate": 0.0
+    },
+    "partial_user|repair_semantic_primary": {
+      "rounds": 18,
+      "reply_usable_rate": 1.0,
+      "target_aligned_patch_rate": 1.0,
+      "effective_patch_rate": 1.0,
+      "post_query_progress_rate": 1.0,
+      "useful_interaction_round_rate": 1.0,
+      "strict_success_rate": 1.0
+    }
+  }
+}

@@ -119,6 +119,68 @@ class DeterministicNoisyReplyProvider:
 
 
 @dataclass
+class DeterministicModeReplyProvider:
+    """Deterministic benchmark-only user modes for interaction live ablations."""
+
+    mode: str
+    provider_name: str = "deterministic_mode"
+
+    def reply(self, request: InteractionRequest) -> RawUserReply:
+        normalized = str(self.mode or "noisy").strip().lower()
+        patch_targets = dict(request.metadata.get("patch_targets", {}))
+        suggested_values = request.metadata.get("suggested_values", {})
+        if not isinstance(suggested_values, dict):
+            suggested_values = {}
+        if normalized == "irrelevant":
+            raw_text = "irrelevant answer"
+            payload: Dict[str, Any] = {"raw_text": raw_text}
+        elif normalized == "wrong_parameter":
+            raw_text = "wrong parameter"
+            payload = {"input_patch": {"value": "wrong_parameter"}}
+        elif normalized == "partial":
+            raw_text = "partial answer"
+            payload = self._partial_payload(request, patch_targets, suggested_values)
+        else:
+            choices = [
+                ("I don't know", {"raw_text": "I don't know"}),
+                ("irrelevant answer", {"raw_text": "irrelevant answer"}),
+                ("not enough information", {"raw_text": "not enough information"}),
+            ]
+            digest = hashlib.sha256(str(request.interaction_id).encode("utf-8")).hexdigest()
+            index = int(digest[:8], 16) % len(choices)
+            raw_text, payload = choices[index]
+        return RawUserReply(
+            interaction_id=request.interaction_id,
+            raw_text=raw_text,
+            raw_payload=payload,
+            status="accept",
+            accepted=True,
+            metadata={
+                "provider": self.provider_name,
+                "interaction_live_user_mode": normalized,
+                "patch_targets": patch_targets,
+            },
+        )
+
+    @staticmethod
+    def _partial_payload(
+        request: InteractionRequest,
+        patch_targets: Dict[str, Any],
+        suggested_values: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        if "approved" in patch_targets or "approval" in str(request.expected_answer_type or "").lower():
+            return {"approved": True}
+        for key in patch_targets:
+            key_text = str(key)
+            if key_text == "approved":
+                continue
+            if key_text in suggested_values:
+                return {key_text: suggested_values[key_text]}
+            return {key_text: f"partial_{key_text}"}
+        return {"raw_text": "partial answer"}
+
+
+@dataclass
 class CLIReplyProvider:
     """Invoke external CLI command and capture reply."""
 
@@ -351,6 +413,8 @@ class OracleReplayProvider:
 
     @staticmethod
     def _oracle_payload(request: InteractionRequest, oracle: Dict[str, Any]) -> Dict[str, Any]:
+        if isinstance(oracle.get("payload"), dict):
+            return dict(oracle["payload"])
         reply_text = str(oracle.get("reply", "") or "").strip()
         q_text = str(request.question or "").lower()
         q_type = str(request.metadata.get("query_policy", {}).get("question_type") or request.expected_answer_type or "").lower()

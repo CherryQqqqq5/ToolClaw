@@ -1,0 +1,20 @@
+{
+  "dataset": "toolsandbox_interaction_live_v1",
+  "source": "data/toolsandbox.formal.official.json",
+  "source_sha256": "bab1b727cda11cb548f45f798a19275cf6a683691ee93ae9f729664b43864470",
+  "trace_root": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal/runs",
+  "git_commit": "6c7d712cb377da631696b4d8b9e85cd4ba258daa",
+  "selection_rule": {
+    "repair_semantic_primary": "normalized categories include state_dependency",
+    "probe_only_control": "normalized categories include multiple_user_turn or insufficient_information, unless state_dependency is present"
+  },
+  "counts": {
+    "total": 39,
+    "repair_semantic_primary": 16,
+    "probe_only_control": 23,
+    "auto_seeded": 39,
+    "with_oracle_reply": 33,
+    "with_trace_gold": 39,
+    "with_useful_interaction_gold": 6
+  }
+}

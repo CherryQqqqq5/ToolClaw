@@ -19,8 +19,8 @@
     },
     "interaction_semantic_usefulness_mechanism": {
       "status": "supported_current_evidence",
-      "benchmark_suite": "toolsandbox_interaction_causality_formal",
-      "claim": "ToolSandbox causality ablation should support a mechanism claim only: on repair-sensitive state-dependency tasks, interaction gains align with semantic-usefulness and target-aligned patch, while must-query slices remain probe-only and contract-sensitive.",
+      "benchmark_suite": "toolsandbox_interaction_live_v1",
+      "claim": "ToolSandbox interaction-live carries the mechanism claim: on repair-sensitive state-dependency tasks, interaction gains align with semantic-usefulness, target-aligned patch, post-query progress, and extraction PRF, while must-query slices remain probe-only and contract-sensitive.",
       "metrics": {
         "primary": [
           "repair_semantic_usefulness_supported",
@@ -157,6 +157,22 @@
         "interaction_semantic_usefulness_mechanism"
       ],
       "slice_policy_version": "toolsandbox_causality_v1",
+      "paper_role": "mechanism_supporting"
+    },
+    "toolsandbox_interaction_live_v1": {
+      "status": "implemented",
+      "prepare_script": "scripts/derive_toolsandbox_interaction_live.py",
+      "runner": "scripts/run_toolsandbox_interaction_live.py",
+      "score_script": "scripts/score_toolsandbox_interaction_live.py",
+      "default_source": "data/toolsandbox_interaction_live_v1.jsonl",
+      "default_manifest": "data/toolsandbox_interaction_live_v1.manifest.json",
+      "default_mode": "planner",
+      "default_systems": "a2_planner,a3_no_query,a3_full_interaction_oracle,a3_full_interaction_noisy,a3_full_interaction_irrelevant,a3_full_interaction_wrong_parameter,a3_full_interaction_partial",
+      "default_num_runs": 3,
+      "claim_ids": [
+        "interaction_semantic_usefulness_mechanism"
+      ],
+      "slice_policy_version": "toolsandbox_interaction_live_v1",
       "paper_role": "mechanism_supporting"
     },
     "bfcl_fc_core": {

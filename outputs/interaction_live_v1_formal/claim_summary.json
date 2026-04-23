@@ -1,0 +1,36 @@
+{
+  "interaction_as_control_signal_supported": true,
+  "semantic_usefulness_supported_on_repair_semantic": true,
+  "probe_only_success_caveat_present": true,
+  "noisy_user_not_counted_as_useful_repair": true,
+  "irrelevant_user_not_counted_as_useful_repair": true,
+  "wrong_parameter_not_counted_as_effective_patch": true,
+  "extraction_f1_gate_passed": true,
+  "repair_semantic_success": {
+    "a2_planner": 0.375,
+    "a3_no_query": 0.375,
+    "a3_full_interaction_oracle": 1.0,
+    "a3_full_interaction_noisy": 0.625
+  },
+  "oracle_repair_semantic_round_metrics": {
+    "rounds": 18,
+    "reply_usable_rate": 1.0,
+    "target_aligned_patch_rate": 1.0,
+    "effective_patch_rate": 1.0,
+    "post_query_progress_rate": 1.0,
+    "useful_interaction_round_rate": 1.0,
+    "strict_success_rate": 1.0
+  },
+  "noisy_repair_semantic_round_metrics": {
+    "rounds": 18,
+    "reply_usable_rate": 0.0,
+    "target_aligned_patch_rate": 0.0,
+    "effective_patch_rate": 0.0,
+    "post_query_progress_rate": 0.0,
+    "useful_interaction_round_rate": 0.0,
+    "strict_success_rate": 0.0
+  },
+  "target_f1_oracle": 1.0,
+  "value_f1_oracle": 1.0,
+  "noisy_target_false_positive_rate": 0.0
+}

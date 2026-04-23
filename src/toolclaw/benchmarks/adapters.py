@@ -1105,6 +1105,28 @@ class ToolSandboxAdapter:
             task["constraints"] = dict(sample.raw_payload["constraints"])
         if "simulated_policy" in sample.raw_payload:
             task["simulated_policy"] = dict(sample.raw_payload["simulated_policy"])
+        for passthrough_key in (
+            "oracle_user_replies",
+            "negative_user_replies",
+            "interaction_live",
+            "gold_decoded_signal",
+            "expected_query_type",
+            "expected_patch_targets",
+            "expected_effect_scope",
+            "gold_effective_patch",
+            "gold_post_query_progress",
+            "manual_label_status",
+            "slice_type",
+            "source_task_id",
+        ):
+            if passthrough_key in sample.raw_payload:
+                value = sample.raw_payload[passthrough_key]
+                if isinstance(value, dict):
+                    task[passthrough_key] = dict(value)
+                elif isinstance(value, list):
+                    task[passthrough_key] = list(value)
+                else:
+                    task[passthrough_key] = value
         if sample.raw_payload.get("reuse_family_id") is not None:
             task["reuse_family_id"] = sample.raw_payload.get("reuse_family_id")
         if sample.raw_payload.get("reuse_pass_index") is not None:

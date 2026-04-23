@@ -1,0 +1,466 @@
+{
+  "system|a3_full_interaction_oracle": {
+    "target": {
+      "tp": 18.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 18.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "system|a3_full_interaction_noisy": {
+    "target": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "system|a3_full_interaction_irrelevant": {
+    "target": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "system|a3_full_interaction_wrong_parameter": {
+    "target": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "system|a3_full_interaction_partial": {
+    "target": {
+      "tp": 18.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 0.0,
+      "fp": 18.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 1.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "user_mode|oracle_user": {
+    "target": {
+      "tp": 18.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 18.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "user_mode|noisy_user": {
+    "target": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "user_mode|irrelevant_user": {
+    "target": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "user_mode|wrong_parameter_user": {
+    "target": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "user_mode|partial_user": {
+    "target": {
+      "tp": 18.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 0.0,
+      "fp": 18.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 1.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "slice|repair_semantic_primary": {
+    "target": {
+      "tp": 36.0,
+      "fp": 0.0,
+      "fn": 54.0,
+      "precision": 1.0,
+      "recall": 0.4,
+      "f1": 0.5714285714285715,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 18.0,
+      "fp": 18.0,
+      "fn": 72.0,
+      "precision": 0.5,
+      "recall": 0.2,
+      "f1": 0.28571428571428575,
+      "false_positive_rate": 0.5
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "user_mode_slice|oracle_user|repair_semantic_primary": {
+    "target": {
+      "tp": 18.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 18.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "user_mode_slice|noisy_user|repair_semantic_primary": {
+    "target": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "user_mode_slice|irrelevant_user|repair_semantic_primary": {
+    "target": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "user_mode_slice|wrong_parameter_user|repair_semantic_primary": {
+    "target": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "user_mode_slice|partial_user|repair_semantic_primary": {
+    "target": {
+      "tp": 18.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "value": {
+      "tp": 0.0,
+      "fp": 18.0,
+      "fn": 18.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 1.0
+    },
+    "action": {
+      "tp": 0.0,
+      "fp": 0.0,
+      "fn": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.0
+    }
+  }
+}

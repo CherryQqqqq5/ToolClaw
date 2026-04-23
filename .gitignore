@@ -43,6 +43,8 @@ data/bfcl_slices/*
 !data/toolsandbox.formal.official.json
 !data/toolsandbox.formal.train.json
 !data/toolsandbox.formal.eval.json
+!data/toolsandbox_interaction_live_v1.jsonl
+!data/toolsandbox_interaction_live_v1.manifest.json
 !data/tau2_bench.formal.json
 !data/tau2_bench.approval_only.json
 !data/tau2_bench.binding_plus_approval_only.json
@@ -239,3 +241,16 @@ outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal/*
 !outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal/comparison.raw.csv
 !outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal/comparison.scored.csv
 !outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal/report.md
+
+# Keep Interaction Live v1 mechanism benchmark formal summary bundle.
+!outputs/interaction_live_v1_formal/
+outputs/interaction_live_v1_formal/*
+!outputs/interaction_live_v1_formal/experiment_manifest.json
+!outputs/interaction_live_v1_formal/comparison.raw.csv
+!outputs/interaction_live_v1_formal/comparison.scored.csv
+!outputs/interaction_live_v1_formal/interaction_rounds.jsonl
+!outputs/interaction_live_v1_formal/interaction_effectiveness_summary.json
+!outputs/interaction_live_v1_formal/extraction_prf.json
+!outputs/interaction_live_v1_formal/slice_summary.json
+!outputs/interaction_live_v1_formal/claim_summary.json
+!outputs/interaction_live_v1_formal/report.md
