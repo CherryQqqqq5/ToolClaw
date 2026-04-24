@@ -1106,6 +1106,43 @@ def _call_order_mismatch(expected_calls: List[Dict[str, Any]], emitted_calls: Li
     return expected_order != emitted_order and sorted(expected_order) == sorted(emitted_order)
 
 
+def _call_shape_breakdown(
+    *,
+    selected_is_expected: bool,
+    expected_calls: List[Dict[str, Any]],
+    emitted_calls: List[Dict[str, Any]],
+    call_pattern: str,
+    case_type: str,
+    failure_bucket: str,
+) -> Dict[str, Any]:
+    expected_call_count = len(expected_calls)
+    emitted_call_count = len(emitted_calls)
+    call_count_delta = emitted_call_count - expected_call_count
+    is_parallel = call_pattern == "parallel" or "parallel" in case_type
+    wrong_call_count = selected_is_expected and expected_call_count != emitted_call_count
+    wrong_call_order = selected_is_expected and _call_order_mismatch(expected_calls, emitted_calls)
+    expected_tools = [str(call.get("tool_name") or "") for call in expected_calls]
+    emitted_tools = [str(call.get("tool_name") or "") for call in emitted_calls]
+    same_tool_multiset = Counter(expected_tools) == Counter(emitted_tools)
+    parallel_shape_error = bool(selected_is_expected and is_parallel and (wrong_call_count or failure_bucket == "wrong_count"))
+    return {
+        "call_count_delta": call_count_delta,
+        "wrong_call_count": wrong_call_count,
+        "wrong_call_order": wrong_call_order,
+        "wrong_call_count_missing_calls": bool(selected_is_expected and expected_call_count > emitted_call_count),
+        "wrong_call_count_extra_calls": bool(selected_is_expected and emitted_call_count > expected_call_count),
+        "wrong_call_count_zero_emitted": bool(selected_is_expected and expected_call_count > 0 and emitted_call_count == 0),
+        "wrong_call_count_single_for_multiple": bool(selected_is_expected and expected_call_count > 1 and emitted_call_count == 1),
+        "wrong_call_count_multiple_for_single": bool(selected_is_expected and expected_call_count == 1 and emitted_call_count > 1),
+        "parallel_expected_but_serial_emitted": bool(selected_is_expected and is_parallel and expected_call_count > 1 and emitted_call_count == 1),
+        "serial_expected_but_parallel_emitted": bool(selected_is_expected and not is_parallel and expected_call_count == 1 and emitted_call_count > 1),
+        "parallel_grouping_mismatch": bool(selected_is_expected and is_parallel and failure_bucket == "wrong_count" and expected_call_count == emitted_call_count and not same_tool_multiset),
+        "parallel_call_count_correct_but_grouping_wrong": bool(selected_is_expected and is_parallel and expected_call_count == emitted_call_count and failure_bucket == "wrong_count"),
+        "parallel_order_only_mismatch": bool(selected_is_expected and is_parallel and wrong_call_order),
+        "parallel_or_multiple_shape_mismatch": parallel_shape_error,
+    }
+
+
 def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
     coverage = _bfcl_candidate_coverage_row(row)
     expected_calls = _expected_calls_from_row(row)
@@ -1117,10 +1154,17 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
     emitted_call_count = len(emitted_calls)
     call_pattern = str(row.get("bfcl_call_pattern") or "")
     case_type = str(coverage.get("case_type") or "")
-    is_parallel_or_multiple = call_pattern == "parallel" or "parallel" in case_type
-    wrong_call_count = selected_is_expected and expected_call_count != emitted_call_count
-    wrong_call_order = selected_is_expected and _call_order_mismatch(expected_calls, emitted_calls)
-    parallel_shape_error = bool(selected_is_expected and is_parallel_or_multiple and (wrong_call_count or failure_bucket == "wrong_count"))
+    shape = _call_shape_breakdown(
+        selected_is_expected=selected_is_expected,
+        expected_calls=expected_calls,
+        emitted_calls=emitted_calls,
+        call_pattern=call_pattern,
+        case_type=case_type,
+        failure_bucket=failure_bucket,
+    )
+    wrong_call_count = bool(shape["wrong_call_count"])
+    wrong_call_order = bool(shape["wrong_call_order"])
+    parallel_shape_error = bool(shape["parallel_or_multiple_shape_mismatch"])
     multi_turn_state_mismatch = bool(selected_is_expected and failure_bucket in {"multi_turn_mismatch", "multi_turn_other"})
     mismatches = _argument_mismatches(expected_calls, emitted_calls, row) if selected_is_expected and not wrong_call_count else {
         "missing_required_args": [],
@@ -1166,12 +1210,23 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "official_failure_bucket": failure_bucket,
         "expected_call_count": expected_call_count,
         "emitted_call_count": emitted_call_count,
+        "call_count_delta": shape["call_count_delta"],
         "missing_required_args": mismatches["missing_required_args"],
         "wrong_type_args": mismatches["wrong_type_args"],
         "wrong_value_args": mismatches["wrong_value_args"],
         "nested_structure_mismatches": mismatches["nested_structure_mismatches"],
         "wrong_call_count": wrong_call_count,
         "wrong_call_order": wrong_call_order,
+        "wrong_call_count_missing_calls": shape["wrong_call_count_missing_calls"],
+        "wrong_call_count_extra_calls": shape["wrong_call_count_extra_calls"],
+        "wrong_call_count_zero_emitted": shape["wrong_call_count_zero_emitted"],
+        "wrong_call_count_single_for_multiple": shape["wrong_call_count_single_for_multiple"],
+        "wrong_call_count_multiple_for_single": shape["wrong_call_count_multiple_for_single"],
+        "parallel_expected_but_serial_emitted": shape["parallel_expected_but_serial_emitted"],
+        "serial_expected_but_parallel_emitted": shape["serial_expected_but_parallel_emitted"],
+        "parallel_grouping_mismatch": shape["parallel_grouping_mismatch"],
+        "parallel_call_count_correct_but_grouping_wrong": shape["parallel_call_count_correct_but_grouping_wrong"],
+        "parallel_order_only_mismatch": shape["parallel_order_only_mismatch"],
         "parallel_or_multiple_shape_mismatch": parallel_shape_error,
         "multi_turn_state_mismatch": multi_turn_state_mismatch,
         "trace_status": trace_status,
@@ -1184,6 +1239,7 @@ def _selected_correct_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, 
     selected_count = len(selected_rows)
     bucket_counts = Counter(str(row.get("selected_correct_failure_bucket") or "unknown") for row in selected_rows)
     success_count = int(bucket_counts.get("selected_correct_success", 0))
+    call_count_deltas = Counter(str(int(row.get("call_count_delta", 0) or 0)) for row in selected_rows)
     return {
         "total_rows": len(rows),
         "selected_is_expected_count": selected_count,
@@ -1199,6 +1255,17 @@ def _selected_correct_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, 
         "multi_turn_state_error_given_selected_is_expected": int(bucket_counts.get("multi_turn_state_error", 0)),
         "trace_missing_or_unparseable_given_selected_is_expected": int(bucket_counts.get("trace_missing_or_unparseable", 0)),
         "other_selected_correct_failure_given_selected_is_expected": int(bucket_counts.get("other_selected_correct_failure", 0)),
+        "wrong_call_count_missing_calls": sum(1 for row in selected_rows if row.get("wrong_call_count_missing_calls")),
+        "wrong_call_count_extra_calls": sum(1 for row in selected_rows if row.get("wrong_call_count_extra_calls")),
+        "wrong_call_count_zero_emitted": sum(1 for row in selected_rows if row.get("wrong_call_count_zero_emitted")),
+        "wrong_call_count_single_for_multiple": sum(1 for row in selected_rows if row.get("wrong_call_count_single_for_multiple")),
+        "wrong_call_count_multiple_for_single": sum(1 for row in selected_rows if row.get("wrong_call_count_multiple_for_single")),
+        "parallel_expected_but_serial_emitted": sum(1 for row in selected_rows if row.get("parallel_expected_but_serial_emitted")),
+        "serial_expected_but_parallel_emitted": sum(1 for row in selected_rows if row.get("serial_expected_but_parallel_emitted")),
+        "parallel_grouping_mismatch": sum(1 for row in selected_rows if row.get("parallel_grouping_mismatch")),
+        "parallel_call_count_correct_but_grouping_wrong": sum(1 for row in selected_rows if row.get("parallel_call_count_correct_but_grouping_wrong")),
+        "parallel_order_only_mismatch": sum(1 for row in selected_rows if row.get("parallel_order_only_mismatch")),
+        "call_count_delta_counts": dict(call_count_deltas),
         "selected_correct_failure_bucket_counts": dict(bucket_counts),
     }
 
@@ -1263,6 +1330,16 @@ def _write_bfcl_selected_correct_failure_markdown(audit: Dict[str, Any], path: P
         "wrong_call_order_given_selected_is_expected",
         "parallel_shape_error_given_selected_is_expected",
         "multi_turn_state_error_given_selected_is_expected",
+        "wrong_call_count_missing_calls",
+        "wrong_call_count_extra_calls",
+        "wrong_call_count_zero_emitted",
+        "wrong_call_count_single_for_multiple",
+        "wrong_call_count_multiple_for_single",
+        "parallel_expected_but_serial_emitted",
+        "serial_expected_but_parallel_emitted",
+        "parallel_grouping_mismatch",
+        "parallel_call_count_correct_but_grouping_wrong",
+        "parallel_order_only_mismatch",
         "trace_missing_or_unparseable_given_selected_is_expected",
         "other_selected_correct_failure_given_selected_is_expected",
     ]:

@@ -1089,7 +1089,16 @@ def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user
             tool = candidate_tools[0]
             arg_sets = extract_parallel_argument_sets(tool.tool_id, _bfcl_tool_parameters(tool), query)
             if len(arg_sets) > 1:
-                return [{"tool": tool, "inputs": arg_set, "text": query} for arg_set in arg_sets]
+                _selected, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, query)
+                return [
+                    {
+                        "tool": tool,
+                        "inputs": arg_set,
+                        "text": query,
+                        "selection_diagnostics": dict(diagnostics),
+                    }
+                    for arg_set in arg_sets
+                ]
         step_specs: List[Dict[str, Any]] = []
         for clause in _split_parallel_clauses(query):
             tool, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, clause)

@@ -2392,6 +2392,57 @@ def test_build_workflow_from_task_bfcl_parallel_preserves_candidate_pool_per_cla
     assert all(item["planner_narrowing_applied"] is False for item in diagnostics)
 
 
+def test_build_workflow_from_task_bfcl_parallel_single_tool_emits_one_step_per_clause() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_parallel_shape", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_parallel_shape_001",
+            "query": "Could you tell me the current weather conditions for Boston, MA and also for San Francisco?",
+            "candidate_tools": [
+                {
+                    "tool_id": "get_current_weather",
+                    "description": "Retrieves current weather conditions.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["location"],
+                        "properties": {
+                            "location": {"type": "string"},
+                            "unit": {"type": "string"},
+                        },
+                    },
+                }
+            ],
+            "expected_call_structure": {
+                "pattern": "parallel",
+                "calls": [{"tool_name": "get_current_weather", "arguments": {}}],
+            },
+            "metadata": {
+                "benchmark": "bfcl",
+                "bfcl_group": "live",
+                "bfcl_call_pattern": "parallel",
+            },
+        },
+        mode="planner",
+    )
+
+    assert [step.tool_id for step in workflow.execution_plan] == [
+        "get_current_weather",
+        "get_current_weather",
+    ]
+    assert [step.inputs for step in workflow.execution_plan] == [
+        {"location": "Boston, MA"},
+        {"location": "San Francisco"},
+    ]
+    assert len(workflow.metadata["bfcl_rerank_diagnostics"]) == 2
+    assert "expected_call_count" not in json.dumps(workflow.metadata["bfcl_rerank_diagnostics"])
+
+
 def test_build_workflow_from_task_bfcl_abstain_records_candidate_pool_exception() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_abstain_candidate_pool", module_path)
@@ -2425,4 +2476,3 @@ def test_build_workflow_from_task_bfcl_abstain_records_candidate_pool_exception(
     assert diagnostics["candidate_pool_preserved"] is False
     assert diagnostics["candidate_pool_exception"] == "bfcl_abstain"
     assert diagnostics["planner_narrowing_applied"] is False
-

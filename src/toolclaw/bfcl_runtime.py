@@ -427,8 +427,6 @@ def select_candidate_tool(
 
 def extract_parallel_argument_sets(tool_id: str, parameters: Mapping[str, Any], text: str) -> List[Dict[str, Any]]:
     schema = _schema_properties(parameters)
-    if len(schema) < 2:
-        return []
     lower = text.lower()
     if tool_id == "spotify.play":
         artists_match = re.search(r"artists?\s+(.+?)(?:,\s*with|\s+with)", text, re.IGNORECASE)
@@ -454,6 +452,26 @@ def extract_parallel_argument_sets(tool_id: str, parameters: Mapping[str, Any], 
                 {"b_field": int(b_match.group(1)), "area": int(area_match.group(1)), "d_time": d_time}
                 for d_time in times[:2]
             ]
+    required = _schema_required_keys(parameters)
+    preferred_string_keys = [
+        key
+        for key in ["location", "loc", "city", "where_to", *required]
+        if key in schema and str(schema.get(key, {}).get("type") or "").lower() == "string"
+    ]
+    if preferred_string_keys:
+        key = preferred_string_keys[0]
+        candidates = _parallel_string_candidates(text)
+        values: List[str] = []
+        for candidate in candidates:
+            value = _extract_property_value(tool_id, key, schema.get(key, {}), candidate)
+            if value is None and key in {"location", "loc", "city", "where_to"}:
+                value = _clean_parallel_location_candidate(candidate)
+            if isinstance(value, str) and value and value not in values:
+                values.append(value)
+        if len(values) > 1:
+            return [{key: value} for value in values]
+    if len(schema) < 2:
+        return []
     string_keys = [key for key, prop in schema.items() if str(prop.get("type") or "").lower() == "string"]
     int_keys = [key for key, prop in schema.items() if str(prop.get("type") or "").lower() == "integer"]
     if len(string_keys) != 1 or len(int_keys) != 1:
@@ -466,6 +484,58 @@ def extract_parallel_argument_sets(tool_id: str, parameters: Mapping[str, Any], 
             for name, value in zip(quoted, ints)
         ]
     return []
+
+
+def _parallel_string_candidates(text: str) -> List[str]:
+    raw = str(text or "").strip()
+    if not raw:
+        return []
+    quoted = _quoted_strings(raw)
+    if len(quoted) > 1:
+        return quoted
+    patterns = [
+        r"(?:two|2)\s+cities\s+(?:of|for|in)\s+(.+?)(?:[?.]|$)",
+        r"(?:cities|locations?)\s+(?:of|for|in)\s+(.+?)(?:[?.]|$)",
+        r"(?:weather(?:\s+conditions)?|weather\s+like)\s+(?:for|in)\s+(.+?)(?:[?.]|$)",
+        r"\bfor\s+(.+?)(?:[?.]|$)",
+    ]
+    source = ""
+    for pattern in patterns:
+        match = re.search(pattern, raw, re.IGNORECASE)
+        if match:
+            source = match.group(1)
+            break
+    if not source:
+        source = raw
+    parts = [
+        part.strip(" .?!,;:'\"")
+        for part in re.split(r"\s+and\s+also\s+(?:for\s+)?|\s+and\s+(?:also\s+)?(?:for\s+)?|、|，", source, flags=re.IGNORECASE)
+        if part.strip(" .?!,;:'\"")
+    ]
+    return [_clean_parallel_location_candidate(part) for part in parts if _clean_parallel_location_candidate(part)]
+
+
+def _clean_parallel_location_candidate(value: str) -> str:
+    cleaned = re.sub(
+        r"^(?:also\s+)?(?:for|in|of)\s+",
+        "",
+        str(value or "").strip(" .?!,;:'\""),
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(
+        r"^(?:could you tell me|tell me|what'?s|what is|please|the current|current)\s+",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(
+        r"^(?:weather(?:\s+conditions)?(?:\s+for|\s+in)?|weather\s+like\s+in)\s+",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r"^(?:the\s+)?(?:two\s+)?cities\s+(?:of|for|in)\s+", "", cleaned, flags=re.IGNORECASE)
+    return cleaned.strip(" .?!,;:'\"")
 
 
 def extract_tool_arguments(
@@ -895,6 +965,9 @@ def _extract_string_value(tool_id: str, key: str, prop: Mapping[str, Any], text:
         match = re.search(r"from\s+(.+?)(?:, and i can wait| and i can wait|,?\s+I can wait|$)", text, re.IGNORECASE)
         if match:
             return _canonical_location(_clean_candidate(match.group(1)))
+        candidate = _generic_location_candidate(text, (r"in", r"for", r"of"))
+        if candidate:
+            return _canonical_location(candidate)
     if key_lower == "where_to":
         candidate = _generic_location_candidate(text, (r"in", r"to", r"for"))
         if candidate:

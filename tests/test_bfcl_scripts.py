@@ -1099,6 +1099,26 @@ def test_bfcl_runtime_extracts_repeated_parallel_argument_sets() -> None:
     ]
 
 
+def test_bfcl_runtime_extracts_parallel_location_argument_sets() -> None:
+    arg_sets = extract_parallel_argument_sets(
+        "get_current_weather",
+        {
+            "type": "dict",
+            "required": ["location"],
+            "properties": {
+                "location": {"type": "string"},
+                "unit": {"type": "string"},
+            },
+        },
+        "Could you tell me the current weather conditions for Boston, MA and also for San Francisco?",
+    )
+
+    assert arg_sets == [
+        {"location": "Boston, MA"},
+        {"location": "San Francisco"},
+    ]
+
+
 def test_bfcl_runtime_prefers_general_search_for_general_information_query() -> None:
     selected = select_candidate_tool(
         "what is Imjin war",
@@ -1871,6 +1891,16 @@ def test_bfcl_selected_correct_failure_audit_classifies_argument_and_shape_bucke
     assert summary["wrong_call_order_given_selected_is_expected"] == 1
     assert summary["parallel_shape_error_given_selected_is_expected"] == 1
     assert summary["multi_turn_state_error_given_selected_is_expected"] == 1
+    assert summary["wrong_call_count_missing_calls"] == 2
+    assert summary["wrong_call_count_extra_calls"] == 0
+    assert summary["wrong_call_count_zero_emitted"] == 0
+    assert summary["wrong_call_count_single_for_multiple"] == 2
+    assert summary["wrong_call_count_multiple_for_single"] == 0
+    assert summary["parallel_expected_but_serial_emitted"] == 1
+    assert summary["serial_expected_but_parallel_emitted"] == 0
+    assert summary["parallel_call_count_correct_but_grouping_wrong"] == 0
+    assert summary["parallel_order_only_mismatch"] == 0
+    assert summary["call_count_delta_counts"]["-1"] == 2
     assert buckets["selected_correct_success"] == 1
 
 
