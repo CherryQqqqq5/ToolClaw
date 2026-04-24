@@ -677,6 +677,7 @@ def _bfcl_coverage_drop_stage(
     expected_is_top1: bool,
     selected_is_expected: bool,
     success: bool,
+    candidate_pool_exception: str = "",
 ) -> Tuple[str, str]:
     if not expected:
         return "no_expected_function", "row has no expected function"
@@ -684,6 +685,8 @@ def _bfcl_coverage_drop_stage(
         return "raw_absent", "expected function is absent from candidate/raw function docs"
     if not expected_in_prepared:
         return "raw_to_prepared_drop", "expected function is absent after preparation/schema normalization"
+    if not expected_in_runtime and candidate_pool_exception == "bfcl_abstain":
+        return "bfcl_abstain_candidate_elision", "BFCL abstain intentionally elides runtime candidate pool"
     if not expected_in_runtime:
         return "prepared_to_runtime_drop", "expected function is absent from runtime candidate pool"
     if not expected_in_ranker or not expected_in_top5:
@@ -725,6 +728,7 @@ def _bfcl_candidate_coverage_row(row: Dict[str, Any]) -> Dict[str, Any]:
     expected_is_top1 = _contains_name(top5_records[:1], expected)
     selected_is_expected = _selected_matches_expected(diagnostic, expected)
     success = float(row.get("official_bfcl_eval_success", 0.0) or 0.0) >= 1.0
+    candidate_pool_exception = str(diagnostic.get("candidate_pool_exception") or "")
     drop_stage, drop_reason = _bfcl_coverage_drop_stage(
         expected=expected,
         expected_in_raw=expected_in_raw,
@@ -735,6 +739,7 @@ def _bfcl_candidate_coverage_row(row: Dict[str, Any]) -> Dict[str, Any]:
         expected_is_top1=expected_is_top1,
         selected_is_expected=selected_is_expected,
         success=success,
+        candidate_pool_exception=candidate_pool_exception,
     )
     case_type = ":".join(
         item
@@ -752,6 +757,10 @@ def _bfcl_candidate_coverage_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "prepared_function_count": len(prepared_records),
         "runtime_candidate_count": int(diagnostic.get("runtime_candidate_count", len(runtime_records)) or 0),
         "ranker_candidate_count": int(diagnostic.get("ranker_candidate_count", len(ranker_records)) or 0),
+        "candidate_pool_preserved": bool(diagnostic.get("candidate_pool_preserved", False)),
+        "candidate_pool_source": str(diagnostic.get("candidate_pool_source") or ""),
+        "candidate_pool_exception": candidate_pool_exception,
+        "planner_narrowing_applied": bool(diagnostic.get("planner_narrowing_applied", False)),
         "expected_in_raw_function_docs": expected_in_raw,
         "expected_in_prepared_schema": expected_in_prepared,
         "expected_in_runtime_candidates": expected_in_runtime,
@@ -811,9 +820,13 @@ def _bfcl_candidate_coverage_audit(scored_rows: List[Dict[str, Any]]) -> Dict[st
     )
     by_case: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     by_system: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    by_system_case: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for row in rows:
-        by_case[str(row.get("case_type") or "unknown")].append(row)
-        by_system[str(row.get("system") or "unknown")].append(row)
+        case_type = str(row.get("case_type") or "unknown")
+        system = str(row.get("system") or "unknown")
+        by_case[case_type].append(row)
+        by_system[system].append(row)
+        by_system_case[f"{system}::{case_type}"].append(row)
     return {
         "audit_schema_version": "bfcl_candidate_coverage_audit_v1",
         "gold_fields_added_after_execution": True,
@@ -822,6 +835,7 @@ def _bfcl_candidate_coverage_audit(scored_rows: List[Dict[str, Any]]) -> Dict[st
         "summary": _coverage_summary_for_rows(rows),
         "by_case_type": {key: _coverage_summary_for_rows(value) for key, value in sorted(by_case.items())},
         "by_system": {key: _coverage_summary_for_rows(value) for key, value in sorted(by_system.items())},
+        "by_system_case_type": {key: _coverage_summary_for_rows(value) for key, value in sorted(by_system_case.items())},
         "rows": rows,
     }
 

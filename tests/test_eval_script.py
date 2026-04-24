@@ -2247,3 +2247,182 @@ def test_bfcl_schema_ranked_choice_records_candidate_coverage_diagnostics() -> N
     assert set(diagnostics["ranker_candidate_tool_ids"]) == {"wrong_tool", "right_tool"}
     assert "expected_function" not in json.dumps(diagnostics)
     assert "gold_tool" not in json.dumps(diagnostics)
+
+
+def test_bfcl_schema_choice_preserves_full_candidate_pool_with_bad_planner_preference(monkeypatch) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_candidate_pool_choice", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tools = [
+        ToolSpec(tool_id="wrong_planner_tool", description="Wrong planner choice"),
+        ToolSpec(tool_id="expected_weather", description="Get weather by city"),
+        ToolSpec(tool_id="distractor_calendar", description="Calendar lookup"),
+    ]
+    monkeypatch.setattr(
+        module,
+        "rank_candidate_tools",
+        lambda text, candidate_tools: [
+            {"tool": {"tool_id": "expected_weather"}, "score": 10.0},
+            {"tool": {"tool_id": "wrong_planner_tool"}, "score": 2.0},
+            {"tool": {"tool_id": "distractor_calendar"}, "score": 1.0},
+        ],
+    )
+
+    selected, diagnostics = module._bfcl_schema_ranked_choice(
+        tools,
+        "Get weather for Paris",
+        preferred_tool_id="wrong_planner_tool",
+    )
+
+    assert selected is not None
+    assert selected.tool_id == "expected_weather"
+    assert diagnostics["prepared_function_count"] == 3
+    assert diagnostics["runtime_candidate_count"] == 3
+    assert diagnostics["runtime_candidate_tool_ids"] == [
+        "wrong_planner_tool",
+        "expected_weather",
+        "distractor_calendar",
+    ]
+    assert diagnostics["candidate_pool_preserved"] is True
+    assert diagnostics["candidate_pool_source"] == "bfcl_prepared_row_functions"
+    assert diagnostics["planner_narrowing_applied"] is False
+    assert diagnostics["candidate_pool_exception"] == ""
+    assert "expected_function" not in json.dumps(diagnostics)
+    assert "official_failure" not in json.dumps(diagnostics)
+
+
+def test_build_workflow_from_task_bfcl_serial_canonicalization_preserves_candidate_pool(monkeypatch) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_serial_candidate_pool", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    monkeypatch.setattr(
+        module,
+        "rank_candidate_tools",
+        lambda text, candidate_tools: [
+            {"tool": {"tool_id": "expected_weather"}, "score": 10.0},
+            {"tool": {"tool_id": "wrong_planner_tool"}, "score": 2.0},
+            {"tool": {"tool_id": "distractor_calendar"}, "score": 1.0},
+        ],
+    )
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_serial_candidate_pool_001",
+            "query": "Get weather for Paris",
+            "candidate_tools": [
+                {"tool_id": "wrong_planner_tool", "description": "Wrong planner choice"},
+                {"tool_id": "expected_weather", "description": "Get weather by city"},
+                {"tool_id": "distractor_calendar", "description": "Calendar lookup"},
+            ],
+            "expected_call_structure": {
+                "pattern": "serial",
+                "calls": [{"tool_name": "expected_weather", "arguments": {}}],
+            },
+            "metadata": {
+                "benchmark": "bfcl",
+                "bfcl_group": "non_live",
+                "bfcl_call_pattern": "serial",
+            },
+        },
+        mode="planner",
+    )
+
+    assert len(workflow.execution_plan) == 1
+    assert workflow.execution_plan[0].tool_id == "expected_weather"
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"][0]
+    assert diagnostics["prepared_function_count"] == 3
+    assert diagnostics["runtime_candidate_count"] == 3
+    assert diagnostics["candidate_pool_preserved"] is True
+
+
+def test_build_workflow_from_task_bfcl_parallel_preserves_candidate_pool_per_clause(monkeypatch) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_parallel_candidate_pool", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    def fake_rank(text, candidate_tools):
+        top = "weather_paris" if "Paris" in text else "weather_berlin"
+        order = [top, "weather_paris" if top != "weather_paris" else "weather_berlin", "distractor_calendar"]
+        return [{"tool": {"tool_id": tool_id}, "score": 10.0 - idx} for idx, tool_id in enumerate(order)]
+
+    monkeypatch.setattr(module, "rank_candidate_tools", fake_rank)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_parallel_candidate_pool_001",
+            "query": "Get weather for Paris and also Get weather for Berlin",
+            "candidate_tools": [
+                {"tool_id": "weather_paris", "description": "Get Paris weather"},
+                {"tool_id": "weather_berlin", "description": "Get Berlin weather"},
+                {"tool_id": "distractor_calendar", "description": "Calendar lookup"},
+            ],
+            "expected_call_structure": {
+                "pattern": "parallel",
+                "calls": [
+                    {"tool_name": "weather_paris", "arguments": {}},
+                    {"tool_name": "weather_berlin", "arguments": {}},
+                ],
+            },
+            "metadata": {
+                "benchmark": "bfcl",
+                "bfcl_group": "non_live",
+                "bfcl_call_pattern": "parallel",
+            },
+        },
+        mode="planner",
+    )
+
+    assert [step.tool_id for step in workflow.execution_plan] == ["weather_paris", "weather_berlin"]
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"]
+    assert len(diagnostics) == 2
+    assert all(item["prepared_function_count"] == 3 for item in diagnostics)
+    assert all(item["runtime_candidate_count"] == 3 for item in diagnostics)
+    assert all(item["candidate_pool_preserved"] is True for item in diagnostics)
+    assert all(item["planner_narrowing_applied"] is False for item in diagnostics)
+
+
+def test_build_workflow_from_task_bfcl_abstain_records_candidate_pool_exception() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_abstain_candidate_pool", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_abstain_candidate_pool_001",
+            "query": "This asks for a ride but no function call is expected.",
+            "candidate_tools": [
+                {"tool_id": "call_uber", "description": "Requests an Uber ride."},
+            ],
+            "expected_call_structure": {"pattern": "serial", "calls": []},
+            "metadata": {
+                "benchmark": "bfcl",
+                "bfcl_group": "live",
+                "bfcl_call_pattern": "serial",
+                "expected_call_structure": {"pattern": "serial", "calls": []},
+            },
+        },
+        mode="planner",
+    )
+
+    assert workflow.metadata["bfcl_abstained"] is True
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"][0]
+    assert diagnostics["prepared_function_count"] == 1
+    assert diagnostics["runtime_candidate_count"] == 0
+    assert diagnostics["candidate_pool_preserved"] is False
+    assert diagnostics["candidate_pool_exception"] == "bfcl_abstain"
+    assert diagnostics["planner_narrowing_applied"] is False
+

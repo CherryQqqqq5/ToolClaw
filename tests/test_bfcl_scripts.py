@@ -1647,3 +1647,30 @@ def test_bfcl_candidate_coverage_audit_keeps_gold_out_of_runtime_diagnostics(tmp
     assert "expected_function" not in runtime_text
     assert "gold_tool" not in runtime_text
     assert audit["rows"][0]["expected_function"] == "safe_tool"
+
+
+def test_bfcl_candidate_coverage_marks_abstain_elision_as_intentional() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_module_candidate_pool_exception",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    stage, reason = module._bfcl_coverage_drop_stage(
+        expected="expected_tool",
+        expected_in_raw=True,
+        expected_in_prepared=True,
+        expected_in_runtime=False,
+        expected_in_ranker=False,
+        expected_in_top5=False,
+        expected_is_top1=False,
+        selected_is_expected=False,
+        success=False,
+        candidate_pool_exception="bfcl_abstain",
+    )
+
+    assert stage == "bfcl_abstain_candidate_elision"
+    assert "abstain" in reason.lower()
+

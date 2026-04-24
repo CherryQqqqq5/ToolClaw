@@ -404,13 +404,27 @@ def _bfcl_tool_original_function_name(tool: Any) -> str:
     return str(metadata.get("bfcl_original_function_name") or metadata.get("canonical_name") or tool_id).strip()
 
 
-def _bfcl_runtime_candidate_summary(candidate_tools: List[ToolSpec]) -> Dict[str, Any]:
+def _bfcl_runtime_candidate_summary(
+    candidate_tools: List[ToolSpec],
+    *,
+    prepared_function_count: Optional[int] = None,
+    candidate_pool_exception: str = "",
+    drop_reason: str = "",
+) -> Dict[str, Any]:
     tool_ids = [str(tool.tool_id) for tool in candidate_tools]
     original_names = [_bfcl_tool_original_function_name(tool) for tool in candidate_tools]
+    prepared_count = len(candidate_tools) if prepared_function_count is None else int(prepared_function_count)
+    preserved = len(candidate_tools) == prepared_count and not candidate_pool_exception
     return {
+        "prepared_function_count": prepared_count,
         "runtime_candidate_count": len(candidate_tools),
         "runtime_candidate_tool_ids": tool_ids,
         "runtime_candidate_original_function_names": original_names,
+        "candidate_pool_preserved": preserved,
+        "candidate_pool_source": "bfcl_prepared_row_functions",
+        "planner_narrowing_applied": False,
+        "candidate_pool_exception": candidate_pool_exception,
+        "drop_reason": drop_reason,
     }
 
 
@@ -436,6 +450,7 @@ def _bfcl_schema_ranked_choice(
     text: str,
     *,
     preferred_tool_id: str = "",
+    prepared_function_count: Optional[int] = None,
 ) -> Tuple[Optional[ToolSpec], Dict[str, Any]]:
     """Select a BFCL tool with a deterministic schema-top1 guard.
 
@@ -443,7 +458,10 @@ def _bfcl_schema_ranked_choice(
     official failure buckets are added only by the scorer/audit stage.
     """
     lookup = _bfcl_tool_lookup(candidate_tools)
-    candidate_summary = _bfcl_runtime_candidate_summary(candidate_tools)
+    candidate_summary = _bfcl_runtime_candidate_summary(
+        candidate_tools,
+        prepared_function_count=prepared_function_count,
+    )
     ranked = rank_candidate_tools(text, candidate_tools)
     ranker_candidate_tool_ids = [_bfcl_rank_item_tool_id(item) for item in ranked]
     ranker_candidate_original_names = [str(_bfcl_rank_summary(item).get("bfcl_original_function_name") or "") for item in ranked]
@@ -911,7 +929,47 @@ def _ensure_workflow_capacity(workflow: Workflow, count: int) -> None:
         workflow.workflow_graph.nodes.append(deepcopy(source))
 
 
-def _configure_bfcl_abstain_workflow(workflow: Workflow) -> Workflow:
+def _bfcl_abstain_selection_diagnostics(candidate_tools: List[ToolSpec], reason: str) -> Dict[str, Any]:
+    return {
+        "guard_policy_version": "strict_schema_top1_tie_drop_v1",
+        "planner_tool_id": "",
+        **_bfcl_runtime_candidate_summary(
+            [],
+            prepared_function_count=len(candidate_tools),
+            candidate_pool_exception="bfcl_abstain",
+            drop_reason=reason or "bfcl abstain intentionally elides runtime candidate pool",
+        ),
+        "ranker_candidate_count": 0,
+        "ranker_candidate_tool_ids": [],
+        "ranker_candidate_original_function_names": [],
+        "schema_top_5": [],
+        "schema_top_tool_id": "",
+        "schema_top_score": 0.0,
+        "planner_score": None,
+        "score_margin": None,
+        "planner_in_schema_top2": False,
+        "selected_tool_id": "",
+        "selected_reason": "bfcl_abstain",
+        "rerank_override_applied": False,
+        "rerank_override_reason": "bfcl_abstain",
+        "schema_guard_applied": False,
+        "planner_required_argument_coverage": None,
+        "selected_required_argument_coverage": None,
+        "planner_required_args_present": [],
+        "selected_required_args_present": [],
+        "planner_missing_required_args": [],
+        "selected_missing_required_args": [],
+    }
+
+
+def _configure_bfcl_abstain_workflow(
+    workflow: Workflow,
+    candidate_tools: Optional[List[ToolSpec]] = None,
+    *,
+    reason: str = "",
+) -> Workflow:
+    candidate_tools = list(candidate_tools or [])
+    _record_bfcl_choice(workflow, _bfcl_abstain_selection_diagnostics(candidate_tools, reason))
     workflow.capability_graph.capabilities = []
     workflow.capability_graph.edges = []
     workflow.tool_bindings = []
@@ -922,6 +980,7 @@ def _configure_bfcl_abstain_workflow(workflow: Workflow) -> Workflow:
     workflow.workflow_graph.exit_nodes = []
     workflow.context.candidate_tools = []
     workflow.metadata["bfcl_abstained"] = True
+    workflow.metadata["bfcl_abstain_reason"] = reason or "bfcl_abstain"
     return workflow
 
 
@@ -1031,12 +1090,9 @@ def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user
             arg_sets = extract_parallel_argument_sets(tool.tool_id, _bfcl_tool_parameters(tool), query)
             if len(arg_sets) > 1:
                 return [{"tool": tool, "inputs": arg_set, "text": query} for arg_set in arg_sets]
-        remaining_tools = list(candidate_tools)
         step_specs: List[Dict[str, Any]] = []
         for clause in _split_parallel_clauses(query):
-            if not remaining_tools:
-                break
-            tool, diagnostics = _bfcl_schema_ranked_choice(remaining_tools, clause)
+            tool, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, clause)
             if tool is None:
                 continue
             step_specs.append(
@@ -1047,7 +1103,6 @@ def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user
                     "selection_diagnostics": diagnostics,
                 }
             )
-            remaining_tools = [candidate for candidate in remaining_tools if candidate.tool_id != tool.tool_id]
         if len(step_specs) > 1:
             return step_specs
     if metadata.get("bfcl_group") == "multi_turn" and milestones:
@@ -1090,7 +1145,11 @@ def _build_seed_workflow(
     benchmark = str(raw_metadata.get("benchmark") or task.get("benchmark") or "").strip().lower() if isinstance(raw_metadata, dict) else str(task.get("benchmark") or "").strip().lower()
     if benchmark == "bfcl":
         if _bfcl_should_abstain_task(task, candidate_tools, str(task.get("query") or user_goal)):
-            return _configure_bfcl_abstain_workflow(workflow)
+            return _configure_bfcl_abstain_workflow(
+                workflow,
+                candidate_tools,
+                reason="expected_empty_or_low_relevance",
+            )
         step_specs = _bfcl_seed_specs(task, candidate_tools, user_goal)
         if not step_specs:
             return workflow
@@ -1185,7 +1244,11 @@ def _adapt_bfcl_workflow(
     milestones = [str(item).strip() for item in task.get("milestones", []) if str(item).strip()]
     call_pattern = str(metadata.get("bfcl_call_pattern") or "serial")
     if _bfcl_should_abstain_task(task, candidate_tools, query):
-        return _configure_bfcl_abstain_workflow(workflow)
+        return _configure_bfcl_abstain_workflow(
+            workflow,
+            candidate_tools,
+            reason="expected_empty_or_low_relevance",
+        )
     if not candidate_tools:
         return workflow
 
