@@ -154,10 +154,10 @@
       }
     },
     "bfcl_exact_function_guard": {
-      "status": "pending_guarded_formal_rerun",
-      "claim_strength": "pending",
+      "status": "unsupported_after_guarded_coverage_rerun_case_d",
+      "claim_strength": "limitation",
       "benchmark_suite": "bfcl_fc_core",
-      "claim": "A BFCL-specific deterministic schema-top1 guard may become supporting evidence only if the guarded rerun passes wrong-function non-regression, missing-required reduction, tool-selection non-regression, and success non-regression. It is guarded exact-function adapter evidence only, not planner headline transfer.",
+      "claim": "The guarded BFCL fc_core rerun at 046d24d suppresses a2 wrong-function regression and keeps tool-selection non-regression, but official success remains below a0 and missing-required reduction does not hold. This remains diagnostic evidence, not BFCL supporting claim evidence.",
       "metrics": {
         "primary": [
           "a2_wrong_func_name_le_a0",
@@ -167,17 +167,19 @@
         ],
         "supporting": [
           "bfcl_function_selection_audit",
-          "guardability_bucket_counts",
+          "bfcl_candidate_coverage_summary",
+          "prepared_to_runtime_drop_count",
+          "selected_correct_arg_or_shape_error_count",
           "runtime_diagnostics_gold_free",
           "deterministic_schema_tie_break"
         ]
       }
     },
     "bfcl_missing_required_guarded_reduction": {
-      "status": "pending_guarded_formal_rerun",
-      "claim_strength": "pending",
+      "status": "unsupported_after_guarded_coverage_rerun_case_d",
+      "claim_strength": "limitation",
       "benchmark_suite": "bfcl_fc_core",
-      "claim": "On the pre-registered baseline_missing_required_slice, guarded BFCL may support missing-required reduction only if full-suite gates and slice gates both pass. If only the slice passes, report it as appendix diagnostic rather than claim-matrix support.",
+      "claim": "The pre-registered missing-required guarded-reduction claim remains unsupported: the full-suite missing-required gate fails and the baseline_missing_required_slice has zero a0 rows in the guarded coverage rerun.",
       "metrics": {
         "primary": [
           "a2_guarded_missing_required_rate_lt_a0",
@@ -357,12 +359,16 @@
         "bfcl_missing_required_guarded_reduction"
       ],
       "claim_strength": "limitation",
-      "paper_role": "limitation_with_guarded_supporting_candidate",
+      "paper_role": "limitation_with_candidate_coverage_diagnostic",
       "guard_policy_version": "strict_schema_top1_tie_drop_v1",
-      "guarded_formal_status": "pending_rerun",
+      "guarded_formal_status": "rerun_complete_case_d_coverage_diagnostic",
       "audit_artifacts": [
         "bfcl_function_selection_audit.json",
-        "bfcl_function_selection_audit.md"
+        "bfcl_function_selection_audit.md",
+        "bfcl_candidate_coverage_audit.json",
+        "bfcl_candidate_coverage_audit.md",
+        "bfcl_candidate_coverage_summary.json",
+        "bfcl_candidate_coverage_summary.md"
       ],
       "reuse_claim_enabled_for_bfcl": false,
       "a4_interpreted_as_guarded_execution_variant_only": true,
@@ -384,6 +390,19 @@
           "schema ranker tie-break is deterministic under shuffled candidate order",
           "A4 BFCL is marked as non-reuse evidence"
         ]
+      },
+      "latest_guarded_rerun_commit": "046d24d066d2844399dac2d6edf22b0b29f7d3eb",
+      "latest_guarded_rerun_outdir": "outputs/paper_suite/bfcl_fc_core",
+      "guarded_rerun_observed": {
+        "case": "D",
+        "paper_safe_for_claim": true,
+        "a2_wrong_func_name_le_a0": true,
+        "a2_tool_selection_ge_a0": true,
+        "a2_success_ge_a0": false,
+        "a2_missing_required_lt_a0": false,
+        "dominant_actionable_drop_stage": "prepared_to_runtime_drop",
+        "prepared_to_runtime_drop_per_system": 827,
+        "selected_correct_arg_or_shape_error_per_system": 746
       }
     },
     "bfcl_agentic_ext": {

@@ -1,0 +1,255 @@
+{
+  "audit_schema_version": "bfcl_candidate_coverage_summary_v1",
+  "summary": {
+    "total_rows": 21455,
+    "expected_in_raw_function_docs": 8125,
+    "expected_in_prepared_schema": 8125,
+    "expected_in_runtime_candidates": 3990,
+    "expected_in_schema_top5": 3990,
+    "expected_is_schema_top1": 3990,
+    "selected_is_expected": 3990,
+    "selected_expected_success": 262,
+    "coverage_raw": 0.37869960382195295,
+    "coverage_prepared": 0.37869960382195295,
+    "coverage_runtime": 0.1859706362153344,
+    "coverage_top5": 0.1859706362153344,
+    "ranker_top1": 1.0,
+    "selection_accuracy": 1.0,
+    "arg_success_given_correct_tool": 0.06566416040100251,
+    "drop_stage_counts": {
+      "prepared_to_runtime_drop": 4135,
+      "no_expected_function": 13330,
+      "selected_correct_arg_or_shape_error": 3728,
+      "selected_correct_success": 262
+    }
+  },
+  "by_case_type": {
+    "live:parallel": {
+      "total_rows": 200,
+      "expected_in_raw_function_docs": 70,
+      "expected_in_prepared_schema": 70,
+      "expected_in_runtime_candidates": 45,
+      "expected_in_schema_top5": 45,
+      "expected_is_schema_top1": 45,
+      "selected_is_expected": 45,
+      "selected_expected_success": 0,
+      "coverage_raw": 0.35,
+      "coverage_prepared": 0.35,
+      "coverage_runtime": 0.225,
+      "coverage_top5": 0.225,
+      "ranker_top1": 1.0,
+      "selection_accuracy": 1.0,
+      "arg_success_given_correct_tool": 0.0,
+      "drop_stage_counts": {
+        "prepared_to_runtime_drop": 25,
+        "selected_correct_arg_or_shape_error": 45,
+        "no_expected_function": 130
+      }
+    },
+    "live:serial": {
+      "total_rows": 11055,
+      "expected_in_raw_function_docs": 3855,
+      "expected_in_prepared_schema": 3855,
+      "expected_in_runtime_candidates": 1090,
+      "expected_in_schema_top5": 1090,
+      "expected_is_schema_top1": 1090,
+      "selected_is_expected": 1090,
+      "selected_expected_success": 122,
+      "coverage_raw": 0.3487109905020353,
+      "coverage_prepared": 0.3487109905020353,
+      "coverage_runtime": 0.09859791949344188,
+      "coverage_top5": 0.09859791949344188,
+      "ranker_top1": 1.0,
+      "selection_accuracy": 1.0,
+      "arg_success_given_correct_tool": 0.11192660550458716,
+      "drop_stage_counts": {
+        "prepared_to_runtime_drop": 2765,
+        "no_expected_function": 7200,
+        "selected_correct_success": 122,
+        "selected_correct_arg_or_shape_error": 968
+      }
+    },
+    "multi_turn:serial": {
+      "total_rows": 4000,
+      "expected_in_raw_function_docs": 0,
+      "expected_in_prepared_schema": 0,
+      "expected_in_runtime_candidates": 0,
+      "expected_in_schema_top5": 0,
+      "expected_is_schema_top1": 0,
+      "selected_is_expected": 0,
+      "selected_expected_success": 0,
+      "coverage_raw": 0.0,
+      "coverage_prepared": 0.0,
+      "coverage_runtime": 0.0,
+      "coverage_top5": 0.0,
+      "ranker_top1": 0.0,
+      "selection_accuracy": 0.0,
+      "arg_success_given_correct_tool": 0.0,
+      "drop_stage_counts": {
+        "no_expected_function": 4000
+      }
+    },
+    "non_live:parallel": {
+      "total_rows": 2000,
+      "expected_in_raw_function_docs": 1000,
+      "expected_in_prepared_schema": 1000,
+      "expected_in_runtime_candidates": 965,
+      "expected_in_schema_top5": 965,
+      "expected_is_schema_top1": 965,
+      "selected_is_expected": 965,
+      "selected_expected_success": 0,
+      "coverage_raw": 0.5,
+      "coverage_prepared": 0.5,
+      "coverage_runtime": 0.4825,
+      "coverage_top5": 0.4825,
+      "ranker_top1": 1.0,
+      "selection_accuracy": 1.0,
+      "arg_success_given_correct_tool": 0.0,
+      "drop_stage_counts": {
+        "prepared_to_runtime_drop": 35,
+        "selected_correct_arg_or_shape_error": 965,
+        "no_expected_function": 1000
+      }
+    },
+    "non_live:serial": {
+      "total_rows": 4200,
+      "expected_in_raw_function_docs": 3200,
+      "expected_in_prepared_schema": 3200,
+      "expected_in_runtime_candidates": 1890,
+      "expected_in_schema_top5": 1890,
+      "expected_is_schema_top1": 1890,
+      "selected_is_expected": 1890,
+      "selected_expected_success": 140,
+      "coverage_raw": 0.7619047619047619,
+      "coverage_prepared": 0.7619047619047619,
+      "coverage_runtime": 0.45,
+      "coverage_top5": 0.45,
+      "ranker_top1": 1.0,
+      "selection_accuracy": 1.0,
+      "arg_success_given_correct_tool": 0.07407407407407407,
+      "drop_stage_counts": {
+        "prepared_to_runtime_drop": 1310,
+        "no_expected_function": 1000,
+        "selected_correct_success": 140,
+        "selected_correct_arg_or_shape_error": 1750
+      }
+    }
+  },
+  "by_system": {
+    "a0_baseline": {
+      "total_rows": 4291,
+      "expected_in_raw_function_docs": 1625,
+      "expected_in_prepared_schema": 1625,
+      "expected_in_runtime_candidates": 798,
+      "expected_in_schema_top5": 798,
+      "expected_is_schema_top1": 798,
+      "selected_is_expected": 798,
+      "selected_expected_success": 53,
+      "coverage_raw": 0.37869960382195295,
+      "coverage_prepared": 0.37869960382195295,
+      "coverage_runtime": 0.1859706362153344,
+      "coverage_top5": 0.1859706362153344,
+      "ranker_top1": 1.0,
+      "selection_accuracy": 1.0,
+      "arg_success_given_correct_tool": 0.06641604010025062,
+      "drop_stage_counts": {
+        "prepared_to_runtime_drop": 827,
+        "no_expected_function": 2666,
+        "selected_correct_arg_or_shape_error": 745,
+        "selected_correct_success": 53
+      }
+    },
+    "a1_recovery": {
+      "total_rows": 4291,
+      "expected_in_raw_function_docs": 1625,
+      "expected_in_prepared_schema": 1625,
+      "expected_in_runtime_candidates": 798,
+      "expected_in_schema_top5": 798,
+      "expected_is_schema_top1": 798,
+      "selected_is_expected": 798,
+      "selected_expected_success": 53,
+      "coverage_raw": 0.37869960382195295,
+      "coverage_prepared": 0.37869960382195295,
+      "coverage_runtime": 0.1859706362153344,
+      "coverage_top5": 0.1859706362153344,
+      "ranker_top1": 1.0,
+      "selection_accuracy": 1.0,
+      "arg_success_given_correct_tool": 0.06641604010025062,
+      "drop_stage_counts": {
+        "prepared_to_runtime_drop": 827,
+        "no_expected_function": 2666,
+        "selected_correct_arg_or_shape_error": 745,
+        "selected_correct_success": 53
+      }
+    },
+    "a2_planner": {
+      "total_rows": 4291,
+      "expected_in_raw_function_docs": 1625,
+      "expected_in_prepared_schema": 1625,
+      "expected_in_runtime_candidates": 798,
+      "expected_in_schema_top5": 798,
+      "expected_is_schema_top1": 798,
+      "selected_is_expected": 798,
+      "selected_expected_success": 52,
+      "coverage_raw": 0.37869960382195295,
+      "coverage_prepared": 0.37869960382195295,
+      "coverage_runtime": 0.1859706362153344,
+      "coverage_top5": 0.1859706362153344,
+      "ranker_top1": 1.0,
+      "selection_accuracy": 1.0,
+      "arg_success_given_correct_tool": 0.06516290726817042,
+      "drop_stage_counts": {
+        "prepared_to_runtime_drop": 827,
+        "no_expected_function": 2666,
+        "selected_correct_arg_or_shape_error": 746,
+        "selected_correct_success": 52
+      }
+    },
+    "a3_interaction": {
+      "total_rows": 4291,
+      "expected_in_raw_function_docs": 1625,
+      "expected_in_prepared_schema": 1625,
+      "expected_in_runtime_candidates": 798,
+      "expected_in_schema_top5": 798,
+      "expected_is_schema_top1": 798,
+      "selected_is_expected": 798,
+      "selected_expected_success": 52,
+      "coverage_raw": 0.37869960382195295,
+      "coverage_prepared": 0.37869960382195295,
+      "coverage_runtime": 0.1859706362153344,
+      "coverage_top5": 0.1859706362153344,
+      "ranker_top1": 1.0,
+      "selection_accuracy": 1.0,
+      "arg_success_given_correct_tool": 0.06516290726817042,
+      "drop_stage_counts": {
+        "prepared_to_runtime_drop": 827,
+        "no_expected_function": 2666,
+        "selected_correct_arg_or_shape_error": 746,
+        "selected_correct_success": 52
+      }
+    },
+    "a4_reuse": {
+      "total_rows": 4291,
+      "expected_in_raw_function_docs": 1625,
+      "expected_in_prepared_schema": 1625,
+      "expected_in_runtime_candidates": 798,
+      "expected_in_schema_top5": 798,
+      "expected_is_schema_top1": 798,
+      "selected_is_expected": 798,
+      "selected_expected_success": 52,
+      "coverage_raw": 0.37869960382195295,
+      "coverage_prepared": 0.37869960382195295,
+      "coverage_runtime": 0.1859706362153344,
+      "coverage_top5": 0.1859706362153344,
+      "ranker_top1": 1.0,
+      "selection_accuracy": 1.0,
+      "arg_success_given_correct_tool": 0.06516290726817042,
+      "drop_stage_counts": {
+        "prepared_to_runtime_drop": 827,
+        "no_expected_function": 2666,
+        "selected_correct_arg_or_shape_error": 746,
+        "selected_correct_success": 52
+      }
+    }
+  }
+}

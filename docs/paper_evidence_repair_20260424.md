@@ -35,7 +35,7 @@ Artifacts after the next guarded run should include:
 - `bfcl_function_selection_audit.md`
 - `claim_summary.json` with `bfcl_guard_claim_gates`
 
-Status: implementation and audit scaffolding are in progress for a deterministic schema-top1 BFCL guard. This does not change the current BFCL claim boundary: `planner_binding_headline` remains a limitation because the existing paper-safe formal bundle is negative for planner/binder transfer. The guard can only become narrow supporting evidence after a guarded formal rerun passes all pre-registered gates.
+Status: deterministic schema-top1 BFCL guard and candidate coverage funnel are implemented, and the guarded coverage full rerun completed at `046d24d066d2844399dac2d6edf22b0b29f7d3eb`. The result is Case D: wrong-function and tool-selection non-regression pass for a2, but success and missing-required gates fail. This does not change the BFCL claim boundary: `planner_binding_headline`, `bfcl_exact_function_guard`, and `bfcl_missing_required_guarded_reduction` remain limitations.
 
 Required full-suite gates before `bfcl_exact_function_guard` can become supporting:
 
@@ -102,3 +102,8 @@ Next steps before any stronger planner claim:
 - Build a held-out paraphrase suite with 60-80 tasks, 15-20 per structural family, no reused query templates or family-name hints, scorer-gold isolation, randomized tool order, renamed tool IDs, and stronger distractor overlap.
 - Run cross-suite regression on ToolSandbox official frozen, semantic repair official v1, Interaction Live v1, BFCL fc_core smoke, and reuse persistent v2 smoke to confirm the planner-sensitive repairs did not contaminate other benchmark lines.
 - Keep HTGP at `mechanism_supporting` until held-out evidence and cross-suite regression are committed.
+
+
+## BFCL Coverage Funnel Follow-Up
+
+Status after commit `046d24d066d2844399dac2d6edf22b0b29f7d3eb`: the BFCL candidate coverage funnel audit is implemented and a full guarded `bfcl_fc_core` rerun completed. The result is Case D, so BFCL remains a limitation. The funnel identifies `prepared_to_runtime_drop` as the dominant actionable candidate-coverage blocker: expected functions are preserved from raw docs to prepared schema, but many are absent from runtime candidates before ranking. The next BFCL repair step is adapter/runtime candidate preservation, not planner override or ranker-weight tuning.

@@ -45,8 +45,8 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
   - boundary: this supports planner structural mechanism evidence, not a headline claim; BFCL exact function-calling transfer remains negative and must not be folded into this claim
 
 - `bfcl_fc_core`
-  - role: planner / binder / parameter correctness limitation benchmark, with a pending guarded exact-function adapter test
-  - current claim: `planner_binding_headline` remains a limitation; `bfcl_exact_function_guard` and `bfcl_missing_required_guarded_reduction` are pending guarded-rerun claims only
+  - role: planner / binder / parameter correctness limitation benchmark, with a completed guarded coverage-funnel diagnostic
+  - current claim: `planner_binding_headline`, `bfcl_exact_function_guard`, and `bfcl_missing_required_guarded_reduction` remain limitations after the guarded coverage rerun
   - reason: the current full formal bundle is paper-safe but negative for planner/binder headline lift; the schema-top1 guard is designed to test whether wrong-function negative transfer can be suppressed without losing missing-required or argument-repair benefits
   - protocol: include `non_live`, `live`, and `multi_turn` function-calling rows; exclude `web_search`, `memory`, and `format_sensitivity`; runtime selection diagnostics must remain gold-free and A4 must be marked as non-reuse evidence
 
@@ -91,7 +91,7 @@ The guarded BFCL path is a paper-safety and diagnostic repair, not a planner hea
 - `bfcl_function_selection_audit.json/md` may add expected function and guardability buckets after execution;
 - `reuse_claim_enabled_for_bfcl = false` and `a4_interpreted_as_guarded_execution_variant_only = true`.
 
-Promotion remains pending. `bfcl_exact_function_guard` requires full-suite wrong-function non-regression, missing-required reduction, tool-selection non-regression, and success non-regression. `bfcl_missing_required_guarded_reduction` additionally requires the pre-registered `baseline_missing_required_slice` gates. If only a diagnostic slice passes, it belongs in the appendix rather than the claim matrix.
+Promotion failed in the guarded coverage rerun. `bfcl_exact_function_guard` still requires full-suite wrong-function non-regression, missing-required reduction, tool-selection non-regression, and success non-regression; `a2_success_ge_a0` and `a2_missing_required_lt_a0` did not pass. `bfcl_missing_required_guarded_reduction` additionally requires the pre-registered `baseline_missing_required_slice` gates, which did not pass because the slice has zero a0 rows in this rerun.
 
 ## ToolSandbox persistent reuse boundary on 2026-04-24
 
@@ -286,3 +286,10 @@ To avoid benchmark overfitting, BFCL-specific argument shaping is intentionally 
    - `same_family_transfer_reuse`
    - `cross_family_transfer_reuse`
 6. Keep paper-facing docs on repo-relative paths only.
+
+
+## BFCL candidate coverage funnel on 2026-04-24
+
+The guarded `bfcl_fc_core` rerun with candidate coverage audit completed at commit `046d24d066d2844399dac2d6edf22b0b29f7d3eb`. It remains Case D: `a2_wrong_func_name_le_a0=true` and `a2_tool_selection_ge_a0=true`, but `a2_success_ge_a0=false` and `a2_missing_required_lt_a0=false`. No BFCL claim is promoted.
+
+The funnel shows raw-to-prepared coverage is not the current blocker (`8125 -> 8125`), but prepared-to-runtime candidate preservation is: runtime candidates retain `3990` expected-function rows overall, with `prepared_to_runtime_drop=827` per system. When expected reaches runtime candidates, it reaches schema top-5/top-1 and is selected, so ranker top-5/top-1 ordering is not the first-order issue in this run. The next BFCL implementation target is adapter/runtime candidate preservation, followed by argument/call-shape repair on selected-correct rows.
