@@ -887,6 +887,400 @@ def _write_bfcl_candidate_coverage_markdown(audit: Dict[str, Any], path: Path) -
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _json_dict_field(value: Any) -> Dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    text = str(value or "").strip()
+    if not text:
+        return {}
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _expected_calls_from_row(row: Dict[str, Any]) -> List[Dict[str, Any]]:
+    structure = _json_dict_field(row.get("expected_call_structure"))
+    raw_calls = structure.get("calls", [])
+    if not isinstance(raw_calls, list):
+        raw_calls = []
+    calls: List[Dict[str, Any]] = []
+    for raw_call in raw_calls:
+        if not isinstance(raw_call, dict):
+            continue
+        tool_name = str(
+            raw_call.get("tool_name")
+            or raw_call.get("name")
+            or raw_call.get("function")
+            or raw_call.get("tool_id")
+            or ""
+        ).strip()
+        arguments = raw_call.get("arguments", raw_call.get("args", {}))
+        calls.append(
+            {
+                "tool_name": tool_name,
+                "arguments": arguments if isinstance(arguments, dict) else {},
+            }
+        )
+    return calls
+
+
+def _trace_payload(row: Dict[str, Any]) -> Dict[str, Any] | None:
+    trace_path_value = str(row.get("trace_path") or "").strip()
+    if not trace_path_value:
+        return None
+    trace_path = Path(trace_path_value)
+    if not trace_path.is_absolute():
+        trace_path = ROOT_DIR / trace_path_value
+    try:
+        payload = json.loads(trace_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _emitted_calls_from_trace(row: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], str]:
+    payload = _trace_payload(row)
+    if payload is None:
+        return [], "trace_missing_or_unparseable"
+    events = payload.get("events", [])
+    if not isinstance(events, list):
+        return [], "trace_missing_or_unparseable"
+    calls: List[Dict[str, Any]] = []
+    for event in events:
+        if not isinstance(event, dict) or str(event.get("event_type") or "") != "tool_call":
+            continue
+        args = event.get("tool_args", {})
+        calls.append(
+            {
+                "tool_name": str(event.get("tool_id") or "").strip(),
+                "arguments": args if isinstance(args, dict) else {},
+            }
+        )
+    return calls, "ok"
+
+
+def _parameter_schema_by_name(row: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    schemas: Dict[str, Dict[str, Any]] = {}
+    for raw_tool in _json_list_field(row.get("candidate_tools")):
+        if isinstance(raw_tool, str):
+            schemas[raw_tool] = {}
+            continue
+        if not isinstance(raw_tool, dict):
+            continue
+        metadata = raw_tool.get("metadata", {}) if isinstance(raw_tool.get("metadata"), dict) else {}
+        parameters = raw_tool.get("parameters") or metadata.get("parameters") or {}
+        if not isinstance(parameters, dict):
+            parameters = {}
+        names = {
+            str(raw_tool.get("tool_id") or "").strip(),
+            str(raw_tool.get("name") or "").strip(),
+            str(metadata.get("bfcl_original_function_name") or "").strip(),
+            str(metadata.get("canonical_name") or "").strip(),
+        }
+        for name in names:
+            if name:
+                schemas[name] = parameters
+    return schemas
+
+
+def _schema_type_matches(value: Any, schema: Dict[str, Any]) -> bool:
+    expected_type = str(schema.get("type") or "").lower()
+    if not expected_type:
+        return True
+    if expected_type in {"string", "str"}:
+        return isinstance(value, str)
+    if expected_type in {"integer", "int"}:
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected_type in {"number", "float"}:
+        return (isinstance(value, int) or isinstance(value, float)) and not isinstance(value, bool)
+    if expected_type in {"boolean", "bool"}:
+        return isinstance(value, bool)
+    if expected_type in {"array", "list"}:
+        return isinstance(value, list)
+    if expected_type in {"object", "dict"}:
+        return isinstance(value, dict)
+    return True
+
+
+def _normalize_bfcl_value(value: Any) -> Any:
+    if isinstance(value, str):
+        text = value.strip()
+        lowered = text.lower()
+        if lowered in {"true", "false"}:
+            return lowered == "true"
+        try:
+            if "." in text:
+                return float(text)
+            return int(text)
+        except ValueError:
+            return lowered
+    if isinstance(value, list):
+        return [_normalize_bfcl_value(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _normalize_bfcl_value(nested) for key, nested in sorted(value.items())}
+    return value
+
+
+def _nested_structure_mismatches(expected: Any, emitted: Any, prefix: str) -> List[str]:
+    mismatches: List[str] = []
+    if isinstance(expected, dict):
+        if not isinstance(emitted, dict):
+            return [prefix]
+        for key, expected_value in expected.items():
+            child_prefix = f"{prefix}.{key}" if prefix else str(key)
+            if key not in emitted:
+                mismatches.append(child_prefix)
+                continue
+            mismatches.extend(_nested_structure_mismatches(expected_value, emitted.get(key), child_prefix))
+        return mismatches
+    if isinstance(expected, list):
+        if not isinstance(emitted, list):
+            return [prefix]
+        if expected and emitted:
+            mismatches.extend(_nested_structure_mismatches(expected[0], emitted[0], f"{prefix}[0]"))
+        return mismatches
+    return mismatches
+
+
+def _argument_mismatches(
+    expected_calls: List[Dict[str, Any]],
+    emitted_calls: List[Dict[str, Any]],
+    row: Dict[str, Any],
+) -> Dict[str, List[str]]:
+    schema_by_name = _parameter_schema_by_name(row)
+    missing_required: List[str] = []
+    wrong_type: List[str] = []
+    wrong_value: List[str] = []
+    wrong_structure: List[str] = []
+    for index, expected_call in enumerate(expected_calls[: len(emitted_calls)]):
+        emitted_call = emitted_calls[index]
+        tool_name = str(expected_call.get("tool_name") or emitted_call.get("tool_name") or "")
+        expected_args = expected_call.get("arguments", {})
+        emitted_args = emitted_call.get("arguments", {})
+        if not isinstance(expected_args, dict):
+            expected_args = {}
+        if not isinstance(emitted_args, dict):
+            emitted_args = {}
+        schema = schema_by_name.get(tool_name, {})
+        required = schema.get("required", []) if isinstance(schema, dict) else []
+        properties = schema.get("properties", {}) if isinstance(schema, dict) else {}
+        if not isinstance(required, list):
+            required = []
+        if not isinstance(properties, dict):
+            properties = {}
+        required_keys = {str(key) for key in required}
+        required_keys.update(str(key) for key in expected_args.keys())
+        for arg_name in sorted(required_keys):
+            label = f"call_{index + 1}.{arg_name}"
+            emitted_value = emitted_args.get(arg_name)
+            expected_value = expected_args.get(arg_name)
+            if arg_name not in emitted_args or emitted_value in (None, ""):
+                if expected_value not in (None, ""):
+                    missing_required.append(label)
+                continue
+            arg_schema = properties.get(arg_name, {}) if isinstance(properties.get(arg_name, {}), dict) else {}
+            structure_mismatches = _nested_structure_mismatches(expected_value, emitted_value, label)
+            if structure_mismatches:
+                wrong_structure.extend(structure_mismatches)
+                continue
+            if not _schema_type_matches(emitted_value, arg_schema):
+                wrong_type.append(label)
+                continue
+            if _normalize_bfcl_value(expected_value) != _normalize_bfcl_value(emitted_value):
+                wrong_value.append(label)
+    return {
+        "missing_required_args": missing_required,
+        "wrong_type_args": wrong_type,
+        "wrong_value_args": wrong_value,
+        "nested_structure_mismatches": wrong_structure,
+    }
+
+
+def _call_order_mismatch(expected_calls: List[Dict[str, Any]], emitted_calls: List[Dict[str, Any]]) -> bool:
+    if len(expected_calls) != len(emitted_calls):
+        return False
+    expected_order = [str(call.get("tool_name") or "") for call in expected_calls]
+    emitted_order = [str(call.get("tool_name") or "") for call in emitted_calls]
+    return expected_order != emitted_order and sorted(expected_order) == sorted(emitted_order)
+
+
+def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    coverage = _bfcl_candidate_coverage_row(row)
+    expected_calls = _expected_calls_from_row(row)
+    emitted_calls, trace_status = _emitted_calls_from_trace(row)
+    selected_is_expected = bool(coverage.get("selected_is_expected"))
+    official_success = float(row.get("official_bfcl_eval_success", 0.0) or 0.0) >= 1.0
+    failure_bucket = str(coverage.get("official_failure_bucket") or "")
+    expected_call_count = len(expected_calls)
+    emitted_call_count = len(emitted_calls)
+    call_pattern = str(row.get("bfcl_call_pattern") or "")
+    case_type = str(coverage.get("case_type") or "")
+    is_parallel_or_multiple = call_pattern == "parallel" or "parallel" in case_type
+    wrong_call_count = selected_is_expected and expected_call_count != emitted_call_count
+    wrong_call_order = selected_is_expected and _call_order_mismatch(expected_calls, emitted_calls)
+    parallel_shape_error = bool(selected_is_expected and is_parallel_or_multiple and (wrong_call_count or failure_bucket == "wrong_count"))
+    multi_turn_state_mismatch = bool(selected_is_expected and failure_bucket in {"multi_turn_mismatch", "multi_turn_other"})
+    mismatches = _argument_mismatches(expected_calls, emitted_calls, row) if selected_is_expected and not wrong_call_count else {
+        "missing_required_args": [],
+        "wrong_type_args": [],
+        "wrong_value_args": [],
+        "nested_structure_mismatches": [],
+    }
+
+    if not selected_is_expected:
+        selected_correct_failure_bucket = "not_selected_expected"
+    elif trace_status != "ok":
+        selected_correct_failure_bucket = "trace_missing_or_unparseable"
+    elif official_success:
+        selected_correct_failure_bucket = "selected_correct_success"
+    elif multi_turn_state_mismatch:
+        selected_correct_failure_bucket = "multi_turn_state_error"
+    elif parallel_shape_error:
+        selected_correct_failure_bucket = "parallel_shape_error"
+    elif wrong_call_count:
+        selected_correct_failure_bucket = "wrong_call_count"
+    elif wrong_call_order:
+        selected_correct_failure_bucket = "wrong_call_order"
+    elif mismatches["missing_required_args"] or failure_bucket == "missing_required":
+        selected_correct_failure_bucket = "missing_required"
+    elif mismatches["nested_structure_mismatches"]:
+        selected_correct_failure_bucket = "wrong_arg_structure"
+    elif mismatches["wrong_type_args"]:
+        selected_correct_failure_bucket = "wrong_arg_type"
+    elif mismatches["wrong_value_args"] or failure_bucket in {"value_error", "other_official_failure"}:
+        selected_correct_failure_bucket = "wrong_arg_value"
+    else:
+        selected_correct_failure_bucket = "other_selected_correct_failure"
+
+    return {
+        "row_id": str(coverage.get("row_id") or ""),
+        "run_index": int(row.get("run_index", 0) or 0),
+        "task_id": str(row.get("task_id") or ""),
+        "system": str(row.get("system") or ""),
+        "case_type": case_type,
+        "official_dataset_category": str(row.get("official_dataset_category") or ""),
+        "selected_is_expected": selected_is_expected,
+        "official_success": official_success,
+        "official_failure_bucket": failure_bucket,
+        "expected_call_count": expected_call_count,
+        "emitted_call_count": emitted_call_count,
+        "missing_required_args": mismatches["missing_required_args"],
+        "wrong_type_args": mismatches["wrong_type_args"],
+        "wrong_value_args": mismatches["wrong_value_args"],
+        "nested_structure_mismatches": mismatches["nested_structure_mismatches"],
+        "wrong_call_count": wrong_call_count,
+        "wrong_call_order": wrong_call_order,
+        "parallel_or_multiple_shape_mismatch": parallel_shape_error,
+        "multi_turn_state_mismatch": multi_turn_state_mismatch,
+        "trace_status": trace_status,
+        "selected_correct_failure_bucket": selected_correct_failure_bucket,
+    }
+
+
+def _selected_correct_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    selected_rows = [row for row in rows if row.get("selected_is_expected")]
+    selected_count = len(selected_rows)
+    bucket_counts = Counter(str(row.get("selected_correct_failure_bucket") or "unknown") for row in selected_rows)
+    success_count = int(bucket_counts.get("selected_correct_success", 0))
+    return {
+        "total_rows": len(rows),
+        "selected_is_expected_count": selected_count,
+        "success_given_selected_is_expected": success_count,
+        "success_rate_given_selected_is_expected": _ratio(success_count, selected_count),
+        "missing_required_given_selected_is_expected": int(bucket_counts.get("missing_required", 0)),
+        "wrong_arg_value_given_selected_is_expected": int(bucket_counts.get("wrong_arg_value", 0)),
+        "wrong_arg_type_given_selected_is_expected": int(bucket_counts.get("wrong_arg_type", 0)),
+        "wrong_arg_structure_given_selected_is_expected": int(bucket_counts.get("wrong_arg_structure", 0)),
+        "wrong_call_count_given_selected_is_expected": int(bucket_counts.get("wrong_call_count", 0)),
+        "wrong_call_order_given_selected_is_expected": int(bucket_counts.get("wrong_call_order", 0)),
+        "parallel_shape_error_given_selected_is_expected": int(bucket_counts.get("parallel_shape_error", 0)),
+        "multi_turn_state_error_given_selected_is_expected": int(bucket_counts.get("multi_turn_state_error", 0)),
+        "trace_missing_or_unparseable_given_selected_is_expected": int(bucket_counts.get("trace_missing_or_unparseable", 0)),
+        "other_selected_correct_failure_given_selected_is_expected": int(bucket_counts.get("other_selected_correct_failure", 0)),
+        "selected_correct_failure_bucket_counts": dict(bucket_counts),
+    }
+
+
+def _bfcl_selected_correct_failure_audit(scored_rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    rows = [_bfcl_selected_correct_failure_row(row) for row in scored_rows]
+    runtime_gold_leak_count = sum(
+        1
+        for row in scored_rows
+        if _diagnostic_contains_gold_fields(_first_bfcl_selection_diagnostic(row))
+    )
+    by_case: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    by_system: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    by_dataset_category: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    by_system_case: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        case_type = str(row.get("case_type") or "unknown")
+        system = str(row.get("system") or "unknown")
+        category = str(row.get("official_dataset_category") or "unknown")
+        by_case[case_type].append(row)
+        by_system[system].append(row)
+        by_dataset_category[category].append(row)
+        by_system_case[f"{system}::{case_type}"].append(row)
+    return {
+        "audit_schema_version": "bfcl_selected_correct_failure_audit_v1",
+        "gold_fields_added_after_execution": True,
+        "runtime_diagnostics_gold_free": runtime_gold_leak_count == 0,
+        "runtime_gold_field_leak_count": runtime_gold_leak_count,
+        "summary": _selected_correct_summary_for_rows(rows),
+        "by_case_type": {key: _selected_correct_summary_for_rows(value) for key, value in sorted(by_case.items())},
+        "by_system": {key: _selected_correct_summary_for_rows(value) for key, value in sorted(by_system.items())},
+        "by_official_dataset_category": {key: _selected_correct_summary_for_rows(value) for key, value in sorted(by_dataset_category.items())},
+        "by_system_case_type": {key: _selected_correct_summary_for_rows(value) for key, value in sorted(by_system_case.items())},
+        "rows": rows,
+    }
+
+
+def _write_bfcl_selected_correct_failure_markdown(audit: Dict[str, Any], path: Path) -> None:
+    summary = audit.get("summary", {}) if isinstance(audit.get("summary"), dict) else {}
+    lines = [
+        "# BFCL Selected-Correct Failure Audit",
+        "",
+        "This report is gold-enriched after execution. Runtime diagnostics remain gold-free.",
+        "",
+        f"- audit_schema_version: `{audit.get('audit_schema_version')}`",
+        f"- runtime_diagnostics_gold_free: `{audit.get('runtime_diagnostics_gold_free')}`",
+        "",
+        "## Summary",
+        "",
+        "| metric | value |",
+        "|---|---:|",
+    ]
+    for key in [
+        "selected_is_expected_count",
+        "success_given_selected_is_expected",
+        "success_rate_given_selected_is_expected",
+        "missing_required_given_selected_is_expected",
+        "wrong_arg_value_given_selected_is_expected",
+        "wrong_arg_type_given_selected_is_expected",
+        "wrong_arg_structure_given_selected_is_expected",
+        "wrong_call_count_given_selected_is_expected",
+        "wrong_call_order_given_selected_is_expected",
+        "parallel_shape_error_given_selected_is_expected",
+        "multi_turn_state_error_given_selected_is_expected",
+        "trace_missing_or_unparseable_given_selected_is_expected",
+        "other_selected_correct_failure_given_selected_is_expected",
+    ]:
+        lines.append(f"| {key} | {summary.get(key, 0)} |")
+    lines.extend(["", "## Failure Buckets", "", "| bucket | count |", "|---|---:|"])
+    for bucket, count in sorted((summary.get("selected_correct_failure_bucket_counts") or {}).items()):
+        lines.append(f"| {bucket} | {count} |")
+    lines.extend(["", "## By Case Type", "", "| case_type | selected expected | success | top bucket |", "|---|---:|---:|---|"])
+    for case_type, case_summary in audit.get("by_case_type", {}).items():
+        buckets = case_summary.get("selected_correct_failure_bucket_counts") or {}
+        top_bucket = max(buckets.items(), key=lambda item: item[1])[0] if buckets else "none"
+        lines.append(
+            f"| {case_type} | {case_summary.get('selected_is_expected_count', 0)} | {case_summary.get('success_given_selected_is_expected', 0)} | {top_bucket} |"
+        )
+    lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def _bucket_counts_by_system(scored_rows: List[Dict[str, Any]]) -> Dict[str, Counter]:
     counts: Dict[str, Counter] = defaultdict(Counter)
     for row in scored_rows:
@@ -1337,11 +1731,19 @@ def main() -> None:
     failure_slice_summary = _bfcl_failure_slice_summary(scored_rows)
     function_selection_audit = _bfcl_function_selection_audit(scored_rows)
     candidate_coverage_audit = _bfcl_candidate_coverage_audit(scored_rows)
+    selected_correct_failure_audit = _bfcl_selected_correct_failure_audit(scored_rows)
     candidate_coverage_summary = {
         "audit_schema_version": "bfcl_candidate_coverage_summary_v1",
         "summary": candidate_coverage_audit.get("summary", {}),
         "by_case_type": candidate_coverage_audit.get("by_case_type", {}),
         "by_system": candidate_coverage_audit.get("by_system", {}),
+    }
+    selected_correct_failure_summary = {
+        "audit_schema_version": "bfcl_selected_correct_failure_summary_v1",
+        "summary": selected_correct_failure_audit.get("summary", {}),
+        "by_case_type": selected_correct_failure_audit.get("by_case_type", {}),
+        "by_system": selected_correct_failure_audit.get("by_system", {}),
+        "by_official_dataset_category": selected_correct_failure_audit.get("by_official_dataset_category", {}),
     }
 
     (outdir / "official_scoreboard.json").write_text(json.dumps(official_scoreboard, indent=2), encoding="utf-8")
@@ -1355,6 +1757,10 @@ def main() -> None:
     _write_bfcl_candidate_coverage_markdown(candidate_coverage_audit, outdir / "bfcl_candidate_coverage_audit.md")
     (outdir / "bfcl_candidate_coverage_summary.json").write_text(json.dumps(candidate_coverage_summary, indent=2), encoding="utf-8")
     _write_bfcl_candidate_coverage_markdown(candidate_coverage_audit, outdir / "bfcl_candidate_coverage_summary.md")
+    (outdir / "bfcl_selected_correct_failure_audit.json").write_text(json.dumps(selected_correct_failure_audit, indent=2), encoding="utf-8")
+    _write_bfcl_selected_correct_failure_markdown(selected_correct_failure_audit, outdir / "bfcl_selected_correct_failure_audit.md")
+    (outdir / "bfcl_selected_correct_failure_summary.json").write_text(json.dumps(selected_correct_failure_summary, indent=2), encoding="utf-8")
+    _write_bfcl_selected_correct_failure_markdown(selected_correct_failure_audit, outdir / "bfcl_selected_correct_failure_summary.md")
 
     manifest["comparison_scored_path"] = _display_path(comparison_scored_path)
     manifest["official_scoreboard_path"] = _display_path(outdir / "official_scoreboard.json")
@@ -1364,6 +1770,8 @@ def main() -> None:
     manifest["bfcl_function_selection_audit_path"] = _display_path(outdir / "bfcl_function_selection_audit.json")
     manifest["bfcl_candidate_coverage_audit_path"] = _display_path(outdir / "bfcl_candidate_coverage_audit.json")
     manifest["bfcl_candidate_coverage_summary_path"] = _display_path(outdir / "bfcl_candidate_coverage_summary.json")
+    manifest["bfcl_selected_correct_failure_audit_path"] = _display_path(outdir / "bfcl_selected_correct_failure_audit.json")
+    manifest["bfcl_selected_correct_failure_summary_path"] = _display_path(outdir / "bfcl_selected_correct_failure_summary.json")
     (outdir / "experiment_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     print(f"official_scoreboard: {outdir / 'official_scoreboard.json'}")
@@ -1371,6 +1779,7 @@ def main() -> None:
     print(f"claim_summary: {outdir / 'claim_summary.json'}")
     print(f"bfcl_function_selection_audit: {outdir / 'bfcl_function_selection_audit.json'}")
     print(f"bfcl_candidate_coverage_audit: {outdir / 'bfcl_candidate_coverage_audit.json'}")
+    print(f"bfcl_selected_correct_failure_audit: {outdir / 'bfcl_selected_correct_failure_audit.json'}")
 
 
 if __name__ == "__main__":

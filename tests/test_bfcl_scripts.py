@@ -1674,3 +1674,307 @@ def test_bfcl_candidate_coverage_marks_abstain_elision_as_intentional() -> None:
     assert stage == "bfcl_abstain_candidate_elision"
     assert "abstain" in reason.lower()
 
+
+def test_bfcl_selected_correct_failure_audit_classifies_argument_and_shape_buckets(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_selected_correct_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    def row_for(
+        *,
+        task_id: str,
+        expected_calls: list[dict],
+        emitted_calls: list[dict],
+        reasons: list[str],
+        success: float = 0.0,
+        call_pattern: str = "serial",
+        group: str = "non_live",
+        candidate_tools: list[dict] | None = None,
+    ) -> dict:
+        trace_path = tmp_path / f"{task_id}.json"
+        events = [
+            {
+                "event_type": "tool_call",
+                "tool_id": call["tool_name"],
+                "tool_args": call.get("arguments", {}),
+            }
+            for call in emitted_calls
+        ]
+        selected_tool = expected_calls[0]["tool_name"] if expected_calls else "expected_tool"
+        runtime_diagnostic = {
+            "runtime_candidate_tool_ids": [selected_tool],
+            "runtime_candidate_original_function_names": [selected_tool],
+            "ranker_candidate_tool_ids": [selected_tool],
+            "ranker_candidate_original_function_names": [selected_tool],
+            "schema_top_5": [{"tool_id": selected_tool, "bfcl_original_function_name": selected_tool}],
+            "selected_tool_id": selected_tool,
+            "selected_reason": "schema_top1_no_planner",
+        }
+        trace_path.write_text(
+            json.dumps(
+                {
+                    "metadata": {"task_annotations": {"bfcl_rerank_diagnostics": [runtime_diagnostic]}},
+                    "events": events,
+                }
+            ),
+            encoding="utf-8",
+        )
+        tools = candidate_tools or [
+            {
+                "tool_id": selected_tool,
+                "metadata": {"bfcl_original_function_name": selected_tool},
+                "parameters": {
+                    "type": "dict",
+                    "required": ["city"],
+                    "properties": {"city": {"type": "string"}},
+                },
+            }
+        ]
+        return {
+            "run_index": "1",
+            "task_id": task_id,
+            "system": "a2_planner",
+            "bfcl_group": group,
+            "bfcl_call_pattern": call_pattern,
+            "gold_tool": selected_tool,
+            "chosen_tool": selected_tool,
+            "candidate_tools": json.dumps(tools),
+            "expected_call_structure": json.dumps({"pattern": call_pattern, "calls": expected_calls}),
+            "trace_path": str(trace_path),
+            "official_bfcl_eval_unsupported_reasons": json.dumps(reasons),
+            "official_bfcl_eval_success": success,
+        }
+
+    rows = [
+        row_for(
+            task_id="selected_success",
+            expected_calls=[{"tool_name": "weather", "arguments": {"city": "Paris"}}],
+            emitted_calls=[{"tool_name": "weather", "arguments": {"city": "Paris"}}],
+            reasons=[],
+            success=1.0,
+        ),
+        row_for(
+            task_id="missing_required",
+            expected_calls=[{"tool_name": "weather", "arguments": {"city": "Paris"}}],
+            emitted_calls=[{"tool_name": "weather", "arguments": {}}],
+            reasons=["missing_required"],
+        ),
+        row_for(
+            task_id="wrong_type",
+            expected_calls=[{"tool_name": "counter", "arguments": {"count": 2}}],
+            emitted_calls=[{"tool_name": "counter", "arguments": {"count": "two"}}],
+            reasons=["value_error"],
+            candidate_tools=[
+                {
+                    "tool_id": "counter",
+                    "metadata": {"bfcl_original_function_name": "counter"},
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["count"],
+                        "properties": {"count": {"type": "integer"}},
+                    },
+                }
+            ],
+        ),
+        row_for(
+            task_id="wrong_value",
+            expected_calls=[{"tool_name": "weather", "arguments": {"city": "Paris"}}],
+            emitted_calls=[{"tool_name": "weather", "arguments": {"city": "London"}}],
+            reasons=["value_error"],
+        ),
+        row_for(
+            task_id="wrong_structure",
+            expected_calls=[{"tool_name": "nested", "arguments": {"payload": {"city": "Paris"}}}],
+            emitted_calls=[{"tool_name": "nested", "arguments": {"payload": "Paris"}}],
+            reasons=["value_error"],
+            candidate_tools=[
+                {
+                    "tool_id": "nested",
+                    "metadata": {"bfcl_original_function_name": "nested"},
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["payload"],
+                        "properties": {"payload": {"type": "object"}},
+                    },
+                }
+            ],
+        ),
+        row_for(
+            task_id="wrong_count",
+            expected_calls=[
+                {"tool_name": "weather", "arguments": {"city": "Paris"}},
+                {"tool_name": "weather", "arguments": {"city": "Berlin"}},
+            ],
+            emitted_calls=[{"tool_name": "weather", "arguments": {"city": "Paris"}}],
+            reasons=["wrong_count"],
+            call_pattern="serial",
+        ),
+        row_for(
+            task_id="parallel_shape",
+            expected_calls=[
+                {"tool_name": "weather", "arguments": {"city": "Paris"}},
+                {"tool_name": "weather", "arguments": {"city": "Berlin"}},
+            ],
+            emitted_calls=[{"tool_name": "weather", "arguments": {"city": "Paris"}}],
+            reasons=["wrong_count"],
+            call_pattern="parallel",
+        ),
+        row_for(
+            task_id="multi_turn",
+            expected_calls=[{"tool_name": "weather", "arguments": {"city": "Paris"}}],
+            emitted_calls=[{"tool_name": "weather", "arguments": {"city": "Paris"}}],
+            reasons=["multi_turn_mismatch"],
+            group="multi_turn",
+        ),
+        row_for(
+            task_id="wrong_order",
+            expected_calls=[
+                {"tool_name": "tool_a", "arguments": {"city": "Paris"}},
+                {"tool_name": "tool_b", "arguments": {"city": "Paris"}},
+            ],
+            emitted_calls=[
+                {"tool_name": "tool_b", "arguments": {"city": "Paris"}},
+                {"tool_name": "tool_a", "arguments": {"city": "Paris"}},
+            ],
+            reasons=["wrong_order"],
+            candidate_tools=[
+                {
+                    "tool_id": "tool_a",
+                    "metadata": {"bfcl_original_function_name": "tool_a"},
+                    "parameters": {"type": "dict", "required": ["city"], "properties": {"city": {"type": "string"}}},
+                },
+                {
+                    "tool_id": "tool_b",
+                    "metadata": {"bfcl_original_function_name": "tool_b"},
+                    "parameters": {"type": "dict", "required": ["city"], "properties": {"city": {"type": "string"}}},
+                },
+            ],
+        ),
+    ]
+
+    audit = module._bfcl_selected_correct_failure_audit(rows)
+    summary = audit["summary"]
+    buckets = summary["selected_correct_failure_bucket_counts"]
+
+    assert audit["audit_schema_version"] == "bfcl_selected_correct_failure_audit_v1"
+    assert summary["selected_is_expected_count"] == len(rows)
+    assert summary["success_given_selected_is_expected"] == 1
+    assert summary["missing_required_given_selected_is_expected"] == 1
+    assert summary["wrong_arg_type_given_selected_is_expected"] == 1
+    assert summary["wrong_arg_value_given_selected_is_expected"] == 1
+    assert summary["wrong_arg_structure_given_selected_is_expected"] == 1
+    assert summary["wrong_call_count_given_selected_is_expected"] == 1
+    assert summary["wrong_call_order_given_selected_is_expected"] == 1
+    assert summary["parallel_shape_error_given_selected_is_expected"] == 1
+    assert summary["multi_turn_state_error_given_selected_is_expected"] == 1
+    assert buckets["selected_correct_success"] == 1
+
+
+def test_bfcl_selected_correct_failure_audit_keeps_gold_out_of_runtime_diagnostics(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_selected_correct_gold_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    trace_path = tmp_path / "trace.json"
+    runtime_diagnostic = {
+        "runtime_candidate_tool_ids": ["weather"],
+        "runtime_candidate_original_function_names": ["weather"],
+        "ranker_candidate_tool_ids": ["weather"],
+        "ranker_candidate_original_function_names": ["weather"],
+        "schema_top_5": [{"tool_id": "weather", "bfcl_original_function_name": "weather"}],
+        "selected_tool_id": "weather",
+        "selected_reason": "schema_top1_no_planner",
+    }
+    trace_path.write_text(
+        json.dumps(
+            {
+                "metadata": {"task_annotations": {"bfcl_rerank_diagnostics": [runtime_diagnostic]}},
+                "events": [{"event_type": "tool_call", "tool_id": "weather", "tool_args": {"city": "Paris"}}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    row = {
+        "run_index": "1",
+        "task_id": "task_1",
+        "system": "a2_planner",
+        "bfcl_group": "non_live",
+        "bfcl_call_pattern": "serial",
+        "gold_tool": "weather",
+        "candidate_tools": json.dumps([{"tool_id": "weather", "metadata": {"bfcl_original_function_name": "weather"}}]),
+        "expected_call_structure": json.dumps({"pattern": "serial", "calls": [{"tool_name": "weather", "arguments": {"city": "Paris"}}]}),
+        "trace_path": str(trace_path),
+        "official_bfcl_eval_unsupported_reasons": json.dumps([]),
+        "official_bfcl_eval_success": 1.0,
+    }
+
+    audit = module._bfcl_selected_correct_failure_audit([row])
+    runtime_text = json.dumps(module._first_bfcl_selection_diagnostic(row))
+
+    assert audit["runtime_diagnostics_gold_free"] is True
+    assert "expected_call_count" not in runtime_text
+    assert "official_failure_bucket" not in runtime_text
+    assert audit["rows"][0]["expected_call_count"] == 1
+    assert audit["rows"][0]["official_failure_bucket"] == "official_success_or_safe_failure"
+
+
+def test_bfcl_selected_correct_failure_audit_matches_candidate_coverage_selected_count(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_selected_correct_regression_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    trace_path = tmp_path / "trace.json"
+    trace_path.write_text(
+        json.dumps(
+            {
+                "metadata": {
+                    "task_annotations": {
+                        "bfcl_rerank_diagnostics": [
+                            {
+                                "runtime_candidate_tool_ids": ["weather"],
+                                "runtime_candidate_original_function_names": ["weather"],
+                                "ranker_candidate_tool_ids": ["weather"],
+                                "ranker_candidate_original_function_names": ["weather"],
+                                "schema_top_5": [{"tool_id": "weather", "bfcl_original_function_name": "weather"}],
+                                "selected_tool_id": "weather",
+                                "selected_reason": "schema_top1_no_planner",
+                            }
+                        ]
+                    }
+                },
+                "events": [{"event_type": "tool_call", "tool_id": "weather", "tool_args": {"city": "Paris"}}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    row = {
+        "run_index": "1",
+        "task_id": "task_1",
+        "system": "a2_planner",
+        "bfcl_group": "non_live",
+        "bfcl_call_pattern": "serial",
+        "gold_tool": "weather",
+        "candidate_tools": json.dumps([{"tool_id": "weather", "metadata": {"bfcl_original_function_name": "weather"}}]),
+        "expected_call_structure": json.dumps({"pattern": "serial", "calls": [{"tool_name": "weather", "arguments": {"city": "Paris"}}]}),
+        "trace_path": str(trace_path),
+        "official_bfcl_eval_unsupported_reasons": json.dumps([]),
+        "official_bfcl_eval_success": 1.0,
+    }
+
+    coverage = module._bfcl_candidate_coverage_audit([row])
+    selected_correct = module._bfcl_selected_correct_failure_audit([row])
+
+    assert coverage["summary"]["selected_is_expected"] == 1
+    assert selected_correct["summary"]["selected_is_expected_count"] == coverage["summary"]["selected_is_expected"]
