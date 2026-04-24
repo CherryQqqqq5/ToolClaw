@@ -445,6 +445,9 @@ def _guardability_flags(*, expected: str, planner: str, selected_reason: str, to
     planner_correct = bool(expected) and bool(planner) and planner == expected
     schema_top1 = top_ids[0] if top_ids else ""
     flags = {
+        "schema_top1_expected": bool(expected) and bool(schema_top1) and schema_top1 == expected,
+        "schema_top1_wrong_expected_in_top5": bool(expected) and bool(schema_top1) and schema_top1 != expected and expected in top_ids[:5],
+        "expected_absent_from_schema_top5": bool(expected) and expected not in top_ids[:5],
         "planner_wrong_schema_top1_expected": planner_wrong and schema_top1 == expected,
         "planner_wrong_schema_top2_expected": planner_wrong and expected in top_ids[:2],
         "planner_wrong_schema_top5_expected": planner_wrong and expected in top_ids[:5],
@@ -611,16 +614,27 @@ def _bfcl_guard_claim_gates(scored_rows: List[Dict[str, Any]], official_scoreboa
         "a2_guarded_wrong_func_name_rate_le_a0": float(a2_slice.get("wrong_func_name_rate", 0.0)) <= float(a0_slice.get("wrong_func_name_rate", 0.0)),
         "a2_guarded_success_rate_ge_a0": float(a2_slice.get("success_rate", 0.0)) >= float(a0_slice.get("success_rate", 0.0)),
     }
+    wrong_function_non_regression_ready = (
+        bool(full_suite_gates.get("a2_wrong_func_name_le_a0", False))
+        and bool(full_suite_gates.get("a2_tool_selection_ge_a0", False))
+        and bool(full_suite_gates.get("a2_success_ge_a0", False))
+    )
+    missing_required_reduction_ready = bool(full_suite_gates.get("a2_missing_required_lt_a0", False))
+    full_suite_supporting_ready = wrong_function_non_regression_ready and missing_required_reduction_ready
+    baseline_missing_required_slice_ready = all(baseline_slice_gates.values())
     return {
         "guard_policy_version": "strict_schema_top1_tie_drop_v1",
         "reuse_claim_enabled_for_bfcl": False,
         "a4_interpreted_as_guarded_execution_variant_only": True,
         "failure_bucket_counts_by_system": {system: dict(counts) for system, counts in sorted(bucket_counts.items())},
         "full_suite_gates": full_suite_gates,
-        "full_suite_supporting_ready": all(full_suite_gates.values()),
+        "wrong_function_non_regression_ready": wrong_function_non_regression_ready,
+        "missing_required_reduction_ready": missing_required_reduction_ready,
+        "full_suite_supporting_ready": full_suite_supporting_ready,
         "baseline_missing_required_slice": baseline_slice,
         "baseline_missing_required_slice_gates": baseline_slice_gates,
-        "missing_required_guarded_reduction_ready": all(full_suite_gates.values()) and all(baseline_slice_gates.values()),
+        "baseline_missing_required_slice_ready": baseline_missing_required_slice_ready,
+        "missing_required_guarded_reduction_ready": full_suite_supporting_ready and baseline_missing_required_slice_ready,
     }
 
 
@@ -794,6 +808,11 @@ def _claim_summary(
             "missing_required_guarded_reduction_ready": False,
         }
     exact_guard_ready = bool(paper_safe and guard_claim_gates.get("full_suite_supporting_ready"))
+    exact_guard_diagnostic_ready = bool(
+        paper_safe
+        and not exact_guard_ready
+        and guard_claim_gates.get("wrong_function_non_regression_ready")
+    )
     missing_required_ready = bool(paper_safe and guard_claim_gates.get("missing_required_guarded_reduction_ready"))
     return {
         "suite": suite,
@@ -820,9 +839,10 @@ def _claim_summary(
             },
             {
                 "claim_id": "bfcl_exact_function_guard",
-                "claim_strength": "supporting" if exact_guard_ready else "unsupported",
+                "claim_strength": "supporting" if exact_guard_ready else ("diagnostic_supporting" if exact_guard_diagnostic_ready else "unsupported"),
                 "paper_safe_for_claim": exact_guard_ready,
                 "supporting_ready": exact_guard_ready,
+                "diagnostic_supporting_ready": exact_guard_diagnostic_ready,
                 "gates": guard_claim_gates.get("full_suite_gates", {}),
                 "interpretation": "Guarded BFCL adapter evidence is supporting only if wrong-function, missing-required, tool-selection, and success non-regression gates all pass.",
             },

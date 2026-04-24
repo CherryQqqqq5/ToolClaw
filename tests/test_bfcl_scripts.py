@@ -1400,3 +1400,98 @@ def test_bfcl_guard_claim_gates_fail_on_wrong_function_regression() -> None:
     assert gates["missing_required_guarded_reduction_ready"] is False
     assert gates["reuse_claim_enabled_for_bfcl"] is False
     assert gates["a4_interpreted_as_guarded_execution_variant_only"] is True
+
+
+def test_bfcl_guard_claim_gates_allow_diagnostic_supporting_case_b() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_case_b_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    rows = [
+        {"run_index": "1", "task_id": "same_missing", "system": "a0_baseline", "official_bfcl_eval_unsupported_reasons": json.dumps(["missing_required"]), "official_bfcl_eval_success": 0.0},
+        {"run_index": "1", "task_id": "same_missing", "system": "a2_planner", "official_bfcl_eval_unsupported_reasons": json.dumps(["missing_required"]), "official_bfcl_eval_success": 0.0},
+        {"run_index": "1", "task_id": "same_success", "system": "a0_baseline", "official_bfcl_eval_unsupported_reasons": json.dumps([]), "official_bfcl_eval_success": 1.0},
+        {"run_index": "1", "task_id": "same_success", "system": "a2_planner", "official_bfcl_eval_unsupported_reasons": json.dumps([]), "official_bfcl_eval_success": 1.0},
+    ]
+    rows.extend(
+        {
+            "run_index": row["run_index"],
+            "task_id": row["task_id"],
+            "system": system,
+            "official_bfcl_eval_unsupported_reasons": row["official_bfcl_eval_unsupported_reasons"],
+            "official_bfcl_eval_success": row["official_bfcl_eval_success"],
+        }
+        for system in ("a1_recovery", "a3_interaction", "a4_reuse")
+        for row in rows[:2]
+    )
+    for row in rows:
+        row["official_bfcl_eval_paper_safe"] = True
+    official_scoreboard = {
+        "per_system": {
+            system: {"official_bfcl_eval_success": 0.5, "official_bfcl_eval_tool_selection_correctness": 0.75}
+            for system in ("a0_baseline", "a1_recovery", "a2_planner", "a3_interaction", "a4_reuse")
+        }
+    }
+
+    gates = module._bfcl_guard_claim_gates(rows, official_scoreboard)
+    claim_summary = module._claim_summary(
+        suite="bfcl_fc_core",
+        track="fc_core",
+        official_scoreboard=official_scoreboard,
+        toolclaw_diagnostics={"per_system": {}},
+        scored_rows=rows,
+        unsupported=[],
+    )
+    exact_claim = next(claim for claim in claim_summary["claims"] if claim["claim_id"] == "bfcl_exact_function_guard")
+    missing_claim = next(claim for claim in claim_summary["claims"] if claim["claim_id"] == "bfcl_missing_required_guarded_reduction")
+
+    assert gates["wrong_function_non_regression_ready"] is True
+    assert gates["missing_required_reduction_ready"] is False
+    assert gates["full_suite_supporting_ready"] is False
+    assert exact_claim["claim_strength"] == "diagnostic_supporting"
+    assert exact_claim["diagnostic_supporting_ready"] is True
+    assert missing_claim["claim_strength"] == "unsupported"
+    assert missing_claim["supporting_ready"] is False
+
+
+def test_bfcl_guardability_schema_ranker_buckets() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_bucket_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    top1_flags = module._guardability_flags(
+        expected="expected_tool",
+        planner="planner_tool",
+        selected_reason="schema_top1_no_planner",
+        top_ids=["expected_tool", "other_tool"],
+    )
+    top5_flags = module._guardability_flags(
+        expected="expected_tool",
+        planner="planner_tool",
+        selected_reason="schema_score_higher",
+        top_ids=["wrong_top1", "expected_tool", "other_tool"],
+    )
+    absent_flags = module._guardability_flags(
+        expected="expected_tool",
+        planner="planner_tool",
+        selected_reason="schema_score_higher",
+        top_ids=["wrong_top1", "wrong_top2", "wrong_top3"],
+    )
+
+    assert top1_flags["schema_top1_expected"] is True
+    assert top1_flags["schema_top1_wrong_expected_in_top5"] is False
+    assert top1_flags["expected_absent_from_schema_top5"] is False
+    assert top5_flags["schema_top1_expected"] is False
+    assert top5_flags["schema_top1_wrong_expected_in_top5"] is True
+    assert top5_flags["expected_absent_from_schema_top5"] is False
+    assert absent_flags["schema_top1_expected"] is False
+    assert absent_flags["schema_top1_wrong_expected_in_top5"] is False
+    assert absent_flags["expected_absent_from_schema_top5"] is True
