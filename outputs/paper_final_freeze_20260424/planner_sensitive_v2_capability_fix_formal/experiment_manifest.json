@@ -98,5 +98,8 @@
   "slice_policy_version": null,
   "claim_ids": null,
   "planner_sensitive_summary_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/planner_sensitive_summary.json",
-  "hint_leakage_report_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/hint_leakage_report.json"
+  "hint_leakage_report_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/hint_leakage_report.json",
+  "bundle_committed_at_git_commit": "9e11441efad29b81e8d9610e277195594dbb8a32",
+  "working_tree_patch_committed_as": "9e11441efad29b81e8d9610e277195594dbb8a32",
+  "provenance_note": "git_commit records the base commit visible before this follow-up provenance commit; the capability-fix code, tests, and lightweight formal bundle were committed together as 9e11441efad29b81e8d9610e277195594dbb8a32."
 }

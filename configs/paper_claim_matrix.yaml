@@ -63,10 +63,10 @@
       }
     },
     "planner_structural_mechanism": {
-      "status": "v1_effect_size_available_v2_protocol_pending",
-      "claim_strength": "pending",
-      "benchmark_suite": "toolsandbox_planner_sensitive_v2",
-      "claim": "HTGP is implemented as a planner component with capability selection, graph construction, binding, and policy injection. The 24-task planner-sensitive v1 bundle is effect-size scaffold only; v2 requires structured planner observability, family-balanced 40+ task coverage, no ordered gold leakage, known bypass telemetry, and family coverage before any promotion beyond pending.",
+      "status": "supported_current_evidence_capability_fix_v2",
+      "claim_strength": "mechanism_supporting",
+      "benchmark_suite": "toolsandbox_planner_sensitive_v2_capability_fix",
+      "claim": "HTGP provides structured planner-mechanism evidence on planner-sensitive V2 after capability-vocabulary, instance-graph, binder, and observability repair. Evidence is positive across 3/4 families with no leakage or bypass confounds, but multi-source merge remains a binder-selection limitation and the claim is not headline.",
       "metrics": {
         "primary": [
           "a2_minus_a1_success_delta",
@@ -415,6 +415,38 @@
       ],
       "claim_strength": "pending",
       "paper_role": "supporting_only"
+    },
+    "toolsandbox_planner_sensitive_v2_capability_fix": {
+      "status": "formal_capability_fix_supported_mechanism_supporting",
+      "prepare_script": "scripts/derive_toolsandbox_planner_sensitive.py --version v2",
+      "runner": "scripts/run_toolsandbox_bench.py",
+      "score_script": "scripts/score_toolsandbox_planner_sensitive.py",
+      "default_source": "data/toolsandbox_planner_sensitive_v2.jsonl",
+      "default_manifest": "data/toolsandbox_planner_sensitive_v2.manifest.json",
+      "default_mode": "planner",
+      "default_systems": "a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "default_num_runs": 3,
+      "runner_flags": [
+        "--planner-sensitive-protocol"
+      ],
+      "claim_ids": [
+        "planner_structural_mechanism"
+      ],
+      "claim_strength": "mechanism_supporting",
+      "paper_role": "planner_mechanism_supporting",
+      "formal_bundle": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal",
+      "promotion_gate": "Capability-fix V2 passes mechanism-supporting gates: 42 source tasks, no field-name or ordered-structure leakage, a2-a1 strict success delta >=20pp, paired wins > losses, 3/4 positive families, planner_bypass_known_rate >=90%, known-row bypass <=25%, and no a2 cost explosion. Multi-source merge remains a binder-selection limitation, so this is not headline evidence.",
+      "capability_fix_summary": {
+        "source_task_count": 42,
+        "family_positive_count": 3,
+        "a2_minus_a1_success_delta": 0.7380952380952381,
+        "paired_wins": 93,
+        "paired_losses": 0,
+        "paired_ties": 33,
+        "leakage_detected": false,
+        "ordered_gold_structure_leakage_detected": false,
+        "remaining_limitation": "multi_source_merge_write remains a binder-selection gap"
+      }
     }
   }
 }
