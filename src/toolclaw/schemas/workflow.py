@@ -83,6 +83,8 @@ class CapabilityNode:
     description: str
     preconditions: List[str] = field(default_factory=list)
     postconditions: List[str] = field(default_factory=list)
+    instance_id: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

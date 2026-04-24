@@ -15,6 +15,32 @@ _WRITE_VALIDATION_HINTS = {"write", "writer", "save", "store", "persist", "creat
 _MESSAGE_HINTS = {"message", "send", "reply", "email", "sms", "text", "notify"}
 _STATE_HINTS = {"set", "toggle", "enable", "disable", "turn", "update", "status", "state"}
 _ORDERING_HINTS = {"ordering", "legacy", "out_of_order", "order"}
+_STRUCTURAL_PLANNER_HINTS = {
+    "check",
+    "checker",
+    "inspect",
+    "audit",
+    "verify",
+    "verifier",
+    "validate",
+    "assert",
+    "test",
+    "select",
+    "selector",
+    "branch",
+    "route",
+    "choose",
+    "merge",
+    "merger",
+    "combine",
+    "aggregate",
+    "synthesize",
+    "modify",
+    "modifier",
+    "patch",
+    "execute",
+    "executor",
+}
 
 
 def run_tool(tool_id: str, args: Dict[str, Any], *, workflow: Optional[Workflow] = None) -> Dict[str, Any]:
@@ -185,6 +211,9 @@ def _validate_semantic_args(tool_id: str, args: Dict[str, Any], *, spec: Optiona
             raise ToolExecutionError(f"missing required field(s): {', '.join(missing)}")
         return
 
+    if _is_structural_planner_tool(spec):
+        return
+
     primary_kind = _primary_tool_kind(tool_id, spec)
     if primary_kind == "message":
         if not _has_any_value(args, ("content", "message", "body", "text", "recipient", "phone_number", "email")):
@@ -197,6 +226,25 @@ def _validate_semantic_args(tool_id: str, args: Dict[str, Any], *, spec: Optiona
     if primary_kind == "write":
         if not _has_any_value(args, ("target_path", "content", "body", "text", "value")):
             raise ToolExecutionError(f"missing required field for write-like tool: {tool_id}")
+
+
+def _is_structural_planner_tool(spec: Optional[ToolSpec]) -> bool:
+    if spec is None:
+        return False
+    metadata = spec.metadata if isinstance(spec.metadata, dict) else {}
+    metadata_tokens = _tokens(
+        metadata.get("semantic_tags", []),
+        metadata.get("preferred_capabilities", []),
+        metadata.get("affordances", []),
+    )
+    capability_tokens = {
+        "cap_check",
+        "cap_modify",
+        "cap_verify",
+        "cap_select",
+        "cap_merge",
+    }
+    return bool(metadata_tokens.intersection(_STRUCTURAL_PLANNER_HINTS) or metadata_tokens.intersection(capability_tokens))
 
 
 def _has_any_value(args: Dict[str, Any], keys: Iterable[str]) -> bool:

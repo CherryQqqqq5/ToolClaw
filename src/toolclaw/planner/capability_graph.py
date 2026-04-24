@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence
 
-from toolclaw.planner.capability_intents import infer_capability_from_text
+from toolclaw.planner.capability_intents import CAPABILITY_PROFILES_BY_ID, infer_capability_from_text, tokenize_values
 from toolclaw.schemas.workflow import CapabilityEdge, CapabilityGraph, CapabilityNode, TaskSpec
 
 
@@ -67,51 +67,155 @@ class RuleBasedCapabilityGraphBuilder:
             return CapabilityGraph(
                 capabilities=chain,
                 edges=self._rebuild_edges(chain),
-                metadata={
-                    "branch_options": list(benchmark_hints.get("branch_options", [])),
-                    "milestones": list(benchmark_hints.get("milestones", [])),
-                },
+                metadata=self._graph_metadata(benchmark_hints, diagnostics),
             ), diagnostics
 
         nodes = [
-            CapabilityNode(
-                capability_id=c.capability_id,
-                description=c.description,
-                preconditions=list(c.preconditions),
-                postconditions=list(c.postconditions),
-            )
+            self._node_from_candidate(c)
             for c in sorted(candidates, key=lambda x: x.score, reverse=True)
         ]
+        nodes = self._expand_structural_nodes(task=task, nodes=nodes, benchmark_hints=benchmark_hints)
         nodes = self._prune_and_order_nodes(nodes, benchmark_hints=benchmark_hints, diagnostics=diagnostics)
 
-        edges: List[CapabilityEdge] = []
-        for target in nodes:
-            matched_dependency = False
-            for source in nodes:
-                if source.capability_id == target.capability_id:
-                    continue
-                if any(postcondition in target.preconditions for postcondition in source.postconditions):
-                    edges.append(
-                        CapabilityEdge(
-                            source=source.capability_id,
-                            target=target.capability_id,
-                            condition="preconditions_satisfied",
-                        )
-                    )
-                    matched_dependency = True
-            if not matched_dependency:
-                continue
+        edges = self._dependency_edges(nodes)
         if not edges and len(nodes) > 1:
             edges = self._rebuild_edges(nodes)
         nodes = self._topologically_order_nodes(nodes, edges)
         return CapabilityGraph(
             capabilities=nodes,
             edges=edges,
-            metadata={
-                "branch_options": list(benchmark_hints.get("branch_options", [])),
-                "milestones": list(benchmark_hints.get("milestones", [])),
-            },
+            metadata=self._graph_metadata(benchmark_hints, diagnostics),
         ), diagnostics
+
+    @staticmethod
+    def _graph_metadata(benchmark_hints: Dict[str, Any], diagnostics: GraphBuildDiagnostics) -> Dict[str, Any]:
+        return {
+            "branch_options": list(benchmark_hints.get("branch_options", [])),
+            "milestones": list(benchmark_hints.get("milestones", [])),
+            "graph_diagnostics": {
+                "selected_templates": list(diagnostics.selected_templates),
+                "pruned_capabilities": list(diagnostics.pruned_capabilities),
+                "unresolved_dependencies": list(diagnostics.unresolved_dependencies),
+            },
+        }
+
+    @staticmethod
+    def _node_key(node: CapabilityNode) -> str:
+        return str(node.instance_id or node.capability_id)
+
+    @classmethod
+    def _node_from_profile(cls, capability_id: str, *, instance_id: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> CapabilityNode:
+        profile = CAPABILITY_PROFILES_BY_ID[capability_id]
+        node_metadata = dict(metadata or {})
+        preconditions = node_metadata.pop("preconditions", None)
+        return CapabilityNode(
+            capability_id=profile.capability_id,
+            description=profile.description,
+            preconditions=list(preconditions) if isinstance(preconditions, list) else list(profile.preconditions),
+            postconditions=list(profile.postconditions),
+            instance_id=instance_id,
+            metadata=node_metadata,
+        )
+
+    @classmethod
+    def _node_from_candidate(cls, candidate: "CapabilityCandidate") -> CapabilityNode:
+        return CapabilityNode(
+            capability_id=candidate.capability_id,
+            description=candidate.description,
+            preconditions=list(candidate.preconditions),
+            postconditions=list(candidate.postconditions),
+            instance_id=str(candidate.metadata.get("instance_id")) if isinstance(candidate.metadata, dict) and candidate.metadata.get("instance_id") else None,
+            metadata=dict(candidate.metadata or {}),
+        )
+
+    @classmethod
+    def _expand_structural_nodes(
+        cls,
+        *,
+        task: TaskSpec,
+        nodes: Sequence[CapabilityNode],
+        benchmark_hints: Dict[str, Any],
+    ) -> List[CapabilityNode]:
+        _ = benchmark_hints
+        tokens = tokenize_values(task.user_goal)
+        capability_ids = {node.capability_id for node in nodes}
+
+        if {"primary", "secondary"}.issubset(tokens) and tokens.intersection({"merge", "combine", "aggregate", "synthesize"}):
+            return [
+                cls._node_from_profile(
+                    "cap_retrieve",
+                    instance_id="cap_retrieve.primary",
+                    metadata={"instance_role": "primary", "structural_template": "multi_source_merge"},
+                ),
+                cls._node_from_profile(
+                    "cap_retrieve",
+                    instance_id="cap_retrieve.secondary",
+                    metadata={"instance_role": "secondary", "structural_template": "multi_source_merge"},
+                ),
+                cls._node_from_profile("cap_merge", metadata={"structural_template": "multi_source_merge"}),
+                cls._node_from_profile("cap_write", metadata={"structural_template": "multi_source_merge", "preconditions": ["merged_state_ready"]}),
+            ]
+
+        if {"cap_select", "cap_modify", "cap_verify"}.issubset(capability_ids) or (
+            tokens.intersection({"branch", "select", "route", "choose"})
+            and tokens.intersection({"execute", "modify", "update"})
+            and tokens.intersection({"verify", "validate", "confirm", "test"})
+        ):
+            return [
+                cls._node_from_profile("cap_retrieve", metadata={"structural_template": "branch_select_execute"}),
+                cls._node_from_profile("cap_select", metadata={"structural_template": "branch_select_execute"}),
+                cls._node_from_profile("cap_modify", metadata={"structural_template": "branch_select_execute", "preconditions": ["selected_branch_ready"]}),
+                cls._node_from_profile("cap_verify", metadata={"structural_template": "branch_select_execute", "preconditions": ["branch_executed"]}),
+            ]
+
+        if {"cap_check", "cap_modify", "cap_verify"}.issubset(capability_ids) or (
+            tokens.intersection({"check", "inspect", "audit", "status"})
+            and tokens.intersection({"modify", "update", "patch", "change"})
+            and tokens.intersection({"verify", "validate", "confirm", "test"})
+        ):
+            return [
+                cls._node_from_profile("cap_check", metadata={"structural_template": "check_modify_verify"}),
+                cls._node_from_profile("cap_modify", metadata={"structural_template": "check_modify_verify", "preconditions": ["state_checked"]}),
+                cls._node_from_profile("cap_verify", metadata={"structural_template": "check_modify_verify", "preconditions": ["state_modified"]}),
+            ]
+
+        if {"cap_retrieve", "cap_summarize", "cap_write"}.issubset(capability_ids):
+            return [
+                cls._node_from_profile("cap_retrieve", metadata={"structural_template": "retrieve_summarize_write"}),
+                cls._node_from_profile("cap_summarize", metadata={"structural_template": "retrieve_summarize_write"}),
+                cls._node_from_profile("cap_write", metadata={"structural_template": "retrieve_summarize_write", "preconditions": ["summary_ready"]}),
+            ]
+
+        deduped: List[CapabilityNode] = []
+        seen: set[str] = set()
+        for node in nodes:
+            key = cls._node_key(node)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(node)
+        return deduped
+
+    @classmethod
+    def _dependency_edges(cls, nodes: Sequence[CapabilityNode]) -> List[CapabilityEdge]:
+        edges: List[CapabilityEdge] = []
+        for target in nodes:
+            matched_dependency = False
+            for source in nodes:
+                if cls._node_key(source) == cls._node_key(target):
+                    continue
+                if any(postcondition in target.preconditions for postcondition in source.postconditions):
+                    edges.append(
+                        CapabilityEdge(
+                            source=cls._node_key(source),
+                            target=cls._node_key(target),
+                            condition="preconditions_satisfied",
+                        )
+                    )
+                    matched_dependency = True
+            if not matched_dependency:
+                continue
+        return edges
 
     def _prune_and_order_nodes(
         self,
@@ -125,16 +229,16 @@ class RuleBasedCapabilityGraphBuilder:
             return ordered_nodes
 
         milestone_order = self._capability_order_from_texts(benchmark_hints.get("milestones", []))
-        allow_order = self._capability_order_from_texts(benchmark_hints.get("tool_allow_list", []))
         ideal_tool_calls = benchmark_hints.get("ideal_tool_calls")
         categories = {str(item) for item in benchmark_hints.get("categories", []) if str(item)}
+        allow_order = [] if "planner_sensitive" in categories else self._capability_order_from_texts(benchmark_hints.get("tool_allow_list", []))
 
         preferred_order = milestone_order or allow_order
         if allow_order and len(allow_order) > len(preferred_order):
             preferred_order = allow_order
         if preferred_order:
             preferred_ids = set(preferred_order)
-            pruned = [node.capability_id for node in ordered_nodes if node.capability_id not in preferred_ids]
+            pruned = [self._node_key(node) for node in ordered_nodes if node.capability_id not in preferred_ids]
             filtered_nodes = [node for node in ordered_nodes if node.capability_id in preferred_ids]
             if filtered_nodes:
                 diagnostics.pruned_capabilities.extend(
@@ -147,33 +251,35 @@ class RuleBasedCapabilityGraphBuilder:
         should_cap_by_budget = bool(preferred_order) and "multiple_user_turn" not in categories
         if should_cap_by_budget and isinstance(ideal_tool_calls, int) and ideal_tool_calls > 0 and len(ordered_nodes) > ideal_tool_calls:
             for node in ordered_nodes[ideal_tool_calls:]:
-                if node.capability_id not in diagnostics.pruned_capabilities:
-                    diagnostics.pruned_capabilities.append(node.capability_id)
+                key = self._node_key(node)
+                if key not in diagnostics.pruned_capabilities:
+                    diagnostics.pruned_capabilities.append(key)
             ordered_nodes = ordered_nodes[:ideal_tool_calls]
 
         return ordered_nodes
 
-    @staticmethod
-    def _rebuild_edges(nodes: Sequence[CapabilityNode]) -> List[CapabilityEdge]:
+    @classmethod
+    def _rebuild_edges(cls, nodes: Sequence[CapabilityNode]) -> List[CapabilityEdge]:
         if len(nodes) <= 1:
             return []
         return [
-            CapabilityEdge(source=nodes[index].capability_id, target=nodes[index + 1].capability_id, condition="default_sequence")
+            CapabilityEdge(source=cls._node_key(nodes[index]), target=cls._node_key(nodes[index + 1]), condition="default_sequence")
             for index in range(len(nodes) - 1)
         ]
 
-    @staticmethod
+    @classmethod
     def _topologically_order_nodes(
+        cls,
         nodes: Sequence[CapabilityNode],
         edges: Sequence[CapabilityEdge],
     ) -> List[CapabilityNode]:
         if len(nodes) <= 1 or not edges:
             return list(nodes)
 
-        node_by_id = {node.capability_id: node for node in nodes}
-        original_rank = {node.capability_id: index for index, node in enumerate(nodes)}
-        indegree = {node.capability_id: 0 for node in nodes}
-        adjacency: Dict[str, List[str]] = {node.capability_id: [] for node in nodes}
+        node_by_id = {cls._node_key(node): node for node in nodes}
+        original_rank = {cls._node_key(node): index for index, node in enumerate(nodes)}
+        indegree = {cls._node_key(node): 0 for node in nodes}
+        adjacency: Dict[str, List[str]] = {cls._node_key(node): [] for node in nodes}
         for edge in edges:
             if edge.source not in node_by_id or edge.target not in node_by_id:
                 continue
@@ -181,14 +287,14 @@ class RuleBasedCapabilityGraphBuilder:
             indegree[edge.target] += 1
 
         ready = sorted(
-            [capability_id for capability_id, degree in indegree.items() if degree == 0],
-            key=lambda capability_id: original_rank[capability_id],
+            [capability_key for capability_key, degree in indegree.items() if degree == 0],
+            key=lambda capability_key: original_rank[capability_key],
         )
         ordered: List[CapabilityNode] = []
         while ready:
-            capability_id = ready.pop(0)
-            ordered.append(node_by_id[capability_id])
-            for target in adjacency.get(capability_id, []):
+            capability_key = ready.pop(0)
+            ordered.append(node_by_id[capability_key])
+            for target in adjacency.get(capability_key, []):
                 indegree[target] -= 1
                 if indegree[target] == 0:
                     ready.append(target)

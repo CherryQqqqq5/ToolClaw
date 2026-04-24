@@ -54,6 +54,8 @@ def test_htgp_non_bypass_observability_is_structured() -> None:
     assert observability["graph_builder_used"] is True
     assert "cap_retrieve" in observability["selected_capability_order_final"]
     assert "cap_write" in observability["selected_capability_order_final"]
+    assert observability["selected_capability_instance_order_final"]
+    assert observability["graph_edge_order"]
 
 
 def test_executor_copies_planner_observability_to_trace_metadata(tmp_path: Path) -> None:

@@ -44,13 +44,20 @@ class ToolBinder:
     """Rule-based capability-to-tool binder for phase-1."""
 
     _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
-    _RETRIEVE_HINTS = {"retrieve", "search", "find", "lookup", "fetch", "collect", "summary", "summarize"}
+    _RETRIEVE_HINTS = {"retrieve", "search", "find", "lookup", "fetch", "collect", "source", "evidence"}
     _WRITE_HINTS = {"write", "writer", "save", "report", "artifact", "final", "draft", "reply", "send"}
     _WRITE_POSITIVE_HINTS = {"primary", "standard", "approved", "normal", "main"}
     _WRITE_NEGATIVE_HINTS = {"backup", "fallback", "reserve", "reserved", "outage", "legacy", "ordering", "order", "violate", "violates"}
     _RETRIEVE_CAPABILITY_IDS = {"cap_retrieve", "cap_search", "cap_lookup"}
     _WRITE_CAPABILITY_IDS = {"cap_write", "cap_send", "cap_reply"}
     _STATE_ADMIN_HINTS = {"set", "status", "state", "toggle", "enable", "disable", "update"}
+    _CAPABILITY_SEMANTIC_HINTS = {
+        "cap_check": {"audit", "check", "checker", "inspect", "inspector", "scan", "state", "status"},
+        "cap_modify": {"change", "execute", "executor", "modify", "modifier", "patch", "state", "toggle", "update"},
+        "cap_verify": {"assert", "confirm", "test", "validate", "verifier", "verify"},
+        "cap_select": {"branch", "choose", "route", "router", "select", "selector"},
+        "cap_merge": {"aggregate", "combine", "join", "merge", "merger", "synthesize"},
+    }
 
     @classmethod
     def _tokens(cls, *values: str) -> set[str]:
@@ -172,15 +179,39 @@ class ToolBinder:
             )
 
             capability_id = request.capability.capability_id.lower()
-            if capability_id in preferred_capabilities:
+            capability_instance_id = str(getattr(request.capability, "instance_id", "") or "").strip().lower()
+            capability_metadata = getattr(request.capability, "metadata", {})
+            if not isinstance(capability_metadata, dict):
+                capability_metadata = {}
+            instance_role = str(capability_metadata.get("instance_role") or "").strip().lower()
+            if capability_id in preferred_capabilities or capability_instance_id in preferred_capabilities:
                 score += 0.45
                 reasons.append("metadata:preferred_capability")
-            if capability_id in disallowed_capabilities:
+            if capability_id in disallowed_capabilities or capability_instance_id in disallowed_capabilities:
                 score -= 0.7
                 reasons.append("metadata:disallowed_capability")
 
             retrieve_overlap = self._RETRIEVE_HINTS.intersection(tool_tokens)
             write_overlap = self._WRITE_HINTS.intersection(tool_tokens)
+            capability_specific_hints = self._CAPABILITY_SEMANTIC_HINTS.get(capability_id, set())
+            capability_specific_overlap = capability_specific_hints.intersection(tool_tokens).union(
+                capability_specific_hints.intersection(affordances)
+            )
+            if capability_specific_hints:
+                if capability_specific_overlap:
+                    score += min(0.9, 0.28 * len(capability_specific_overlap))
+                    reasons.append(f"semantic_match:{capability_id}:{'+'.join(sorted(capability_specific_overlap))}")
+                else:
+                    score -= 0.18
+                    reasons.append(f"penalty:no_direct_semantic_match:{capability_id}")
+
+            if instance_role:
+                if instance_role in tool_tokens or instance_role in affordances:
+                    score += 0.75
+                    reasons.append(f"semantic_match:instance_role:{instance_role}")
+                elif {"primary", "secondary"}.intersection(tool_tokens.union(affordances)):
+                    score -= 0.35
+                    reasons.append(f"penalty:wrong_instance_role:{instance_role}")
             state_admin_overlap = self._STATE_ADMIN_HINTS.intersection(tool_tokens).union(
                 self._STATE_ADMIN_HINTS.intersection(affordances)
             )
@@ -356,17 +387,22 @@ class ToolBinder:
         state_values = state_values or {}
         step_hints = list(step_hints or [])
         backup_tool_map = backup_tool_map or {}
-        return [
-            self.bind_one(
+        results: List[BindingResult] = []
+        used_instance_tools: set[str] = set()
+        for idx, cap in enumerate(capabilities):
+            instance_id = str(getattr(cap, "instance_id", "") or "")
+            preferred_tool = preferred_bindings.get(instance_id) or preferred_bindings.get(cap.capability_id)
+            effective_forbidden = list(forbidden_tools)
+            if instance_id:
+                effective_forbidden.extend(sorted(used_instance_tools))
+            result = self.bind_one(
                 BindingRequest(
                     capability=cap,
                     candidate_tools=candidate_tools,
                     context=context,
                     state_values=dict(state_values),
-                    forbidden_tools=forbidden_tools,
-                    preferred_tools=[preferred_bindings[cap.capability_id]]
-                    if preferred_bindings.get(cap.capability_id)
-                    else [],
+                    forbidden_tools=effective_forbidden,
+                    preferred_tools=[preferred_tool] if preferred_tool else [],
                     required_state_slots=list(step_hints[idx].get("required_state_slots", []))
                     if idx < len(step_hints)
                     else [],
@@ -379,5 +415,7 @@ class ToolBinder:
                     backup_tool_map=dict(backup_tool_map),
                 )
             )
-            for idx, cap in enumerate(capabilities)
-        ]
+            if instance_id and result.binding and result.binding.primary_tool:
+                used_instance_tools.add(result.binding.primary_tool)
+            results.append(result)
+        return results

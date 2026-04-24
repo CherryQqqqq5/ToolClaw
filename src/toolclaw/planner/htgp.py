@@ -410,13 +410,31 @@ class PolicyInjector:
         for idx, capability in enumerate(graph.capabilities, start=1):
             hint = step_hints[idx - 1] if idx - 1 < len(step_hints) else {}
             binding = bindings[idx - 1] if idx - 1 < len(bindings) else None
-            tool_id = binding.primary_tool if binding else None
+            tool_id = binding.primary_tool if binding and binding.primary_tool else None
             if capability.capability_id == "cap_retrieve":
                 inputs = {"query": task.user_goal}
-                expected_output = "retrieved_info"
+                instance_role = str(getattr(capability, "metadata", {}).get("instance_role", "")) if isinstance(getattr(capability, "metadata", {}), dict) else ""
+                if instance_role:
+                    inputs["source_role"] = instance_role
+                expected_output = f"{instance_role}_retrieved_info" if instance_role else "retrieved_info"
             elif capability.capability_id == "cap_summarize":
                 inputs = {"source_key": "retrieved_info"}
                 expected_output = "summary_text"
+            elif capability.capability_id == "cap_check":
+                inputs = {"query": task.user_goal}
+                expected_output = "state_checked"
+            elif capability.capability_id == "cap_select":
+                inputs = {"context_key": "retrieved_info"}
+                expected_output = "branch_selected"
+            elif capability.capability_id == "cap_modify":
+                inputs = {"state_key": "state_checked"}
+                expected_output = "state_modified"
+            elif capability.capability_id == "cap_verify":
+                inputs = {"state_key": "state_modified"}
+                expected_output = "verification_passed"
+            elif capability.capability_id == "cap_merge":
+                inputs = {"source_keys": ["primary_retrieved_info", "secondary_retrieved_info"]}
+                expected_output = "merged_state_ready"
             elif capability.capability_id == "cap_write":
                 inputs = {"target_path": "outputs/reports/planned_report.txt"}
                 if benchmark_hints.get("ideal_tool_calls") == 1:
@@ -468,6 +486,8 @@ class PolicyInjector:
                     metadata={
                         "policy_gate": "default_phase1",
                         "requires_approval": "requires_approval" in capability.preconditions,
+                        "capability_instance_id": str(getattr(capability, "instance_id", "") or ""),
+                        "capability_instance_metadata": dict(getattr(capability, "metadata", {}) or {}),
                         "benchmark_hint_step": bool(benchmark_hints),
                         "milestone_hint": milestone_assignments.get(capability.capability_id),
                         "milestone_index": self._milestone_index(
@@ -706,7 +726,17 @@ class PolicyInjector:
         if capability_id == "cap_summarize":
             return any(keyword in text for keyword in ("summarize", "summary", "analyze", "analysis", "draft", "compose"))
         if capability_id == "cap_write":
-            return any(keyword in text for keyword in ("write", "save", "send", "set", "update", "book", "reply", "report", "disable", "enable"))
+            return any(keyword in text for keyword in ("write", "save", "send", "set", "book", "reply", "report", "disable", "enable"))
+        if capability_id == "cap_check":
+            return any(keyword in text for keyword in ("check", "inspect", "audit", "status"))
+        if capability_id == "cap_modify":
+            return any(keyword in text for keyword in ("modify", "update", "patch", "execute", "change"))
+        if capability_id == "cap_verify":
+            return any(keyword in text for keyword in ("verify", "confirm", "validate", "assert", "test"))
+        if capability_id == "cap_select":
+            return any(keyword in text for keyword in ("branch", "select", "route", "choose"))
+        if capability_id == "cap_merge":
+            return any(keyword in text for keyword in ("merge", "combine", "aggregate", "synthesize"))
         return False
 
 
@@ -799,13 +829,23 @@ class HTGPPlanner:
 
         bindings: List[ToolBinding] = []
         for capability, binding_result in zip(graph.capabilities, binding_results):
+            capability_key = str(getattr(capability, "instance_id", "") or capability.capability_id)
             if binding_result.binding is None:
-                diagnostics.unresolved_capabilities.append(capability.capability_id)
-                diagnostics.warnings.append(f"unresolved capability: {capability.capability_id}")
+                diagnostics.unresolved_capabilities.append(capability_key)
+                diagnostics.warnings.append(f"unresolved capability: {capability_key}")
+                bindings.append(
+                    ToolBinding(
+                        capability_id=capability.capability_id,
+                        primary_tool="",
+                        backup_tools=[],
+                        binding_confidence=0.0,
+                    )
+                )
+                diagnostics.binding_scores[capability_key] = 0.0
                 continue
 
             bindings.append(binding_result.binding)
-            diagnostics.binding_scores[capability.capability_id] = binding_result.binding.binding_confidence
+            diagnostics.binding_scores[capability_key] = binding_result.binding.binding_confidence
 
         execution_plan = self.policy_injector.compile_execution_plan(
             graph,
@@ -962,14 +1002,27 @@ class HTGPPlanner:
             "cap_retrieve": "retrieved_info",
             "cap_summarize": "summary_text",
             "cap_write": "report_artifact",
+            "cap_check": "state_checked",
+            "cap_modify": "state_modified",
+            "cap_verify": "verification_passed",
+            "cap_select": "branch_selected",
+            "cap_merge": "merged_state_ready",
         }.get(str(capability_id or "").strip().lower())
 
     @staticmethod
     def _state_slot_for_precondition(precondition: str) -> Optional[str]:
         return {
             "information_obtained": "retrieved_info",
+            "context_retrieved": "retrieved_info",
+            "sources_retrieved": "retrieved_info",
             "summary_ready": "summary_text",
+            "merged_state_ready": "merged_state_ready",
             "artifact_ready": "report_artifact",
+            "state_checked": "state_checked",
+            "selected_branch_ready": "branch_selected",
+            "state_modified": "state_modified",
+            "branch_executed": "state_modified",
+            "verification_passed": "verification_passed",
             "requires_approval": "approved",
             "approved": "approved",
         }.get(str(precondition or "").strip().lower())
@@ -1295,16 +1348,26 @@ class HTGPPlanner:
         bindings: Sequence[ToolBinding],
         diagnostics: PlanningDiagnostics,
     ) -> Dict[str, Any]:
+        selected_instance_order = [
+            str(getattr(capability, "instance_id", "") or capability.capability_id)
+            for capability in graph.capabilities
+        ]
+        graph_edge_order = [
+            [str(edge.source), str(edge.target), str(edge.condition or "")]
+            for edge in graph.edges
+        ]
         return {
             "planner_bypass_applied": bool(bypass_applied),
             "minimal_path_reason": str(minimal_path_reason),
             "selected_capability_order_initial": [str(item) for item in selected_capability_order_initial],
+            "selected_capability_instance_order_final": selected_instance_order,
             "selected_capability_order_final": [
                 str(capability.capability_id) for capability in graph.capabilities
             ],
             "graph_builder_used": not bool(bypass_applied),
             "candidate_capability_count": len(candidates),
             "bound_tool_order": [str(binding.primary_tool) for binding in bindings if binding.primary_tool],
+            "graph_edge_order": graph_edge_order,
             "unresolved_capabilities": list(diagnostics.unresolved_capabilities),
             "benchmark_hints_used": list(diagnostics.benchmark_hints_used),
         }
@@ -1584,8 +1647,8 @@ class HTGPPlanner:
 
         return [
             CapabilityEdge(
-                source=capabilities[index].capability_id,
-                target=capabilities[index + 1].capability_id,
+                source=str(getattr(capabilities[index], "instance_id", "") or capabilities[index].capability_id),
+                target=str(getattr(capabilities[index + 1], "instance_id", "") or capabilities[index + 1].capability_id),
                 condition="objective_sequence",
             )
             for index in range(len(capabilities) - 1)
@@ -1754,13 +1817,14 @@ class HTGPPlanner:
         required_state_slots = self._required_state_slots(request)
         failure_context = str(request.hints.user_style.get("failure_type") or "").strip() or None
         target_reuse_family_id = str(request.hints.user_style.get("reuse_family_id") or "").strip()
+        explicit_reuse_family_id = bool(target_reuse_family_id)
         if not target_reuse_family_id:
             target_reuse_family_id = str(request.task.task_id or "").rsplit("__pass", 1)[0]
         target_semantic_reuse_family = str(request.hints.user_style.get("semantic_reuse_family") or "").strip()
-        if not target_semantic_reuse_family and target_reuse_family_id:
-            target_semantic_reuse_family = _semantic_reuse_family(target_reuse_family_id)
         if not target_semantic_reuse_family:
             target_semantic_reuse_family = _semantic_reuse_family(request.hints.user_style.get("task_family"))
+        if not target_semantic_reuse_family and explicit_reuse_family_id and target_reuse_family_id:
+            target_semantic_reuse_family = _semantic_reuse_family(target_reuse_family_id)
         selected_match: Dict[str, Any] = {}
         if not asset_ids and self.asset_registry:
             signatures = build_task_signature_candidates(

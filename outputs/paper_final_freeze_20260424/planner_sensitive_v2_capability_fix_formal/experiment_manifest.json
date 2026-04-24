@@ -1,0 +1,102 @@
+{
+  "benchmark": "toolsandbox",
+  "generated_at": "2026-04-24T04:25:29.935412+00:00",
+  "source": "data/toolsandbox_planner_sensitive_v2.jsonl",
+  "source_sha256": "a41b454b561f02be9cacca42747b4b5bf917625cf8f92be6025f6ff9511977b1",
+  "normalized_taskset": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/prepared/toolsandbox.normalized.json",
+  "normalized_taskset_sha256": "21bfd5dd527394fed2bd192b352226d3fce8fd7bc39fc95852618e8d3b48c35b",
+  "mode": "planner",
+  "systems": [
+    "a1_recovery",
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_runs": 3,
+  "sample_id_checksum": "3730c7c63dec95de372f4cdb1c9a524fb3f8201b1be9d5fe5b0275c5a3a22d84",
+  "git_commit": "a187a87423ba924377359d13bbfc5a44338031a7",
+  "config_sha256": "4891386bfdf45c9bc3a441e7badc4d324ea6c1f419cdb4fe13c92580f8e72890",
+  "scoreboard_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/scoreboard.json",
+  "report_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/report.md",
+  "comparison_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/comparison.scored.csv",
+  "per_system_summary_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/per_system_summary.json",
+  "archived_files": [
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/archive/run_toolsandbox_bench.py",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/archive/benchmark_toolsandbox.yaml",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/archive/phase1.yaml"
+  ],
+  "archived_files_scope": "local_debug_only",
+  "archive_hashes": {
+    "scripts/run_toolsandbox_bench.py": "52e27d41376dd69f4b7f92798352d7d18d5d2896f6840b33126d28590c0a8a79",
+    "configs/benchmark_toolsandbox.yaml": "e62cdc54c4844f6021b8afc07cfa2b208c2cf89c6d851179d21cc0bd3ee7a71e",
+    "configs/phase1.yaml": "60f276f368e9ee75b318ee7941012640e7d53b5212b2702b716519c951280f0b"
+  },
+  "experiment_metadata": {
+    "seed": 0,
+    "model_version": "phase1_executor",
+    "budget_note": "default phase1 budget",
+    "runner_script": "scripts/run_toolsandbox_bench.py",
+    "config_file": "configs/benchmark_toolsandbox.yaml",
+    "phase_config": "configs/phase1.yaml",
+    "official_run_dir": null,
+    "official_data_root": "data/external/ToolSandbox/data",
+    "interaction_target": "simulator",
+    "cli_prompt_prefix": null,
+    "cli_command": null,
+    "cli_timeout_s": null,
+    "openrouter_model": null,
+    "openrouter_base_url": null,
+    "planner_sensitive_protocol": "planner_sensitive"
+  },
+  "comparison_raw_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/comparison.raw.csv",
+  "comparison_scored_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/comparison.scored.csv",
+  "latest_comparison_raw_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/latest_run_comparison.raw.csv",
+  "latest_comparison_scored_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/latest_run_comparison.scored.csv",
+  "latest_raw_report_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/latest_run_raw_report.md",
+  "raw_vs_benchmark_gap_summary_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/raw_vs_benchmark_gap_summary.json",
+  "raw_vs_benchmark_gap_report_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/raw_vs_benchmark_gap_summary.md",
+  "local_debug_only_paths": [
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/comparison.raw.csv",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/latest_run_comparison.raw.csv",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/latest_run_comparison.scored.csv",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/latest_run_raw_report.md",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/archive",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/prepared"
+  ],
+  "canonical_claim_report": "planner_sensitive_summary.md",
+  "noncanonical_reports": {
+    "report.md": "generic runner diagnostics only; not used for planner-sensitive structural claim"
+  },
+  "promotion_gates_required": {
+    "source_task_count_ge_40": true,
+    "leakage_detected_false": true,
+    "ordered_gold_structure_leakage_detected_false": true,
+    "a2_success_delta_ge_20pp": true,
+    "paired_wins_exceed_losses": true,
+    "family_positive_count_ge_3": true,
+    "planner_bypass_known_rate_ge_90pp": true,
+    "planner_bypass_rate_controlled": true,
+    "a2_not_cost_explosion": true
+  },
+  "promotion_gates_observed": {
+    "a2_success_delta_ge_20pp": true,
+    "paired_wins_exceed_losses": true,
+    "capability_order_delta_ge_20pp": true,
+    "dependency_edge_delta_ge_20pp": true,
+    "instance_dependency_edge_delta_ge_20pp": true,
+    "tool_sequence_delta_ge_20pp": true,
+    "no_hint_leakage_detected": true,
+    "no_ordered_gold_structure_leakage_detected": true,
+    "a2_not_cost_explosion": true,
+    "source_task_count_ge_40": true,
+    "family_positive_count_ge_3": true,
+    "planner_bypass_known_rate_ge_90pp": true,
+    "planner_bypass_rate_controlled": true
+  },
+  "causal_claim_summary_path": null,
+  "causal_claim_report_path": null,
+  "slice_policy_version": null,
+  "claim_ids": null,
+  "planner_sensitive_summary_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/planner_sensitive_summary.json",
+  "hint_leakage_report_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/hint_leakage_report.json"
+}

@@ -1896,6 +1896,16 @@ def main() -> None:
         reuse_scope=reuse_scope,
         asset_registry_root=str(Path(args.asset_registry_root).resolve()) if args.asset_registry_root else None,
     )
+    if args.planner_sensitive_protocol and (outdir / "report.md").exists():
+        report_path = outdir / "report.md"
+        report_text = report_path.read_text(encoding="utf-8")
+        note = (
+            "# Non-Canonical Planner-Sensitive Claim Report\n\n"
+            "This generic ToolSandbox report is retained for runner diagnostics only. "
+            "Use `planner_sensitive_summary.md` as the canonical report for planner-sensitive structural claims.\n\n"
+        )
+        if not report_text.startswith("# Non-Canonical Planner-Sensitive Claim Report"):
+            report_path.write_text(note + report_text, encoding="utf-8")
     update_experiment_manifest(
         outdir,
         updates={

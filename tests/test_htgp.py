@@ -1372,3 +1372,97 @@ def test_cross_family_transfer_reuse_does_not_attach_continuation_hints() -> Non
     assert "continuation_hints" not in write_step.metadata
     reusable_context = result.workflow.metadata.get("reusable_context", {})
     assert reusable_context.get("continuation_hints", []) == []
+
+
+
+def _planner_sensitive_request(task_id: str, query: str, tools) -> PlanningRequest:
+    return PlanningRequest(
+        task=TaskSpec(task_id=task_id, user_goal=query, constraints=TaskConstraints()),
+        context=WorkflowContext(candidate_tools=tools),
+        hints=PlanningHints(
+            user_style={
+                "categories": ["planner_sensitive", "multiple_tool", "state_dependency"],
+                "tool_allow_list": [tool.tool_id for tool in tools],
+                "tool_execution_backend": "semantic_mock",
+            }
+        ),
+    )
+
+
+def _assert_planner_sensitive_path(query, tools, expected_caps, expected_tools, expected_instances=None) -> None:
+    result = build_planner().plan(_planner_sensitive_request("planner_sensitive_unit", query, tools))
+    assert [step.capability_id for step in result.workflow.execution_plan] == expected_caps
+    assert [step.tool_id for step in result.workflow.execution_plan] == expected_tools
+    assert result.workflow.metadata["planner_observability"]["planner_bypass_applied"] is False
+    assert result.workflow.metadata["planner_observability"]["bound_tool_order"] == expected_tools
+    if expected_instances is not None:
+        assert result.workflow.metadata["planner_observability"]["selected_capability_instance_order_final"] == expected_instances
+        assert [step.metadata.get("capability_instance_id") for step in result.workflow.execution_plan] == expected_instances
+
+
+def test_planner_sensitive_retrieve_summarize_write_path() -> None:
+    _assert_planner_sensitive_path(
+        "Retrieve project notes, summarize the risk items, then write the summary.",
+        [
+            ToolSpec(tool_id="message_sender", description="Send a message."),
+            ToolSpec(tool_id="summary_builder", description="Summarize source notes.", metadata={"semantic_tags": ["summarize"]}),
+            ToolSpec(tool_id="report_writer", description="Write final report.", metadata={"semantic_tags": ["write"]}),
+            ToolSpec(tool_id="source_lookup", description="Retrieve source notes.", metadata={"semantic_tags": ["retrieve"]}),
+        ],
+        ["cap_retrieve", "cap_summarize", "cap_write"],
+        ["source_lookup", "summary_builder", "report_writer"],
+    )
+
+
+def test_planner_sensitive_check_modify_verify_path() -> None:
+    _assert_planner_sensitive_path(
+        "Check whether billing is misconfigured, modify only the failing setting, and verify the final state.",
+        [
+            ToolSpec(tool_id="brief_writer", description="Write a brief."),
+            ToolSpec(tool_id="archive_reader", description="Read archive."),
+            ToolSpec(tool_id="change_verifier", description="Verify final change.", metadata={"semantic_tags": ["verify"]}),
+            ToolSpec(tool_id="state_checker", description="Check current state.", metadata={"semantic_tags": ["check"]}),
+            ToolSpec(tool_id="state_modifier", description="Modify current state.", metadata={"semantic_tags": ["modify"]}),
+        ],
+        ["cap_check", "cap_modify", "cap_verify"],
+        ["state_checker", "state_modifier", "change_verifier"],
+    )
+
+
+def test_planner_sensitive_branch_select_execute_path() -> None:
+    _assert_planner_sensitive_path(
+        "Inspect billing, select the matching branch, execute that branch, and verify the outcome.",
+        [
+            ToolSpec(tool_id="result_verifier", description="Verify the branch result.", metadata={"semantic_tags": ["verify"]}),
+            ToolSpec(tool_id="branch_selector", description="Select branch from context.", metadata={"semantic_tags": ["select"]}),
+            ToolSpec(tool_id="summary_builder", description="Summarize context."),
+            ToolSpec(tool_id="branch_executor", description="Execute selected branch.", metadata={"semantic_tags": ["execute"]}),
+            ToolSpec(tool_id="context_retriever", description="Retrieve context.", metadata={"semantic_tags": ["retrieve"]}),
+        ],
+        ["cap_retrieve", "cap_select", "cap_modify", "cap_verify"],
+        ["context_retriever", "branch_selector", "branch_executor", "result_verifier"],
+    )
+
+
+def test_planner_sensitive_multi_source_instances_survive_graph_and_binding() -> None:
+    result = build_planner().plan(
+        _planner_sensitive_request(
+            "planner_sensitive_multi_source_unit",
+            "Collect primary and secondary evidence for billing, merge the evidence, and write the merged report.",
+            [
+                ToolSpec(tool_id="secondary_source_fetcher", description="Fetch secondary source evidence.", metadata={"semantic_tags": ["retrieve", "secondary"]}),
+                ToolSpec(tool_id="state_modifier", description="Modify state."),
+                ToolSpec(tool_id="source_merger", description="Merge sources.", metadata={"semantic_tags": ["merge"]}),
+                ToolSpec(tool_id="primary_source_fetcher", description="Fetch primary source evidence.", metadata={"semantic_tags": ["retrieve", "primary"]}),
+                ToolSpec(tool_id="merged_report_writer", description="Write merged report.", metadata={"semantic_tags": ["write"]}),
+            ],
+        )
+    )
+    assert [step.capability_id for step in result.workflow.execution_plan] == ["cap_retrieve", "cap_retrieve", "cap_merge", "cap_write"]
+    assert [step.metadata.get("capability_instance_id") for step in result.workflow.execution_plan] == ["cap_retrieve.primary", "cap_retrieve.secondary", "", ""]
+    assert [step.tool_id for step in result.workflow.execution_plan] == ["primary_source_fetcher", "secondary_source_fetcher", "source_merger", "merged_report_writer"]
+    assert [(edge.source, edge.target) for edge in result.workflow.capability_graph.edges] == [
+        ("cap_retrieve.primary", "cap_merge"),
+        ("cap_retrieve.secondary", "cap_merge"),
+        ("cap_merge", "cap_write"),
+    ]

@@ -122,10 +122,10 @@ def infer_capability(tool_id: str, tool_specs: Dict[str, Dict[str, Any]]) -> str
         ("cap_write", ("writer", "write", "publish", "report")),
         ("cap_summarize", ("summary", "summarize", "brief")),
         ("cap_merge", ("merge", "merger", "synth")),
-        ("cap_select", ("branch", "select", "route")),
         ("cap_verify", ("verify", "verifier", "confirm")),
-        ("cap_modify", ("modify", "modifier", "patch", "update", "execute")),
+        ("cap_modify", ("modify", "modifier", "patch", "update", "execute", "executor")),
         ("cap_check", ("check", "checker", "inspect", "audit")),
+        ("cap_select", ("select", "selector", "route", "branch")),
         ("cap_retrieve", ("retrieve", "retriever", "lookup", "fetch", "source")),
     ]
     for capability, needles in id_rules:
@@ -142,12 +142,12 @@ def infer_capability(tool_id: str, tool_specs: Dict[str, Dict[str, Any]]) -> str
     rules = [
         ("cap_summarize", ("summarize", "summary", "digest", "abstract", "brief")),
         ("cap_write", ("write", "writer", "publish", "compose", "draft", "store", "save", "report")),
-        ("cap_check", ("check", "inspect", "validate", "verify", "audit", "scan")),
-        ("cap_modify", ("modify", "update", "patch", "edit", "change", "toggle")),
+        ("cap_check", ("check", "inspect", "audit", "scan", "status")),
+        ("cap_modify", ("modify", "update", "patch", "edit", "change", "toggle", "execute")),
         ("cap_verify", ("verify", "confirm", "test", "validate", "assert")),
         ("cap_select", ("branch", "select", "route", "choose", "classify")),
         ("cap_merge", ("merge", "join", "combine", "aggregate", "synthesize")),
-        ("cap_retrieve", ("retrieve", "search", "lookup", "fetch", "read", "collect", "source")),
+        ("cap_retrieve", ("retrieve", "search", "lookup", "fetch", "read", "collect", "source", "evidence")),
     ]
     for capability, needles in rules:
         if any(needle in text for needle in needles):
@@ -155,10 +155,34 @@ def infer_capability(tool_id: str, tool_specs: Dict[str, Dict[str, Any]]) -> str
     return "cap_unknown"
 
 
-def capability_sequence_from_tools(tools: List[str], tool_specs: Dict[str, Dict[str, Any]]) -> List[str]:
+def infer_capability_instance(tool_id: str, tool_specs: Dict[str, Dict[str, Any]]) -> str:
+    capability = infer_capability(tool_id, tool_specs)
+    if capability == "cap_retrieve":
+        normalized = tool_id.lower()
+        if "primary" in normalized:
+            return "cap_retrieve.primary"
+        if "secondary" in normalized:
+            return "cap_retrieve.secondary"
+    return capability
+
+
+def _base_capability(capability_or_instance: str) -> str:
+    value = str(capability_or_instance or "")
+    return value.split(".", 1)[0] if value.startswith("cap_") else value
+
+
+def _collapse_adjacent(values: List[str]) -> List[str]:
+    collapsed: List[str] = []
+    for value in values:
+        if value and (not collapsed or collapsed[-1] != value):
+            collapsed.append(value)
+    return collapsed
+
+
+def capability_sequence_from_tools(tools: List[str], tool_specs: Dict[str, Dict[str, Any]], *, instances: bool = False) -> List[str]:
     sequence: List[str] = []
     for tool in tools:
-        capability = infer_capability(tool, tool_specs)
+        capability = infer_capability_instance(tool, tool_specs) if instances else infer_capability(tool, tool_specs)
         if capability == "cap_unknown":
             continue
         if not sequence or sequence[-1] != capability:
@@ -191,6 +215,14 @@ def extract_planner_capability_sequence(trace: Dict[str, Any]) -> List[str]:
             if isinstance(value, list) and value:
                 return [str(item) for item in value]
     return []
+
+
+def extract_planner_capability_instance_sequence(trace: Dict[str, Any]) -> List[str]:
+    observability, _source = planner_observability(trace)
+    value = observability.get("selected_capability_instance_order_final")
+    if isinstance(value, list) and value:
+        return [str(item) for item in value]
+    return extract_planner_capability_sequence(trace)
 
 
 def edges_from_order(order: List[str]) -> List[List[str]]:
@@ -357,14 +389,24 @@ def score_row(row: Dict[str, str], source_row: Dict[str, Any], root: Path) -> Di
     trace, trace_status = load_trace(row, root)
     actual_tools = extract_tool_sequence(trace, row)
     proxy_order = capability_sequence_from_tools(actual_tools, tool_specs)
+    proxy_instance_order = capability_sequence_from_tools(actual_tools, tool_specs, instances=True)
     planner_order = extract_planner_capability_sequence(trace)
-    actual_order = planner_order if row.get("system") == PRIMARY_SYSTEM and planner_order else proxy_order
+    planner_instance_order = extract_planner_capability_instance_sequence(trace)
+    actual_instance_order = planner_instance_order if row.get("system") == PRIMARY_SYSTEM and planner_instance_order else proxy_instance_order
+    actual_order = _collapse_adjacent([_base_capability(item) for item in actual_instance_order])
+    if not actual_order:
+        actual_order = planner_order if row.get("system") == PRIMARY_SYSTEM and planner_order else proxy_order
     expected_order = [str(item) for item in gold.get("expected_capability_order", []) or []]
     expected_edges = [[str(item[0]), str(item[1])] for item in gold.get("expected_dependency_edges", []) or [] if isinstance(item, list) and len(item) == 2]
     expected_tools = [str(item) for item in gold.get("expected_tool_sequence", []) or []]
+    expected_instance_order = capability_sequence_from_tools(expected_tools, tool_specs, instances=True) or expected_order
+    expected_instance_edges = edges_from_order(expected_instance_order)
     actual_edges = edges_from_order(actual_order)
+    actual_instance_edges = edges_from_order(actual_instance_order)
     order_score = order_correct(actual_order, expected_order)
+    instance_order_score = order_correct(actual_instance_order, expected_instance_order)
     edge_score = edge_match_rate(actual_edges, expected_edges)
+    instance_edge_score = edge_match_rate(actual_instance_edges, expected_instance_edges)
     tool_score = sequence_match(actual_tools, expected_tools)
     state_rate = required_state_rate(actual_order, gold.get("required_state_slots_by_step", {}) if isinstance(gold.get("required_state_slots_by_step"), dict) else {})
     raw_success = max(
@@ -376,7 +418,7 @@ def score_row(row: Dict[str, str], source_row: Dict[str, Any], root: Path) -> Di
     forbidden_shortcuts = [str(item) for item in gold.get("forbidden_shortcuts", []) or []]
     trace_text = json.dumps(trace, sort_keys=True) if trace else ""
     shortcut_seen = any(shortcut and shortcut in trace_text for shortcut in forbidden_shortcuts)
-    strict = 1.0 if raw_success >= 1.0 and order_score >= 1.0 and edge_score >= 1.0 and tool_score >= 1.0 and state_rate >= 1.0 and not shortcut_seen else 0.0
+    strict = 1.0 if raw_success >= 1.0 and order_score >= 1.0 and instance_edge_score >= 1.0 and tool_score >= 1.0 and state_rate >= 1.0 and not shortcut_seen else 0.0
     fail_stop = 1.0 if str(row.get("stop_reason") or "").strip() not in {"", "success_criteria_satisfied"} and strict < 1.0 else 0.0
     ordering_failure = 1.0 - order_score
     state_rate = required_state_rate(actual_order, gold.get("required_state_slots_by_step", {}) if isinstance(gold.get("required_state_slots_by_step"), dict) else {})
@@ -395,7 +437,10 @@ def score_row(row: Dict[str, str], source_row: Dict[str, Any], root: Path) -> Di
         "ordering_failure_rate": ordering_failure,
         "state_dependency_failure_rate": 1.0 - state_rate,
         "capability_order_correct": order_score,
+        "base_capability_order_correct": order_score,
+        "instance_capability_order_correct": instance_order_score,
         "dependency_edge_correct": edge_score,
+        "instance_dependency_edge_correct": instance_edge_score,
         "required_state_satisfaction_rate": state_rate,
         "tool_sequence_match": tool_score,
         "planner_bypass": bypass["value"],
@@ -408,8 +453,10 @@ def score_row(row: Dict[str, str], source_row: Dict[str, Any], root: Path) -> Di
         "user_queries": safe_int(row.get("user_queries")),
         "actual_tool_sequence": actual_tools,
         "actual_capability_order": actual_order,
+        "actual_capability_instance_order": actual_instance_order,
         "expected_tool_sequence": expected_tools,
         "expected_capability_order": expected_order,
+        "expected_capability_instance_order": expected_instance_order,
         "trace_status": trace_status,
         "trace_path": str(row.get("trace_path") or ""),
         "hint_leakage": detect_hint_leakage(trace, row, source_row),
@@ -433,7 +480,10 @@ def aggregate(scored: List[Dict[str, Any]], *, source_count: int) -> Dict[str, A
         "ordering_failure_rate",
         "state_dependency_failure_rate",
         "capability_order_correct",
+        "base_capability_order_correct",
+        "instance_capability_order_correct",
         "dependency_edge_correct",
+        "instance_dependency_edge_correct",
         "required_state_satisfaction_rate",
         "tool_sequence_match",
         "steps_exceed_ideal_rate",
@@ -465,7 +515,9 @@ def aggregate(scored: List[Dict[str, Any]], *, source_count: int) -> Dict[str, A
                 "n": len(rows),
                 "strict_scored_success": mean([float(row["strict_scored_success"]) for row in rows]),
                 "capability_order_correct": mean([float(row["capability_order_correct"]) for row in rows]),
+                "instance_capability_order_correct": mean([float(row["instance_capability_order_correct"]) for row in rows]),
                 "dependency_edge_correct": mean([float(row["dependency_edge_correct"]) for row in rows]),
+                "instance_dependency_edge_correct": mean([float(row["instance_dependency_edge_correct"]) for row in rows]),
             }
             for system, rows in sorted(system_rows.items())
         }
@@ -517,6 +569,8 @@ def aggregate(scored: List[Dict[str, Any]], *, source_count: int) -> Dict[str, A
         "paired_wins_exceed_losses": pair_outcomes["wins"] > pair_outcomes["losses"],
         "capability_order_delta_ge_20pp": isinstance(delta("capability_order_correct"), float) and delta("capability_order_correct") >= 0.20,
         "dependency_edge_delta_ge_20pp": isinstance(delta("dependency_edge_correct"), float) and delta("dependency_edge_correct") >= 0.20,
+        "instance_dependency_edge_delta_ge_20pp": isinstance(delta("instance_dependency_edge_correct"), float) and delta("instance_dependency_edge_correct") >= 0.20,
+        "tool_sequence_delta_ge_20pp": isinstance(delta("tool_sequence_match"), float) and delta("tool_sequence_match") >= 0.20,
         "no_hint_leakage_detected": not leakage_rows,
         "no_ordered_gold_structure_leakage_detected": not ordered_leakage_rows,
         "a2_not_cost_explosion": float(a2.get("tool_calls", 0.0) or 0.0) <= max(float(a1.get("tool_calls", 0.0) or 0.0) * 1.5, float(a1.get("tool_calls", 0.0) or 0.0) + 2.0),
@@ -548,7 +602,9 @@ def aggregate(scored: List[Dict[str, Any]], *, source_count: int) -> Dict[str, A
         "deltas": {
             "a2_minus_a1_success_delta": delta("strict_scored_success"),
             "a2_minus_a1_capability_order_correct": delta("capability_order_correct"),
+            "a2_minus_a1_instance_capability_order_correct": delta("instance_capability_order_correct"),
             "a2_minus_a1_dependency_edge_correct": delta("dependency_edge_correct"),
+            "a2_minus_a1_instance_dependency_edge_correct": delta("instance_dependency_edge_correct"),
             "a2_minus_a1_tool_sequence_match": delta("tool_sequence_match"),
         },
         "acceptance_checks": acceptance,
@@ -589,11 +645,15 @@ def classify_failure(row: Dict[str, Any]) -> Tuple[str, str]:
         return "runtime_execution_gap", "runtime_semantic_mock"
     expected_order = row.get("expected_capability_order") or []
     actual_order = row.get("actual_capability_order") or []
+    expected_instance_order = row.get("expected_capability_instance_order") or []
+    actual_instance_order = row.get("actual_capability_instance_order") or []
     expected_tools = row.get("expected_tool_sequence") or []
     actual_tools = row.get("actual_tool_sequence") or []
     observability = row.get("planner_observability") if isinstance(row.get("planner_observability"), dict) else {}
     unresolved = observability.get("unresolved_capabilities") if isinstance(observability.get("unresolved_capabilities"), list) else []
     if unresolved:
+        return "capability_intent_gap", "capability_intent_rules"
+    if expected_instance_order and actual_instance_order and actual_instance_order[: len(expected_instance_order)] != expected_instance_order:
         return "capability_intent_gap", "capability_intent_rules"
     if expected_order and actual_order and actual_order[: len(expected_order)] != expected_order:
         return "capability_intent_gap", "capability_intent_rules"
@@ -631,6 +691,8 @@ def family_diagnostics(scored: List[Dict[str, Any]]) -> Dict[str, Any]:
                             "run_index": row.get("run_index"),
                             "expected_capability_order": row.get("expected_capability_order"),
                             "actual_capability_order": row.get("actual_capability_order"),
+                            "expected_capability_instance_order": row.get("expected_capability_instance_order"),
+                            "actual_capability_instance_order": row.get("actual_capability_instance_order"),
                             "expected_tool_sequence": row.get("expected_tool_sequence"),
                             "actual_tool_sequence": row.get("actual_tool_sequence"),
                             "selected_capability_order_initial": observability.get("selected_capability_order_initial", "unavailable"),
@@ -763,6 +825,34 @@ def main() -> None:
     write_markdown(summary, outdir / "planner_sensitive_summary.md")
     write_leakage_markdown(leakage, outdir / "hint_leakage_report.md")
     write_family_diagnostics_markdown(diagnostics, outdir / "planner_sensitive_family_diagnostics.md")
+    manifest_path = outdir / "experiment_manifest.json"
+    if manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            manifest = {}
+        required = {
+            "source_task_count_ge_40": True,
+            "leakage_detected_false": True,
+            "ordered_gold_structure_leakage_detected_false": True,
+            "a2_success_delta_ge_20pp": True,
+            "paired_wins_exceed_losses": True,
+            "family_positive_count_ge_3": True,
+            "planner_bypass_known_rate_ge_90pp": True,
+            "planner_bypass_rate_controlled": True,
+            "a2_not_cost_explosion": True,
+        }
+        manifest.update(
+            {
+                "canonical_claim_report": "planner_sensitive_summary.md",
+                "noncanonical_reports": {
+                    "report.md": "generic runner diagnostics only; not used for planner-sensitive structural claim"
+                },
+                "promotion_gates_required": required,
+                "promotion_gates_observed": dict(summary.get("acceptance_checks", {})),
+            }
+        )
+        manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"planner-sensitive summary: {outdir / 'planner_sensitive_summary.json'}")
     print(f"hint leakage report: {outdir / 'hint_leakage_report.json'}")
     print(f"family diagnostics: {outdir / 'planner_sensitive_family_diagnostics.json'}")
