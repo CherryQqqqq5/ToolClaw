@@ -15,7 +15,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Allow `python3 scripts/run_eval.py ...` from repo root without manual PYTHONPATH.
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -364,41 +364,180 @@ def _bfcl_best_tool(candidate_tools: List[ToolSpec], text: str) -> Optional[Tool
     return _bfcl_tool_lookup(candidate_tools).get(best_tool_id) or (candidate_tools[0] if candidate_tools else None)
 
 
+def _bfcl_rank_item_tool_id(item: Dict[str, Any]) -> str:
+    tool = item.get("tool")
+    if isinstance(tool, dict):
+        return str(tool.get("tool_id") or tool.get("name") or "").strip()
+    return str(getattr(tool, "tool_id", "") or "").strip()
+
+
+def _bfcl_rank_item_score(item: Dict[str, Any]) -> float:
+    return float(item.get("score", 0.0) or 0.0)
+
+
+def _bfcl_required_arg_status(tool: Optional[ToolSpec], text: str) -> Dict[str, Any]:
+    required = _bfcl_required_input_keys(tool)
+    inputs = (
+        extract_tool_arguments(
+            str(tool.tool_id),
+            _bfcl_tool_parameters(tool),
+            text,
+            include_defaults=False,
+        )
+        if tool is not None
+        else {}
+    )
+    present = [key for key in required if _bfcl_has_bound_value(inputs.get(key))]
+    missing = [key for key in required if key not in present]
+    return {
+        "required_argument_coverage": (float(len(present)) / float(len(required))) if required else 1.0,
+        "required_args_present": present,
+        "missing_required_args": missing,
+    }
+
+
+def _bfcl_rank_summary(item: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "tool_id": _bfcl_rank_item_tool_id(item),
+        "score": _bfcl_rank_item_score(item),
+        "exact_match": bool(item.get("exact_match")),
+        "required_argument_coverage": float(item.get("required_argument_coverage", 0.0) or 0.0),
+        "schema_name_overlap_count": int(item.get("schema_name_overlap_count", len(item.get("overlap", []) or [])) or 0),
+        "overlap": list(item.get("overlap", []) or []),
+    }
+
+
+def _bfcl_schema_ranked_choice(
+    candidate_tools: List[ToolSpec],
+    text: str,
+    *,
+    preferred_tool_id: str = "",
+) -> Tuple[Optional[ToolSpec], Dict[str, Any]]:
+    """Select a BFCL tool with a deterministic schema-top1 guard.
+
+    Runtime diagnostics are intentionally gold-free: expected function names and
+    official failure buckets are added only by the scorer/audit stage.
+    """
+    lookup = _bfcl_tool_lookup(candidate_tools)
+    ranked = rank_candidate_tools(text, candidate_tools)
+    planner_tool_id = str(preferred_tool_id or "").strip()
+    if not ranked:
+        selected_tool_id = planner_tool_id if planner_tool_id in lookup else (candidate_tools[0].tool_id if candidate_tools else "")
+        selected = lookup.get(selected_tool_id) or (candidate_tools[0] if candidate_tools else None)
+        diagnostics = {
+            "guard_policy_version": "strict_schema_top1_tie_drop_v1",
+            "planner_tool_id": planner_tool_id,
+            "schema_top_5": [],
+            "schema_top_tool_id": "",
+            "schema_top_score": 0.0,
+            "planner_score": None,
+            "score_margin": None,
+            "planner_in_schema_top2": False,
+            "selected_tool_id": str(selected.tool_id) if selected is not None else "",
+            "selected_reason": "no_ranked_candidates",
+            "rerank_override_applied": False,
+            "rerank_override_reason": "no_ranked_candidates",
+            "schema_guard_applied": False,
+            "planner_required_argument_coverage": None,
+            "selected_required_argument_coverage": None,
+            "planner_required_args_present": [],
+            "selected_required_args_present": [],
+            "planner_missing_required_args": [],
+            "selected_missing_required_args": [],
+        }
+        return selected, diagnostics
+
+    best = ranked[0]
+    best_tool_id = _bfcl_rank_item_tool_id(best)
+    top_ids = [_bfcl_rank_item_tool_id(item) for item in ranked[:5]]
+    current = next((item for item in ranked if _bfcl_rank_item_tool_id(item) == planner_tool_id), None)
+    planner_tool = lookup.get(planner_tool_id)
+    selected_tool_id = best_tool_id
+    best_score = _bfcl_rank_item_score(best)
+    planner_score = _bfcl_rank_item_score(current) if current is not None else None
+    planner_status = _bfcl_required_arg_status(planner_tool, text) if planner_tool is not None else {
+        "required_argument_coverage": None,
+        "required_args_present": [],
+        "missing_required_args": [],
+    }
+
+    if not planner_tool_id:
+        selected_reason = "schema_top1_no_planner"
+        schema_guard_applied = False
+    elif planner_tool_id == best_tool_id:
+        selected_reason = "planner_aligned_schema_top1"
+        schema_guard_applied = False
+    else:
+        schema_guard_applied = True
+        if current is None:
+            selected_reason = "planner_not_ranked"
+        elif planner_tool_id not in top_ids[:2]:
+            selected_reason = "planner_not_in_schema_top2"
+        elif float(planner_status.get("required_argument_coverage") or 0.0) == 0.0:
+            selected_reason = "planner_required_argument_coverage_zero"
+        elif planner_score is not None and best_score == planner_score:
+            selected_reason = "planner_tie_dropped"
+        elif planner_score is not None and best_score > planner_score:
+            selected_reason = "schema_score_higher"
+        else:
+            selected_reason = "planner_not_schema_top1"
+
+    selected = lookup.get(selected_tool_id) or (candidate_tools[0] if candidate_tools else None)
+    selected_status = _bfcl_required_arg_status(selected, text)
+    diagnostics = {
+        "guard_policy_version": "strict_schema_top1_tie_drop_v1",
+        "planner_tool_id": planner_tool_id,
+        "schema_top_5": [_bfcl_rank_summary(item) for item in ranked[:5]],
+        "schema_top_tool_id": best_tool_id,
+        "schema_top_score": best_score,
+        "planner_score": planner_score,
+        "score_margin": (best_score - planner_score) if planner_score is not None else None,
+        "planner_in_schema_top2": planner_tool_id in top_ids[:2] if planner_tool_id else False,
+        "selected_tool_id": str(selected.tool_id) if selected is not None else "",
+        "selected_reason": selected_reason,
+        "rerank_override_applied": False,
+        "rerank_override_reason": selected_reason,
+        "schema_guard_applied": bool(schema_guard_applied),
+        "planner_required_argument_coverage": planner_status.get("required_argument_coverage"),
+        "selected_required_argument_coverage": selected_status.get("required_argument_coverage"),
+        "planner_required_args_present": planner_status.get("required_args_present", []),
+        "selected_required_args_present": selected_status.get("required_args_present", []),
+        "planner_missing_required_args": planner_status.get("missing_required_args", []),
+        "selected_missing_required_args": selected_status.get("missing_required_args", []),
+    }
+    return selected, diagnostics
+
+
+def _record_bfcl_choice(workflow: Workflow, diagnostics: Dict[str, Any]) -> None:
+    if not diagnostics:
+        return
+    workflow.metadata.setdefault("bfcl_rerank_diagnostics", [])
+    workflow.metadata["bfcl_rerank_diagnostics"].append(dict(diagnostics))
+    workflow.metadata.setdefault("bfcl_planner_selected_tools", [])
+    workflow.metadata["bfcl_planner_selected_tools"].append(str(diagnostics.get("planner_tool_id") or ""))
+    workflow.metadata.setdefault("bfcl_final_ranked_tools", [])
+    workflow.metadata["bfcl_final_ranked_tools"].append([item.get("tool_id") for item in diagnostics.get("schema_top_5", [])])
+    workflow.metadata["bfcl_rerank_override_applied"] = any(
+        bool(item.get("rerank_override_applied"))
+        for item in workflow.metadata.get("bfcl_rerank_diagnostics", [])
+        if isinstance(item, dict)
+    )
+    workflow.metadata["bfcl_rerank_override_reason"] = str(diagnostics.get("rerank_override_reason") or "")
+    workflow.metadata["bfcl_guard_policy_version"] = "strict_schema_top1_tie_drop_v1"
+
+
 def _bfcl_schema_ranked_tool(
     candidate_tools: List[ToolSpec],
     text: str,
     *,
     preferred_tool_id: str = "",
 ) -> Optional[ToolSpec]:
-    """Select a BFCL tool by task text/schema evidence without sticky planner bias.
-
-    BFCL fc_core is an exact function-call benchmark: once the workflow reaches the
-    adapter layer, a coarse planner-selected tool should not override a stronger
-    schema/text match. The preferred tool is retained only when it is tied with or
-    stronger than the top-ranked candidate under the same generic BFCL ranker.
-    """
-    ranked = rank_candidate_tools(text, candidate_tools)
-    if not ranked:
-        return _bfcl_tool_lookup(candidate_tools).get(preferred_tool_id) or (candidate_tools[0] if candidate_tools else None)
-    lookup = _bfcl_tool_lookup(candidate_tools)
-    best = ranked[0]
-    best_tool_id = str(best.get("tool", {}).get("tool_id") or "").strip()
-    selected_tool_id = best_tool_id
-    if preferred_tool_id:
-        current = next(
-            (
-                item
-                for item in ranked
-                if str(item.get("tool", {}).get("tool_id") or "").strip() == preferred_tool_id
-            ),
-            None,
-        )
-        if current is not None:
-            current_score = float(current.get("score", 0.0) or 0.0)
-            best_score = float(best.get("score", 0.0) or 0.0)
-            if current_score >= best_score:
-                selected_tool_id = preferred_tool_id
-    return lookup.get(selected_tool_id) or (candidate_tools[0] if candidate_tools else None)
+    selected, _diagnostics = _bfcl_schema_ranked_choice(
+        candidate_tools,
+        text,
+        preferred_tool_id=preferred_tool_id,
+    )
+    return selected
 
 
 def _bfcl_tool_parameters(tool: Optional[ToolSpec]) -> Dict[str, Any]:
@@ -653,6 +792,7 @@ def _configure_bfcl_step_metadata(
     text: str,
     *,
     enable_grounding: bool = True,
+    selection_diagnostics: Optional[Dict[str, Any]] = None,
 ) -> None:
     parameters = _bfcl_tool_parameters(tool)
     existing_metadata = dict(step.metadata) if isinstance(step.metadata, dict) else {}
@@ -665,6 +805,8 @@ def _configure_bfcl_step_metadata(
     merged_metadata["bfcl_query_text"] = text
     merged_metadata["bfcl_schema"] = dict(parameters)
     merged_metadata["bfcl_benchmark"] = True
+    if selection_diagnostics:
+        merged_metadata["bfcl_function_selection_diagnostics"] = dict(selection_diagnostics)
     merged_metadata.setdefault("implicit_state_fallback_slots", [])
     merged_metadata.setdefault("required_state_slots", [])
     merged_metadata.setdefault("state_bindings", {})
@@ -788,7 +930,15 @@ def _configure_bfcl_seed_steps(
         step.inputs = inputs
         step.expected_output = expected_output
         step.rollback_to = None
-        _configure_bfcl_step_metadata(step, tool, text, enable_grounding=enable_grounding)
+        selection_diagnostics = spec.get("selection_diagnostics") if isinstance(spec.get("selection_diagnostics"), dict) else {}
+        _configure_bfcl_step_metadata(
+            step,
+            tool,
+            text,
+            enable_grounding=enable_grounding,
+            selection_diagnostics=selection_diagnostics,
+        )
+        _record_bfcl_choice(workflow, selection_diagnostics)
         _sync_bfcl_binding_metadata(workflow, step, index - 1)
 
         node = workflow.workflow_graph.nodes[index - 1]
@@ -851,7 +1001,7 @@ def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user
         for clause in _split_parallel_clauses(query):
             if not remaining_tools:
                 break
-            tool = _bfcl_best_tool(remaining_tools, clause)
+            tool, diagnostics = _bfcl_schema_ranked_choice(remaining_tools, clause)
             if tool is None:
                 continue
             step_specs.append(
@@ -859,6 +1009,7 @@ def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user
                     "tool": tool,
                     "inputs": _bfcl_build_step_inputs(tool, clause, keep_query_fallback=False),
                     "text": clause,
+                    "selection_diagnostics": diagnostics,
                 }
             )
             remaining_tools = [candidate for candidate in remaining_tools if candidate.tool_id != tool.tool_id]
@@ -867,7 +1018,7 @@ def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user
     if metadata.get("bfcl_group") == "multi_turn" and milestones:
         step_specs = []
         for milestone in milestones:
-            tool = _bfcl_best_tool(candidate_tools, milestone)
+            tool, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, milestone)
             if tool is None:
                 continue
             step_specs.append(
@@ -875,14 +1026,15 @@ def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user
                     "tool": tool,
                     "inputs": _bfcl_build_step_inputs(tool, milestone),
                     "text": milestone,
+                    "selection_diagnostics": diagnostics,
                 }
             )
         if step_specs:
             return step_specs
-    tool = _bfcl_best_tool(candidate_tools, query)
+    tool, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, query)
     if tool is None:
         return []
-    return [{"tool": tool, "inputs": _bfcl_build_step_inputs(tool, query), "text": query}]
+    return [{"tool": tool, "inputs": _bfcl_build_step_inputs(tool, query), "text": query, "selection_diagnostics": diagnostics}]
 
 
 def _build_seed_workflow(
@@ -1002,6 +1154,36 @@ def _adapt_bfcl_workflow(
     if not candidate_tools:
         return workflow
 
+    if call_pattern == "serial" and (mode == "planner" or len(workflow.execution_plan) != 1):
+        seed_specs = _bfcl_seed_specs(task, candidate_tools, query)
+        if seed_specs:
+            if not enable_grounding:
+                seed_specs = [
+                    {
+                        **spec,
+                        "inputs": _bfcl_build_step_inputs(
+                            spec.get("tool"),
+                            str(spec.get("text") or query),
+                            keep_query_fallback=True,
+                            enable_grounding=False,
+                        ),
+                    }
+                    for spec in seed_specs
+                ]
+            before_count = len(workflow.execution_plan)
+            workflow = _configure_bfcl_seed_steps(workflow, seed_specs, enable_grounding=enable_grounding)
+            workflow.metadata["planner_canonicalized_to_bfcl_seed"] = True
+            workflow.metadata["bfcl_protocol_fallback_applied"] = True
+            workflow.metadata["bfcl_protocol_fallback_reason"] = (
+                "multi_turn_without_explicit_milestones"
+                if metadata.get("bfcl_group") == "multi_turn"
+                else "serial_exact_call_protocol"
+            )
+            workflow.metadata["bfcl_canonicalized_step_count_before"] = before_count
+            workflow.metadata["bfcl_canonicalized_step_count_after"] = len(workflow.execution_plan)
+            workflow.context.candidate_tools = [] if workflow.metadata.get("bfcl_abstained") else list(candidate_tools)
+            return workflow
+
     if call_pattern == "parallel":
         parallel_specs = _bfcl_seed_specs(task, candidate_tools, query)
         if len(parallel_specs) > 1:
@@ -1047,13 +1229,12 @@ def _adapt_bfcl_workflow(
         text = milestones[index] if index < len(milestones) else query
         selected_tool = tool_lookup.get(str(step.tool_id or "").strip())
         preferred_tool_id = str(selected_tool.tool_id) if selected_tool is not None else ""
-        selected_tool = _bfcl_schema_ranked_tool(
+        selected_tool, selection_diagnostics = _bfcl_schema_ranked_choice(
             candidate_tools,
             text,
             preferred_tool_id=preferred_tool_id,
         )
-        if selected_tool is None:
-            selected_tool = _bfcl_best_tool(candidate_tools, text)
+        _record_bfcl_choice(workflow, selection_diagnostics)
         if selected_tool is None:
             continue
         capability_id = _bfcl_capability_id(selected_tool)
@@ -1074,7 +1255,13 @@ def _adapt_bfcl_workflow(
             step.inputs.pop("query", None)
         if "target_path" not in required_input_keys:
             step.inputs.pop("target_path", None)
-        _configure_bfcl_step_metadata(step, selected_tool, text, enable_grounding=enable_grounding)
+        _configure_bfcl_step_metadata(
+            step,
+            selected_tool,
+            text,
+            enable_grounding=enable_grounding,
+            selection_diagnostics=selection_diagnostics,
+        )
         if index < len(workflow.tool_bindings):
             workflow.tool_bindings[index].capability_id = capability_id
             workflow.tool_bindings[index].primary_tool = selected_tool.tool_id

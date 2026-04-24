@@ -347,13 +347,17 @@ def _expected_structure_from_ground_truth(ground_truth: Any, call_pattern: str) 
     return {"pattern": call_pattern, "calls": []}
 
 
+def _remove_prefix(value: str, prefix: str) -> str:
+    return value[len(prefix):] if value.startswith(prefix) else value
+
+
 def _possible_answer_lookup(data_dir: Path) -> Dict[str, Dict[str, Dict[str, Any]]]:
     lookup: Dict[str, Dict[str, Dict[str, Any]]] = {}
     possible_answer_dir = data_dir / "possible_answer"
     if not possible_answer_dir.exists():
         return lookup
     for path in sorted(possible_answer_dir.glob("BFCL_v4_*.json")):
-        category = path.stem.removeprefix("BFCL_v4_")
+        category = _remove_prefix(path.stem, "BFCL_v4_")
         rows = _load_jsonlike_records(path)
         lookup[category] = {
             str(row.get("id") or ""): row
@@ -384,7 +388,7 @@ def _load_official_bfcl_directory(path: Path) -> Iterator[Dict[str, Any]]:
     base_rows_by_id: Dict[str, Dict[str, Any]] = {}
 
     for dataset_path in sorted(data_dir.glob("BFCL_v4_*.json")):
-        category = dataset_path.stem.removeprefix("BFCL_v4_")
+        category = _remove_prefix(dataset_path.stem, "BFCL_v4_")
         if category == "format_sensitivity":
             continue
         for raw in _load_jsonlike_records(dataset_path):

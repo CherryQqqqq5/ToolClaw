@@ -27,6 +27,38 @@ The formal 3-run bundle supports the semantic repair mechanism claim when `claim
 
 Paired evidence is now committed. On `repair_semantic_positive`, `a3_full_interaction` beats `a2_planner`, `a3_no_query`, and `a3_noisy_user` with `wins=18`, `losses=0`, `ties=0`, `mean_delta=1.0` for each comparison. On `probe_only_control`, `a3_full_interaction` ties `a3_noisy_user` with `ties=18`, `mean_delta=0.0`, so probe-only success remains a caveat rather than semantic repair evidence.
 
+## BFCL Guarded Function Selection
+
+Artifacts after the next guarded run should include:
+
+- `bfcl_function_selection_audit.json`
+- `bfcl_function_selection_audit.md`
+- `claim_summary.json` with `bfcl_guard_claim_gates`
+
+Status: implementation and audit scaffolding are in progress for a deterministic schema-top1 BFCL guard. This does not change the current BFCL claim boundary: `planner_binding_headline` remains a limitation because the existing paper-safe formal bundle is negative for planner/binder transfer. The guard can only become narrow supporting evidence after a guarded formal rerun passes all pre-registered gates.
+
+Required full-suite gates before `bfcl_exact_function_guard` can become supporting:
+
+- `a2_wrong_func_name <= a0_wrong_func_name`
+- `a2_missing_required < a0_missing_required`
+- `a2_tool_selection >= a0_tool_selection`
+- `a2_success >= a0_success`
+
+Required pre-registered `baseline_missing_required_slice` gates before `bfcl_missing_required_guarded_reduction` can become supporting:
+
+- rows are selected by `a0_baseline` official failure bucket `missing_required` before analyzing guarded outcomes;
+- `a2_guarded_missing_required_rate < a0_missing_required_rate`;
+- `a2_guarded_wrong_func_name_rate <= a0_wrong_func_name_rate`;
+- `a2_guarded_success_rate >= a0_success_rate`.
+
+Artifact safety requirements:
+
+- runtime selection diagnostics are gold-free;
+- expected function and official failure bucket appear only in scorer/audit artifacts;
+- schema ranker tie-break is deterministic under shuffled candidate order;
+- guardability buckets report whether schema top-1/top-2/top-5 could have recovered planner wrong-function rows;
+- `a4_reuse` is explicitly non-reuse evidence on BFCL.
+
 ## Persistent Reuse V2
 
 Artifacts:

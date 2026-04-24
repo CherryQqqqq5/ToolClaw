@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import csv
 import importlib.util
 import json
@@ -1311,3 +1313,90 @@ def test_bfcl_runtime_extracts_explicit_ticker_symbol() -> None:
     )
 
     assert arguments["ticker"] == "AAPL"
+
+
+def test_bfcl_function_selection_audit_adds_gold_only_after_execution(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_audit_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    trace_path = tmp_path / "trace.json"
+    runtime_diagnostic = {
+        "planner_tool_id": "wrong_tool",
+        "schema_top_5": [
+            {"tool_id": "right_tool", "score": 4.0},
+            {"tool_id": "wrong_tool", "score": 4.0},
+        ],
+        "schema_top_tool_id": "right_tool",
+        "schema_top_score": 4.0,
+        "planner_score": 4.0,
+        "score_margin": 0.0,
+        "selected_tool_id": "right_tool",
+        "selected_reason": "planner_tie_dropped",
+        "planner_required_argument_coverage": 0.0,
+        "selected_required_argument_coverage": 1.0,
+        "planner_missing_required_args": ["missing_value"],
+        "selected_missing_required_args": [],
+    }
+    trace_path.write_text(
+        json.dumps({"metadata": {"task_annotations": {"bfcl_rerank_diagnostics": [runtime_diagnostic]}}}),
+        encoding="utf-8",
+    )
+    rows = [
+        {
+            "run_index": "1",
+            "task_id": "task_1",
+            "system": "a2_planner",
+            "gold_tool": "right_tool",
+            "chosen_tool": "wrong_tool",
+            "trace_path": str(trace_path),
+            "official_bfcl_eval_unsupported_reasons": json.dumps(["wrong_func_name"]),
+            "official_bfcl_eval_success": 0.0,
+        }
+    ]
+
+    audit = module._bfcl_function_selection_audit(rows)
+
+    assert audit["audit_schema_version"] == "bfcl_function_selection_audit_v1"
+    assert audit["guard_policy_version"] == "strict_schema_top1_tie_drop_v1"
+    assert audit["gold_fields_added_after_execution"] is True
+    assert audit["runtime_diagnostics_gold_free"] is True
+    assert audit["rows"][0]["expected_function"] == "right_tool"
+    assert audit["rows"][0]["guardability_flags"]["planner_wrong_schema_top1_expected"] is True
+    assert audit["rows"][0]["guardability_flags"]["planner_tie_dropped_correct"] is True
+
+
+def test_bfcl_guard_claim_gates_fail_on_wrong_function_regression() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_gate_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    rows = [
+        {"run_index": "1", "task_id": "base_missing", "system": "a0_baseline", "official_bfcl_eval_unsupported_reasons": json.dumps(["missing_required"]), "official_bfcl_eval_success": 0.0},
+        {"run_index": "1", "task_id": "base_missing", "system": "a2_planner", "official_bfcl_eval_unsupported_reasons": json.dumps(["wrong_func_name"]), "official_bfcl_eval_success": 0.0},
+        {"run_index": "1", "task_id": "base_wrong", "system": "a0_baseline", "official_bfcl_eval_unsupported_reasons": json.dumps([]), "official_bfcl_eval_success": 1.0},
+        {"run_index": "1", "task_id": "base_wrong", "system": "a2_planner", "official_bfcl_eval_unsupported_reasons": json.dumps(["wrong_func_name"]), "official_bfcl_eval_success": 0.0},
+    ]
+    official_scoreboard = {
+        "per_system": {
+            "a0_baseline": {"official_bfcl_eval_success": 0.5, "official_bfcl_eval_tool_selection_correctness": 1.0},
+            "a2_planner": {"official_bfcl_eval_success": 0.0, "official_bfcl_eval_tool_selection_correctness": 0.0},
+        }
+    }
+
+    gates = module._bfcl_guard_claim_gates(rows, official_scoreboard)
+
+    assert gates["full_suite_gates"]["a2_wrong_func_name_le_a0"] is False
+    assert gates["full_suite_supporting_ready"] is False
+    assert gates["baseline_missing_required_slice"]["slice_id"] == "baseline_missing_required_slice"
+    assert gates["missing_required_guarded_reduction_ready"] is False
+    assert gates["reuse_claim_enabled_for_bfcl"] is False
+    assert gates["a4_interpreted_as_guarded_execution_variant_only"] is True

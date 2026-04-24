@@ -152,6 +152,73 @@
           "second_run_success_delta@warm_vs_cold"
         ]
       }
+    },
+    "bfcl_exact_function_guard": {
+      "status": "pending_guarded_formal_rerun",
+      "claim_strength": "pending",
+      "benchmark_suite": "bfcl_fc_core",
+      "claim": "A BFCL-specific deterministic schema-top1 guard may become supporting evidence only if the guarded rerun passes wrong-function non-regression, missing-required reduction, tool-selection non-regression, and success non-regression. It is guarded exact-function adapter evidence only, not planner headline transfer.",
+      "metrics": {
+        "primary": [
+          "a2_wrong_func_name_le_a0",
+          "a2_missing_required_lt_a0",
+          "a2_tool_selection_ge_a0",
+          "a2_success_ge_a0"
+        ],
+        "supporting": [
+          "bfcl_function_selection_audit",
+          "guardability_bucket_counts",
+          "runtime_diagnostics_gold_free",
+          "deterministic_schema_tie_break"
+        ]
+      }
+    },
+    "bfcl_missing_required_guarded_reduction": {
+      "status": "pending_guarded_formal_rerun",
+      "claim_strength": "pending",
+      "benchmark_suite": "bfcl_fc_core",
+      "claim": "On the pre-registered baseline_missing_required_slice, guarded BFCL may support missing-required reduction only if full-suite gates and slice gates both pass. If only the slice passes, report it as appendix diagnostic rather than claim-matrix support.",
+      "metrics": {
+        "primary": [
+          "a2_guarded_missing_required_rate_lt_a0",
+          "a2_guarded_wrong_func_name_rate_le_a0",
+          "a2_guarded_success_rate_ge_a0"
+        ],
+        "supporting": [
+          "baseline_missing_required_slice",
+          "selected_missing_required_args",
+          "selected_required_argument_coverage"
+        ]
+      }
+    },
+    "bfcl_broad_transfer": {
+      "status": "unsupported_current_evidence",
+      "claim_strength": "limitation",
+      "benchmark_suite": "bfcl_fc_core",
+      "claim": "Broad BFCL exact function-calling transfer remains unsupported. The current paper-safe formal run is negative for planner/binder headline lift.",
+      "metrics": {
+        "primary": [
+          "official_bfcl_eval_success",
+          "official_bfcl_eval_tool_selection_correctness"
+        ],
+        "supporting": [
+          "wrong_func_name_failure_count"
+        ]
+      }
+    },
+    "bfcl_reuse_lift": {
+      "status": "unsupported_not_measured_on_bfcl",
+      "claim_strength": "limitation",
+      "benchmark_suite": "bfcl_fc_core",
+      "claim": "BFCL does not provide reuse-lift evidence; a4 is interpreted as a guarded execution variant only when BFCL is evaluated.",
+      "metrics": {
+        "primary": [
+          "reuse_claim_enabled_for_bfcl_false"
+        ],
+        "supporting": [
+          "a4_interpreted_as_guarded_execution_variant_only"
+        ]
+      }
     }
   },
   "suites": {
@@ -285,10 +352,39 @@
       "formal_lock": "configs/bfcl_formal_lock.json",
       "requires_formal_source": true,
       "claim_ids": [
-        "planner_binding_headline"
+        "planner_binding_headline",
+        "bfcl_exact_function_guard",
+        "bfcl_missing_required_guarded_reduction"
       ],
       "claim_strength": "limitation",
-      "paper_role": "mechanism_evidence_only"
+      "paper_role": "limitation_with_guarded_supporting_candidate",
+      "guard_policy_version": "strict_schema_top1_tie_drop_v1",
+      "guarded_formal_status": "pending_rerun",
+      "audit_artifacts": [
+        "bfcl_function_selection_audit.json",
+        "bfcl_function_selection_audit.md"
+      ],
+      "reuse_claim_enabled_for_bfcl": false,
+      "a4_interpreted_as_guarded_execution_variant_only": true,
+      "guarded_claim_gates": {
+        "full_suite_required": [
+          "a2_wrong_func_name <= a0_wrong_func_name",
+          "a2_missing_required < a0_missing_required",
+          "a2_tool_selection >= a0_tool_selection",
+          "a2_success >= a0_success"
+        ],
+        "baseline_missing_required_slice_required": [
+          "a2_guarded_missing_required_rate < a0_missing_required_rate",
+          "a2_guarded_wrong_func_name_rate <= a0_wrong_func_name_rate",
+          "a2_guarded_success_rate >= a0_success_rate"
+        ],
+        "artifact_safety_required": [
+          "runtime selection diagnostics are gold-free",
+          "expected function appears only in scorer/audit artifacts",
+          "schema ranker tie-break is deterministic under shuffled candidate order",
+          "A4 BFCL is marked as non-reuse evidence"
+        ]
+      }
     },
     "bfcl_agentic_ext": {
       "status": "implemented",

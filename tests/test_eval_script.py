@@ -2125,3 +2125,89 @@ def test_htgp_request_overrides_restore_missing_steps_without_existing_bindings(
     assert workflow.execution_plan[1].tool_id == "tool_two"
     assert len(workflow.tool_bindings) == 2
     assert workflow.tool_bindings[1].primary_tool == "tool_two"
+
+
+def test_bfcl_schema_ranked_choice_is_deterministic_under_candidate_shuffle() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_deterministic", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tools_a = [
+        module.ToolSpec(tool_id="z_tool", description="Shared lookup tool"),
+        module.ToolSpec(tool_id="a_tool", description="Shared lookup tool"),
+    ]
+    tools_b = list(reversed(tools_a))
+
+    selected_a, diagnostics_a = module._bfcl_schema_ranked_choice(tools_a, "lookup shared information")
+    selected_b, diagnostics_b = module._bfcl_schema_ranked_choice(tools_b, "lookup shared information")
+
+    assert selected_a is not None and selected_b is not None
+    assert selected_a.tool_id == "a_tool"
+    assert selected_b.tool_id == "a_tool"
+    assert diagnostics_a["schema_top_tool_id"] == diagnostics_b["schema_top_tool_id"] == "a_tool"
+
+
+def test_bfcl_schema_ranked_choice_rejects_zero_coverage_planner_tool(monkeypatch) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_zero_coverage", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tools = [
+        module.ToolSpec(
+            tool_id="wrong_tool",
+            description="Wrong tool",
+            metadata={"parameters": {"type": "dict", "required": ["missing_value"], "properties": {"missing_value": {"type": "string"}}}},
+        ),
+        module.ToolSpec(
+            tool_id="right_tool",
+            description="Right tool",
+            metadata={"parameters": {"type": "dict", "required": ["city"], "properties": {"city": {"type": "string"}}}},
+        ),
+    ]
+
+    monkeypatch.setattr(
+        module,
+        "rank_candidate_tools",
+        lambda text, candidate_tools: [
+            {"tool": {"tool_id": "right_tool"}, "score": 4.0, "required_argument_coverage": 1.0},
+            {"tool": {"tool_id": "wrong_tool"}, "score": 4.0, "required_argument_coverage": 0.0},
+        ],
+    )
+
+    selected, diagnostics = module._bfcl_schema_ranked_choice(
+        tools,
+        "weather in city Paris",
+        preferred_tool_id="wrong_tool",
+    )
+
+    assert selected is not None
+    assert selected.tool_id == "right_tool"
+    assert diagnostics["selected_reason"] == "planner_required_argument_coverage_zero"
+    assert diagnostics["planner_required_argument_coverage"] == 0.0
+    assert diagnostics["selected_required_argument_coverage"] == 1.0
+    assert diagnostics["planner_missing_required_args"] == ["missing_value"]
+
+
+def test_bfcl_schema_ranked_choice_runtime_diagnostics_are_gold_free() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_gold_free", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    selected, diagnostics = module._bfcl_schema_ranked_choice(
+        [module.ToolSpec(tool_id="weather_lookup", description="Look up weather by city")],
+        "look up weather for Paris",
+    )
+
+    assert selected is not None
+    encoded = json.dumps(diagnostics)
+    for forbidden in ("expected_function", "expected_tool", "gold_tool", "official_failure_bucket"):
+        assert forbidden not in encoded

@@ -45,10 +45,10 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
   - boundary: this supports planner structural mechanism evidence, not a headline claim; BFCL exact function-calling transfer remains negative and must not be folded into this claim
 
 - `bfcl_fc_core`
-  - role: planner / binder / parameter correctness limitation benchmark
-  - current claim: `planner_binding_headline`
-  - reason: the current full formal bundle is paper-safe but negative for planner/binder headline lift
-  - protocol: include `non_live`, `live`, and `multi_turn` function-calling rows; exclude `web_search`, `memory`, and `format_sensitivity`
+  - role: planner / binder / parameter correctness limitation benchmark, with a pending guarded exact-function adapter test
+  - current claim: `planner_binding_headline` remains a limitation; `bfcl_exact_function_guard` and `bfcl_missing_required_guarded_reduction` are pending guarded-rerun claims only
+  - reason: the current full formal bundle is paper-safe but negative for planner/binder headline lift; the schema-top1 guard is designed to test whether wrong-function negative transfer can be suppressed without losing missing-required or argument-repair benefits
+  - protocol: include `non_live`, `live`, and `multi_turn` function-calling rows; exclude `web_search`, `memory`, and `format_sensitivity`; runtime selection diagnostics must remain gold-free and A4 must be marked as non-reuse evidence
 
 - `bfcl_agentic_ext`
   - role: supporting-only BFCL v4 extension benchmark
@@ -75,10 +75,23 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
 
 - ToolSandbox official should stay the main headline benchmark.
 - ToolSandbox semantic-usefulness should be treated as a targeted mechanism claim anchored to `toolsandbox_semantic_repair_official_v1`, not a whole-benchmark headline claim.
-- Planner should not be sold as a ToolSandbox official headline lift. The dedicated `toolsandbox_planner_sensitive_v2_f2` bundle now provides mechanism-supporting HTGP structural evidence across all four V2 structural families, while BFCL exact function-calling transfer remains a limitation.
+- Planner should not be sold as a ToolSandbox official headline lift. The dedicated `toolsandbox_planner_sensitive_v2_f2` bundle now provides mechanism-supporting HTGP structural evidence across all four V2 structural families, while BFCL exact function-calling transfer remains a limitation. The guarded BFCL adapter can only become narrow supporting evidence after full-suite non-regression gates and the pre-registered baseline-missing-required slice gates pass.
 - Reuse should stay pending and scoped to exact/matched-signature cost reduction until a committed persistent-reuse v2 formal bundle demonstrates cost/headroom gains.
 - ToolGym is best treated as a later supplementary stress test, not the main paper anchor.
 - WebArena, WorkArena, and OSWorld are strong benchmarks, but they move the paper toward browser or computer-use agents rather than workflow intelligence over tool calling.
+
+
+## BFCL guarded exact-function adapter boundary on 2026-04-24
+
+The guarded BFCL path is a paper-safety and diagnostic repair, not a planner headline upgrade. It makes BFCL function selection deterministic and schema-top1-first:
+
+- schema top-1 wins ties and zero-coverage planner overrides;
+- planner-preferred tools are retained only when already selected by the registered schema ranking policy;
+- runtime selection diagnostics exclude expected function, gold call count, gold order, and official failure bucket;
+- `bfcl_function_selection_audit.json/md` may add expected function and guardability buckets after execution;
+- `reuse_claim_enabled_for_bfcl = false` and `a4_interpreted_as_guarded_execution_variant_only = true`.
+
+Promotion remains pending. `bfcl_exact_function_guard` requires full-suite wrong-function non-regression, missing-required reduction, tool-selection non-regression, and success non-regression. `bfcl_missing_required_guarded_reduction` additionally requires the pre-registered `baseline_missing_required_slice` gates. If only a diagnostic slice passes, it belongs in the appendix rather than the claim matrix.
 
 ## ToolSandbox persistent reuse boundary on 2026-04-24
 

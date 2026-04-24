@@ -360,22 +360,25 @@ def rank_candidate_tools(text: str, candidate_tools: Sequence[Any]) -> List[Dict
             score += 2.5
         if hint_overlap:
             score += 1.5
+        combined_overlap = semantic_overlap.union(schema_overlap).union(hint_overlap)
         ranked.append(
             {
                 "tool": tool,
                 "score": float(score),
-                "overlap": sorted(semantic_overlap.union(schema_overlap).union(hint_overlap)),
+                "overlap": sorted(combined_overlap),
                 "semantic_overlap": sorted(semantic_overlap),
                 "schema_overlap": sorted(schema_overlap),
                 "required_argument_coverage": float(required_coverage),
                 "exact_match": exact_match,
+                "schema_name_overlap_count": len(schema_overlap),
             }
         )
     ranked.sort(
         key=lambda item: (
             -float(item["score"]),
-            -len(item.get("semantic_overlap", [])),
+            -int(bool(item.get("exact_match"))),
             -float(item.get("required_argument_coverage", 0.0)),
+            -int(item.get("schema_name_overlap_count", 0) or 0),
             str(item["tool"].get("tool_id") or ""),
         )
     )
@@ -413,20 +416,9 @@ def select_candidate_tool(
         return dict(best["tool"])
     if str(current["tool"].get("tool_id") or "") == str(best["tool"].get("tool_id") or ""):
         return dict(current["tool"])
-    info_intent = _query_information_intent(text)
-    if best.get("exact_match") and not current.get("exact_match"):
-        return dict(best["tool"])
-    if best.get("semantic_overlap") and not current.get("semantic_overlap"):
-        return dict(best["tool"])
-    if best.get("schema_overlap") and not current.get("schema_overlap"):
-        return dict(best["tool"])
-    if info_intent and float(best.get("score", 0.0)) > float(current.get("score", 0.0)):
-        return dict(best["tool"])
-    if float(best.get("required_argument_coverage", 0.0)) >= float(current.get("required_argument_coverage", 0.0)) + 0.5:
-        return dict(best["tool"])
-    if float(best.get("score", 0.0)) >= float(current.get("score", 0.0)) + 0.5:
-        return dict(best["tool"])
-    return dict(current["tool"])
+    # BFCL is an exact function-call benchmark: the preferred planner tool is
+    # metadata only and must not override the deterministic schema top-1.
+    return dict(best["tool"])
 
 
 def extract_parallel_argument_sets(tool_id: str, parameters: Mapping[str, Any], text: str) -> List[Dict[str, Any]]:
