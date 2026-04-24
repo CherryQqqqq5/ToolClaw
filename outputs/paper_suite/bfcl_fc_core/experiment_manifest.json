@@ -1,6 +1,6 @@
 {
   "benchmark": "bfcl",
-  "generated_at": "2026-04-24T09:37:09.475675+00:00",
+  "generated_at": "2026-04-24T12:17:02.046624+00:00",
   "track": "fc_core",
   "source": "data/bfcl_formal/bfcl_v4.fc_core.aligned.jsonl",
   "source_manifest": "data/bfcl_formal/manifest.json",
@@ -29,13 +29,13 @@
   "bfcl_function_selection_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_function_selection_audit.json",
   "bfcl_candidate_coverage_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_candidate_coverage_audit.json",
   "bfcl_candidate_coverage_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_candidate_coverage_summary.json",
+  "bfcl_selected_correct_failure_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_selected_correct_failure_audit.json",
+  "bfcl_selected_correct_failure_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_selected_correct_failure_summary.json",
   "suite": "bfcl_fc_core",
   "paper_role": "limitation_with_candidate_coverage_diagnostic",
   "claim_ids": [
     "planner_binding_headline",
     "bfcl_exact_function_guard",
     "bfcl_missing_required_guarded_reduction"
-  ],
-  "git_commit": "869a72e1cc946a0e5e93117d7ac31ebb1f408e2c",
-  "canonical_claim_report": "claim_summary.json"
+  ]
 }

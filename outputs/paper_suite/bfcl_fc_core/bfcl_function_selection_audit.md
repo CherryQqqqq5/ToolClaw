@@ -10,13 +10,8 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 
 | system | bucket | count |
 |---|---|---:|
-| a0_baseline | expected_absent_from_schema_top5 | 827 |
-| a0_baseline | schema_top1_expected | 798 |
-| a1_recovery | expected_absent_from_schema_top5 | 827 |
-| a1_recovery | schema_top1_expected | 798 |
-| a2_planner | expected_absent_from_schema_top5 | 827 |
-| a2_planner | schema_top1_expected | 798 |
-| a3_interaction | expected_absent_from_schema_top5 | 827 |
-| a3_interaction | schema_top1_expected | 798 |
-| a4_reuse | expected_absent_from_schema_top5 | 827 |
-| a4_reuse | schema_top1_expected | 798 |
+| a0_baseline | schema_top1_expected | 1625 |
+| a1_recovery | schema_top1_expected | 1625 |
+| a2_planner | schema_top1_expected | 1625 |
+| a3_interaction | schema_top1_expected | 1625 |
+| a4_reuse | schema_top1_expected | 1625 |

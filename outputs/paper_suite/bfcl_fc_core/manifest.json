@@ -2,7 +2,7 @@
   "suite": "bfcl_fc_core",
   "status": "completed",
   "paper_role": "limitation_with_candidate_coverage_diagnostic",
-  "generated_at": "2026-04-24T09:39:23.512213+00:00",
+  "generated_at": "2026-04-24T12:19:28.894251+00:00",
   "runner": "scripts/run_bfcl_bench.py",
   "score_script": "scripts/score_bfcl_outputs.py",
   "runner_command": [
@@ -37,7 +37,5 @@
   ],
   "claim_summary_path": "outputs/paper_suite/bfcl_fc_core/claim_summary.json",
   "comparison_raw_path": "outputs/paper_suite/bfcl_fc_core/comparison.raw.csv",
-  "comparison_scored_path": "outputs/paper_suite/bfcl_fc_core/comparison.scored.csv",
-  "git_commit": "869a72e1cc946a0e5e93117d7ac31ebb1f408e2c",
-  "canonical_claim_report": "claim_summary.json"
+  "comparison_scored_path": "outputs/paper_suite/bfcl_fc_core/comparison.scored.csv"
 }
