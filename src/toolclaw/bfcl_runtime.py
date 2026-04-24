@@ -215,6 +215,10 @@ def load_multi_turn_candidate_tools(
                     "parameters": parameters,
                     "metadata": {
                         "bfcl_class": str(class_name),
+                        "bfcl_original_function_name": tool_id,
+                        "bfcl_original_index": len(tools) + 1,
+                        "canonical_name": tool_id,
+                        "normalization_trace": ["official_multi_turn_func_doc"],
                         "semantic_tags": sorted(_TOOL_HINTS.get(tool_id, set())),
                     },
                 }

@@ -396,9 +396,33 @@ def _bfcl_required_arg_status(tool: Optional[ToolSpec], text: str) -> Dict[str, 
     }
 
 
-def _bfcl_rank_summary(item: Dict[str, Any]) -> Dict[str, Any]:
+def _bfcl_tool_original_function_name(tool: Any) -> str:
+    metadata = getattr(tool, "metadata", {}) if not isinstance(tool, dict) else tool.get("metadata", {})
+    if not isinstance(metadata, dict):
+        metadata = {}
+    tool_id = str(getattr(tool, "tool_id", "") if not isinstance(tool, dict) else tool.get("tool_id", ""))
+    return str(metadata.get("bfcl_original_function_name") or metadata.get("canonical_name") or tool_id).strip()
+
+
+def _bfcl_runtime_candidate_summary(candidate_tools: List[ToolSpec]) -> Dict[str, Any]:
+    tool_ids = [str(tool.tool_id) for tool in candidate_tools]
+    original_names = [_bfcl_tool_original_function_name(tool) for tool in candidate_tools]
     return {
-        "tool_id": _bfcl_rank_item_tool_id(item),
+        "runtime_candidate_count": len(candidate_tools),
+        "runtime_candidate_tool_ids": tool_ids,
+        "runtime_candidate_original_function_names": original_names,
+    }
+
+
+def _bfcl_rank_summary(item: Dict[str, Any]) -> Dict[str, Any]:
+    tool = item.get("tool") if isinstance(item.get("tool"), dict) else {}
+    metadata = tool.get("metadata", {}) if isinstance(tool, dict) else {}
+    if not isinstance(metadata, dict):
+        metadata = {}
+    tool_id = _bfcl_rank_item_tool_id(item)
+    return {
+        "tool_id": tool_id,
+        "bfcl_original_function_name": str(metadata.get("bfcl_original_function_name") or metadata.get("canonical_name") or tool_id),
         "score": _bfcl_rank_item_score(item),
         "exact_match": bool(item.get("exact_match")),
         "required_argument_coverage": float(item.get("required_argument_coverage", 0.0) or 0.0),
@@ -419,7 +443,10 @@ def _bfcl_schema_ranked_choice(
     official failure buckets are added only by the scorer/audit stage.
     """
     lookup = _bfcl_tool_lookup(candidate_tools)
+    candidate_summary = _bfcl_runtime_candidate_summary(candidate_tools)
     ranked = rank_candidate_tools(text, candidate_tools)
+    ranker_candidate_tool_ids = [_bfcl_rank_item_tool_id(item) for item in ranked]
+    ranker_candidate_original_names = [str(_bfcl_rank_summary(item).get("bfcl_original_function_name") or "") for item in ranked]
     planner_tool_id = str(preferred_tool_id or "").strip()
     if not ranked:
         selected_tool_id = planner_tool_id if planner_tool_id in lookup else (candidate_tools[0].tool_id if candidate_tools else "")
@@ -427,6 +454,10 @@ def _bfcl_schema_ranked_choice(
         diagnostics = {
             "guard_policy_version": "strict_schema_top1_tie_drop_v1",
             "planner_tool_id": planner_tool_id,
+            **candidate_summary,
+            "ranker_candidate_count": 0,
+            "ranker_candidate_tool_ids": [],
+            "ranker_candidate_original_function_names": [],
             "schema_top_5": [],
             "schema_top_tool_id": "",
             "schema_top_score": 0.0,
@@ -487,6 +518,10 @@ def _bfcl_schema_ranked_choice(
     diagnostics = {
         "guard_policy_version": "strict_schema_top1_tie_drop_v1",
         "planner_tool_id": planner_tool_id,
+        **candidate_summary,
+        "ranker_candidate_count": len(ranked),
+        "ranker_candidate_tool_ids": ranker_candidate_tool_ids,
+        "ranker_candidate_original_function_names": ranker_candidate_original_names,
         "schema_top_5": [_bfcl_rank_summary(item) for item in ranked[:5]],
         "schema_top_tool_id": best_tool_id,
         "schema_top_score": best_score,

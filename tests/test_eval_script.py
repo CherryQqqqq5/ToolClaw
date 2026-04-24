@@ -2211,3 +2211,39 @@ def test_bfcl_schema_ranked_choice_runtime_diagnostics_are_gold_free() -> None:
     encoded = json.dumps(diagnostics)
     for forbidden in ("expected_function", "expected_tool", "gold_tool", "official_failure_bucket"):
         assert forbidden not in encoded
+
+
+def test_bfcl_schema_ranked_choice_records_candidate_coverage_diagnostics() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_candidate_coverage", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tools = [
+        module.ToolSpec(
+            tool_id="wrong_tool",
+            description="Wrong tool",
+            metadata={"bfcl_original_function_name": "Wrong.original", "parameters": {}},
+        ),
+        module.ToolSpec(
+            tool_id="right_tool",
+            description="Right lookup tool",
+            metadata={"bfcl_original_function_name": "Right.original", "parameters": {}},
+        ),
+    ]
+
+    selected, diagnostics = module._bfcl_schema_ranked_choice(
+        tools,
+        "right lookup",
+        preferred_tool_id="wrong_tool",
+    )
+
+    assert selected is not None
+    assert diagnostics["runtime_candidate_count"] == 2
+    assert diagnostics["runtime_candidate_tool_ids"] == ["wrong_tool", "right_tool"]
+    assert diagnostics["runtime_candidate_original_function_names"] == ["Wrong.original", "Right.original"]
+    assert set(diagnostics["ranker_candidate_tool_ids"]) == {"wrong_tool", "right_tool"}
+    assert "expected_function" not in json.dumps(diagnostics)
+    assert "gold_tool" not in json.dumps(diagnostics)

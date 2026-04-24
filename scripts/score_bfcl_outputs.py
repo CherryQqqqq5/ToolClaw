@@ -545,6 +545,334 @@ def _write_bfcl_function_selection_audit_markdown(audit: Dict[str, Any], path: P
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _json_list_field(value: Any) -> List[Any]:
+    if isinstance(value, list):
+        return value
+    text = str(value or "").strip()
+    if not text:
+        return []
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+    return payload if isinstance(payload, list) else []
+
+
+def _candidate_tool_records(row: Dict[str, Any]) -> List[Dict[str, Any]]:
+    records: List[Dict[str, Any]] = []
+    for idx, raw_tool in enumerate(_json_list_field(row.get("candidate_tools")), start=1):
+        if isinstance(raw_tool, str):
+            records.append(
+                {
+                    "tool_id": raw_tool,
+                    "bfcl_original_function_name": raw_tool,
+                    "bfcl_original_index": idx,
+                }
+            )
+            continue
+        if not isinstance(raw_tool, dict):
+            continue
+        metadata = raw_tool.get("metadata", {}) if isinstance(raw_tool.get("metadata"), dict) else {}
+        tool_id = str(raw_tool.get("tool_id") or raw_tool.get("name") or "").strip()
+        original_name = str(metadata.get("bfcl_original_function_name") or raw_tool.get("name") or tool_id).strip()
+        records.append(
+            {
+                "tool_id": tool_id,
+                "bfcl_original_function_name": original_name,
+                "bfcl_original_index": metadata.get("bfcl_original_index", idx),
+                "canonical_name": str(metadata.get("canonical_name") or tool_id),
+                "normalization_trace": list(metadata.get("normalization_trace", [])) if isinstance(metadata.get("normalization_trace"), list) else [],
+            }
+        )
+    return records
+
+
+def _name_variants(record: Dict[str, Any]) -> List[str]:
+    values = [
+        record.get("tool_id"),
+        record.get("bfcl_original_function_name"),
+        record.get("canonical_name"),
+    ]
+    return [str(value).strip() for value in values if str(value or "").strip()]
+
+
+def _contains_name(records: List[Dict[str, Any]], expected: str) -> bool:
+    if not expected:
+        return False
+    return any(expected in _name_variants(record) for record in records)
+
+
+def _match_name(records: List[Dict[str, Any]], expected: str, key: str) -> str | None:
+    if not expected:
+        return None
+    for record in records:
+        if expected in _name_variants(record):
+            value = str(record.get(key) or "").strip()
+            return value or None
+    return None
+
+
+def _diagnostic_tool_records(diagnostic: Dict[str, Any], *, id_key: str, original_key: str) -> List[Dict[str, Any]]:
+    ids = diagnostic.get(id_key, [])
+    originals = diagnostic.get(original_key, [])
+    if not isinstance(ids, list):
+        ids = []
+    if not isinstance(originals, list):
+        originals = []
+    records: List[Dict[str, Any]] = []
+    for idx, tool_id in enumerate(ids):
+        original = originals[idx] if idx < len(originals) else tool_id
+        records.append(
+            {
+                "tool_id": str(tool_id or ""),
+                "bfcl_original_function_name": str(original or tool_id or ""),
+            }
+        )
+    return records
+
+
+def _schema_top_records(diagnostic: Dict[str, Any]) -> List[Dict[str, Any]]:
+    records: List[Dict[str, Any]] = []
+    top = diagnostic.get("schema_top_5", [])
+    if not isinstance(top, list):
+        return records
+    for item in top:
+        if not isinstance(item, dict):
+            continue
+        tool_id = str(item.get("tool_id") or "").strip()
+        records.append(
+            {
+                "tool_id": tool_id,
+                "bfcl_original_function_name": str(item.get("bfcl_original_function_name") or tool_id),
+                "score": item.get("score"),
+                "required_argument_coverage": item.get("required_argument_coverage"),
+                "exact_match": item.get("exact_match"),
+            }
+        )
+    return records
+
+
+def _selected_matches_expected(diagnostic: Dict[str, Any], expected: str) -> bool:
+    selected = str(diagnostic.get("selected_tool_id") or "").strip()
+    if not expected or not selected:
+        return False
+    if selected == expected:
+        return True
+    runtime_records = _diagnostic_tool_records(
+        diagnostic,
+        id_key="runtime_candidate_tool_ids",
+        original_key="runtime_candidate_original_function_names",
+    )
+    return any(record.get("tool_id") == selected and expected in _name_variants(record) for record in runtime_records)
+
+
+def _bfcl_coverage_drop_stage(
+    *,
+    expected: str,
+    expected_in_raw: bool,
+    expected_in_prepared: bool,
+    expected_in_runtime: bool,
+    expected_in_ranker: bool,
+    expected_in_top5: bool,
+    expected_is_top1: bool,
+    selected_is_expected: bool,
+    success: bool,
+) -> Tuple[str, str]:
+    if not expected:
+        return "no_expected_function", "row has no expected function"
+    if not expected_in_raw:
+        return "raw_absent", "expected function is absent from candidate/raw function docs"
+    if not expected_in_prepared:
+        return "raw_to_prepared_drop", "expected function is absent after preparation/schema normalization"
+    if not expected_in_runtime:
+        return "prepared_to_runtime_drop", "expected function is absent from runtime candidate pool"
+    if not expected_in_ranker or not expected_in_top5:
+        return "runtime_to_top5_rank_drop", "expected function is available at runtime but absent from schema top-5"
+    if not expected_is_top1:
+        return "top5_to_top1_rank_error", "expected function is in schema top-5 but not schema top-1"
+    if not selected_is_expected:
+        return "top1_to_selected_guard_error", "schema top-1 is expected but final selected function differs"
+    if not success:
+        return "selected_correct_arg_or_shape_error", "selected function is expected but official scorer still fails"
+    return "selected_correct_success", "selected function is expected and official scorer succeeds"
+
+
+def _bfcl_candidate_coverage_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    diagnostic = _first_bfcl_selection_diagnostic(row)
+    expected = str(row.get("gold_tool") or "").strip()
+    failure_bucket = _reason_bucket(_decode_reasons(row.get("official_bfcl_eval_unsupported_reasons")))
+    prepared_records = _candidate_tool_records(row)
+    # In aligned BFCL sources, raw function docs and prepared schema are represented
+    # by the candidate tool list plus provenance metadata. The two stages are kept
+    # separate in the audit so future raw-source manifests can populate raw-only loss.
+    raw_records = list(prepared_records)
+    runtime_records = _diagnostic_tool_records(
+        diagnostic,
+        id_key="runtime_candidate_tool_ids",
+        original_key="runtime_candidate_original_function_names",
+    )
+    ranker_records = _diagnostic_tool_records(
+        diagnostic,
+        id_key="ranker_candidate_tool_ids",
+        original_key="ranker_candidate_original_function_names",
+    )
+    top5_records = _schema_top_records(diagnostic)
+    expected_in_raw = _contains_name(raw_records, expected)
+    expected_in_prepared = _contains_name(prepared_records, expected)
+    expected_in_runtime = _contains_name(runtime_records, expected)
+    expected_in_ranker = _contains_name(ranker_records, expected)
+    expected_in_top5 = _contains_name(top5_records, expected)
+    expected_is_top1 = _contains_name(top5_records[:1], expected)
+    selected_is_expected = _selected_matches_expected(diagnostic, expected)
+    success = float(row.get("official_bfcl_eval_success", 0.0) or 0.0) >= 1.0
+    drop_stage, drop_reason = _bfcl_coverage_drop_stage(
+        expected=expected,
+        expected_in_raw=expected_in_raw,
+        expected_in_prepared=expected_in_prepared,
+        expected_in_runtime=expected_in_runtime,
+        expected_in_ranker=expected_in_ranker,
+        expected_in_top5=expected_in_top5,
+        expected_is_top1=expected_is_top1,
+        selected_is_expected=selected_is_expected,
+        success=success,
+    )
+    case_type = ":".join(
+        item
+        for item in [str(row.get("bfcl_group") or "unknown"), str(row.get("bfcl_call_pattern") or "unknown")]
+        if item
+    )
+    return {
+        "row_id": f"{row.get('run_index')}::{row.get('task_id')}::{row.get('system')}",
+        "run_index": int(row.get("run_index", 0) or 0),
+        "task_id": str(row.get("task_id") or ""),
+        "system": str(row.get("system") or ""),
+        "case_type": case_type,
+        "expected_function": expected,
+        "raw_function_count": len(raw_records),
+        "prepared_function_count": len(prepared_records),
+        "runtime_candidate_count": int(diagnostic.get("runtime_candidate_count", len(runtime_records)) or 0),
+        "ranker_candidate_count": int(diagnostic.get("ranker_candidate_count", len(ranker_records)) or 0),
+        "expected_in_raw_function_docs": expected_in_raw,
+        "expected_in_prepared_schema": expected_in_prepared,
+        "expected_in_runtime_candidates": expected_in_runtime,
+        "expected_in_ranker_candidates": expected_in_ranker,
+        "expected_in_schema_top5": expected_in_top5,
+        "expected_is_schema_top1": expected_is_top1,
+        "selected_is_expected": selected_is_expected,
+        "selected_correct_but_args_wrong": selected_is_expected and failure_bucket in {"missing_required", "value_error", "other_official_failure"},
+        "selected_correct_but_call_shape_wrong": selected_is_expected and failure_bucket in {"wrong_count", "multi_turn_mismatch", "multi_turn_other"},
+        "raw_match_name": _match_name(raw_records, expected, "bfcl_original_function_name"),
+        "prepared_match_tool_id": _match_name(prepared_records, expected, "tool_id"),
+        "runtime_match_tool_id": _match_name(runtime_records, expected, "tool_id"),
+        "drop_stage": drop_stage,
+        "drop_reason": drop_reason,
+        "schema_top5": top5_records,
+        "selected_tool_id": str(diagnostic.get("selected_tool_id") or row.get("chosen_tool") or ""),
+        "selected_reason": str(diagnostic.get("selected_reason") or ""),
+        "official_failure_bucket": failure_bucket,
+        "official_success": success,
+    }
+
+
+def _ratio(count: int, denominator: int) -> float:
+    return float(count) / float(denominator) if denominator else 0.0
+
+
+def _coverage_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    total = len(rows)
+    selected_expected = [row for row in rows if row.get("selected_is_expected")]
+    runtime_expected = [row for row in rows if row.get("expected_in_runtime_candidates")]
+    return {
+        "total_rows": total,
+        "expected_in_raw_function_docs": sum(1 for row in rows if row.get("expected_in_raw_function_docs")),
+        "expected_in_prepared_schema": sum(1 for row in rows if row.get("expected_in_prepared_schema")),
+        "expected_in_runtime_candidates": sum(1 for row in rows if row.get("expected_in_runtime_candidates")),
+        "expected_in_schema_top5": sum(1 for row in rows if row.get("expected_in_schema_top5")),
+        "expected_is_schema_top1": sum(1 for row in rows if row.get("expected_is_schema_top1")),
+        "selected_is_expected": len(selected_expected),
+        "selected_expected_success": sum(1 for row in selected_expected if row.get("official_success")),
+        "coverage_raw": _ratio(sum(1 for row in rows if row.get("expected_in_raw_function_docs")), total),
+        "coverage_prepared": _ratio(sum(1 for row in rows if row.get("expected_in_prepared_schema")), total),
+        "coverage_runtime": _ratio(sum(1 for row in rows if row.get("expected_in_runtime_candidates")), total),
+        "coverage_top5": _ratio(sum(1 for row in rows if row.get("expected_in_schema_top5")), total),
+        "ranker_top1": _ratio(sum(1 for row in rows if row.get("expected_is_schema_top1")), len(runtime_expected)),
+        "selection_accuracy": _ratio(len(selected_expected), len(runtime_expected)),
+        "arg_success_given_correct_tool": _ratio(sum(1 for row in selected_expected if row.get("official_success")), len(selected_expected)),
+        "drop_stage_counts": dict(Counter(str(row.get("drop_stage") or "unknown") for row in rows)),
+    }
+
+
+def _bfcl_candidate_coverage_audit(scored_rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    rows = [_bfcl_candidate_coverage_row(row) for row in scored_rows]
+    runtime_gold_leak_count = sum(
+        1
+        for row in scored_rows
+        if _diagnostic_contains_gold_fields(_first_bfcl_selection_diagnostic(row))
+    )
+    by_case: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    by_system: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        by_case[str(row.get("case_type") or "unknown")].append(row)
+        by_system[str(row.get("system") or "unknown")].append(row)
+    return {
+        "audit_schema_version": "bfcl_candidate_coverage_audit_v1",
+        "gold_fields_added_after_execution": True,
+        "runtime_diagnostics_gold_free": runtime_gold_leak_count == 0,
+        "runtime_gold_field_leak_count": runtime_gold_leak_count,
+        "summary": _coverage_summary_for_rows(rows),
+        "by_case_type": {key: _coverage_summary_for_rows(value) for key, value in sorted(by_case.items())},
+        "by_system": {key: _coverage_summary_for_rows(value) for key, value in sorted(by_system.items())},
+        "rows": rows,
+    }
+
+
+def _write_bfcl_candidate_coverage_markdown(audit: Dict[str, Any], path: Path) -> None:
+    summary = audit.get("summary", {}) if isinstance(audit.get("summary"), dict) else {}
+    lines = [
+        "# BFCL Candidate Coverage Audit",
+        "",
+        "This report is gold-enriched after execution. Runtime diagnostics remain gold-free.",
+        "",
+        f"- audit_schema_version: `{audit.get('audit_schema_version')}`",
+        f"- runtime_diagnostics_gold_free: `{audit.get('runtime_diagnostics_gold_free')}`",
+        "",
+        "## Funnel Summary",
+        "",
+        "| metric | value |",
+        "|---|---:|",
+    ]
+    for key in [
+        "total_rows",
+        "expected_in_raw_function_docs",
+        "expected_in_prepared_schema",
+        "expected_in_runtime_candidates",
+        "expected_in_schema_top5",
+        "expected_is_schema_top1",
+        "selected_is_expected",
+        "selected_expected_success",
+        "coverage_raw",
+        "coverage_prepared",
+        "coverage_runtime",
+        "coverage_top5",
+        "ranker_top1",
+        "selection_accuracy",
+        "arg_success_given_correct_tool",
+    ]:
+        lines.append(f"| {key} | {summary.get(key, 0)} |")
+    lines.extend(["", "## Drop Stages", "", "| drop_stage | count |", "|---|---:|"])
+    for stage, count in sorted((summary.get("drop_stage_counts") or {}).items()):
+        lines.append(f"| {stage} | {count} |")
+    lines.extend(["", "## By Case Type", "", "| case_type | total | runtime coverage | top5 coverage | selected expected | top drop stage |", "|---|---:|---:|---:|---:|---|"])
+    for case_type, case_summary in audit.get("by_case_type", {}).items():
+        drops = case_summary.get("drop_stage_counts") or {}
+        top_drop = max(drops.items(), key=lambda item: item[1])[0] if drops else "none"
+        lines.append(
+            f"| {case_type} | {case_summary.get('total_rows', 0)} | {case_summary.get('coverage_runtime', 0)} | {case_summary.get('coverage_top5', 0)} | {case_summary.get('selected_is_expected', 0)} | {top_drop} |"
+        )
+    lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def _bucket_counts_by_system(scored_rows: List[Dict[str, Any]]) -> Dict[str, Counter]:
     counts: Dict[str, Counter] = defaultdict(Counter)
     for row in scored_rows:
@@ -994,6 +1322,13 @@ def main() -> None:
     )
     failure_slice_summary = _bfcl_failure_slice_summary(scored_rows)
     function_selection_audit = _bfcl_function_selection_audit(scored_rows)
+    candidate_coverage_audit = _bfcl_candidate_coverage_audit(scored_rows)
+    candidate_coverage_summary = {
+        "audit_schema_version": "bfcl_candidate_coverage_summary_v1",
+        "summary": candidate_coverage_audit.get("summary", {}),
+        "by_case_type": candidate_coverage_audit.get("by_case_type", {}),
+        "by_system": candidate_coverage_audit.get("by_system", {}),
+    }
 
     (outdir / "official_scoreboard.json").write_text(json.dumps(official_scoreboard, indent=2), encoding="utf-8")
     (outdir / "toolclaw_diagnostics.json").write_text(json.dumps(toolclaw_diagnostics, indent=2), encoding="utf-8")
@@ -1002,6 +1337,10 @@ def main() -> None:
     _write_bfcl_failure_slice_markdown(failure_slice_summary, outdir / "bfcl_failure_slice_summary.md")
     (outdir / "bfcl_function_selection_audit.json").write_text(json.dumps(function_selection_audit, indent=2), encoding="utf-8")
     _write_bfcl_function_selection_audit_markdown(function_selection_audit, outdir / "bfcl_function_selection_audit.md")
+    (outdir / "bfcl_candidate_coverage_audit.json").write_text(json.dumps(candidate_coverage_audit, indent=2), encoding="utf-8")
+    _write_bfcl_candidate_coverage_markdown(candidate_coverage_audit, outdir / "bfcl_candidate_coverage_audit.md")
+    (outdir / "bfcl_candidate_coverage_summary.json").write_text(json.dumps(candidate_coverage_summary, indent=2), encoding="utf-8")
+    _write_bfcl_candidate_coverage_markdown(candidate_coverage_audit, outdir / "bfcl_candidate_coverage_summary.md")
 
     manifest["comparison_scored_path"] = _display_path(comparison_scored_path)
     manifest["official_scoreboard_path"] = _display_path(outdir / "official_scoreboard.json")
@@ -1009,12 +1348,15 @@ def main() -> None:
     manifest["claim_summary_path"] = _display_path(outdir / "claim_summary.json")
     manifest["bfcl_failure_slice_summary_path"] = _display_path(outdir / "bfcl_failure_slice_summary.json")
     manifest["bfcl_function_selection_audit_path"] = _display_path(outdir / "bfcl_function_selection_audit.json")
+    manifest["bfcl_candidate_coverage_audit_path"] = _display_path(outdir / "bfcl_candidate_coverage_audit.json")
+    manifest["bfcl_candidate_coverage_summary_path"] = _display_path(outdir / "bfcl_candidate_coverage_summary.json")
     (outdir / "experiment_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     print(f"official_scoreboard: {outdir / 'official_scoreboard.json'}")
     print(f"toolclaw_diagnostics: {outdir / 'toolclaw_diagnostics.json'}")
     print(f"claim_summary: {outdir / 'claim_summary.json'}")
     print(f"bfcl_function_selection_audit: {outdir / 'bfcl_function_selection_audit.json'}")
+    print(f"bfcl_candidate_coverage_audit: {outdir / 'bfcl_candidate_coverage_audit.json'}")
 
 
 if __name__ == "__main__":

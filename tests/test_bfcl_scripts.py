@@ -1495,3 +1495,155 @@ def test_bfcl_guardability_schema_ranker_buckets() -> None:
     assert absent_flags["schema_top1_expected"] is False
     assert absent_flags["schema_top1_wrong_expected_in_top5"] is False
     assert absent_flags["expected_absent_from_schema_top5"] is True
+
+
+def test_bfcl_prepare_preserves_original_function_provenance() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "prepare_bfcl_source_provenance_module",
+        ROOT_DIR / "scripts" / "prepare_bfcl_source.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    tools = module._normalize_candidate_tools(
+        {
+            "candidate_tools": [
+                "plain_lookup",
+                {
+                    "name": "Namespace.originalFunction",
+                    "tool_id": "internal_tool_id",
+                    "description": "Original function description",
+                    "parameters": {"type": "dict"},
+                },
+            ]
+        }
+    )
+
+    assert tools[0]["metadata"]["bfcl_original_function_name"] == "plain_lookup"
+    assert tools[0]["metadata"]["bfcl_original_index"] == 1
+    assert tools[1]["tool_id"] == "internal_tool_id"
+    assert tools[1]["metadata"]["bfcl_original_function_name"] == "Namespace.originalFunction"
+    assert tools[1]["metadata"]["bfcl_original_index"] == 2
+    assert "prepare_bfcl_source.normalize_candidate_tool" in tools[1]["metadata"]["normalization_trace"]
+
+
+def test_bfcl_candidate_coverage_drop_stage_classifier() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_coverage_stage_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    cases = [
+        ({"expected": "tool", "expected_in_raw": False, "expected_in_prepared": False, "expected_in_runtime": False, "expected_in_ranker": False, "expected_in_top5": False, "expected_is_top1": False, "selected_is_expected": False, "success": False}, "raw_absent"),
+        ({"expected": "tool", "expected_in_raw": True, "expected_in_prepared": False, "expected_in_runtime": False, "expected_in_ranker": False, "expected_in_top5": False, "expected_is_top1": False, "selected_is_expected": False, "success": False}, "raw_to_prepared_drop"),
+        ({"expected": "tool", "expected_in_raw": True, "expected_in_prepared": True, "expected_in_runtime": False, "expected_in_ranker": False, "expected_in_top5": False, "expected_is_top1": False, "selected_is_expected": False, "success": False}, "prepared_to_runtime_drop"),
+        ({"expected": "tool", "expected_in_raw": True, "expected_in_prepared": True, "expected_in_runtime": True, "expected_in_ranker": True, "expected_in_top5": False, "expected_is_top1": False, "selected_is_expected": False, "success": False}, "runtime_to_top5_rank_drop"),
+        ({"expected": "tool", "expected_in_raw": True, "expected_in_prepared": True, "expected_in_runtime": True, "expected_in_ranker": True, "expected_in_top5": True, "expected_is_top1": False, "selected_is_expected": False, "success": False}, "top5_to_top1_rank_error"),
+        ({"expected": "tool", "expected_in_raw": True, "expected_in_prepared": True, "expected_in_runtime": True, "expected_in_ranker": True, "expected_in_top5": True, "expected_is_top1": True, "selected_is_expected": False, "success": False}, "top1_to_selected_guard_error"),
+        ({"expected": "tool", "expected_in_raw": True, "expected_in_prepared": True, "expected_in_runtime": True, "expected_in_ranker": True, "expected_in_top5": True, "expected_is_top1": True, "selected_is_expected": True, "success": False}, "selected_correct_arg_or_shape_error"),
+    ]
+    for kwargs, expected_stage in cases:
+        stage, _reason = module._bfcl_coverage_drop_stage(**kwargs)
+        assert stage == expected_stage
+
+
+def test_bfcl_candidate_coverage_audit_generates_funnel_rows(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_coverage_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    trace_path = tmp_path / "trace.json"
+    runtime_diagnostic = {
+        "runtime_candidate_count": 2,
+        "runtime_candidate_tool_ids": ["expected_tool", "other_tool"],
+        "runtime_candidate_original_function_names": ["expected_tool", "other_tool"],
+        "ranker_candidate_count": 2,
+        "ranker_candidate_tool_ids": ["expected_tool", "other_tool"],
+        "ranker_candidate_original_function_names": ["expected_tool", "other_tool"],
+        "schema_top_5": [{"tool_id": "other_tool", "bfcl_original_function_name": "other_tool", "score": 3.0}],
+        "selected_tool_id": "other_tool",
+        "selected_reason": "schema_score_higher",
+    }
+    trace_path.write_text(
+        json.dumps({"metadata": {"task_annotations": {"bfcl_rerank_diagnostics": [runtime_diagnostic]}}}),
+        encoding="utf-8",
+    )
+    rows = [
+        {
+            "run_index": "1",
+            "task_id": "task_1",
+            "system": "a2_planner",
+            "bfcl_group": "non_live",
+            "bfcl_call_pattern": "serial",
+            "gold_tool": "expected_tool",
+            "chosen_tool": "other_tool",
+            "candidate_tools": json.dumps(
+                [
+                    {"tool_id": "expected_tool", "metadata": {"bfcl_original_function_name": "expected_tool"}},
+                    {"tool_id": "other_tool", "metadata": {"bfcl_original_function_name": "other_tool"}},
+                ]
+            ),
+            "trace_path": str(trace_path),
+            "official_bfcl_eval_unsupported_reasons": json.dumps(["wrong_func_name"]),
+            "official_bfcl_eval_success": 0.0,
+        }
+    ]
+
+    audit = module._bfcl_candidate_coverage_audit(rows)
+    row = audit["rows"][0]
+
+    assert audit["audit_schema_version"] == "bfcl_candidate_coverage_audit_v1"
+    assert row["expected_in_raw_function_docs"] is True
+    assert row["expected_in_prepared_schema"] is True
+    assert row["expected_in_runtime_candidates"] is True
+    assert row["expected_in_schema_top5"] is False
+    assert row["drop_stage"] == "runtime_to_top5_rank_drop"
+    assert audit["summary"]["coverage_runtime"] == 1.0
+    assert audit["summary"]["coverage_top5"] == 0.0
+
+
+def test_bfcl_candidate_coverage_audit_keeps_gold_out_of_runtime_diagnostics(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_coverage_gold_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    trace_path = tmp_path / "trace.json"
+    runtime_diagnostic = {
+        "runtime_candidate_tool_ids": ["safe_tool"],
+        "runtime_candidate_original_function_names": ["safe_tool"],
+        "ranker_candidate_tool_ids": ["safe_tool"],
+        "ranker_candidate_original_function_names": ["safe_tool"],
+        "schema_top_5": [{"tool_id": "safe_tool", "bfcl_original_function_name": "safe_tool"}],
+        "selected_tool_id": "safe_tool",
+        "selected_reason": "schema_top1_no_planner",
+    }
+    trace_path.write_text(json.dumps({"metadata": {"task_annotations": {"bfcl_rerank_diagnostics": [runtime_diagnostic]}}}), encoding="utf-8")
+    row = {
+        "run_index": "1",
+        "task_id": "task_1",
+        "system": "a2_planner",
+        "gold_tool": "safe_tool",
+        "candidate_tools": json.dumps([{"tool_id": "safe_tool"}]),
+        "trace_path": str(trace_path),
+        "official_bfcl_eval_unsupported_reasons": json.dumps([]),
+        "official_bfcl_eval_success": 1.0,
+    }
+
+    audit = module._bfcl_candidate_coverage_audit([row])
+    runtime_text = json.dumps(module._first_bfcl_selection_diagnostic(row))
+
+    assert "expected_function" not in runtime_text
+    assert "gold_tool" not in runtime_text
+    assert audit["rows"][0]["expected_function"] == "safe_tool"

@@ -232,23 +232,44 @@ class BFCLAdapter:
         normalized: List[Dict[str, Any]] = []
         for idx, raw_tool in enumerate(raw_tools, start=1):
             if isinstance(raw_tool, str):
-                normalized.append({"tool_id": raw_tool, "description": raw_tool})
+                normalized.append(
+                    {
+                        "tool_id": raw_tool,
+                        "description": raw_tool,
+                        "parameters": {},
+                        "metadata": {
+                            "bfcl_original_function_name": raw_tool,
+                            "bfcl_original_index": idx,
+                            "canonical_name": raw_tool,
+                            "normalization_trace": ["adapter.string_tool_id"],
+                        },
+                    }
+                )
                 continue
             if isinstance(raw_tool, dict):
                 parameters = raw_tool.get("parameters") or raw_tool.get("schema") or {}
+                tool_id = str(raw_tool.get("tool_id") or raw_tool.get("name") or f"tool_{idx:02d}")
+                original_name = str(raw_tool.get("name") or raw_tool.get("tool_id") or tool_id)
+                metadata = dict(raw_tool.get("metadata", {})) if isinstance(raw_tool.get("metadata"), dict) else {}
+                metadata.setdefault("bfcl_original_function_name", original_name)
+                metadata.setdefault("bfcl_original_index", idx)
+                metadata.setdefault("canonical_name", tool_id)
+                normalization_trace = metadata.get("normalization_trace")
+                metadata["normalization_trace"] = (
+                    [*normalization_trace, "BFCLAdapter.normalized_candidate_tool"]
+                    if isinstance(normalization_trace, list)
+                    else ["BFCLAdapter.normalized_candidate_tool"]
+                )
                 normalized.append(
                     {
-                        "tool_id": str(raw_tool.get("tool_id") or raw_tool.get("name") or f"tool_{idx:02d}"),
-                        "description": str(
-                            raw_tool.get("description")
-                            or raw_tool.get("tool_id")
-                            or raw_tool.get("name")
-                            or "tool"
-                        ),
+                        "tool_id": tool_id,
+                        "description": str(raw_tool.get("description") or tool_id or original_name or "tool"),
                         "parameters": parameters if isinstance(parameters, dict) else {},
+                        "metadata": metadata,
                     }
                 )
         return normalized
+
 
     def _build_candidate_tools(self, sample: BenchmarkSample) -> List[ToolSpec]:
         normalized = self._normalized_candidate_tools(sample.raw_payload)
@@ -257,7 +278,10 @@ class BFCLAdapter:
                 ToolSpec(
                     tool_id=str(tool["tool_id"]),
                     description=str(tool["description"]),
-                    metadata={"parameters": dict(tool.get("parameters", {}))},
+                    metadata={
+                        **(dict(tool.get("metadata", {})) if isinstance(tool.get("metadata"), dict) else {}),
+                        "parameters": dict(tool.get("parameters", {})),
+                    },
                 )
                 for tool in normalized
             ]
