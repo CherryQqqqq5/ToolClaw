@@ -761,6 +761,16 @@ def _bfcl_candidate_coverage_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "candidate_pool_source": str(diagnostic.get("candidate_pool_source") or ""),
         "candidate_pool_exception": candidate_pool_exception,
         "planner_narrowing_applied": bool(diagnostic.get("planner_narrowing_applied", False)),
+        "abstain_reason": str(diagnostic.get("abstain_reason") or ""),
+        "abstain_policy_version": str(diagnostic.get("abstain_policy_version") or ""),
+        "abstain_due_to_irrelevance_classifier": bool(diagnostic.get("abstain_due_to_irrelevance_classifier", False)),
+        "abstain_due_to_no_viable_schema_top1": bool(diagnostic.get("abstain_due_to_no_viable_schema_top1", False)),
+        "abstain_due_to_no_groundable_required_args": bool(diagnostic.get("abstain_due_to_no_groundable_required_args", False)),
+        "abstain_due_to_planner_noop": bool(diagnostic.get("abstain_due_to_planner_noop", False)),
+        "abstain_due_to_parallel_shape_guard": bool(diagnostic.get("abstain_due_to_parallel_shape_guard", False)),
+        "abstain_with_schema_top1_available": bool(diagnostic.get("abstain_with_schema_top1_available", False)),
+        "abstain_with_operation_cues_present": bool(diagnostic.get("abstain_with_operation_cues_present", False)),
+        "operation_cues_present": bool(diagnostic.get("operation_cues_present", False)),
         "expected_in_raw_function_docs": expected_in_raw,
         "expected_in_prepared_schema": expected_in_prepared,
         "expected_in_runtime_candidates": expected_in_runtime,
@@ -791,6 +801,7 @@ def _coverage_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     total = len(rows)
     selected_expected = [row for row in rows if row.get("selected_is_expected")]
     runtime_expected = [row for row in rows if row.get("expected_in_runtime_candidates")]
+    abstain_rows = [row for row in rows if row.get("candidate_pool_exception") == "bfcl_abstain"]
     return {
         "total_rows": total,
         "expected_in_raw_function_docs": sum(1 for row in rows if row.get("expected_in_raw_function_docs")),
@@ -808,6 +819,17 @@ def _coverage_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "selection_accuracy": _ratio(len(selected_expected), len(runtime_expected)),
         "arg_success_given_correct_tool": _ratio(sum(1 for row in selected_expected if row.get("official_success")), len(selected_expected)),
         "drop_stage_counts": dict(Counter(str(row.get("drop_stage") or "unknown") for row in rows)),
+        "abstain_substage_counts": {
+            "bfcl_abstain_total": len(abstain_rows),
+            "abstain_due_to_irrelevance_classifier": sum(1 for row in abstain_rows if row.get("abstain_due_to_irrelevance_classifier")),
+            "abstain_due_to_no_viable_schema_top1": sum(1 for row in abstain_rows if row.get("abstain_due_to_no_viable_schema_top1")),
+            "abstain_due_to_no_groundable_required_args": sum(1 for row in abstain_rows if row.get("abstain_due_to_no_groundable_required_args")),
+            "abstain_due_to_planner_noop": sum(1 for row in abstain_rows if row.get("abstain_due_to_planner_noop")),
+            "abstain_due_to_parallel_shape_guard": sum(1 for row in abstain_rows if row.get("abstain_due_to_parallel_shape_guard")),
+            "abstain_with_schema_top1_available": sum(1 for row in abstain_rows if row.get("abstain_with_schema_top1_available")),
+            "abstain_with_operation_cues_present": sum(1 for row in abstain_rows if row.get("abstain_with_operation_cues_present")),
+        },
+        "abstain_reason_counts": dict(Counter(str(row.get("abstain_reason") or "unknown") for row in abstain_rows)),
     }
 
 

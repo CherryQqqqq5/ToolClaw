@@ -32,7 +32,6 @@ from toolclaw.bfcl_runtime import (
     extract_tool_arguments,
     rank_candidate_tools,
     select_candidate_tool,
-    should_abstain_from_tools,
 )
 from toolclaw.benchmarks.metrics import (
     EvalRow,
@@ -428,6 +427,135 @@ def _bfcl_runtime_candidate_summary(
     }
 
 
+def _bfcl_empty_candidate_diagnostics(candidate_tools: List[ToolSpec]) -> Dict[str, Any]:
+    return {
+        "ranked": [],
+        "schema_top_5": [],
+        "schema_top_tool_id": "",
+        "schema_top_score": 0.0,
+        "schema_top_exact_match": False,
+        "schema_top_semantic_overlap": [],
+        "schema_top_required_argument_coverage": None,
+        "operation_cues_present": False,
+    }
+
+
+_BFCL_OPERATION_CUE_RE = re.compile(
+    r"\b("
+    r"get|fetch|find|search|look\s*up|retrieve|show|tell|calculate|compute|convert|"
+    r"book|schedule|create|send|update|change|modify|delete|cancel|call|order|"
+    r"compare|translate|summarize|generate|check|verify|validate|list"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _bfcl_has_operation_cues(text: str) -> bool:
+    return bool(_BFCL_OPERATION_CUE_RE.search(str(text or "")))
+
+
+def _bfcl_irrelevance_signal(task: Dict[str, Any]) -> bool:
+    metadata = task.get("metadata", {}) if isinstance(task.get("metadata"), dict) else {}
+    pieces = [
+        str(task.get("task_id") or ""),
+        str(task.get("scenario") or ""),
+        str(task.get("category") or ""),
+        str(metadata.get("bfcl_group") or ""),
+        str(metadata.get("bfcl_call_pattern") or ""),
+        str(metadata.get("category") or ""),
+        str(metadata.get("scenario") or ""),
+    ]
+    joined = " ".join(pieces).lower()
+    return "irrelevance" in joined or "no_call" in joined or task.get("ideal_tool_calls") == 0
+
+
+def _bfcl_schema_viability_diagnostics(candidate_tools: List[ToolSpec], text: str) -> Dict[str, Any]:
+    ranked = rank_candidate_tools(text, candidate_tools)
+    if not ranked:
+        return _bfcl_empty_candidate_diagnostics(candidate_tools)
+    best = ranked[0]
+    best_summary = _bfcl_rank_summary(best)
+    return {
+        "ranked": ranked,
+        "schema_top_5": [_bfcl_rank_summary(item) for item in ranked[:5]],
+        "schema_top_tool_id": str(best_summary.get("tool_id") or ""),
+        "schema_top_score": float(best_summary.get("score", 0.0) or 0.0),
+        "schema_top_exact_match": bool(best.get("exact_match")),
+        "schema_top_semantic_overlap": list(best.get("semantic_overlap", []) or []),
+        "schema_top_required_argument_coverage": float(best.get("required_argument_coverage", 0.0) or 0.0),
+        "operation_cues_present": _bfcl_has_operation_cues(text),
+    }
+
+
+def _bfcl_top1_is_viable(diag: Dict[str, Any]) -> bool:
+    return bool(
+        diag.get("schema_top_tool_id")
+        and (
+            float(diag.get("schema_top_score") or 0.0) > 0.0
+            or bool(diag.get("schema_top_exact_match"))
+            or bool(diag.get("schema_top_semantic_overlap"))
+            or float(diag.get("schema_top_required_argument_coverage") or 0.0) > 0.0
+        )
+    )
+
+
+def _bfcl_abstain_decision(
+    task: Dict[str, Any],
+    candidate_tools: List[ToolSpec],
+    text: str,
+) -> Dict[str, Any]:
+    """Return a gold-free BFCL abstain/no-call decision.
+
+    Expected calls are scorer gold and must not decide runtime behavior. BFCL
+    abstention is allowed only from observable no-call/irrelevance signals or
+    a completely non-viable schema candidate pool.
+    """
+    viability = _bfcl_schema_viability_diagnostics(candidate_tools, text)
+    irrelevance_signal = _bfcl_irrelevance_signal(task)
+    top1_viable = _bfcl_top1_is_viable(viability)
+    operation_cues = bool(viability.get("operation_cues_present"))
+    groundable_required = float(viability.get("schema_top_required_argument_coverage") or 0.0) > 0.0
+    no_viable_schema_top1 = not top1_viable
+    no_groundable_required_args = bool(viability.get("schema_top_tool_id")) and not groundable_required
+
+    should_abstain = False
+    reason = "not_applied"
+    if not candidate_tools:
+        should_abstain = True
+        reason = "no_candidate_tools"
+    elif irrelevance_signal:
+        should_abstain = True
+        reason = "irrelevance_classifier"
+    elif no_viable_schema_top1 and not operation_cues:
+        should_abstain = True
+        reason = "no_viable_schema_top1"
+    elif no_viable_schema_top1 and no_groundable_required_args:
+        should_abstain = True
+        reason = "no_groundable_required_args"
+
+    return {
+        "should_abstain": should_abstain,
+        "reason": reason,
+        "diagnostics": {
+            "abstain_policy_version": "bfcl_abstain_policy_v2",
+            "abstain_reason": reason,
+            "abstain_due_to_irrelevance_classifier": reason == "irrelevance_classifier",
+            "abstain_due_to_no_viable_schema_top1": reason == "no_viable_schema_top1",
+            "abstain_due_to_no_groundable_required_args": reason == "no_groundable_required_args",
+            "abstain_due_to_planner_noop": False,
+            "abstain_due_to_parallel_shape_guard": False,
+            "abstain_with_schema_top1_available": should_abstain and bool(viability.get("schema_top_tool_id")),
+            "abstain_with_operation_cues_present": should_abstain and operation_cues,
+            "operation_cues_present": operation_cues,
+            "schema_top_tool_id": str(viability.get("schema_top_tool_id") or ""),
+            "schema_top_score": float(viability.get("schema_top_score") or 0.0),
+            "selected_required_argument_coverage": viability.get("schema_top_required_argument_coverage"),
+            "schema_top_5": list(viability.get("schema_top_5", []) or []),
+            "ranked": list(viability.get("ranked", []) or []),
+        },
+    }
+
+
 def _bfcl_rank_summary(item: Dict[str, Any]) -> Dict[str, Any]:
     tool = item.get("tool") if isinstance(item.get("tool"), dict) else {}
     metadata = tool.get("metadata", {}) if isinstance(tool, dict) else {}
@@ -719,10 +847,7 @@ def _bfcl_expected_calls(task: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def _bfcl_should_abstain_task(task: Dict[str, Any], candidate_tools: List[ToolSpec], text: str) -> bool:
-    expected_calls = _bfcl_expected_calls(task)
-    if not expected_calls:
-        return True
-    return should_abstain_from_tools(text, candidate_tools)
+    return bool(_bfcl_abstain_decision(task, candidate_tools, text).get("should_abstain"))
 
 
 def _normalize_message_role(value: Any) -> str:
@@ -929,22 +1054,33 @@ def _ensure_workflow_capacity(workflow: Workflow, count: int) -> None:
         workflow.workflow_graph.nodes.append(deepcopy(source))
 
 
-def _bfcl_abstain_selection_diagnostics(candidate_tools: List[ToolSpec], reason: str) -> Dict[str, Any]:
+def _bfcl_abstain_selection_diagnostics(
+    candidate_tools: List[ToolSpec],
+    reason: str,
+    *,
+    abstain_diagnostics: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    abstain_diagnostics = dict(abstain_diagnostics or {})
+    ranked = list(abstain_diagnostics.pop("ranked", []) or [])
+    top5 = list(abstain_diagnostics.get("schema_top_5", []) or [])
+    ranker_candidate_tool_ids = [_bfcl_rank_item_tool_id(item) for item in ranked]
+    ranker_candidate_original_names = [str(_bfcl_rank_summary(item).get("bfcl_original_function_name") or "") for item in ranked]
     return {
         "guard_policy_version": "strict_schema_top1_tie_drop_v1",
         "planner_tool_id": "",
+        **abstain_diagnostics,
         **_bfcl_runtime_candidate_summary(
             [],
             prepared_function_count=len(candidate_tools),
             candidate_pool_exception="bfcl_abstain",
             drop_reason=reason or "bfcl abstain intentionally elides runtime candidate pool",
         ),
-        "ranker_candidate_count": 0,
-        "ranker_candidate_tool_ids": [],
-        "ranker_candidate_original_function_names": [],
-        "schema_top_5": [],
-        "schema_top_tool_id": "",
-        "schema_top_score": 0.0,
+        "ranker_candidate_count": len(ranked),
+        "ranker_candidate_tool_ids": ranker_candidate_tool_ids,
+        "ranker_candidate_original_function_names": ranker_candidate_original_names,
+        "schema_top_5": top5,
+        "schema_top_tool_id": str(abstain_diagnostics.get("schema_top_tool_id") or ""),
+        "schema_top_score": float(abstain_diagnostics.get("schema_top_score") or 0.0),
         "planner_score": None,
         "score_margin": None,
         "planner_in_schema_top2": False,
@@ -954,7 +1090,7 @@ def _bfcl_abstain_selection_diagnostics(candidate_tools: List[ToolSpec], reason:
         "rerank_override_reason": "bfcl_abstain",
         "schema_guard_applied": False,
         "planner_required_argument_coverage": None,
-        "selected_required_argument_coverage": None,
+        "selected_required_argument_coverage": abstain_diagnostics.get("selected_required_argument_coverage"),
         "planner_required_args_present": [],
         "selected_required_args_present": [],
         "planner_missing_required_args": [],
@@ -967,9 +1103,17 @@ def _configure_bfcl_abstain_workflow(
     candidate_tools: Optional[List[ToolSpec]] = None,
     *,
     reason: str = "",
+    abstain_diagnostics: Optional[Dict[str, Any]] = None,
 ) -> Workflow:
     candidate_tools = list(candidate_tools or [])
-    _record_bfcl_choice(workflow, _bfcl_abstain_selection_diagnostics(candidate_tools, reason))
+    _record_bfcl_choice(
+        workflow,
+        _bfcl_abstain_selection_diagnostics(
+            candidate_tools,
+            reason,
+            abstain_diagnostics=abstain_diagnostics,
+        ),
+    )
     workflow.capability_graph.capabilities = []
     workflow.capability_graph.edges = []
     workflow.tool_bindings = []
@@ -1153,11 +1297,13 @@ def _build_seed_workflow(
     raw_metadata = task.get("metadata", {})
     benchmark = str(raw_metadata.get("benchmark") or task.get("benchmark") or "").strip().lower() if isinstance(raw_metadata, dict) else str(task.get("benchmark") or "").strip().lower()
     if benchmark == "bfcl":
-        if _bfcl_should_abstain_task(task, candidate_tools, str(task.get("query") or user_goal)):
+        abstain_decision = _bfcl_abstain_decision(task, candidate_tools, str(task.get("query") or user_goal))
+        if abstain_decision.get("should_abstain"):
             return _configure_bfcl_abstain_workflow(
                 workflow,
                 candidate_tools,
-                reason="expected_empty_or_low_relevance",
+                reason=str(abstain_decision.get("reason") or "bfcl_abstain"),
+                abstain_diagnostics=abstain_decision.get("diagnostics") if isinstance(abstain_decision.get("diagnostics"), dict) else None,
             )
         step_specs = _bfcl_seed_specs(task, candidate_tools, user_goal)
         if not step_specs:
@@ -1252,11 +1398,13 @@ def _adapt_bfcl_workflow(
     query = str(task.get("query") or workflow.task.user_goal or "")
     milestones = [str(item).strip() for item in task.get("milestones", []) if str(item).strip()]
     call_pattern = str(metadata.get("bfcl_call_pattern") or "serial")
-    if _bfcl_should_abstain_task(task, candidate_tools, query):
+    abstain_decision = _bfcl_abstain_decision(task, candidate_tools, query)
+    if abstain_decision.get("should_abstain"):
         return _configure_bfcl_abstain_workflow(
             workflow,
             candidate_tools,
-            reason="expected_empty_or_low_relevance",
+            reason=str(abstain_decision.get("reason") or "bfcl_abstain"),
+            abstain_diagnostics=abstain_decision.get("diagnostics") if isinstance(abstain_decision.get("diagnostics"), dict) else None,
         )
     if not candidate_tools:
         return workflow

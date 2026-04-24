@@ -430,6 +430,93 @@ def test_build_workflow_from_task_bfcl_expected_empty_calls_abstains_with_empty_
     assert workflow.context.candidate_tools == []
 
 
+def test_build_workflow_from_task_bfcl_positive_serial_without_gold_shape_does_not_abstain() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_positive_no_gold_shape", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_live_simple_positive_no_gold_shape_001",
+            "query": "Could you tell me the current weather in Boston, MA?",
+            "candidate_tools": [
+                {
+                    "tool_id": "get_current_weather",
+                    "description": "Gets current weather conditions for a location.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["location"],
+                        "properties": {"location": {"type": "string"}},
+                    },
+                }
+            ],
+            "metadata": {
+                "benchmark": "bfcl",
+                "bfcl_group": "live",
+                "bfcl_call_pattern": "serial",
+            },
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert workflow.metadata.get("bfcl_abstained") is not True
+    assert [step.tool_id for step in workflow.execution_plan] == ["get_current_weather"]
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"][0]
+    assert diagnostics["selected_reason"] in {
+        "planner_aligned_schema_top1",
+        "schema_top1_no_planner",
+    }
+    assert diagnostics.get("candidate_pool_exception", "") == ""
+    assert "expected_call_count" not in json.dumps(diagnostics)
+
+
+def test_build_workflow_from_task_bfcl_positive_parallel_without_gold_shape_does_not_abstain_or_flatten() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_parallel_no_gold_shape", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_live_parallel_positive_no_gold_shape_001",
+            "query": "Could you tell me the current weather conditions for Boston, MA and also for San Francisco?",
+            "candidate_tools": [
+                {
+                    "tool_id": "get_current_weather",
+                    "description": "Gets current weather conditions for a location.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["location"],
+                        "properties": {"location": {"type": "string"}},
+                    },
+                }
+            ],
+            "metadata": {
+                "benchmark": "bfcl",
+                "bfcl_group": "live",
+                "bfcl_call_pattern": "parallel",
+            },
+        },
+        mode="planner",
+    )
+
+    assert workflow.metadata.get("bfcl_abstained") is not True
+    assert [step.tool_id for step in workflow.execution_plan] == [
+        "get_current_weather",
+        "get_current_weather",
+    ]
+    assert [step.inputs for step in workflow.execution_plan] == [
+        {"location": "Boston, MA"},
+        {"location": "San Francisco"},
+    ]
+
+
 def test_build_workflow_from_task_bfcl_required_query_is_not_stripped() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_required_query", module_path)
@@ -2453,7 +2540,7 @@ def test_build_workflow_from_task_bfcl_abstain_records_candidate_pool_exception(
 
     workflow = module.build_workflow_from_task(
         {
-            "task_id": "bfcl_abstain_candidate_pool_001",
+            "task_id": "bfcl_irrelevance_abstain_candidate_pool_001",
             "query": "This asks for a ride but no function call is expected.",
             "candidate_tools": [
                 {"tool_id": "call_uber", "description": "Requests an Uber ride."},
@@ -2461,7 +2548,7 @@ def test_build_workflow_from_task_bfcl_abstain_records_candidate_pool_exception(
             "expected_call_structure": {"pattern": "serial", "calls": []},
             "metadata": {
                 "benchmark": "bfcl",
-                "bfcl_group": "live",
+                "bfcl_group": "live_irrelevance",
                 "bfcl_call_pattern": "serial",
                 "expected_call_structure": {"pattern": "serial", "calls": []},
             },

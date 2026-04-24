@@ -1695,6 +1695,83 @@ def test_bfcl_candidate_coverage_marks_abstain_elision_as_intentional() -> None:
     assert "abstain" in reason.lower()
 
 
+def test_bfcl_candidate_coverage_splits_abstain_substages(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_module_abstain_substages",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    trace_path = tmp_path / "trace.json"
+    trace_path.write_text(
+        json.dumps(
+            {
+                "metadata": {
+                    "task_annotations": {
+                        "bfcl_rerank_diagnostics": [
+                            {
+                                "candidate_pool_exception": "bfcl_abstain",
+                                "abstain_reason": "irrelevance_classifier",
+                                "abstain_policy_version": "bfcl_abstain_policy_v2",
+                                "abstain_due_to_irrelevance_classifier": True,
+                                "abstain_due_to_no_viable_schema_top1": False,
+                                "abstain_due_to_no_groundable_required_args": False,
+                                "abstain_due_to_planner_noop": False,
+                                "abstain_due_to_parallel_shape_guard": False,
+                                "abstain_with_schema_top1_available": True,
+                                "abstain_with_operation_cues_present": True,
+                                "operation_cues_present": True,
+                                "runtime_candidate_tool_ids": [],
+                                "runtime_candidate_original_function_names": [],
+                                "runtime_candidate_count": 0,
+                                "ranker_candidate_tool_ids": ["expected_tool"],
+                                "ranker_candidate_original_function_names": ["expected_tool"],
+                                "ranker_candidate_count": 1,
+                                "schema_top_5": [
+                                    {"tool_id": "expected_tool", "bfcl_original_function_name": "expected_tool"}
+                                ],
+                                "selected_tool_id": "",
+                                "selected_reason": "bfcl_abstain",
+                            }
+                        ]
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    row = {
+        "run_index": 1,
+        "task_id": "abstain_substage",
+        "system": "a2_planner",
+        "bfcl_group": "live",
+        "bfcl_call_pattern": "serial",
+        "gold_tool": "expected_tool",
+        "chosen_tool": "",
+        "official_bfcl_eval_success": 0.0,
+        "official_bfcl_eval_unsupported_reasons": json.dumps(["wrong_count"]),
+        "candidate_tools": json.dumps(
+            [
+                {
+                    "tool_id": "expected_tool",
+                    "metadata": {"bfcl_original_function_name": "expected_tool"},
+                }
+            ]
+        ),
+        "trace_path": str(trace_path),
+    }
+
+    audit = module._bfcl_candidate_coverage_audit([row])
+    summary = audit["summary"]
+    assert summary["drop_stage_counts"]["bfcl_abstain_candidate_elision"] == 1
+    assert summary["abstain_substage_counts"]["abstain_due_to_irrelevance_classifier"] == 1
+    assert summary["abstain_substage_counts"]["abstain_with_schema_top1_available"] == 1
+    assert summary["abstain_substage_counts"]["abstain_with_operation_cues_present"] == 1
+    assert audit["rows"][0]["abstain_reason"] == "irrelevance_classifier"
+
+
 def test_bfcl_selected_correct_failure_audit_classifies_argument_and_shape_buckets(tmp_path: Path) -> None:
     spec = importlib.util.spec_from_file_location(
         "score_bfcl_outputs_selected_correct_module",
