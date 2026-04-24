@@ -1,0 +1,135 @@
+{
+  "summary_version": "toolsandbox_semantic_repair_official_v1",
+  "row_level": {
+    "a2_planner|probe_only_control": {
+      "system": "a2_planner",
+      "slice_type": "probe_only_control",
+      "num_rows": 18,
+      "strict_scored_success": 0.0,
+      "execution_verified_success": 1.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 0.0,
+      "mean_tool_calls": 1.1666666666666667
+    },
+    "a2_planner|repair_semantic_positive": {
+      "system": "a2_planner",
+      "slice_type": "repair_semantic_positive",
+      "num_rows": 18,
+      "strict_scored_success": 0.0,
+      "execution_verified_success": 0.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 0.0,
+      "mean_tool_calls": 1.0
+    },
+    "a3_full_interaction|probe_only_control": {
+      "system": "a3_full_interaction",
+      "slice_type": "probe_only_control",
+      "num_rows": 18,
+      "strict_scored_success": 1.0,
+      "execution_verified_success": 1.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 1.0,
+      "mean_tool_calls": 1.1666666666666667
+    },
+    "a3_full_interaction|repair_semantic_positive": {
+      "system": "a3_full_interaction",
+      "slice_type": "repair_semantic_positive",
+      "num_rows": 18,
+      "strict_scored_success": 1.0,
+      "execution_verified_success": 1.0,
+      "reply_usable_rate": 1.0,
+      "target_aligned_patch_rate": 1.0,
+      "effective_patch_rate": 1.0,
+      "post_query_progress_rate": 1.0,
+      "useful_interaction_round_rate": 1.0,
+      "mean_user_queries": 1.0,
+      "mean_tool_calls": 2.0
+    },
+    "a3_no_query|probe_only_control": {
+      "system": "a3_no_query",
+      "slice_type": "probe_only_control",
+      "num_rows": 18,
+      "strict_scored_success": 0.0,
+      "execution_verified_success": 1.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 0.0,
+      "mean_tool_calls": 1.1666666666666667
+    },
+    "a3_no_query|repair_semantic_positive": {
+      "system": "a3_no_query",
+      "slice_type": "repair_semantic_positive",
+      "num_rows": 18,
+      "strict_scored_success": 0.0,
+      "execution_verified_success": 0.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 0.0,
+      "mean_tool_calls": 1.0
+    },
+    "a3_noisy_user|probe_only_control": {
+      "system": "a3_noisy_user",
+      "slice_type": "probe_only_control",
+      "num_rows": 18,
+      "strict_scored_success": 1.0,
+      "execution_verified_success": 1.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 1.0,
+      "mean_tool_calls": 1.1666666666666667
+    },
+    "a3_noisy_user|repair_semantic_positive": {
+      "system": "a3_noisy_user",
+      "slice_type": "repair_semantic_positive",
+      "num_rows": 18,
+      "strict_scored_success": 0.0,
+      "execution_verified_success": 0.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 1.0,
+      "mean_tool_calls": 1.0
+    }
+  },
+  "round_level": {
+    "a3_full_interaction|repair_semantic_positive": {
+      "num_rounds": 18,
+      "reply_usable_rate": 1.0,
+      "target_aligned_patch_rate": 1.0,
+      "effective_patch_rate": 1.0,
+      "post_query_progress_rate": 1.0,
+      "useful_interaction_round_rate": 1.0
+    },
+    "a3_noisy_user|repair_semantic_positive": {
+      "num_rounds": 18,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0
+    }
+  }
+}

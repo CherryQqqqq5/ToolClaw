@@ -618,6 +618,18 @@ class SequentialExecutor:
         initial_state = dict(resume_patch.base_state)
         initial_state.update(resume_patch.state_updates)
         self._clear_state_slot_flags(initial_state, list(resume_patch.state_updates.keys()))
+        refreshed_slots = {str(key) for key in resume_patch.state_updates.keys() if str(key)}
+        if refreshed_slots:
+            resume_drop_slots = [str(item) for item in workflow.metadata.get("resume_state_drop_slots", []) if str(item)]
+            if resume_drop_slots:
+                workflow.metadata["resume_state_drop_slots"] = [
+                    slot for slot in resume_drop_slots if slot not in refreshed_slots
+                ]
+            resume_stale_slots = [str(item) for item in workflow.metadata.get("resume_state_stale_slots", []) if str(item)]
+            if resume_stale_slots:
+                workflow.metadata["resume_state_stale_slots"] = [
+                    slot for slot in resume_stale_slots if slot not in refreshed_slots
+                ]
         approved_steps = set(initial_state.get("__approved_steps__", []))
         approved_steps.update(initial_state.get("__approved_steps__", []))
         if resume_patch.policy_updates.get("approved"):
@@ -1657,6 +1669,15 @@ class SequentialExecutor:
             "chosen_tool",
             "state_slots",
             "dependency_edges",
+            "bfcl_planner_selected_tools",
+            "bfcl_final_ranked_tools",
+            "bfcl_rerank_override_applied",
+            "bfcl_rerank_override_reason",
+            "planner_canonicalized_to_bfcl_seed",
+            "bfcl_protocol_fallback_reason",
+            "bfcl_canonicalized_step_count_before",
+            "bfcl_canonicalized_step_count_after",
+            "bfcl_rerank_diagnostics",
         )
         return {key: workflow.metadata.get(key) for key in keys if workflow.metadata.get(key) is not None}
 

@@ -1,0 +1,162 @@
+{
+  "summary_version": "toolsandbox_semantic_repair_official_v1",
+  "systems_expected": [
+    "a2_planner",
+    "a3_full_interaction",
+    "a3_no_query",
+    "a3_noisy_user"
+  ],
+  "systems_observed": [
+    "a2_planner",
+    "a3_full_interaction",
+    "a3_no_query",
+    "a3_noisy_user"
+  ],
+  "protocol_complete": true,
+  "semantic_repair_mechanism_supported": true,
+  "interaction_not_cheating_supported": true,
+  "probe_only_success_caveat_present": true,
+  "primary_result_ready": true,
+  "repair_semantic_positive": {
+    "a2_planner": {
+      "system": "a2_planner",
+      "slice_type": "repair_semantic_positive",
+      "num_rows": 18,
+      "strict_scored_success": 0.0,
+      "execution_verified_success": 0.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 0.0,
+      "mean_tool_calls": 1.0
+    },
+    "a3_full_interaction": {
+      "system": "a3_full_interaction",
+      "slice_type": "repair_semantic_positive",
+      "num_rows": 18,
+      "strict_scored_success": 1.0,
+      "execution_verified_success": 1.0,
+      "reply_usable_rate": 1.0,
+      "target_aligned_patch_rate": 1.0,
+      "effective_patch_rate": 1.0,
+      "post_query_progress_rate": 1.0,
+      "useful_interaction_round_rate": 1.0,
+      "mean_user_queries": 1.0,
+      "mean_tool_calls": 2.0
+    },
+    "a3_no_query": {
+      "system": "a3_no_query",
+      "slice_type": "repair_semantic_positive",
+      "num_rows": 18,
+      "strict_scored_success": 0.0,
+      "execution_verified_success": 0.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 0.0,
+      "mean_tool_calls": 1.0
+    },
+    "a3_noisy_user": {
+      "system": "a3_noisy_user",
+      "slice_type": "repair_semantic_positive",
+      "num_rows": 18,
+      "strict_scored_success": 0.0,
+      "execution_verified_success": 0.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 1.0,
+      "mean_tool_calls": 1.0
+    }
+  },
+  "probe_only_control": {
+    "a2_planner": {
+      "system": "a2_planner",
+      "slice_type": "probe_only_control",
+      "num_rows": 18,
+      "strict_scored_success": 0.0,
+      "execution_verified_success": 1.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 0.0,
+      "mean_tool_calls": 1.1666666666666667
+    },
+    "a3_full_interaction": {
+      "system": "a3_full_interaction",
+      "slice_type": "probe_only_control",
+      "num_rows": 18,
+      "strict_scored_success": 1.0,
+      "execution_verified_success": 1.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 1.0,
+      "mean_tool_calls": 1.1666666666666667
+    },
+    "a3_no_query": {
+      "system": "a3_no_query",
+      "slice_type": "probe_only_control",
+      "num_rows": 18,
+      "strict_scored_success": 0.0,
+      "execution_verified_success": 1.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 0.0,
+      "mean_tool_calls": 1.1666666666666667
+    },
+    "a3_noisy_user": {
+      "system": "a3_noisy_user",
+      "slice_type": "probe_only_control",
+      "num_rows": 18,
+      "strict_scored_success": 1.0,
+      "execution_verified_success": 1.0,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0,
+      "mean_user_queries": 1.0,
+      "mean_tool_calls": 1.1666666666666667
+    }
+  },
+  "repair_semantic_rounds": {
+    "a2_planner": {},
+    "a3_full_interaction": {
+      "num_rounds": 18,
+      "reply_usable_rate": 1.0,
+      "target_aligned_patch_rate": 1.0,
+      "effective_patch_rate": 1.0,
+      "post_query_progress_rate": 1.0,
+      "useful_interaction_round_rate": 1.0
+    },
+    "a3_no_query": {},
+    "a3_noisy_user": {
+      "num_rounds": 18,
+      "reply_usable_rate": 0.0,
+      "target_aligned_patch_rate": 0.0,
+      "effective_patch_rate": 0.0,
+      "post_query_progress_rate": 0.0,
+      "useful_interaction_round_rate": 0.0
+    }
+  },
+  "probe_only_rounds": {
+    "a2_planner": {},
+    "a3_full_interaction": {},
+    "a3_no_query": {},
+    "a3_noisy_user": {}
+  }
+}

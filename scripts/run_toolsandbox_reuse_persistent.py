@@ -61,6 +61,7 @@ def _stage_task(task: Dict[str, Any], *, family_id: str, stage: str, pass_index:
             "reuse_stage": stage,
             "reuse_persistent_v1": True,
             "original_reuse_family_id": family_id,
+            "sham_registry_stage": sham,
         }
     )
     staged["metadata"] = metadata
@@ -162,8 +163,15 @@ def _semantic_family(family_id: str) -> str:
 def _unrelated_family(current: Dict[str, Any], families: List[Dict[str, Any]]) -> Dict[str, Any]:
     current_family = str(current["family_id"])
     current_semantic = _semantic_family(current_family)
+    current_signature = str(current.get("signature_key") or "")
     for candidate in families:
-        if str(candidate["family_id"]) != current_family and _semantic_family(str(candidate["family_id"])) != current_semantic:
+        candidate_family = str(candidate["family_id"])
+        candidate_signature = str(candidate.get("signature_key") or "")
+        if (
+            candidate_family != current_family
+            and _semantic_family(candidate_family) != current_semantic
+            and candidate_signature != current_signature
+        ):
             return candidate
     for candidate in families:
         if str(candidate["family_id"]) != current_family:
@@ -226,7 +234,7 @@ def main() -> None:
             )
             _write_taskset(
                 sham_path,
-                [_stage_task(sham_source["pass1_compile"], family_id=sham_family_id, stage="compile", pass_index=1)],
+                [_stage_task(sham_source["pass1_compile"], family_id=sham_family_id, stage="compile", pass_index=1, sham=True)],
             )
             _write_taskset(
                 pass2_path,

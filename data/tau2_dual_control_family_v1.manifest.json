@@ -1,0 +1,10 @@
+{
+  "dataset": "data/tau2_dual_control_family_v1.json",
+  "source_commit": "b5db507567193f24c0717106a96070d53a82139a",
+  "family_counts": {
+    "non_interactive_solvable": 4,
+    "must_interact_approval": 4,
+    "compound_approval_plus_repair": 1
+  },
+  "boundary_note": "compound slice is still sparse; use as boundary/supporting evidence, not headline"
+}

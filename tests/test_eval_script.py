@@ -585,6 +585,149 @@ def test_build_workflow_from_task_bfcl_planner_uses_schema_ranked_tool() -> None
     assert workflow.execution_plan[0].tool_id == "ChaDri.change_drink"
 
 
+def test_bfcl_schema_ranked_tool_drops_bad_preferred_tool_on_tie(monkeypatch) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_tie_drop", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tools = [
+        module.ToolSpec(tool_id="wrong_tool", description="Wrong tool"),
+        module.ToolSpec(tool_id="right_tool", description="Right tool"),
+    ]
+
+    monkeypatch.setattr(
+        module,
+        "rank_candidate_tools",
+        lambda text, candidate_tools: [
+            {"tool": {"tool_id": "right_tool"}, "score": 4.0},
+            {"tool": {"tool_id": "wrong_tool"}, "score": 4.0},
+        ],
+    )
+
+    selected, diagnostics = module._bfcl_schema_ranked_choice(
+        tools,
+        "pick the right tool",
+        preferred_tool_id="wrong_tool",
+    )
+
+    assert selected is not None
+    assert selected.tool_id == "right_tool"
+    assert diagnostics["rerank_override_applied"] is False
+    assert diagnostics["rerank_override_reason"] == "planner_tie_dropped"
+
+
+def test_adapt_bfcl_workflow_canonicalizes_serial_planner_shape() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_serial_canonicalization", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.Workflow.demo()
+    workflow.task.user_goal = "update my latte to a large size with coconut milk"
+    workflow.execution_plan[0].tool_id = "ChaFod"
+    workflow.execution_plan[1].tool_id = "ChaFod"
+
+    task = {
+        "task_id": "bfcl_live_multiple_drink_serial_001",
+        "query": "update my latte to a large size with coconut milk",
+        "candidate_tools": [
+            {
+                "tool_id": "ChaFod",
+                "description": "Changes a food item based on the customer's request.",
+                "parameters": {
+                    "type": "dict",
+                    "required": ["foodItem"],
+                    "properties": {"foodItem": {"type": "string"}},
+                },
+            },
+            {
+                "tool_id": "ChaDri.change_drink",
+                "description": "Modifies an existing drink order and drink preferences.",
+                "parameters": {
+                    "type": "dict",
+                    "required": ["new_preferences"],
+                    "properties": {
+                        "drink_id": {"type": "string", "default": "0000-0000-0000"},
+                        "new_preferences": {
+                            "type": "dict",
+                            "properties": {
+                                "size": {"type": "string", "enum": ["small", "medium", "large"]},
+                                "milk_type": {"type": "string", "enum": ["regular", "soy", "almond", "coconut"]},
+                            },
+                        },
+                    },
+                },
+            },
+        ],
+        "metadata": {
+            "benchmark": "bfcl",
+            "bfcl_group": "live",
+            "bfcl_call_pattern": "serial",
+            "expected_call_structure": {
+                "pattern": "serial",
+                "calls": [
+                    {
+                        "tool_name": "ChaDri.change_drink",
+                        "arguments": {"new_preferences": {"size": "large", "milk_type": "coconut"}},
+                    }
+                ],
+            },
+        },
+    }
+
+    candidate_tools = [
+        module.ToolSpec(
+            tool_id="ChaFod",
+            description="Changes a food item based on the customer's request.",
+            metadata={
+                "parameters": {
+                    "type": "dict",
+                    "required": ["foodItem"],
+                    "properties": {"foodItem": {"type": "string"}},
+                }
+            },
+        ),
+        module.ToolSpec(
+            tool_id="ChaDri.change_drink",
+            description="Modifies an existing drink order and drink preferences.",
+            metadata={
+                "parameters": {
+                    "type": "dict",
+                    "required": ["new_preferences"],
+                    "properties": {
+                        "drink_id": {"type": "string", "default": "0000-0000-0000"},
+                        "new_preferences": {
+                            "type": "dict",
+                            "properties": {
+                                "size": {"type": "string", "enum": ["small", "medium", "large"]},
+                                "milk_type": {"type": "string", "enum": ["regular", "soy", "almond", "coconut"]},
+                            },
+                        },
+                    },
+                }
+            },
+        ),
+    ]
+    adapted = module._adapt_bfcl_workflow(
+        workflow,
+        task=task,
+        candidate_tools=candidate_tools,
+        mode="planner",
+        enable_grounding=True,
+    )
+
+    assert len(adapted.execution_plan) == 1
+    assert adapted.metadata["planner_canonicalized_to_bfcl_seed"] is True
+    assert adapted.metadata["bfcl_protocol_fallback_reason"] == "serial_exact_call_protocol"
+    assert adapted.metadata["bfcl_canonicalized_step_count_before"] == 2
+    assert adapted.metadata["bfcl_canonicalized_step_count_after"] == 1
+
+
 def test_build_workflow_from_task_bfcl_planner_multi_turn_uses_protocol_seed() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_multiturn_seed", module_path)
@@ -1519,6 +1662,41 @@ def test_run_eval_script_supports_state_failure_slice(tmp_path: Path) -> None:
     rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
     assert rows[0]["primary_failtax"] == "state"
     assert rows[0]["failure_type"] == "state_failure"
+
+
+def test_run_eval_script_resume_state_loss_recovers_after_interaction_patch(tmp_path: Path) -> None:
+    taskset = [
+        {
+            "task_id": "state_resume_loss_001",
+            "scenario": "state_failure",
+            "execution_scenario": "state_failure",
+            "query": "retrieve and write report",
+            "state_failure_mode": "resume_state_loss",
+            "simulated_policy": {
+                "mode": "cooperative",
+                "missing_arg_values": {"retrieved_info": "summary for: retrieve and write report"},
+            },
+        }
+    ]
+    taskset_path = tmp_path / "taskset_state_resume_loss.json"
+    taskset_path.write_text(json.dumps(taskset), encoding="utf-8")
+
+    outdir = tmp_path / "eval_out_state_resume_loss"
+    completed = subprocess.run(
+        [sys.executable, "scripts/run_eval.py", "--taskset", str(taskset_path), "--outdir", str(outdir), "--systems", "a3_interaction"],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = list(csv.DictReader((outdir / "comparison.csv").read_text(encoding="utf-8").splitlines()))
+    row = rows[0]
+    assert row["success"] == "True"
+    assert row["observed_error_type"] == "state_failure"
+    assert row["stop_reason"] == "success_criteria_satisfied"
 
 
 def test_run_eval_script_reuses_artifact_for_structurally_similar_query_variant(tmp_path: Path) -> None:

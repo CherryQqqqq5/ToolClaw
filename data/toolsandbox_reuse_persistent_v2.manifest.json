@@ -1,0 +1,21 @@
+{
+  "dataset": "data/toolsandbox_reuse_persistent_v2.jsonl",
+  "source": "data/toolsandbox_reuse_persistent_v1.jsonl",
+  "source_commit": "b5db507567193f24c0717106a96070d53a82139a",
+  "version": "toolsandbox_reuse_persistent_v2",
+  "pair_rule": "inherits paired families from v1 and reorders families to prioritize cost-headroom candidates",
+  "family_count": 8,
+  "headroom_candidate_count": 3,
+  "statistical_claim_allowed": false,
+  "statistical_claim_note": "family_count < 20; report effect sizes and paired CIs, not strong significance claims",
+  "selection_policy": {
+    "prioritize": [
+      "state_dependency",
+      "multiple_user_turn",
+      "insufficient_information"
+    ],
+    "deprioritize": [
+      "canonicalization"
+    ]
+  }
+}
