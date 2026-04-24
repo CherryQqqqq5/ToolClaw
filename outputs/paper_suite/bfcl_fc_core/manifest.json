@@ -1,19 +1,10 @@
 {
-  "canonical_claim_report": "claim_summary.json",
-  "claim_summary_path": "outputs/paper_suite/bfcl_fc_core/claim_summary.json",
-  "comparison_raw_path": "outputs/paper_suite/bfcl_fc_core/comparison.raw.csv",
-  "comparison_scored_path": "outputs/paper_suite/bfcl_fc_core/comparison.scored.csv",
-  "diagnostic_reports": [
-    "bfcl_candidate_coverage_summary.json",
-    "bfcl_candidate_coverage_summary.md",
-    "bfcl_failure_slice_summary.json",
-    "bfcl_failure_slice_summary.md",
-    "bfcl_function_selection_audit.md"
-  ],
-  "generated_at": "2026-04-24T07:34:22.270028+00:00",
-  "git_commit": "046d24d066d2844399dac2d6edf22b0b29f7d3eb",
-  "paper_role": "limitation_with_guarded_supporting_candidate",
+  "suite": "bfcl_fc_core",
+  "status": "completed",
+  "paper_role": "limitation_with_candidate_coverage_diagnostic",
+  "generated_at": "2026-04-24T09:39:23.512213+00:00",
   "runner": "scripts/run_bfcl_bench.py",
+  "score_script": "scripts/score_bfcl_outputs.py",
   "runner_command": [
     "/usr/bin/python3",
     "/cephfs/qiuyn/ToolClaw/scripts/run_bfcl_bench.py",
@@ -44,7 +35,9 @@
     "--toolclaw-diagnostics",
     "true"
   ],
-  "score_script": "scripts/score_bfcl_outputs.py",
-  "status": "completed",
-  "suite": "bfcl_fc_core"
+  "claim_summary_path": "outputs/paper_suite/bfcl_fc_core/claim_summary.json",
+  "comparison_raw_path": "outputs/paper_suite/bfcl_fc_core/comparison.raw.csv",
+  "comparison_scored_path": "outputs/paper_suite/bfcl_fc_core/comparison.scored.csv",
+  "git_commit": "869a72e1cc946a0e5e93117d7ac31ebb1f408e2c",
+  "canonical_claim_report": "claim_summary.json"
 }

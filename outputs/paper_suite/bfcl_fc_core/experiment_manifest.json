@@ -1,41 +1,11 @@
 {
   "benchmark": "bfcl",
-  "bfcl_candidate_coverage_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_candidate_coverage_audit.json",
-  "bfcl_candidate_coverage_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_candidate_coverage_summary.json",
-  "bfcl_failure_slice_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_failure_slice_summary.json",
-  "bfcl_function_selection_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_function_selection_audit.json",
-  "canonical_claim_report": "claim_summary.json",
-  "claim_ids": [
-    "planner_binding_headline",
-    "bfcl_exact_function_guard",
-    "bfcl_missing_required_guarded_reduction"
-  ],
-  "claim_summary_path": "outputs/paper_suite/bfcl_fc_core/claim_summary.json",
-  "comparison_path": "outputs/paper_suite/bfcl_fc_core/comparison.raw.csv",
-  "comparison_scored_path": "outputs/paper_suite/bfcl_fc_core/comparison.scored.csv",
-  "diagnostic_reports": [
-    "bfcl_candidate_coverage_summary.json",
-    "bfcl_candidate_coverage_summary.md",
-    "bfcl_failure_slice_summary.json",
-    "bfcl_failure_slice_summary.md",
-    "bfcl_function_selection_audit.md"
-  ],
-  "experiment_metadata": {
-    "mode": "planner",
-    "official_eval_requested": true,
-    "raw_only": true,
-    "runner_script": "scripts/run_bfcl_bench.py",
-    "toolclaw_diagnostics_requested": true
-  },
-  "generated_at": "2026-04-24T07:30:56.402229+00:00",
-  "git_commit": "046d24d066d2844399dac2d6edf22b0b29f7d3eb",
-  "normalized_taskset": "outputs/paper_suite/bfcl_fc_core/prepared/bfcl.normalized.json",
-  "num_runs": 1,
-  "official_scoreboard_path": "outputs/paper_suite/bfcl_fc_core/official_scoreboard.json",
-  "paper_role": "limitation_with_guarded_supporting_candidate",
+  "generated_at": "2026-04-24T09:37:09.475675+00:00",
+  "track": "fc_core",
   "source": "data/bfcl_formal/bfcl_v4.fc_core.aligned.jsonl",
   "source_manifest": "data/bfcl_formal/manifest.json",
-  "suite": "bfcl_fc_core",
+  "normalized_taskset": "outputs/paper_suite/bfcl_fc_core/prepared/bfcl.normalized.json",
+  "comparison_path": "outputs/paper_suite/bfcl_fc_core/comparison.raw.csv",
   "systems": [
     "a0_baseline",
     "a1_recovery",
@@ -43,6 +13,29 @@
     "a3_interaction",
     "a4_reuse"
   ],
+  "num_runs": 1,
+  "experiment_metadata": {
+    "runner_script": "scripts/run_bfcl_bench.py",
+    "official_eval_requested": true,
+    "toolclaw_diagnostics_requested": true,
+    "mode": "planner",
+    "raw_only": true
+  },
+  "comparison_scored_path": "outputs/paper_suite/bfcl_fc_core/comparison.scored.csv",
+  "official_scoreboard_path": "outputs/paper_suite/bfcl_fc_core/official_scoreboard.json",
   "toolclaw_diagnostics_path": "outputs/paper_suite/bfcl_fc_core/toolclaw_diagnostics.json",
-  "track": "fc_core"
+  "claim_summary_path": "outputs/paper_suite/bfcl_fc_core/claim_summary.json",
+  "bfcl_failure_slice_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_failure_slice_summary.json",
+  "bfcl_function_selection_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_function_selection_audit.json",
+  "bfcl_candidate_coverage_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_candidate_coverage_audit.json",
+  "bfcl_candidate_coverage_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_candidate_coverage_summary.json",
+  "suite": "bfcl_fc_core",
+  "paper_role": "limitation_with_candidate_coverage_diagnostic",
+  "claim_ids": [
+    "planner_binding_headline",
+    "bfcl_exact_function_guard",
+    "bfcl_missing_required_guarded_reduction"
+  ],
+  "git_commit": "869a72e1cc946a0e5e93117d7ac31ebb1f408e2c",
+  "canonical_claim_report": "claim_summary.json"
 }

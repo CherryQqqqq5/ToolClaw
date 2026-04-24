@@ -13,120 +13,120 @@
   "official_bfcl_eval": {
     "a0_baseline": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.30855278489862503,
-      "official_bfcl_eval_tool_selection_correctness": 0.483694554493902,
-      "official_bfcl_eval_argument_correctness": 0.30855278489862503,
-      "official_bfcl_eval_structure_correctness": 0.4688883710090888
+      "official_bfcl_eval_success": 0.3087858308086693,
+      "official_bfcl_eval_tool_selection_correctness": 0.4846073176415754,
+      "official_bfcl_eval_argument_correctness": 0.3087858308086693,
+      "official_bfcl_eval_structure_correctness": 0.4702866464693545
     },
     "a1_recovery": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.30855278489862503,
-      "official_bfcl_eval_tool_selection_correctness": 0.4851705119241824,
-      "official_bfcl_eval_argument_correctness": 0.30855278489862503,
-      "official_bfcl_eval_structure_correctness": 0.47005360055931017
+      "official_bfcl_eval_success": 0.3087858308086693,
+      "official_bfcl_eval_tool_selection_correctness": 0.48608327507185584,
+      "official_bfcl_eval_argument_correctness": 0.3087858308086693,
+      "official_bfcl_eval_structure_correctness": 0.47145187601957583
     },
     "a2_planner": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.3029596830575623,
-      "official_bfcl_eval_tool_selection_correctness": 0.4848403635516197,
-      "official_bfcl_eval_argument_correctness": 0.3029596830575623,
-      "official_bfcl_eval_structure_correctness": 0.4698205546492659
+      "official_bfcl_eval_success": 0.30319272896760663,
+      "official_bfcl_eval_tool_selection_correctness": 0.4857919676843005,
+      "official_bfcl_eval_argument_correctness": 0.30319272896760663,
+      "official_bfcl_eval_structure_correctness": 0.47145187601957583
     },
     "a3_interaction": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.3036588207876952,
-      "official_bfcl_eval_tool_selection_correctness": 0.6948807581760273,
-      "official_bfcl_eval_argument_correctness": 0.3036588207876952,
-      "official_bfcl_eval_structure_correctness": 0.655558144954556
+      "official_bfcl_eval_success": 0.30389186669773943,
+      "official_bfcl_eval_tool_selection_correctness": 0.6989396411092985,
+      "official_bfcl_eval_argument_correctness": 0.30389186669773943,
+      "official_bfcl_eval_structure_correctness": 0.6611512467956188
     },
     "a4_reuse": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.3036588207876952,
-      "official_bfcl_eval_tool_selection_correctness": 0.6948807581760273,
-      "official_bfcl_eval_argument_correctness": 0.3036588207876952,
-      "official_bfcl_eval_structure_correctness": 0.655558144954556
+      "official_bfcl_eval_success": 0.30389186669773943,
+      "official_bfcl_eval_tool_selection_correctness": 0.6989396411092985,
+      "official_bfcl_eval_argument_correctness": 0.30389186669773943,
+      "official_bfcl_eval_structure_correctness": 0.6611512467956188
     }
   },
   "toolclaw_diagnostics": {
     "a0_baseline": {
       "num_rows": 4291.0,
-      "toolclaw_diagnostics_binder_selection_match": 0.5161896732591895,
-      "toolclaw_diagnostics_tool_sequence_match": 0.20671172220927522,
-      "toolclaw_diagnostics_parameter_fill_ratio": 0.6599484709598902,
+      "toolclaw_diagnostics_binder_selection_match": 0.5171024364068629,
+      "toolclaw_diagnostics_tool_sequence_match": 0.20810999766954089,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.6603452038781799,
       "toolclaw_diagnostics_policy_format_compliance": 1.0,
       "toolclaw_diagnostics_repair_overhead": 0.0,
-      "toolclaw_diagnostics_missing_required_arg_rate": 0.22040427916680538,
-      "toolclaw_diagnostics_preflight_interception_rate": 0.2761594034024703,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.22104515541942715,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.27662549522255886,
       "toolclaw_diagnostics_repair_success_rate": 0.0,
       "toolclaw_diagnostics_repair_applied_count": 0.0,
       "toolclaw_diagnostics_repair_success_count": 0.0,
-      "toolclaw_diagnostics_exec_verified": 0.7215101374970869,
-      "toolclaw_diagnostics_avg_tool_calls": 0.44931251456536936,
+      "toolclaw_diagnostics_exec_verified": 0.7210440456769984,
+      "toolclaw_diagnostics_avg_tool_calls": 0.45210906548590074,
       "toolclaw_diagnostics_avg_user_queries": 0.0
     },
     "a1_recovery": {
       "num_rows": 4291.0,
-      "toolclaw_diagnostics_binder_selection_match": 0.5176656306894699,
-      "toolclaw_diagnostics_tool_sequence_match": 0.2078769517594966,
-      "toolclaw_diagnostics_parameter_fill_ratio": 0.6583559905745876,
+      "toolclaw_diagnostics_binder_selection_match": 0.5185783938371433,
+      "toolclaw_diagnostics_tool_sequence_match": 0.2092752272197623,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.6587527234928773,
       "toolclaw_diagnostics_policy_format_compliance": 1.0,
       "toolclaw_diagnostics_repair_overhead": 0.0018643672803542299,
-      "toolclaw_diagnostics_missing_required_arg_rate": 0.22040427916680538,
-      "toolclaw_diagnostics_preflight_interception_rate": 0.2761594034024703,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.22104515541942715,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.27662549522255886,
       "toolclaw_diagnostics_repair_success_rate": 0.0,
       "toolclaw_diagnostics_repair_applied_count": 0.0018643672803542299,
       "toolclaw_diagnostics_repair_success_count": 0.0,
-      "toolclaw_diagnostics_exec_verified": 0.7215101374970869,
-      "toolclaw_diagnostics_avg_tool_calls": 0.45117688184572363,
+      "toolclaw_diagnostics_exec_verified": 0.7210440456769984,
+      "toolclaw_diagnostics_avg_tool_calls": 0.45397343276625496,
       "toolclaw_diagnostics_avg_user_queries": 0.0
     },
     "a2_planner": {
       "num_rows": 4291.0,
-      "toolclaw_diagnostics_binder_selection_match": 0.5173354823169072,
-      "toolclaw_diagnostics_tool_sequence_match": 0.2078769517594966,
-      "toolclaw_diagnostics_parameter_fill_ratio": 0.6584025997565965,
+      "toolclaw_diagnostics_binder_selection_match": 0.518287086449588,
+      "toolclaw_diagnostics_tool_sequence_match": 0.2092752272197623,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.6587327481291593,
       "toolclaw_diagnostics_policy_format_compliance": 1.0,
       "toolclaw_diagnostics_repair_overhead": 0.0018643672803542299,
-      "toolclaw_diagnostics_missing_required_arg_rate": 0.21815150203637734,
-      "toolclaw_diagnostics_preflight_interception_rate": 0.2735958983919832,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.2190254241990434,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.27429503612211603,
       "toolclaw_diagnostics_repair_success_rate": 0.0,
       "toolclaw_diagnostics_repair_applied_count": 0.0018643672803542299,
       "toolclaw_diagnostics_repair_success_count": 0.0,
-      "toolclaw_diagnostics_exec_verified": 0.7191796783966441,
-      "toolclaw_diagnostics_avg_tool_calls": 0.4556047541365649,
+      "toolclaw_diagnostics_exec_verified": 0.7184805406665113,
+      "toolclaw_diagnostics_avg_tool_calls": 0.45816825914705195,
       "toolclaw_diagnostics_avg_user_queries": 0.0
     },
     "a3_interaction": {
       "num_rows": 4291.0,
-      "toolclaw_diagnostics_binder_selection_match": 0.7288063349320152,
-      "toolclaw_diagnostics_tool_sequence_match": 0.3931484502446982,
-      "toolclaw_diagnostics_parameter_fill_ratio": 0.4147742783899857,
+      "toolclaw_diagnostics_binder_selection_match": 0.7328652178652864,
+      "toolclaw_diagnostics_tool_sequence_match": 0.3987415520857609,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.4151719360936327,
       "toolclaw_diagnostics_policy_format_compliance": 1.0,
-      "toolclaw_diagnostics_repair_overhead": 0.15147984152878116,
-      "toolclaw_diagnostics_missing_required_arg_rate": 0.19174342385132412,
-      "toolclaw_diagnostics_preflight_interception_rate": 0.2740619902120718,
+      "toolclaw_diagnostics_repair_overhead": 0.1568398974597996,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.19295484643014357,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.27476112794220464,
       "toolclaw_diagnostics_repair_success_rate": 0.0,
-      "toolclaw_diagnostics_repair_applied_count": 0.15147984152878116,
+      "toolclaw_diagnostics_repair_applied_count": 0.1568398974597996,
       "toolclaw_diagnostics_repair_success_count": 0.0,
-      "toolclaw_diagnostics_exec_verified": 0.7233745047774411,
-      "toolclaw_diagnostics_avg_tool_calls": 0.7448147285015148,
-      "toolclaw_diagnostics_avg_user_queries": 0.28757865299463997
+      "toolclaw_diagnostics_exec_verified": 0.7229084129573526,
+      "toolclaw_diagnostics_avg_tool_calls": 0.7550687485434631,
+      "toolclaw_diagnostics_avg_user_queries": 0.2878116989046842
     },
     "a4_reuse": {
       "num_rows": 4291.0,
-      "toolclaw_diagnostics_binder_selection_match": 0.7288063349320152,
-      "toolclaw_diagnostics_tool_sequence_match": 0.3931484502446982,
-      "toolclaw_diagnostics_parameter_fill_ratio": 0.4147742783899857,
+      "toolclaw_diagnostics_binder_selection_match": 0.7328652178652864,
+      "toolclaw_diagnostics_tool_sequence_match": 0.3987415520857609,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.4151719360936327,
       "toolclaw_diagnostics_policy_format_compliance": 1.0,
-      "toolclaw_diagnostics_repair_overhead": 0.15147984152878116,
-      "toolclaw_diagnostics_missing_required_arg_rate": 0.19174342385132412,
-      "toolclaw_diagnostics_preflight_interception_rate": 0.2740619902120718,
+      "toolclaw_diagnostics_repair_overhead": 0.1568398974597996,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.19295484643014357,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.27476112794220464,
       "toolclaw_diagnostics_repair_success_rate": 0.0,
-      "toolclaw_diagnostics_repair_applied_count": 0.15147984152878116,
+      "toolclaw_diagnostics_repair_applied_count": 0.1568398974597996,
       "toolclaw_diagnostics_repair_success_count": 0.0,
-      "toolclaw_diagnostics_exec_verified": 0.7233745047774411,
-      "toolclaw_diagnostics_avg_tool_calls": 0.7448147285015148,
-      "toolclaw_diagnostics_avg_user_queries": 0.28757865299463997
+      "toolclaw_diagnostics_exec_verified": 0.7229084129573526,
+      "toolclaw_diagnostics_avg_tool_calls": 0.7550687485434631,
+      "toolclaw_diagnostics_avg_user_queries": 0.2878116989046842
     }
   },
   "unsupported_strata": [],
@@ -136,49 +136,49 @@
     "a4_interpreted_as_guarded_execution_variant_only": true,
     "failure_bucket_counts_by_system": {
       "a0_baseline": {
-        "official_success_or_safe_failure": 1340,
+        "official_success_or_safe_failure": 1341,
         "value_error": 537,
         "wrong_func_name": 83,
-        "other_official_failure": 153,
-        "wrong_count": 1378,
+        "other_official_failure": 159,
+        "wrong_count": 1371,
         "multi_turn_mismatch": 730,
         "multi_turn_other": 70
       },
       "a1_recovery": {
-        "official_success_or_safe_failure": 1340,
+        "official_success_or_safe_failure": 1341,
         "value_error": 542,
         "wrong_func_name": 83,
-        "other_official_failure": 153,
-        "wrong_count": 1373,
+        "other_official_failure": 159,
+        "wrong_count": 1366,
         "multi_turn_mismatch": 746,
         "multi_turn_other": 54
       },
       "a2_planner": {
-        "official_success_or_safe_failure": 1316,
+        "official_success_or_safe_failure": 1317,
         "value_error": 542,
         "wrong_func_name": 83,
-        "other_official_failure": 182,
-        "wrong_count": 1368,
+        "other_official_failure": 188,
+        "wrong_count": 1361,
         "multi_turn_mismatch": 752,
         "multi_turn_other": 48
       },
       "a3_interaction": {
-        "official_success_or_safe_failure": 1319,
+        "official_success_or_safe_failure": 1320,
         "value_error": 859,
         "wrong_func_name": 178,
-        "other_official_failure": 277,
+        "other_official_failure": 298,
         "missing_required": 400,
-        "wrong_count": 458,
+        "wrong_count": 436,
         "multi_turn_mismatch": 784,
         "multi_turn_other": 16
       },
       "a4_reuse": {
-        "official_success_or_safe_failure": 1319,
+        "official_success_or_safe_failure": 1320,
         "value_error": 859,
         "wrong_func_name": 178,
-        "other_official_failure": 277,
+        "other_official_failure": 298,
         "missing_required": 400,
-        "wrong_count": 458,
+        "wrong_count": 436,
         "multi_turn_mismatch": 784,
         "multi_turn_other": 16
       }
@@ -252,38 +252,38 @@
       "metric_snapshot": {
         "a0_baseline": {
           "num_rows": 4291.0,
-          "official_bfcl_eval_success": 0.30855278489862503,
-          "official_bfcl_eval_tool_selection_correctness": 0.483694554493902,
-          "official_bfcl_eval_argument_correctness": 0.30855278489862503,
-          "official_bfcl_eval_structure_correctness": 0.4688883710090888
+          "official_bfcl_eval_success": 0.3087858308086693,
+          "official_bfcl_eval_tool_selection_correctness": 0.4846073176415754,
+          "official_bfcl_eval_argument_correctness": 0.3087858308086693,
+          "official_bfcl_eval_structure_correctness": 0.4702866464693545
         },
         "a1_recovery": {
           "num_rows": 4291.0,
-          "official_bfcl_eval_success": 0.30855278489862503,
-          "official_bfcl_eval_tool_selection_correctness": 0.4851705119241824,
-          "official_bfcl_eval_argument_correctness": 0.30855278489862503,
-          "official_bfcl_eval_structure_correctness": 0.47005360055931017
+          "official_bfcl_eval_success": 0.3087858308086693,
+          "official_bfcl_eval_tool_selection_correctness": 0.48608327507185584,
+          "official_bfcl_eval_argument_correctness": 0.3087858308086693,
+          "official_bfcl_eval_structure_correctness": 0.47145187601957583
         },
         "a2_planner": {
           "num_rows": 4291.0,
-          "official_bfcl_eval_success": 0.3029596830575623,
-          "official_bfcl_eval_tool_selection_correctness": 0.4848403635516197,
-          "official_bfcl_eval_argument_correctness": 0.3029596830575623,
-          "official_bfcl_eval_structure_correctness": 0.4698205546492659
+          "official_bfcl_eval_success": 0.30319272896760663,
+          "official_bfcl_eval_tool_selection_correctness": 0.4857919676843005,
+          "official_bfcl_eval_argument_correctness": 0.30319272896760663,
+          "official_bfcl_eval_structure_correctness": 0.47145187601957583
         },
         "a3_interaction": {
           "num_rows": 4291.0,
-          "official_bfcl_eval_success": 0.3036588207876952,
-          "official_bfcl_eval_tool_selection_correctness": 0.6948807581760273,
-          "official_bfcl_eval_argument_correctness": 0.3036588207876952,
-          "official_bfcl_eval_structure_correctness": 0.655558144954556
+          "official_bfcl_eval_success": 0.30389186669773943,
+          "official_bfcl_eval_tool_selection_correctness": 0.6989396411092985,
+          "official_bfcl_eval_argument_correctness": 0.30389186669773943,
+          "official_bfcl_eval_structure_correctness": 0.6611512467956188
         },
         "a4_reuse": {
           "num_rows": 4291.0,
-          "official_bfcl_eval_success": 0.3036588207876952,
-          "official_bfcl_eval_tool_selection_correctness": 0.6948807581760273,
-          "official_bfcl_eval_argument_correctness": 0.3036588207876952,
-          "official_bfcl_eval_structure_correctness": 0.655558144954556
+          "official_bfcl_eval_success": 0.30389186669773943,
+          "official_bfcl_eval_tool_selection_correctness": 0.6989396411092985,
+          "official_bfcl_eval_argument_correctness": 0.30389186669773943,
+          "official_bfcl_eval_structure_correctness": 0.6611512467956188
         }
       },
       "interpretation": "BFCL fc_core is paper-safe after official evaluator dependency preflight, but planner/binder headline support additionally requires a2_planner to beat a0/a1 on success and improve at least two headline submetrics."
@@ -352,5 +352,5 @@
       "interpretation": "This claim is supporting only if full-suite gates and the pre-registered baseline-missing-required slice gates both pass."
     }
   ],
-  "paper_role": "limitation_with_guarded_supporting_candidate"
+  "paper_role": "limitation_with_candidate_coverage_diagnostic"
 }

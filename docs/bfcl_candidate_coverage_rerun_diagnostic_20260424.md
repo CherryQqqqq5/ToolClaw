@@ -2,7 +2,7 @@
 
 ## Scope
 
-This note records the full guarded `bfcl_fc_core` rerun at commit `046d24d066d2844399dac2d6edf22b0b29f7d3eb` after the candidate coverage funnel audit was added. The rerun is diagnostic only. It does not upgrade BFCL claims or change the BFCL planner/binder headline limitation.
+This note records two guarded `bfcl_fc_core` reruns. The first rerun at `046d24d066d2844399dac2d6edf22b0b29f7d3eb` added the candidate coverage funnel and localized a large apparent `prepared_to_runtime_drop`. The second rerun at `869a72e1cc946a0e5e93117d7ac31ebb1f408e2c` added BFCL runtime candidate-pool preservation and is now the current diagnostic source of truth.
 
 Command:
 
@@ -31,7 +31,7 @@ The large row-level audits remain available in the output directory but are not 
 
 ## Claim Gate Result
 
-The rerun remains **Case D**.
+The `869a72e` rerun remains **Case D** for paper claims.
 
 ```json
 {
@@ -72,12 +72,12 @@ bfcl_reuse_lift: unsupported
 ## Official Metrics
 
 ```text
-a0_baseline: success=0.308553, tool_selection=0.483695, argument=0.308553, structure=0.468888
-a2_planner: success=0.302960, tool_selection=0.484840, argument=0.302960, structure=0.469821
-a3_interaction: success=0.303659, tool_selection=0.694881, argument=0.303659, structure=0.655558
+a0_baseline: success=0.308786, tool_selection=0.484607, argument=0.308786, structure=0.470287
+a2_planner: success=0.303193, tool_selection=0.485792, argument=0.303193, structure=0.471452
+a3_interaction: success=0.303892, tool_selection=0.698940, argument=0.303892, structure=0.661151
 ```
 
-## Coverage Funnel
+## Coverage Funnel After Candidate Preservation
 
 Overall funnel:
 
@@ -90,14 +90,14 @@ Overall funnel:
   "expected_in_schema_top5": 3990,
   "expected_is_schema_top1": 3990,
   "selected_is_expected": 3990,
-  "selected_expected_success": 262,
+  "selected_expected_success": 267,
   "coverage_raw": 0.37869960382195295,
   "coverage_prepared": 0.37869960382195295,
   "coverage_runtime": 0.1859706362153344,
   "coverage_top5": 0.1859706362153344,
   "ranker_top1": 1.0,
   "selection_accuracy": 1.0,
-  "arg_success_given_correct_tool": 0.06566416040100251
+  "arg_success_given_correct_tool": 0.06691729323308271
 }
 ```
 
@@ -105,10 +105,11 @@ Drop-stage counts:
 
 ```json
 {
-  "prepared_to_runtime_drop": 4135,
+  "bfcl_abstain_candidate_elision": 4120,
   "no_expected_function": 13330,
-  "selected_correct_arg_or_shape_error": 3728,
-  "selected_correct_success": 262
+  "selected_correct_arg_or_shape_error": 3723,
+  "selected_correct_success": 267,
+  "prepared_to_runtime_drop": 15
 }
 ```
 
@@ -121,33 +122,34 @@ Per-system `a2_planner` funnel:
   "expected_in_runtime_candidates": 798,
   "expected_in_schema_top5": 798,
   "selected_is_expected": 798,
-  "selected_expected_success": 52,
+  "selected_expected_success": 53,
   "drop_stage_counts": {
-    "prepared_to_runtime_drop": 827,
+    "bfcl_abstain_candidate_elision": 824,
     "no_expected_function": 2666,
-    "selected_correct_arg_or_shape_error": 746,
-    "selected_correct_success": 52
+    "selected_correct_arg_or_shape_error": 745,
+    "selected_correct_success": 53,
+    "prepared_to_runtime_drop": 3
   }
 }
 ```
 
 ## Dominant Blocker
 
-The actionable blocker is **prepared-to-runtime candidate loss**, followed by argument/call-shape failure after the correct function is selected.
+The candidate preservation patch succeeded for the executable path. The old apparent coverage loss was mostly intentional BFCL abstain/relevance elision, not ordinary candidate-pool narrowing.
 
 Evidence:
 
-- Raw and prepared coverage match exactly: `expected_in_raw_function_docs = expected_in_prepared_schema = 8125` overall, so the current blocker is not raw source alignment or preparation loss.
-- Runtime coverage drops to `3990` overall; for each system, `prepared_to_runtime_drop = 827`.
-- When expected reaches runtime candidates, it also reaches schema top-5 and top-1: `expected_in_runtime_candidates = expected_in_schema_top5 = expected_is_schema_top1 = selected_is_expected`.
-- The ranker is not the first-order blocker in this run: `ranker_top1 = 1.0` on rows where expected is in runtime candidates.
-- Correct-function rows still mostly fail downstream: `selected_correct_arg_or_shape_error = 3728` overall and `746` for `a2_planner`.
+- Raw and prepared coverage match exactly: `expected_in_raw_function_docs = expected_in_prepared_schema = 8125` overall.
+- The previous `prepared_to_runtime_drop = 4135` is now split into `bfcl_abstain_candidate_elision = 4120` and true `prepared_to_runtime_drop = 15` overall.
+- `a2_planner` true `prepared_to_runtime_drop` is now `3`, all in `non_live:parallel`; the rows are official-success-or-safe-failure examples where the expected function is also the selected tool.
+- On rows where expected reaches runtime candidates, it reaches schema top-5/top-1 and is selected: `expected_in_runtime_candidates = expected_in_schema_top5 = expected_is_schema_top1 = selected_is_expected = 3990`.
+- Correct-function rows still mostly fail downstream: `selected_correct_arg_or_shape_error = 3723` overall and `745` for `a2_planner`.
 
 Next implementation target:
 
-1. Fix BFCL adapter/runtime candidate preservation so planner and canonicalization cannot shrink the benchmark-provided function pool before schema ranking.
-2. After runtime candidate coverage is close to prepared coverage, rerun smoke/full and only then inspect ranker ordering or argument/call-shape repair.
-3. Do not tune planner override or ranker weights before the prepared-to-runtime drop is explained.
+1. Treat BFCL candidate visibility as effectively repaired except for the small `non_live:parallel` diagnostic residue.
+2. Move the next BFCL repair step to argument grounding and call-shape canonicalization on selected-correct rows.
+3. Do not tune planner override or schema-ranker weights before analyzing `selected_correct_arg_or_shape_error` into missing-required, wrong-arg, wrong-count, order, parallel-structure, and multi-turn-shape buckets.
 
 ## Claim Discipline
 

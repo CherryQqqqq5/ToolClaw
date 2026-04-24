@@ -91,7 +91,7 @@ The guarded BFCL path is a paper-safety and diagnostic repair, not a planner hea
 - `bfcl_function_selection_audit.json/md` may add expected function and guardability buckets after execution;
 - `reuse_claim_enabled_for_bfcl = false` and `a4_interpreted_as_guarded_execution_variant_only = true`.
 
-Promotion failed in the guarded coverage rerun. `bfcl_exact_function_guard` still requires full-suite wrong-function non-regression, missing-required reduction, tool-selection non-regression, and success non-regression; `a2_success_ge_a0` and `a2_missing_required_lt_a0` did not pass. `bfcl_missing_required_guarded_reduction` additionally requires the pre-registered `baseline_missing_required_slice` gates, which did not pass because the slice has zero a0 rows in this rerun.
+Promotion failed in the latest guarded candidate-preservation rerun. `bfcl_exact_function_guard` still requires full-suite wrong-function non-regression, missing-required reduction, tool-selection non-regression, and success non-regression; `a2_success_ge_a0` and `a2_missing_required_lt_a0` did not pass. `bfcl_missing_required_guarded_reduction` additionally requires the pre-registered `baseline_missing_required_slice` gates, which did not pass because the slice has zero a0 rows in this rerun. The funnel now shows candidate visibility is effectively repaired and the next blocker is argument/call-shape failure after the correct function is selected.
 
 ## ToolSandbox persistent reuse boundary on 2026-04-24
 
@@ -290,6 +290,6 @@ To avoid benchmark overfitting, BFCL-specific argument shaping is intentionally 
 
 ## BFCL candidate coverage funnel on 2026-04-24
 
-The guarded `bfcl_fc_core` rerun with candidate coverage audit completed at commit `046d24d066d2844399dac2d6edf22b0b29f7d3eb`. It remains Case D: `a2_wrong_func_name_le_a0=true` and `a2_tool_selection_ge_a0=true`, but `a2_success_ge_a0=false` and `a2_missing_required_lt_a0=false`. No BFCL claim is promoted.
+The guarded `bfcl_fc_core` rerun with runtime candidate preservation completed at commit `869a72e1cc946a0e5e93117d7ac31ebb1f408e2c`. It remains Case D: `a2_wrong_func_name_le_a0=true` and `a2_tool_selection_ge_a0=true`, but `a2_success_ge_a0=false` and `a2_missing_required_lt_a0=false`. No BFCL claim is promoted.
 
-The funnel shows raw-to-prepared coverage is not the current blocker (`8125 -> 8125`), but prepared-to-runtime candidate preservation is: runtime candidates retain `3990` expected-function rows overall, with `prepared_to_runtime_drop=827` per system. When expected reaches runtime candidates, it reaches schema top-5/top-1 and is selected, so ranker top-5/top-1 ordering is not the first-order issue in this run. The next BFCL implementation target is adapter/runtime candidate preservation, followed by argument/call-shape repair on selected-correct rows.
+The funnel shows raw-to-prepared coverage is not the current blocker (`8125 -> 8125`) and executable candidate visibility is effectively repaired. The previous `prepared_to_runtime_drop=4135` now splits into `bfcl_abstain_candidate_elision=4120` and true `prepared_to_runtime_drop=15` overall; for `a2_planner`, true `prepared_to_runtime_drop=3`. When expected reaches runtime candidates, it reaches schema top-5/top-1 and is selected. The next BFCL implementation target is argument grounding and call-shape canonicalization on selected-correct rows (`selected_correct_arg_or_shape_error=3723` overall, `745` for `a2_planner`).

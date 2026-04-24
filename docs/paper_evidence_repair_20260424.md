@@ -35,7 +35,7 @@ Artifacts after the next guarded run should include:
 - `bfcl_function_selection_audit.md`
 - `claim_summary.json` with `bfcl_guard_claim_gates`
 
-Status: deterministic schema-top1 BFCL guard and candidate coverage funnel are implemented, and the guarded coverage full rerun completed at `046d24d066d2844399dac2d6edf22b0b29f7d3eb`. The result is Case D: wrong-function and tool-selection non-regression pass for a2, but success and missing-required gates fail. This does not change the BFCL claim boundary: `planner_binding_headline`, `bfcl_exact_function_guard`, and `bfcl_missing_required_guarded_reduction` remain limitations.
+Status: deterministic schema-top1 BFCL guard, candidate coverage funnel, and runtime candidate-pool preservation are implemented. The latest guarded full rerun completed at `869a72e1cc946a0e5e93117d7ac31ebb1f408e2c`. The result remains Case D for claims: wrong-function and tool-selection non-regression pass for a2, but success and missing-required gates fail. Candidate visibility is now effectively repaired; the next blocker is selected-correct argument/call-shape failure. This does not change the BFCL claim boundary: `planner_binding_headline`, `bfcl_exact_function_guard`, and `bfcl_missing_required_guarded_reduction` remain limitations.
 
 Required full-suite gates before `bfcl_exact_function_guard` can become supporting:
 
@@ -106,4 +106,4 @@ Next steps before any stronger planner claim:
 
 ## BFCL Coverage Funnel Follow-Up
 
-Status after commit `046d24d066d2844399dac2d6edf22b0b29f7d3eb`: the BFCL candidate coverage funnel audit is implemented and a full guarded `bfcl_fc_core` rerun completed. The result is Case D, so BFCL remains a limitation. The funnel identifies `prepared_to_runtime_drop` as the dominant actionable candidate-coverage blocker: expected functions are preserved from raw docs to prepared schema, but many are absent from runtime candidates before ranking. The next BFCL repair step is adapter/runtime candidate preservation, not planner override or ranker-weight tuning.
+Status after commit `869a72e1cc946a0e5e93117d7ac31ebb1f408e2c`: the BFCL runtime candidate-preservation rerun completed. The result remains Case D, so BFCL remains a limitation. The funnel now splits the old `prepared_to_runtime_drop=4135` into `bfcl_abstain_candidate_elision=4120` and true `prepared_to_runtime_drop=15` overall; for `a2_planner`, true `prepared_to_runtime_drop=3`. Candidate visibility is no longer the dominant blocker. The next BFCL repair step is selected-correct argument grounding and call-shape canonicalization, not planner override or ranker-weight tuning.
