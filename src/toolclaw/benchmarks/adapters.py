@@ -1000,6 +1000,7 @@ class ToolSandboxAdapter:
     }
 
     PLANNER_SENSITIVE_PROTOCOL = "planner_sensitive_v1"
+    PLANNER_SENSITIVE_PROTOCOLS = {"planner_sensitive_v1", "planner_sensitive_v2"}
     PLANNER_SENSITIVE_GOLD_KEYS = {
         "expected_capability_order",
         "expected_dependency_edges",
@@ -1061,7 +1062,7 @@ class ToolSandboxAdapter:
         request.hints.user_style["categories"] = categories
         request.hints.user_style["requires_interaction"] = self._interaction_expected(categories)
         if self._is_planner_sensitive_protocol(sample.raw_payload):
-            request.hints.user_style["planner_sensitive_protocol"] = self.PLANNER_SENSITIVE_PROTOCOL
+            request.hints.user_style["planner_sensitive_protocol"] = self._planner_sensitive_protocol(sample.raw_payload)
             request.hints.user_style["milestone_count"] = 0
             request.hints.user_style["milestones"] = []
             request.hints.user_style["tool_allow_list"] = []
@@ -1119,7 +1120,7 @@ class ToolSandboxAdapter:
             },
         }
         if planner_sensitive:
-            task["metadata"]["planner_sensitive_protocol"] = self.PLANNER_SENSITIVE_PROTOCOL
+            task["metadata"]["planner_sensitive_protocol"] = self._planner_sensitive_protocol(sample.raw_payload)
             task["metadata"]["planner_visible_keys"] = sorted(visible_payload.keys())
         task["tool_execution_backend"] = "semantic_mock"
         if "candidate_tools" in visible_payload:
@@ -1473,13 +1474,17 @@ class ToolSandboxAdapter:
         metadata["tool_allow_list"] = [] if self._is_planner_sensitive_protocol(raw) else self._tool_allow_list(visible_payload)
         metadata["milestone_count"] = 0 if self._is_planner_sensitive_protocol(raw) else len(visible_payload.get("milestones", []))
         if self._is_planner_sensitive_protocol(raw):
-            metadata["planner_sensitive_protocol"] = self.PLANNER_SENSITIVE_PROTOCOL
+            metadata["planner_sensitive_protocol"] = self._planner_sensitive_protocol(raw)
         scenario = categories[0] if categories else "toolsandbox"
         return BenchmarkSample(sample_id=sample_id, raw_payload=raw, scenario=scenario, metadata=metadata)
 
     def _is_planner_sensitive_protocol(self, raw: Dict[str, Any]) -> bool:
         protocol = raw.get("planner_sensitive_protocol") or raw.get("protocol")
-        return str(protocol or "").strip() == self.PLANNER_SENSITIVE_PROTOCOL
+        return str(protocol or "").strip() in self.PLANNER_SENSITIVE_PROTOCOLS
+
+    def _planner_sensitive_protocol(self, raw: Dict[str, Any]) -> str:
+        protocol = str(raw.get("planner_sensitive_protocol") or raw.get("protocol") or "").strip()
+        return protocol if protocol in self.PLANNER_SENSITIVE_PROTOCOLS else self.PLANNER_SENSITIVE_PROTOCOL
 
     def _planner_visible_payload(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         if not self._is_planner_sensitive_protocol(raw):

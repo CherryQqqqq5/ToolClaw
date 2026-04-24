@@ -736,6 +736,8 @@ class HTGPPlanner:
         diagnostics.benchmark_hints_used = sorted(benchmark_hints["used_keys"])
         candidates = self.capability_selector.select(request.task, request.context, request.hints)
         bypass_applied = self._should_bypass(request, benchmark_hints)
+        minimal_path_reason = self._minimal_path_reason(request, benchmark_hints) if bypass_applied else "not_applied"
+        selected_capability_order_initial = [candidate.capability_id for candidate in candidates]
         if bypass_applied and candidates:
             diagnostics.warnings.append("planner_bypass_applied:minimal_path")
             minimal_candidate = candidates[0]
@@ -831,6 +833,15 @@ class HTGPPlanner:
             diagnostics.warnings.append("overplanning_risk:steps_exceed_ideal_tool_calls")
         if diagnostics.overplanning_risk.get("used_disallowed_tool"):
             diagnostics.warnings.append("overplanning_risk:used_tool_outside_allow_list")
+        planner_observability = self._planner_observability(
+            bypass_applied=bypass_applied,
+            minimal_path_reason=minimal_path_reason,
+            selected_capability_order_initial=selected_capability_order_initial,
+            graph=graph,
+            candidates=candidates,
+            bindings=bindings,
+            diagnostics=diagnostics,
+        )
 
         workflow = Workflow(
             workflow_id=f"wf_{request.task.task_id}",
@@ -871,6 +882,7 @@ class HTGPPlanner:
                 },
                 "reuse_override_inputs": deepcopy(request.hints.user_style.get("reuse_override_inputs", {})),
                 "tool_execution_backend": str(request.hints.user_style.get("tool_execution_backend", "mock")),
+                "planner_observability": planner_observability,
             },
         )
         workflow.metadata.update(self._passthrough_workflow_metadata(request))
@@ -882,7 +894,12 @@ class HTGPPlanner:
             capability_graph=graph,
             tool_bindings=bindings,
             execution_plan=execution_plan,
-            metadata={"candidate_count": len(candidates), "bypass_applied": bypass_applied, "benchmark_hints_used": diagnostics.benchmark_hints_used},
+            metadata={
+                "candidate_count": len(candidates),
+                "bypass_applied": bypass_applied,
+                "benchmark_hints_used": diagnostics.benchmark_hints_used,
+                "planner_observability": planner_observability,
+            },
         )
         return PlanningResult(workflow=workflow, artifact=artifact, diagnostics=diagnostics)
 
@@ -1250,17 +1267,47 @@ class HTGPPlanner:
 
     @staticmethod
     def _should_bypass(request: PlanningRequest, benchmark_hints: Dict[str, Any]) -> bool:
+        return HTGPPlanner._minimal_path_reason(request, benchmark_hints) != "not_applied"
+
+    @staticmethod
+    def _minimal_path_reason(request: PlanningRequest, benchmark_hints: Dict[str, Any]) -> str:
         categories = set(benchmark_hints.get("categories", []))
         tool_allow_list = benchmark_hints.get("tool_allow_list", [])
         ideal_tool_calls = benchmark_hints.get("ideal_tool_calls")
-        return bool(
-            "multiple_user_turn" not in categories
-            and (
-                ideal_tool_calls == 1
-                or len(tool_allow_list) == 1
-                or "single_tool" in categories
-            )
-        )
+        if "multiple_user_turn" in categories:
+            return "not_applied"
+        if "single_tool" in categories:
+            return "single_tool_category"
+        if ideal_tool_calls == 1:
+            return "ideal_tool_calls_one"
+        if len(tool_allow_list) == 1:
+            return "single_tool_allow_list"
+        return "not_applied"
+
+    @staticmethod
+    def _planner_observability(
+        *,
+        bypass_applied: bool,
+        minimal_path_reason: str,
+        selected_capability_order_initial: Sequence[str],
+        graph: CapabilityGraph,
+        candidates: Sequence[CapabilityCandidate],
+        bindings: Sequence[ToolBinding],
+        diagnostics: PlanningDiagnostics,
+    ) -> Dict[str, Any]:
+        return {
+            "planner_bypass_applied": bool(bypass_applied),
+            "minimal_path_reason": str(minimal_path_reason),
+            "selected_capability_order_initial": [str(item) for item in selected_capability_order_initial],
+            "selected_capability_order_final": [
+                str(capability.capability_id) for capability in graph.capabilities
+            ],
+            "graph_builder_used": not bool(bypass_applied),
+            "candidate_capability_count": len(candidates),
+            "bound_tool_order": [str(binding.primary_tool) for binding in bindings if binding.primary_tool],
+            "unresolved_capabilities": list(diagnostics.unresolved_capabilities),
+            "benchmark_hints_used": list(diagnostics.benchmark_hints_used),
+        }
 
     @staticmethod
     def _overplanning_risk(

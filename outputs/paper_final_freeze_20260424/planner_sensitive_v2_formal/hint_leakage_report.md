@@ -1,0 +1,51 @@
+# Planner-Sensitive Hint Leakage Report
+
+- Protocol: `planner_sensitive_v2`
+- Sample count: `42`
+- Leakage detected: `False`
+- Ordered gold structure leakage detected: `False`
+
+## Task Reports
+
+- `planner_sensitive_branch_select_execute_01`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_branch_select_execute_02`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_branch_select_execute_03`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_branch_select_execute_04`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_branch_select_execute_05`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_branch_select_execute_06`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_branch_select_execute_07`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_branch_select_execute_08`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_branch_select_execute_09`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_branch_select_execute_10`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_branch_select_execute_11`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_check_modify_verify_01`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_check_modify_verify_02`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_check_modify_verify_03`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_check_modify_verify_04`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_check_modify_verify_05`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_check_modify_verify_06`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_check_modify_verify_07`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_check_modify_verify_08`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_check_modify_verify_09`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_check_modify_verify_10`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_check_modify_verify_11`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_multi_source_merge_write_01`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_multi_source_merge_write_02`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_multi_source_merge_write_03`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_multi_source_merge_write_04`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_multi_source_merge_write_05`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_multi_source_merge_write_06`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_multi_source_merge_write_07`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_multi_source_merge_write_08`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_multi_source_merge_write_09`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_multi_source_merge_write_10`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_multi_source_merge_write_11`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_retrieve_summarize_write_01`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_retrieve_summarize_write_02`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_retrieve_summarize_write_03`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_retrieve_summarize_write_04`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_retrieve_summarize_write_05`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_retrieve_summarize_write_06`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_retrieve_summarize_write_07`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_retrieve_summarize_write_08`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]
+- `planner_sensitive_retrieve_summarize_write_09`: leakage=False, overlap=[], trace_gold=[], request_hints=[], benchmark_hints=[]

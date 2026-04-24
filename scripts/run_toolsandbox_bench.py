@@ -129,7 +129,10 @@ def _has_alternative_verification_signal(raw_payload: Dict[str, Any]) -> bool:
 
 
 def _is_planner_sensitive_payload(raw_payload: Dict[str, Any]) -> bool:
-    return str(raw_payload.get("planner_sensitive_protocol") or raw_payload.get("protocol") or "") == "planner_sensitive_v1"
+    return str(raw_payload.get("planner_sensitive_protocol") or raw_payload.get("protocol") or "") in {
+        "planner_sensitive_v1",
+        "planner_sensitive_v2",
+    }
 
 
 def _planner_visible_payload(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -595,7 +598,7 @@ TOOLSANDBOX_GROUP_METRICS = [
 ]
 
 def _is_planner_sensitive_task(task_id: str) -> bool:
-    return str(task_id or "").strip().startswith("toolsandbox_planner_sensitive_")
+    return "planner_sensitive_" in str(task_id or "").strip()
 
 
 FOCUSED_SLICE_CATEGORIES = (
@@ -708,7 +711,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--planner-sensitive-protocol",
         action="store_true",
-        help="Enable planner_sensitive_v1 hint-isolation guard and post-run structural scorer.",
+        help="Enable planner-sensitive hint-isolation guard and post-run structural scorer.",
     )
     parser.add_argument("--keep-normalized-taskset", action="store_true", help="Keep the normalized taskset JSON file")
     parser.add_argument(
@@ -1697,7 +1700,7 @@ def main() -> None:
         ]
         if non_protocol_samples:
             raise ValueError(
-                "--planner-sensitive-protocol requires planner_sensitive_v1 samples; "
+                "--planner-sensitive-protocol requires planner_sensitive_v1/v2 samples; "
                 + "non-protocol sample ids: "
                 + ", ".join(non_protocol_samples[:20])
             )
@@ -1825,7 +1828,7 @@ def main() -> None:
             "cli_timeout_s": args.cli_timeout_s if args.interaction_target == "cli_cmd" else None,
             "openrouter_model": args.openrouter_model if args.interaction_target == "llm_openrouter" else None,
             "openrouter_base_url": args.openrouter_base_url if args.interaction_target == "llm_openrouter" else None,
-            "planner_sensitive_protocol": "planner_sensitive_v1" if args.planner_sensitive_protocol else None,
+            "planner_sensitive_protocol": "planner_sensitive" if args.planner_sensitive_protocol else None,
         },
         archive_files=[
             Path(__file__).resolve(),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Derive ToolSandbox planner-sensitive v1 benchmark data."""
+"""Derive ToolSandbox planner-sensitive benchmark data."""
 
 from __future__ import annotations
 
@@ -70,7 +70,31 @@ FAMILIES = {
 }
 
 
-TOPICS = ["billing", "calendar", "travel", "device", "contacts", "messages"]
+TOPICS = [
+    "billing",
+    "calendar",
+    "travel",
+    "device",
+    "contacts",
+    "messages",
+    "inventory",
+    "support",
+    "security",
+    "compliance",
+    "onboarding",
+    "renewals",
+]
+
+
+VERSION_FAMILY_COUNTS = {
+    "v1": {family: 6 for family in FAMILIES},
+    "v2": {
+        "retrieve_summarize_write": 9,
+        "check_modify_verify": 11,
+        "branch_select_execute": 11,
+        "multi_source_merge_write": 11,
+    },
+}
 
 
 def tool_specs(raw_tools: List[tuple[str, str, List[str]]]) -> List[Dict[str, Any]]:
@@ -84,11 +108,12 @@ def tool_specs(raw_tools: List[tuple[str, str, List[str]]]) -> List[Dict[str, An
     ]
 
 
-def make_row(family: str, index: int) -> Dict[str, Any]:
+def make_row(family: str, index: int, *, version: str) -> Dict[str, Any]:
     spec = FAMILIES[family]
-    topic = TOPICS[index]
+    topic = TOPICS[index % len(TOPICS)]
     target = f"outputs/planner_sensitive/{family}_{index + 1:02d}.txt"
-    rng = random.Random(f"{family}:{index}:planner_sensitive_v1")
+    protocol = f"planner_sensitive_{version}"
+    rng = random.Random(f"{family}:{index}:{protocol}")
     candidates = tool_specs(spec["tools"])
     rng.shuffle(candidates)
     task_id = f"planner_sensitive_{family}_{index + 1:02d}"
@@ -97,7 +122,7 @@ def make_row(family: str, index: int) -> Dict[str, Any]:
         "family": family,
         "task_family": family,
         "slice_type": "planner_sensitive_primary",
-        "planner_sensitive_protocol": "planner_sensitive_v1",
+        "planner_sensitive_protocol": protocol,
         "planner_visible": {
             "query": spec["query"].format(topic=topic, target=target),
             "target_path": target,
@@ -136,25 +161,31 @@ def make_row(family: str, index: int) -> Dict[str, Any]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Derive ToolSandbox planner-sensitive v1 data")
-    parser.add_argument("--out", default="data/toolsandbox_planner_sensitive_v1.jsonl")
-    parser.add_argument("--manifest", default="data/toolsandbox_planner_sensitive_v1.manifest.json")
+    parser = argparse.ArgumentParser(description="Derive ToolSandbox planner-sensitive data")
+    parser.add_argument("--version", choices=["v1", "v2"], default="v1")
+    parser.add_argument("--out", default=None)
+    parser.add_argument("--manifest", default=None)
     args = parser.parse_args()
+    protocol = f"planner_sensitive_{args.version}"
+    dataset = f"toolsandbox_planner_sensitive_{args.version}"
+    out = args.out or f"data/{dataset}.jsonl"
+    manifest_out = args.manifest or f"data/{dataset}.manifest.json"
 
     rows: List[Dict[str, Any]] = []
-    for family in FAMILIES:
-        for index in range(6):
-            rows.append(make_row(family, index))
+    family_counts = VERSION_FAMILY_COUNTS[args.version]
+    for family, count in family_counts.items():
+        for index in range(count):
+            rows.append(make_row(family, index, version=args.version))
 
-    out_path = Path(args.out)
+    out_path = Path(out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(json.dumps(row, sort_keys=True) for row in rows) + "\n", encoding="utf-8")
     manifest = {
-        "dataset": "toolsandbox_planner_sensitive_v1",
-        "protocol": "planner_sensitive_v1",
+        "dataset": dataset,
+        "protocol": protocol,
         "source": "synthetic planner-sensitive protocol derived from ToolSandbox adapter semantics",
         "sample_count": len(rows),
-        "family_counts": {family: 6 for family in FAMILIES},
+        "family_counts": family_counts,
         "planner_visible_keys": ["query", "target_path", "messages", "candidate_tools", "categories", "constraints", "ideal_turn_count", "metadata"],
         "scorer_gold_keys": [
             "expected_capability_order",
@@ -171,9 +202,18 @@ def main() -> None:
             "candidate_tools_shuffled": True,
             "distractor_tools_per_task": True,
         },
-        "paper_claim_policy": "effect-size scaffold only; expand beyond 40 tasks before strong planner headline",
+        "paper_claim_policy": "planner structural mechanism remains pending; v2 may become mechanism supporting/candidate only if all formal gates pass",
     }
-    manifest_path = Path(args.manifest)
+    if args.version == "v2":
+        manifest["promotion_gates"] = {
+            "source_task_count_ge_40": True,
+            "family_positive_count_ge_3": True,
+            "planner_bypass_known_rate_ge_0_90": True,
+            "known_row_planner_bypass_rate_le_0_25": True,
+            "ordered_gold_structure_leakage_detected": False,
+            "retrieve_summarize_write_positive_win_cap": "25-30%",
+        }
+    manifest_path = Path(manifest_out)
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"wrote: {out_path}")

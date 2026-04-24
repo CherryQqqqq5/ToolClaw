@@ -1678,6 +1678,7 @@ class SequentialExecutor:
             "bfcl_canonicalized_step_count_before",
             "bfcl_canonicalized_step_count_after",
             "bfcl_rerank_diagnostics",
+            "planner_observability",
         )
         return {key: workflow.metadata.get(key) for key in keys if workflow.metadata.get(key) is not None}
 

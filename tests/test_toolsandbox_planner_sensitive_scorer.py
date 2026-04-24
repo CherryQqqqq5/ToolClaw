@@ -148,3 +148,73 @@ def test_hint_leakage_audit_flags_gold_key_in_trace_metadata(tmp_path):
     )
     leakage = json.loads((outdir / "hint_leakage_report.json").read_text(encoding="utf-8"))
     assert leakage["leakage_detected"] is True
+
+
+def test_v2_unknown_bypass_does_not_pass_promotion_gate(tmp_path):
+    source = tmp_path / "source.jsonl"
+    source_row = {
+        "task_id": "planner_sensitive_v2_unknown",
+        "family": "retrieve_summarize_write",
+        "planner_sensitive_protocol": "planner_sensitive_v2",
+        "planner_visible": {
+            "query": "Retrieve, summarize, and write.",
+            "candidate_tools": [
+                {"tool_id": "source_lookup", "description": "Retrieve source.", "semantic_tags": ["retrieve"]},
+                {"tool_id": "summary_builder", "description": "Summarize source.", "semantic_tags": ["summarize"]},
+                {"tool_id": "report_writer", "description": "Write final report.", "semantic_tags": ["write"]},
+            ],
+        },
+        "scorer_gold": {
+            "expected_capability_order": ["cap_retrieve", "cap_summarize", "cap_write"],
+            "expected_dependency_edges": [["cap_retrieve", "cap_summarize"], ["cap_summarize", "cap_write"]],
+            "expected_tool_sequence": ["source_lookup", "summary_builder", "report_writer"],
+            "required_state_slots_by_step": {"cap_summarize": ["cap_retrieve"], "cap_write": ["cap_summarize"]},
+            "forbidden_shortcuts": [],
+        },
+    }
+    source.write_text(json.dumps(source_row) + "\n", encoding="utf-8")
+    trace = tmp_path / "trace.json"
+    trace.write_text(json.dumps({"metadata": {}, "events": []}), encoding="utf-8")
+    comparison = tmp_path / "comparison.scored.csv"
+    _write_csv(
+        comparison,
+        [
+            {
+                "run_index": "1",
+                "task_id": "planner_sensitive_v2_unknown",
+                "system": "a1_recovery",
+                "raw_success": "0",
+                "trace_path": str(trace),
+                "tool_calls": "1",
+                "stop_reason": "failed",
+            },
+            {
+                "run_index": "1",
+                "task_id": "planner_sensitive_v2_unknown",
+                "system": "a2_planner",
+                "raw_success": "1",
+                "trace_path": str(trace),
+                "tool_calls": "3",
+                "stop_reason": "success_criteria_satisfied",
+            },
+        ],
+    )
+
+    outdir = tmp_path / "out"
+    subprocess.run(
+        [
+            sys.executable,
+            "scripts/score_toolsandbox_planner_sensitive.py",
+            "--source",
+            str(source),
+            "--comparison",
+            str(comparison),
+            "--outdir",
+            str(outdir),
+        ],
+        check=True,
+    )
+    summary = json.loads((outdir / "planner_sensitive_summary.json").read_text(encoding="utf-8"))
+    assert summary["protocol"] == "planner_sensitive_v2"
+    assert summary["acceptance_checks"]["planner_bypass_known_rate_ge_90pp"] is False
+    assert summary["v2_promotion_ready"] is False
