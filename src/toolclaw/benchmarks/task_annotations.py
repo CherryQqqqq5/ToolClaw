@@ -223,6 +223,11 @@ def derive_dependency_edges(task: Dict[str, Any]) -> List[Dict[str, str]]:
                     normalized_edges.append({"source": source, "target": target, "type": edge_type})
         if normalized_edges:
             return normalized_edges
+    categories = set(_raw_annotation_labels(task))
+    protocol = str(task.get("planner_sensitive_protocol") or metadata.get("planner_sensitive_protocol") or "")
+    is_planner_sensitive = "planner_sensitive" in categories or protocol.startswith("planner_sensitive")
+    if is_planner_sensitive:
+        return []
     if task.get("target_path") is not None or len(_candidate_tool_ids(task)) > 1:
         return [{"source": "step_01", "target": "step_02", "type": "state"}]
     return []

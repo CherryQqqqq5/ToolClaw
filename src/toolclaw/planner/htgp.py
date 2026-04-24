@@ -437,6 +437,9 @@ class PolicyInjector:
                 expected_output = "merged_state_ready"
             elif capability.capability_id == "cap_write":
                 inputs = {"target_path": "outputs/reports/planned_report.txt"}
+                capability_metadata = getattr(capability, "metadata", {})
+                if isinstance(capability_metadata, dict) and capability_metadata.get("structural_template") == "multi_source_merge":
+                    inputs["source_key"] = "merged_state_ready"
                 if benchmark_hints.get("ideal_tool_calls") == 1:
                     inputs["query"] = task.user_goal
                 expected_output = "report_artifact"
@@ -456,6 +459,22 @@ class PolicyInjector:
             rollback_to = dependency_sources[-1] if dependency_sources else (f"step_{idx - 1:02d}" if idx > 1 else None)
             required_state_slots = [str(item) for item in hint.get("required_state_slots", []) if str(item)]
             state_bindings = dict(hint.get("state_bindings", {})) if isinstance(hint.get("state_bindings"), dict) else {}
+            capability_metadata = getattr(capability, "metadata", {})
+            if not isinstance(capability_metadata, dict):
+                capability_metadata = {}
+            if capability_metadata.get("structural_template") == "multi_source_merge":
+                if capability.capability_id == "cap_merge":
+                    for input_key, state_key in {
+                        "primary_source": "primary_retrieved_info",
+                        "secondary_source": "secondary_retrieved_info",
+                    }.items():
+                        if state_key not in required_state_slots:
+                            required_state_slots.append(state_key)
+                        state_bindings.setdefault(input_key, state_key)
+                elif capability.capability_id == "cap_write":
+                    if "merged_state_ready" not in required_state_slots:
+                        required_state_slots.append("merged_state_ready")
+                    state_bindings.setdefault("merged_state", "merged_state_ready")
             preflight_state_policy = (
                 dict(hint.get("preflight_state_policy", {}))
                 if isinstance(hint.get("preflight_state_policy"), dict)
@@ -509,7 +528,12 @@ class PolicyInjector:
                         "allowed_tools": allowed_tools,
                         "branch_options": branch_options if idx == len(graph.capabilities) and branch_options else [],
                         "branch_sensitive": bool(idx == len(graph.capabilities) and branch_options),
-                        "implicit_state_fallback_slots": ["retrieved_info", "query"] if capability.capability_id == "cap_write" else [],
+                        "implicit_state_fallback_slots": (
+                            ["merged_state_ready"]
+                            if capability.capability_id == "cap_write"
+                            and capability_metadata.get("structural_template") == "multi_source_merge"
+                            else (["retrieved_info", "query"] if capability.capability_id == "cap_write" else [])
+                        ),
                     },
                 )
             )
@@ -1058,16 +1082,39 @@ class HTGPPlanner:
             state_bindings: Dict[str, str] = {}
             required_state_slots: List[str] = []
             state_preconditions: List[str] = []
-            for precondition in capability.preconditions:
-                normalized_precondition = str(precondition or "").strip()
-                if not normalized_precondition:
-                    continue
-                if normalized_precondition not in state_preconditions:
-                    state_preconditions.append(normalized_precondition)
-                slot = cls._state_slot_for_precondition(normalized_precondition)
-                if slot and slot not in required_state_slots:
-                    required_state_slots.append(slot)
-                    state_bindings.setdefault(slot, slot)
+            capability_metadata = getattr(capability, "metadata", {})
+            if not isinstance(capability_metadata, dict):
+                capability_metadata = {}
+            structural_template = str(capability_metadata.get("structural_template") or "")
+            instance_role = str(capability_metadata.get("instance_role") or "").strip()
+
+            if structural_template == "multi_source_merge":
+                if capability.capability_id == "cap_merge":
+                    required_state_slots = ["primary_retrieved_info", "secondary_retrieved_info"]
+                    state_preconditions = ["primary_retrieved_info", "secondary_retrieved_info"]
+                    state_bindings = {
+                        "primary_source": "primary_retrieved_info",
+                        "secondary_source": "secondary_retrieved_info",
+                    }
+                elif capability.capability_id == "cap_write":
+                    required_state_slots = ["merged_state_ready"]
+                    state_preconditions = ["merged_state_ready"]
+                    state_bindings = {"merged_state": "merged_state_ready"}
+                elif capability.capability_id == "cap_retrieve" and instance_role:
+                    required_state_slots = []
+                    state_preconditions = []
+                    state_bindings = {}
+            if not state_preconditions and not required_state_slots:
+                for precondition in capability.preconditions:
+                    normalized_precondition = str(precondition or "").strip()
+                    if not normalized_precondition:
+                        continue
+                    if normalized_precondition not in state_preconditions:
+                        state_preconditions.append(normalized_precondition)
+                    slot = cls._state_slot_for_precondition(normalized_precondition)
+                    if slot and slot not in required_state_slots:
+                        required_state_slots.append(slot)
+                        state_bindings.setdefault(slot, slot)
             hints.append(
                 {
                     "required_state_slots": required_state_slots,
@@ -1080,6 +1127,25 @@ class HTGPPlanner:
                     "preflight_state_policy": {},
                 }
             )
+
+        capability_keys = [str(getattr(capability, "instance_id", None) or capability.capability_id) for capability in graph.capabilities]
+        if any(
+            isinstance(getattr(capability, "metadata", {}), dict)
+            and getattr(capability, "metadata", {}).get("structural_template") == "multi_source_merge"
+            for capability in graph.capabilities
+        ):
+            for edge in graph.edges:
+                if edge.source not in capability_keys or edge.target not in capability_keys:
+                    continue
+                source_index = capability_keys.index(edge.source)
+                target_index = capability_keys.index(edge.target)
+                source_step_id = f"step_{source_index + 1:02d}"
+                target_hint = hints[target_index]
+                if source_step_id not in target_hint["dependency_sources"]:
+                    target_hint["dependency_sources"].append(source_step_id)
+                target_hint["ordering_sensitive"] = True
+                target_hint["dependency_type"] = str(edge.condition or "capability_graph")
+                target_hint["checkpoint_reason"] = target_hint["checkpoint_reason"] or "capability_graph_dependency"
 
         normalized_edges = cls._normalized_dependency_edges(benchmark_hints)
         for edge in normalized_edges:

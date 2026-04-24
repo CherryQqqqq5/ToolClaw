@@ -1,5 +1,7 @@
+import json
 from types import SimpleNamespace
 
+from toolclaw.execution.executor import SequentialExecutor
 from toolclaw.planner.htgp import (
     HTGPPlanner,
     PlanningHints,
@@ -1466,3 +1468,54 @@ def test_planner_sensitive_multi_source_instances_survive_graph_and_binding() ->
         ("cap_retrieve.secondary", "cap_merge"),
         ("cap_merge", "cap_write"),
     ]
+    primary_step, secondary_step, merge_step, write_step = result.workflow.execution_plan
+    assert primary_step.metadata["required_state_slots"] == []
+    assert secondary_step.metadata["required_state_slots"] == []
+    assert primary_step.expected_output == "primary_retrieved_info"
+    assert secondary_step.expected_output == "secondary_retrieved_info"
+    assert merge_step.metadata["required_state_slots"] == ["primary_retrieved_info", "secondary_retrieved_info"]
+    assert merge_step.metadata["state_bindings"] == {
+        "primary_source": "primary_retrieved_info",
+        "secondary_source": "secondary_retrieved_info",
+    }
+    assert write_step.metadata["required_state_slots"] == ["merged_state_ready"]
+    assert write_step.metadata["state_bindings"] == {"merged_state": "merged_state_ready"}
+    assert write_step.metadata["implicit_state_fallback_slots"] == ["merged_state_ready"]
+    assert merge_step.metadata["dependency_sources"] == ["step_01", "step_02"]
+    assert write_step.metadata["dependency_sources"] == ["step_03"]
+    merge_node = result.workflow.workflow_graph.nodes[2]
+    write_node = result.workflow.workflow_graph.nodes[3]
+    assert merge_node.dependencies == ["step_01", "step_02"]
+    assert write_node.dependencies == ["step_03"]
+
+
+def test_planner_sensitive_multi_source_executes_all_steps_with_semantic_mock(tmp_path) -> None:
+    result = build_planner().plan(
+        _planner_sensitive_request(
+            "planner_sensitive_multi_source_execution_unit",
+            "Collect primary and secondary evidence for billing, merge the evidence, and write the merged report.",
+            [
+                ToolSpec(tool_id="secondary_source_fetcher", description="Fetch secondary source evidence.", metadata={"semantic_tags": ["retrieve", "secondary"], "execution_backend": "semantic_mock"}),
+                ToolSpec(tool_id="state_modifier", description="Modify state.", metadata={"semantic_tags": ["modify", "distractor"], "execution_backend": "semantic_mock"}),
+                ToolSpec(tool_id="source_merger", description="Merge sources.", metadata={"semantic_tags": ["merge"], "execution_backend": "semantic_mock"}),
+                ToolSpec(tool_id="primary_source_fetcher", description="Fetch primary source evidence.", metadata={"semantic_tags": ["retrieve", "primary"], "execution_backend": "semantic_mock"}),
+                ToolSpec(tool_id="merged_report_writer", description="Write merged report.", metadata={"semantic_tags": ["write"], "execution_backend": "semantic_mock"}),
+            ],
+        )
+    )
+
+    result.workflow.context.environment.permissions.filesystem_write = True
+    trace_path = tmp_path / "multi_source_trace.json"
+    trace = SequentialExecutor().run(
+        workflow=result.workflow,
+        run_id="planner_sensitive_multi_source_execution_unit",
+        output_path=str(trace_path),
+    )
+
+    assert trace.metrics.success is True
+    assert trace.metrics.tool_calls == 4
+    payload = json.loads(trace_path.read_text(encoding="utf-8"))
+    tool_calls = [event["tool_id"] for event in payload["events"] if event["event_type"] == "tool_call"]
+    assert tool_calls == ["primary_source_fetcher", "secondary_source_fetcher", "source_merger", "merged_report_writer"]
+    stop_event = next(event for event in payload["events"] if event["event_type"] == "stop")
+    assert stop_event["output"]["reason"] == "success_criteria_satisfied"
