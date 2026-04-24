@@ -1,0 +1,38 @@
+{
+  "dataset": "toolsandbox_planner_sensitive_v1",
+  "protocol": "planner_sensitive_v1",
+  "source": "synthetic planner-sensitive protocol derived from ToolSandbox adapter semantics",
+  "sample_count": 24,
+  "family_counts": {
+    "retrieve_summarize_write": 6,
+    "check_modify_verify": 6,
+    "branch_select_execute": 6,
+    "multi_source_merge_write": 6
+  },
+  "planner_visible_keys": [
+    "query",
+    "target_path",
+    "messages",
+    "candidate_tools",
+    "categories",
+    "constraints",
+    "ideal_turn_count",
+    "metadata"
+  ],
+  "scorer_gold_keys": [
+    "expected_capability_order",
+    "expected_dependency_edges",
+    "expected_tool_sequence",
+    "required_state_slots_by_step",
+    "forbidden_shortcuts"
+  ],
+  "anti_leakage_policy": {
+    "scorer_gold_not_planner_visible": true,
+    "no_single_tool_primary_samples": true,
+    "no_ideal_tool_calls_one": true,
+    "milestones_hidden_from_planner": true,
+    "candidate_tools_shuffled": true,
+    "distractor_tools_per_task": true
+  },
+  "paper_claim_policy": "effect-size scaffold only; expand beyond 40 tasks before strong planner headline"
+}

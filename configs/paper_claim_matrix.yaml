@@ -62,6 +62,29 @@
         ]
       }
     },
+    "planner_structural_mechanism": {
+      "status": "effect_size_v1_available_pending_40plus_expansion",
+      "claim_strength": "pending",
+      "benchmark_suite": "toolsandbox_planner_sensitive_v1",
+      "claim": "HTGP is implemented as a planner component with capability selection, graph construction, binding, and policy injection. The 24-task planner-sensitive v1 formal bundle passes hint-leakage and paired effect-size gates, but remains pending rather than mechanism-primary until expanded beyond 40 tasks and revalidated.",
+      "metrics": {
+        "primary": [
+          "a2_minus_a1_success_delta",
+          "paired_wins_losses_ties",
+          "capability_order_correct",
+          "dependency_edge_correct",
+          "planner_bypass_rate",
+          "hint_leakage_detected"
+        ],
+        "supporting": [
+          "tool_sequence_match",
+          "required_state_satisfaction_rate",
+          "ordering_failure_rate",
+          "state_dependency_failure_rate",
+          "steps_exceed_ideal_rate"
+        ]
+      }
+    },
     "bfcl_agentic_supporting": {
       "status": "supporting_only",
       "claim_strength": "mechanism_supporting",
@@ -204,6 +227,27 @@
       "slice_policy_version": "toolsandbox_interaction_live_v1",
       "claim_strength": "mechanism_supporting",
       "paper_role": "mechanism_supporting"
+    },
+    "toolsandbox_planner_sensitive_v1": {
+      "status": "formal_v1_effect_size_available_pending_expansion",
+      "prepare_script": "scripts/derive_toolsandbox_planner_sensitive.py",
+      "runner": "scripts/run_toolsandbox_bench.py",
+      "score_script": "scripts/score_toolsandbox_planner_sensitive.py",
+      "default_source": "data/toolsandbox_planner_sensitive_v1.jsonl",
+      "default_manifest": "data/toolsandbox_planner_sensitive_v1.manifest.json",
+      "default_mode": "planner",
+      "default_systems": "a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "default_num_runs": 3,
+      "runner_flags": [
+        "--planner-sensitive-protocol"
+      ],
+      "claim_ids": [
+        "planner_structural_mechanism"
+      ],
+      "claim_strength": "pending",
+      "paper_role": "planner_mechanism_candidate",
+      "formal_bundle": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal",
+      "promotion_gate": "Current 24-task v1 bundle is effect-size evidence only. Expand beyond 40 tasks before strong paper claim; then require no hint leakage, a2_planner >= a1_recovery + 20pp strict success, paired wins exceed losses, capability/dependency deltas >= 20pp, planner bypass controlled, and no cost explosion."
     },
     "bfcl_fc_core": {
       "status": "implemented",

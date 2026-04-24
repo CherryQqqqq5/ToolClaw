@@ -1,0 +1,72 @@
+{
+  "benchmark": "toolsandbox",
+  "generated_at": "2026-04-24T03:06:16.965154+00:00",
+  "source": "data/toolsandbox_planner_sensitive_v1.jsonl",
+  "source_sha256": "7c6f11f7a1db4c3862233684abaf4dbd19d559ecba452ea8f66182a5d1f7219c",
+  "normalized_taskset": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/prepared/toolsandbox.normalized.json",
+  "normalized_taskset_sha256": "f7b3977fc55b47355b454b13c4fdc48c8515da0f9e04c2825c677af4da33f87d",
+  "mode": "planner",
+  "systems": [
+    "a1_recovery",
+    "a2_planner",
+    "a3_interaction",
+    "a4_reuse"
+  ],
+  "num_runs": 3,
+  "sample_id_checksum": "cec66ad122cae7a4d0fbfb73ce69cb77db309c24d2637979ab116403c546f438",
+  "git_commit": "fde6c8d387d4626bfdead2584546fa149cd0cf54",
+  "config_sha256": "e2738810c218e1f607010b6e252f1fc78b4b49f732b5f5fe8bf4b356d3e7376e",
+  "scoreboard_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/scoreboard.json",
+  "report_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/report.md",
+  "comparison_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/comparison.scored.csv",
+  "per_system_summary_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/per_system_summary.json",
+  "archived_files": [
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/archive/run_toolsandbox_bench.py",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/archive/benchmark_toolsandbox.yaml",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/archive/phase1.yaml"
+  ],
+  "archived_files_scope": "local_debug_only",
+  "archive_hashes": {
+    "scripts/run_toolsandbox_bench.py": "8dda1c82572fb8b186e002e70fa93c9c8916a1c2f9deb00c2b84ef9e8a3a23e8",
+    "configs/benchmark_toolsandbox.yaml": "e62cdc54c4844f6021b8afc07cfa2b208c2cf89c6d851179d21cc0bd3ee7a71e",
+    "configs/phase1.yaml": "60f276f368e9ee75b318ee7941012640e7d53b5212b2702b716519c951280f0b"
+  },
+  "experiment_metadata": {
+    "seed": 0,
+    "model_version": "phase1_executor",
+    "budget_note": "default phase1 budget",
+    "runner_script": "scripts/run_toolsandbox_bench.py",
+    "config_file": "configs/benchmark_toolsandbox.yaml",
+    "phase_config": "configs/phase1.yaml",
+    "official_run_dir": null,
+    "official_data_root": "data/external/ToolSandbox/data",
+    "interaction_target": "simulator",
+    "cli_prompt_prefix": null,
+    "cli_command": null,
+    "cli_timeout_s": null,
+    "openrouter_model": null,
+    "openrouter_base_url": null,
+    "planner_sensitive_protocol": "planner_sensitive_v1"
+  },
+  "comparison_raw_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/comparison.raw.csv",
+  "comparison_scored_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/comparison.scored.csv",
+  "latest_comparison_raw_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/latest_run_comparison.raw.csv",
+  "latest_comparison_scored_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/latest_run_comparison.scored.csv",
+  "latest_raw_report_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/latest_run_raw_report.md",
+  "raw_vs_benchmark_gap_summary_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/raw_vs_benchmark_gap_summary.json",
+  "raw_vs_benchmark_gap_report_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/raw_vs_benchmark_gap_summary.md",
+  "local_debug_only_paths": [
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/comparison.raw.csv",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/latest_run_comparison.raw.csv",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/latest_run_comparison.scored.csv",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/latest_run_raw_report.md",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/archive",
+    "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/prepared"
+  ],
+  "causal_claim_summary_path": null,
+  "causal_claim_report_path": null,
+  "slice_policy_version": null,
+  "claim_ids": null,
+  "planner_sensitive_summary_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/planner_sensitive_summary.json",
+  "hint_leakage_report_path": "outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/hint_leakage_report.json"
+}

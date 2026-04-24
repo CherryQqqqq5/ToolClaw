@@ -110,6 +110,8 @@ def _summary_exception_type(summary: Dict[str, Any]) -> str:
 
 
 def _has_alternative_verification_signal(raw_payload: Dict[str, Any]) -> bool:
+    if _is_planner_sensitive_payload(raw_payload):
+        return bool(raw_payload.get("scorer_gold"))
     summary = _reference_result_summary(raw_payload)
     mapping = summary.get("milestone_mapping")
     if isinstance(mapping, dict) and mapping:
@@ -126,25 +128,52 @@ def _has_alternative_verification_signal(raw_payload: Dict[str, Any]) -> bool:
     return False
 
 
+def _is_planner_sensitive_payload(raw_payload: Dict[str, Any]) -> bool:
+    return str(raw_payload.get("planner_sensitive_protocol") or raw_payload.get("protocol") or "") == "planner_sensitive_v1"
+
+
+def _planner_visible_payload(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
+    if not _is_planner_sensitive_payload(raw_payload):
+        return raw_payload
+    visible = dict(raw_payload.get("planner_visible", {}) or {})
+    for key in ("sample_id", "task_id", "name", "scenario_id"):
+        if key in raw_payload and key not in visible:
+            visible[key] = raw_payload[key]
+    return visible
+
+
 def _ground_truth_present(raw_payload: Dict[str, Any], sample_id: str) -> bool:
+    visible_payload = _planner_visible_payload(raw_payload)
     return (
-        bool(raw_payload.get("messages"))
-        or bool(raw_payload.get("candidate_tools"))
-        or bool(raw_payload.get("tool_allow_list"))
-        or bool(raw_payload.get("milestones"))
-        or _query_is_natural_language(raw_payload.get("query"), sample_id)
+        bool(visible_payload.get("messages"))
+        or bool(visible_payload.get("candidate_tools"))
+        or bool(visible_payload.get("tool_allow_list"))
+        or bool(visible_payload.get("milestones"))
+        or _query_is_natural_language(visible_payload.get("query"), sample_id)
     )
 
 
 def _validate_toolsandbox_sample(sample: Any) -> List[str]:
     raw_payload = sample.raw_payload
+    visible_payload = _planner_visible_payload(raw_payload)
     issues: List[str] = []
-    if not raw_payload.get("messages") and not _query_is_natural_language(raw_payload.get("query"), sample.sample_id):
+    if not visible_payload.get("messages") and not _query_is_natural_language(visible_payload.get("query"), sample.sample_id):
         issues.append("missing_messages_or_natural_language_query")
-    if not raw_payload.get("candidate_tools") and not raw_payload.get("tool_allow_list"):
+    if not visible_payload.get("candidate_tools") and not visible_payload.get("tool_allow_list"):
         issues.append("missing_candidate_tools_and_tool_allow_list")
     if not raw_payload.get("milestones") and not _has_alternative_verification_signal(raw_payload):
         issues.append("missing_milestones_and_execution_verified_signal")
+    if _is_planner_sensitive_payload(raw_payload):
+        if not isinstance(raw_payload.get("planner_visible"), dict):
+            issues.append("missing_planner_visible")
+        if not isinstance(raw_payload.get("scorer_gold"), dict):
+            issues.append("missing_scorer_gold")
+        categories = visible_payload.get("categories") or []
+        normalized_categories = {str(category).strip().lower().replace(" ", "_") for category in categories} if isinstance(categories, list) else set()
+        if "single_tool" in normalized_categories:
+            issues.append("planner_sensitive_single_tool_disallowed")
+        if visible_payload.get("ideal_tool_calls") == 1:
+            issues.append("planner_sensitive_ideal_tool_calls_one_disallowed")
     return issues
 
 
@@ -676,6 +705,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Fail if the prepared ToolSandbox source does not include any merged result_summary / toolsandbox_result signal",
     )
+    parser.add_argument(
+        "--planner-sensitive-protocol",
+        action="store_true",
+        help="Enable planner_sensitive_v1 hint-isolation guard and post-run structural scorer.",
+    )
     parser.add_argument("--keep-normalized-taskset", action="store_true", help="Keep the normalized taskset JSON file")
     parser.add_argument(
         "--interaction-target",
@@ -757,6 +791,25 @@ def _maybe_write_causal_ablation_outputs(outdir: Path, systems: List[str]) -> No
             str(outdir / "comparison.scored.csv"),
             "--scoreboard",
             str(outdir / "scoreboard.json"),
+            "--outdir",
+            str(outdir),
+        ],
+        cwd=ROOT_DIR,
+        check=True,
+    )
+
+
+def _maybe_write_planner_sensitive_outputs(outdir: Path, source: Path, enabled: bool) -> None:
+    if not enabled:
+        return
+    subprocess.run(
+        [
+            sys.executable,
+            str(ROOT_DIR / "scripts" / "score_toolsandbox_planner_sensitive.py"),
+            "--source",
+            str(source),
+            "--comparison",
+            str(outdir / "comparison.scored.csv"),
             "--outdir",
             str(outdir),
         ],
@@ -1636,6 +1689,18 @@ def main() -> None:
     adapter = ToolSandboxAdapter()
     samples = adapter.load_samples(str(source_for_adapter))
     samples = _filter_and_validate_samples(samples, smoke=False)
+    if args.planner_sensitive_protocol:
+        non_protocol_samples = [
+            sample.sample_id
+            for sample in samples
+            if not _is_planner_sensitive_payload(sample.raw_payload)
+        ]
+        if non_protocol_samples:
+            raise ValueError(
+                "--planner-sensitive-protocol requires planner_sensitive_v1 samples; "
+                + "non-protocol sample ids: "
+                + ", ".join(non_protocol_samples[:20])
+            )
     if args.limit is not None:
         samples = samples[: args.limit]
     if args.smoke:
@@ -1760,6 +1825,7 @@ def main() -> None:
             "cli_timeout_s": args.cli_timeout_s if args.interaction_target == "cli_cmd" else None,
             "openrouter_model": args.openrouter_model if args.interaction_target == "llm_openrouter" else None,
             "openrouter_base_url": args.openrouter_base_url if args.interaction_target == "llm_openrouter" else None,
+            "planner_sensitive_protocol": "planner_sensitive_v1" if args.planner_sensitive_protocol else None,
         },
         archive_files=[
             Path(__file__).resolve(),
@@ -1819,6 +1885,7 @@ def main() -> None:
         if obsolete_path.exists():
             obsolete_path.unlink()
     _maybe_write_causal_ablation_outputs(outdir, systems)
+    _maybe_write_planner_sensitive_outputs(outdir, source_for_adapter, args.planner_sensitive_protocol)
     reuse_scope = "cross_run_persistent" if args.asset_registry_root else "within_invocation"
     _write_toolsandbox_report(
         scoreboard,
@@ -1840,6 +1907,12 @@ def main() -> None:
             if (outdir / "causal_claim_summary.json").exists()
             else None,
             "claim_ids": CAUSAL_CLAIM_IDS if (outdir / "causal_claim_summary.json").exists() else None,
+            "planner_sensitive_summary_path": display_path(outdir / "planner_sensitive_summary.json")
+            if (outdir / "planner_sensitive_summary.json").exists()
+            else None,
+            "hint_leakage_report_path": display_path(outdir / "hint_leakage_report.json")
+            if (outdir / "hint_leakage_report.json").exists()
+            else None,
         },
     )
 

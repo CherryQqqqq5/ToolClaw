@@ -349,6 +349,8 @@ outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/*
 !data/toolsandbox_semantic_repair_official_v1.manifest.json
 !data/toolsandbox_reuse_persistent_v2.jsonl
 !data/toolsandbox_reuse_persistent_v2.manifest.json
+!data/toolsandbox_planner_sensitive_v1.jsonl
+!data/toolsandbox_planner_sensitive_v1.manifest.json
 !data/tau2_dual_control_family_v1.json
 !data/tau2_dual_control_family_v1.manifest.json
 
@@ -368,3 +370,27 @@ outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/*
 !outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/scoreboard.json
 !outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/per_system_summary.json
 !outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/report.md
+
+!outputs/planner_sensitive_v1_smoke/
+outputs/planner_sensitive_v1_smoke/*
+!outputs/planner_sensitive_v1_smoke/experiment_manifest.json
+!outputs/planner_sensitive_v1_smoke/comparison.scored.csv
+!outputs/planner_sensitive_v1_smoke/scoreboard.json
+!outputs/planner_sensitive_v1_smoke/per_system_summary.json
+!outputs/planner_sensitive_v1_smoke/planner_sensitive_summary.json
+!outputs/planner_sensitive_v1_smoke/planner_sensitive_summary.md
+!outputs/planner_sensitive_v1_smoke/hint_leakage_report.json
+!outputs/planner_sensitive_v1_smoke/hint_leakage_report.md
+!outputs/planner_sensitive_v1_smoke/report.md
+
+!outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/
+outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/*
+!outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/experiment_manifest.json
+!outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/comparison.scored.csv
+!outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/scoreboard.json
+!outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/per_system_summary.json
+!outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/planner_sensitive_summary.json
+!outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/planner_sensitive_summary.md
+!outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/hint_leakage_report.json
+!outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/hint_leakage_report.md
+!outputs/paper_final_freeze_20260424/planner_sensitive_v1_formal/report.md

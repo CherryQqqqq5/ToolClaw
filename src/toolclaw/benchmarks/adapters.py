@@ -996,6 +996,16 @@ class ToolSandboxAdapter:
         "state dependency": "state_dependency",
         "canonicalization": "canonicalization",
         "insufficient information": "insufficient_information",
+        "planner sensitive": "planner_sensitive",
+    }
+
+    PLANNER_SENSITIVE_PROTOCOL = "planner_sensitive_v1"
+    PLANNER_SENSITIVE_GOLD_KEYS = {
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "required_state_slots_by_step",
+        "forbidden_shortcuts",
     }
 
     def load_samples(self, source: str) -> List[BenchmarkSample]:
@@ -1026,12 +1036,13 @@ class ToolSandboxAdapter:
         raise ValueError("ToolSandbox source must be JSON list, JSON object with 'samples', or JSONL")
 
     def build_request(self, sample: BenchmarkSample) -> PlanningRequest:
-        categories = self._extract_categories(sample.raw_payload)
+        visible_payload = self._planner_visible_payload(sample.raw_payload)
+        categories = self._extract_categories(visible_payload)
         task = TaskSpec(
             task_id=sample.sample_id,
-            user_goal=self._extract_query(sample.raw_payload),
+            user_goal=self._extract_query(visible_payload),
             success_criteria=list(
-                sample.raw_payload.get(
+                visible_payload.get(
                     "success_criteria",
                     [
                         "critical ToolSandbox milestones are satisfied",
@@ -1039,46 +1050,57 @@ class ToolSandboxAdapter:
                     ],
                 )
             ),
-            constraints=self._build_constraints(sample.raw_payload),
+            constraints=self._build_constraints(visible_payload),
         )
         context = WorkflowContext(
             environment=Workflow.demo().context.environment,
-            candidate_tools=self._build_candidate_tools(sample.raw_payload),
+            candidate_tools=self._build_candidate_tools(visible_payload),
         )
         request = PlanningRequest(task=task, context=context, policy=Workflow.demo().policy)
         request.hints.user_style["benchmark"] = self.benchmark_name
         request.hints.user_style["categories"] = categories
         request.hints.user_style["requires_interaction"] = self._interaction_expected(categories)
-        request.hints.user_style["milestone_count"] = len(sample.raw_payload.get("milestones", []))
-        request.hints.user_style["milestones"] = list(sample.raw_payload.get("milestones", []))
-        request.hints.user_style["tool_allow_list"] = self._tool_allow_list(sample.raw_payload)
-        request.hints.user_style["branch_options"] = list(sample.raw_payload.get("branch_options", []))
-        request.hints.user_style["ideal_tool_calls"] = sample.raw_payload.get("ideal_tool_calls")
-        request.hints.user_style["ideal_turn_count"] = sample.raw_payload.get("ideal_turn_count")
+        if self._is_planner_sensitive_protocol(sample.raw_payload):
+            request.hints.user_style["planner_sensitive_protocol"] = self.PLANNER_SENSITIVE_PROTOCOL
+            request.hints.user_style["milestone_count"] = 0
+            request.hints.user_style["milestones"] = []
+            request.hints.user_style["tool_allow_list"] = []
+            request.hints.user_style["branch_options"] = []
+            request.hints.user_style["ideal_tool_calls"] = None
+            request.hints.user_style["ideal_turn_count"] = visible_payload.get("ideal_turn_count")
+        else:
+            request.hints.user_style["milestone_count"] = len(visible_payload.get("milestones", []))
+            request.hints.user_style["milestones"] = list(visible_payload.get("milestones", []))
+            request.hints.user_style["tool_allow_list"] = self._tool_allow_list(visible_payload)
+            request.hints.user_style["branch_options"] = list(visible_payload.get("branch_options", []))
+            request.hints.user_style["ideal_tool_calls"] = visible_payload.get("ideal_tool_calls")
+            request.hints.user_style["ideal_turn_count"] = visible_payload.get("ideal_turn_count")
         request.hints.user_style["tool_execution_backend"] = "semantic_mock"
         return request
 
     def to_eval_task(self, sample: BenchmarkSample) -> Dict[str, Any]:
-        categories = self._extract_categories(sample.raw_payload)
-        query = self._extract_query(sample.raw_payload)
+        visible_payload = self._planner_visible_payload(sample.raw_payload)
+        planner_sensitive = self._is_planner_sensitive_protocol(sample.raw_payload)
+        categories = self._extract_categories(visible_payload)
+        query = self._extract_query(visible_payload)
         task_id = sample.sample_id
-        target_path = sample.raw_payload.get("target_path") or f"{self.default_target_dir}/{task_id}.txt"
-        tool_allow_list = self._tool_allow_list(sample.raw_payload)
-        raw_metadata = dict(sample.raw_payload.get("metadata", {}))
-        milestones = list(sample.raw_payload.get("milestones", []))
-        reference_result_summary = self._extract_reference_result_summary(sample.raw_payload)
+        target_path = visible_payload.get("target_path") or f"{self.default_target_dir}/{task_id}.txt"
+        tool_allow_list = [] if planner_sensitive else self._tool_allow_list(visible_payload)
+        raw_metadata = dict(visible_payload.get("metadata", {}))
+        milestones = [] if planner_sensitive else list(visible_payload.get("milestones", []))
+        reference_result_summary = self._extract_reference_result_summary(visible_payload)
 
         task: Dict[str, Any] = {
             "task_id": task_id,
-            "scenario": str(sample.raw_payload.get("execution_scenario") or (categories[0] if categories else "toolsandbox")),
+            "scenario": str(visible_payload.get("execution_scenario") or (categories[0] if categories else "toolsandbox")),
             "query": query,
             "target_path": target_path,
-            "messages": list(sample.raw_payload.get("messages", [])),
+            "messages": list(visible_payload.get("messages", [])),
             "milestones": milestones,
-            "branch_options": list(sample.raw_payload.get("branch_options", [])),
+            "branch_options": [] if planner_sensitive else list(visible_payload.get("branch_options", [])),
             "tool_allow_list": tool_allow_list,
-            "ideal_turn_count": sample.raw_payload.get("ideal_turn_count"),
-            "ideal_tool_calls": sample.raw_payload.get("ideal_tool_calls"),
+            "ideal_turn_count": visible_payload.get("ideal_turn_count"),
+            "ideal_tool_calls": None if planner_sensitive else visible_payload.get("ideal_tool_calls"),
             "reference_result_summary": reference_result_summary,
             "metadata": {
                 **raw_metadata,
@@ -1086,25 +1108,28 @@ class ToolSandboxAdapter:
                 "toolsandbox_categories": categories,
                 "tool_allow_list": tool_allow_list,
                 "milestone_count": len(milestones),
-                "ideal_turn_count": sample.raw_payload.get("ideal_turn_count"),
-                "ideal_tool_calls": sample.raw_payload.get("ideal_tool_calls"),
-                "messages": list(sample.raw_payload.get("messages", [])),
+                "ideal_turn_count": visible_payload.get("ideal_turn_count"),
+                "ideal_tool_calls": None if planner_sensitive else visible_payload.get("ideal_tool_calls"),
+                "messages": list(visible_payload.get("messages", [])),
                 "milestones": milestones,
-                "branch_options": list(sample.raw_payload.get("branch_options", [])),
+                "branch_options": [] if planner_sensitive else list(visible_payload.get("branch_options", [])),
                 "toolsandbox_reference_result": reference_result_summary,
                 "reference_result_summary_present": bool(reference_result_summary),
                 "tool_execution_backend": "semantic_mock",
             },
         }
+        if planner_sensitive:
+            task["metadata"]["planner_sensitive_protocol"] = self.PLANNER_SENSITIVE_PROTOCOL
+            task["metadata"]["planner_visible_keys"] = sorted(visible_payload.keys())
         task["tool_execution_backend"] = "semantic_mock"
-        if "candidate_tools" in sample.raw_payload:
-            task["candidate_tools"] = list(sample.raw_payload.get("candidate_tools", []))
+        if "candidate_tools" in visible_payload:
+            task["candidate_tools"] = list(visible_payload.get("candidate_tools", []))
         elif tool_allow_list:
             task["candidate_tools"] = list(tool_allow_list)
-        if "constraints" in sample.raw_payload:
-            task["constraints"] = dict(sample.raw_payload["constraints"])
-        if "simulated_policy" in sample.raw_payload:
-            task["simulated_policy"] = dict(sample.raw_payload["simulated_policy"])
+        if "constraints" in visible_payload:
+            task["constraints"] = dict(visible_payload["constraints"])
+        if "simulated_policy" in visible_payload:
+            task["simulated_policy"] = dict(visible_payload["simulated_policy"])
         for passthrough_key in (
             "oracle_user_replies",
             "negative_user_replies",
@@ -1119,8 +1144,8 @@ class ToolSandboxAdapter:
             "slice_type",
             "source_task_id",
         ):
-            if passthrough_key in sample.raw_payload:
-                value = sample.raw_payload[passthrough_key]
+            if passthrough_key in visible_payload:
+                value = visible_payload[passthrough_key]
                 if isinstance(value, dict):
                     task[passthrough_key] = dict(value)
                 elif isinstance(value, list):
@@ -1441,13 +1466,46 @@ class ToolSandboxAdapter:
             or raw.get("id")
             or f"toolsandbox_{idx:05d}"
         )
-        categories = self._extract_categories(raw)
-        metadata = dict(raw.get("metadata", {}))
+        visible_payload = self._planner_visible_payload(raw)
+        categories = self._extract_categories(visible_payload)
+        metadata = dict(visible_payload.get("metadata", {}))
         metadata["toolsandbox_categories"] = categories
-        metadata["tool_allow_list"] = self._tool_allow_list(raw)
-        metadata["milestone_count"] = len(raw.get("milestones", []))
+        metadata["tool_allow_list"] = [] if self._is_planner_sensitive_protocol(raw) else self._tool_allow_list(visible_payload)
+        metadata["milestone_count"] = 0 if self._is_planner_sensitive_protocol(raw) else len(visible_payload.get("milestones", []))
+        if self._is_planner_sensitive_protocol(raw):
+            metadata["planner_sensitive_protocol"] = self.PLANNER_SENSITIVE_PROTOCOL
         scenario = categories[0] if categories else "toolsandbox"
         return BenchmarkSample(sample_id=sample_id, raw_payload=raw, scenario=scenario, metadata=metadata)
+
+    def _is_planner_sensitive_protocol(self, raw: Dict[str, Any]) -> bool:
+        protocol = raw.get("planner_sensitive_protocol") or raw.get("protocol")
+        return str(protocol or "").strip() == self.PLANNER_SENSITIVE_PROTOCOL
+
+    def _planner_visible_payload(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+        if not self._is_planner_sensitive_protocol(raw):
+            return raw
+        visible = dict(raw.get("planner_visible", {}) or {})
+        for key in (
+            "sample_id",
+            "task_id",
+            "name",
+            "scenario_id",
+            "execution_scenario",
+            "slice_type",
+            "task_family",
+        ):
+            if key in raw and key not in visible:
+                visible[key] = raw[key]
+        visible.setdefault("categories", ["planner_sensitive", "multiple_tool", "state_dependency"])
+        visible.setdefault(
+            "success_criteria",
+            [
+                "execute a multi-step capability sequence in the required dependency order",
+                "avoid forbidden shortcut tools",
+                "produce the requested final state or artifact",
+            ],
+        )
+        return visible
 
     def _extract_query(self, raw: Dict[str, Any]) -> str:
         query = raw.get("query") or raw.get("user_goal") or raw.get("instruction") or raw.get("prompt")
