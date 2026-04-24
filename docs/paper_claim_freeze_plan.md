@@ -141,9 +141,9 @@ Paper-safe summary:
 Current 2026-04-24 update:
 
 - This older freeze-plan section is superseded by [paper_claim_boundary_20260424.md](paper_claim_boundary_20260424.md) and [configs/paper_claim_matrix.yaml](../configs/paper_claim_matrix.yaml).
-- HTGP planner structural contribution is now supported as `mechanism_supporting` by `toolsandbox_planner_sensitive_v2_capability_fix`, not by the official ToolSandbox headline benchmark.
-- The capability-fix formal bundle reports `a2_minus_a1_success_delta = 0.738`, paired wins/losses/ties `93/0/33`, no hint leakage, no ordered gold leakage, controlled bypass, and 3/4 positive families.
-- The remaining limitation is `multi_source_merge_write`, classified as a binder-selection gap.
+- HTGP planner structural contribution is now supported as `mechanism_supporting` by `toolsandbox_planner_sensitive_v2_f2`, not by the official ToolSandbox headline benchmark.
+- The f2 formal bundle reports `a2_minus_a1_success_delta = 1.0`, paired wins/losses/ties `126/0/0`, no hint leakage, no ordered gold leakage, controlled bypass, and 4/4 positive families.
+- The remaining limitation is external exact function-calling transfer: BFCL fc_core remains paper-safe but negative for planner/binder headline lift.
 
 Paper-safe summary:
 

@@ -4,7 +4,7 @@ This is the canonical paper-facing claim boundary note. If this file conflicts w
 
 ## Allowed Core Narrative
 
-ToolSandbox official supports the end-to-end interaction headline. ToolSandbox semantic repair official v1 provides targeted official-slice evidence for semantic repair. Interaction Live validates the semantic decoder and patch mechanism under controlled user modes. ToolSandbox causal v2 is boundary evidence showing that probe and contract effects can mediate full-suite gains. BFCL fc_core is a paper-safe negative transfer result for planner/binder headline lift. HTGP planner structural contribution is now mechanism-supporting evidence after the planner-sensitive V2 capability-fix formal bundle: it passes structured-observability, leakage, bypass, cost, and 3/4 family coverage gates, while multi-source merge remains a binder-selection limitation and the claim is not headline. Reuse v2 and TAU2 family remain pending or supporting evidence until larger formal bundles are available.
+ToolSandbox official supports the end-to-end interaction headline. ToolSandbox semantic repair official v1 provides targeted official-slice evidence for semantic repair. Interaction Live validates the semantic decoder and patch mechanism under controlled user modes. ToolSandbox causal v2 is boundary evidence showing that probe and contract effects can mediate full-suite gains. BFCL fc_core is a paper-safe negative transfer result for planner/binder headline lift. HTGP planner structural contribution is mechanism-supporting evidence after the planner-sensitive V2 f2 formal bundle: it passes structured-observability, leakage, bypass, cost, and all-four-family coverage gates. The HTGP claim remains mechanism-level rather than headline because external exact function-calling transfer, especially BFCL, is still not positive. Reuse v2 and TAU2 family remain pending or supporting evidence until larger formal bundles are available.
 
 ## Claim Matrix
 
@@ -15,7 +15,7 @@ ToolSandbox official supports the end-to-end interaction headline. ToolSandbox s
 | `interaction_live_semantic_gate` | `mechanism_supporting` | `toolsandbox_interaction_live_v1` | semantic repair official v1 | Controlled oracle/partial replies are useful; noisy, irrelevant, and wrong-parameter replies are rejected as useful repair. | Interaction Live alone is the official headline benchmark. |
 | `causal_v2_probe_boundary` | `boundary` | `toolsandbox_interaction_causality_formal_v2` | semantic repair official v1 | Causal v2 exposes that official full-suite gains can include probe/contract effects, motivating targeted semantic repair evaluation. | Causal v2 is positive semantic repair mechanism evidence. |
 | `planner_binding_headline` | `limitation` | `bfcl_fc_core` | BFCL diagnostics | BFCL fc_core is paper-safe but negative for planner/binder headline lift. | BFCL currently shows a ToolClaw planner/binder headline gain. |
-| `planner_structural_mechanism` | `mechanism_supporting` | `toolsandbox_planner_sensitive_v2_capability_fix` | v1/v2 boundary bundles, hint leakage audit, family diagnostics | HTGP shows structured planner-mechanism evidence on planner-sensitive V2 after capability vocabulary, instance graph, binder, and observability repair: 42 tasks, a2-a1 delta 0.738, paired wins/losses/ties 93/0/33, no leakage, controlled bypass, and 3/4 positive families. | HTGP is a headline claim, BFCL proves planner/binder transfer, or multi-source merge is already solved. |
+| `planner_structural_mechanism` | `mechanism_supporting` | `toolsandbox_planner_sensitive_v2_f2` | v1/v2 boundary bundles, capability-fix historical bundle, hint leakage audit, family diagnostics | HTGP shows structured planner-mechanism evidence on planner-sensitive V2 f2 after capability vocabulary, instance graph, binder, observability, and multi-source execution repair: 42 tasks, a2-a1 delta 1.0, paired wins/losses/ties 126/0/0, no leakage, controlled bypass, and 4/4 positive families. | HTGP is a headline claim or BFCL proves planner/binder transfer. |
 | `reuse_exact_match_cost` | `pending` | `toolsandbox_reuse_persistent_v2` dataset | server-side smoke only | Reuse is under a narrow exact/matched-signature second-run cost protocol, pending committed formal evidence. | Persistent reuse has a proven paper-safe second-run cost reduction. |
 | `dual_control_interaction` | `boundary` | `tau2_dual_control_family_v1` dataset | old TAU2 formal/smoke bundles | TAU2 currently provides supporting/boundary evidence for dual-control and approval interaction. | TAU2 dual-control is a headline benchmark claim. |
 
@@ -30,25 +30,27 @@ ToolSandbox official supports the end-to-end interaction headline. ToolSandbox s
 | BFCL fc_core | Paper-safe negative transfer result. | Either write limitation or separately repair BFCL adapter path; do not use as positive headline. |
 | BFCL grounding/multi-turn | Older evidence is not paper-safe where dependency/coverage gaps remain. | Keep separate from fc_core formal. |
 | Planner-sensitive v1 | 24-task x 3-run formal v1 is an effect-size scaffold but does not support strong HTGP claim. | Preserve as scaffold; do not promote. |
-| Planner-sensitive v2 capability-fix | Mechanism-supporting formal evidence is now committed at `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal`. | Treat as planner structural mechanism-supporting evidence only; retain multi-source merge as a binder-selection limitation and do not promote to headline. |
+| Planner-sensitive v2 f2 | Mechanism-supporting formal evidence is now committed at `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal`. | Treat as planner structural mechanism-supporting evidence only; keep BFCL exact function-calling transfer as a limitation and do not promote HTGP to headline. |
 | Reuse v2 | Dataset ready; committed formal evidence missing. | Commit a paper-safe smoke/formal bundle only after warm exact hit, low sham false positive, and positive cost/headroom delta. |
 | TAU2 family | Supporting dataset; compound slice sparse. | Expand compound approval plus repair to at least 8-10 tasks before stronger claims. |
 
-## HTGP Planner-Sensitive Capability-Fix Evidence
+## HTGP Planner-Sensitive F2 Evidence
 
-Committed bundle: `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal`. Canonical report: `planner_sensitive_summary.md`; generic `report.md` is marked non-canonical for planner-sensitive claims.
+Committed bundle: `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal`. Canonical report: `planner_sensitive_summary.md`; generic `report.md` is non-canonical for planner-sensitive claims. The earlier `planner_sensitive_v2_capability_fix_formal` bundle remains historical 3/4 evidence and is superseded for current planner-structural claims.
 
 Current formal results:
 
 | metric | value |
 |---|---:|
 | source_task_count | 42 |
-| family_positive_count | 3 |
-| a2_minus_a1_success_delta | 0.7380952381 |
-| paired wins/losses/ties | 93 / 0 / 33 |
+| family_positive_count | 4 |
+| a2_minus_a1_success_delta | 1.000 |
+| paired wins/losses/ties | 126 / 0 / 0 |
 | capability_order_delta | 1.000 |
 | instance_dependency_edge_delta | 1.000 |
-| tool_sequence_delta | 0.7380952381 |
+| tool_sequence_delta | 1.000 |
+| planner_bypass_known_rate | 1.000 |
+| known-row planner_bypass_rate | 0.000 |
 | leakage_detected | false |
 | ordered_gold_structure_leakage_detected | false |
 | v2_promotion_ready | true |
@@ -60,9 +62,11 @@ Family status:
 | retrieve_summarize_write | 1.000 | positive |
 | check_modify_verify | 1.000 | positive |
 | branch_select_execute | 1.000 | positive |
-| multi_source_merge_write | 0.000 | remaining binder-selection gap |
+| multi_source_merge_write | 1.000 | positive after f2 multi-source execution repair |
 
-Allowed wording: HTGP now has mechanism-supporting structural planner evidence on a dedicated planner-sensitive suite. Forbidden wording: HTGP is the paper headline mechanism, or multi-source merge is already solved.
+Allowed wording: HTGP now has mechanism-supporting structural planner evidence across all four planner-sensitive V2 structural families. Forbidden wording: HTGP is the paper headline mechanism, BFCL exact function-calling transfer is solved, or this suite alone proves broad external planner/binder generalization.
+
+Next evidence step before any stronger planner claim: build a held-out paraphrase suite with 60-80 tasks, 15-20 per structural family, no reused query templates or family-name hints, scorer-gold isolation, randomized tool order, renamed tool IDs, and stronger distractor overlap. Also run cross-suite regression for ToolSandbox official, semantic repair official v1, Interaction Live, BFCL fc_core smoke, and reuse persistent v2 smoke.
 
 ## Semantic Repair Paired Evidence
 
@@ -83,6 +87,6 @@ The probe-only control slice must remain a caveat table. In the current bundle, 
 - Do not use causal v2 as primary positive semantic repair evidence.
 - Do not write TAU2 dual-control as headline until the family is larger and formalized.
 - Do not write BFCL fc_core as positive planner/binder transfer evidence.
-- Do not write HTGP planner structural contribution as a headline claim. The current capability-fix V2 bundle supports at most `mechanism_supporting`; promotion beyond that requires resolving the multi-source merge binder-selection gap and re-freezing a stronger bundle.
+- Do not write HTGP planner structural contribution as a headline claim. The current f2 V2 bundle supports `mechanism_supporting`; promotion beyond that requires held-out paraphrase evidence and cross-suite regression, and BFCL exact function-calling transfer remains negative.
 - Do not write reuse as a performance claim until a committed v2 formal bundle shows cost/headroom gains.
 - Do not mix server-side smoke observations with committed paper-safe artifacts without labeling the distinction.

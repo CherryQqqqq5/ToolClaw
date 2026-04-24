@@ -46,17 +46,27 @@ Artifacts:
 
 This is a supporting/boundary family dataset, not headline evidence. Compound approval plus repair remains sparse and must be expanded before any stronger TAU2 dual-control claim.
 
-## HTGP Planner-Sensitive V2 Capability Fix
+## HTGP Planner-Sensitive V2 F2
 
 Artifacts:
 
 - `data/toolsandbox_planner_sensitive_v2.jsonl`
 - `data/toolsandbox_planner_sensitive_v2.manifest.json`
-- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/planner_sensitive_summary.json`
-- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/hint_leakage_report.json`
-- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/planner_sensitive_family_diagnostics.json`
-- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/experiment_manifest.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal/planner_sensitive_summary.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal/planner_sensitive_summary.md`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal/hint_leakage_report.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal/hint_leakage_report.md`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal/planner_sensitive_family_diagnostics.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal/planner_sensitive_family_diagnostics.md`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal/experiment_manifest.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal/comparison.scored.csv`
 
-Status: mechanism-supporting evidence is now available and committed. The capability-fix formal bundle reports `source_task_count = 42`, `family_positive_count = 3`, `a2_minus_a1_success_delta = 0.7380952381`, paired wins/losses/ties `93/0/33`, `leakage_detected = false`, `ordered_gold_structure_leakage_detected = false`, `v2_promotion_ready = true`, and `paper_safe_for_planner_claim = true`.
+Status: mechanism-supporting evidence is now available and committed as the canonical planner-sensitive bundle. The f2 formal bundle reports `source_task_count = 42`, `family_positive_count = 4`, `a2_minus_a1_success_delta = 1.0`, paired wins/losses/ties `126/0/0`, `leakage_detected = false`, `ordered_gold_structure_leakage_detected = false`, `planner_bypass_known_rate = 1.0`, known-row `planner_bypass_rate = 0.0`, `v2_promotion_ready = true`, and `paper_safe_for_planner_claim = true`.
 
-Claim boundary: this upgrades HTGP from pending scaffold to `mechanism_supporting`, not headline. `multi_source_merge_write` remains a binder-selection gap and should be described as the next repair target before any stronger planner claim.
+Claim boundary: this upgrades HTGP planner-sensitive evidence to `mechanism_supporting`, not headline. The earlier `planner_sensitive_v2_capability_fix_formal` bundle remains historical 3/4 evidence; f2 resolves the multi-source execution gap inside the planner-sensitive protocol. External exact function-calling transfer, especially BFCL fc_core, remains negative and must stay a limitation.
+
+Next steps before any stronger planner claim:
+
+- Build a held-out paraphrase suite with 60-80 tasks, 15-20 per structural family, no reused query templates or family-name hints, scorer-gold isolation, randomized tool order, renamed tool IDs, and stronger distractor overlap.
+- Run cross-suite regression on ToolSandbox official frozen, semantic repair official v1, Interaction Live v1, BFCL fc_core smoke, and reuse persistent v2 smoke to confirm the planner-sensitive repairs did not contaminate other benchmark lines.
+- Keep HTGP at `mechanism_supporting` until held-out evidence and cross-suite regression are committed.

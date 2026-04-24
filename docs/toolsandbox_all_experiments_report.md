@@ -95,7 +95,7 @@ The intended system ladder is now correctly implemented in [scripts/run_eval.py]
 
 Important interpretation rule:
 
-2026-04-24 update: this historical report is superseded for planner-structural claims by `toolsandbox_planner_sensitive_v2_capability_fix`. The current dedicated planner-sensitive formal bundle supports HTGP as `mechanism_supporting` with `a2_minus_a1_success_delta = 0.738` and 3/4 positive families, while multi-source merge remains a binder-selection limitation. Do not use this older official-benchmark planner note as the primary HTGP evidence.
+2026-04-24 update: this historical report is superseded for planner-structural claims by `toolsandbox_planner_sensitive_v2_f2`. The current dedicated planner-sensitive f2 formal bundle supports HTGP as `mechanism_supporting` with `a2_minus_a1_success_delta = 1.0`, paired wins/losses/ties `126/0/0`, no leakage, and 4/4 positive families. Do not use this older official-benchmark planner note as the primary HTGP evidence; BFCL exact function-calling transfer remains a separate negative limitation.
 
 - from `a1` onward, each layer now adds one mechanism family to the previous layer
 - this is a **design property**, not a guarantee of strictly monotonic success on every slice

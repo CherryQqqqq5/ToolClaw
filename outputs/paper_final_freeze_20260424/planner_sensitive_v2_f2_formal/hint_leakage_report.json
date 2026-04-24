@@ -1,0 +1,1268 @@
+{
+  "protocol": "planner_sensitive_v2",
+  "sample_count": 42,
+  "task_reports": {
+    "planner_sensitive_retrieve_summarize_write_01": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_retrieve_summarize_write_02": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_retrieve_summarize_write_03": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_retrieve_summarize_write_04": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_retrieve_summarize_write_05": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_retrieve_summarize_write_06": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_retrieve_summarize_write_07": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_retrieve_summarize_write_08": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_retrieve_summarize_write_09": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_check_modify_verify_01": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_check_modify_verify_02": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_check_modify_verify_03": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_check_modify_verify_04": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_check_modify_verify_05": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_check_modify_verify_06": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_check_modify_verify_07": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_check_modify_verify_08": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_check_modify_verify_09": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_check_modify_verify_10": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_check_modify_verify_11": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_branch_select_execute_01": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_branch_select_execute_02": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_branch_select_execute_03": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_branch_select_execute_04": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_branch_select_execute_05": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_branch_select_execute_06": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_branch_select_execute_07": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_branch_select_execute_08": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_branch_select_execute_09": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_branch_select_execute_10": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_branch_select_execute_11": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_multi_source_merge_write_01": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_multi_source_merge_write_02": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_multi_source_merge_write_03": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_multi_source_merge_write_04": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_multi_source_merge_write_05": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_multi_source_merge_write_06": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_multi_source_merge_write_07": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_multi_source_merge_write_08": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_multi_source_merge_write_09": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_multi_source_merge_write_10": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    },
+    "planner_sensitive_multi_source_merge_write_11": {
+      "planner_visible_keys": [
+        "candidate_tools",
+        "categories",
+        "constraints",
+        "ideal_turn_count",
+        "messages",
+        "metadata",
+        "query",
+        "target_path"
+      ],
+      "scorer_only_keys": [
+        "expected_capability_order",
+        "expected_dependency_edges",
+        "expected_tool_sequence",
+        "forbidden_shortcuts",
+        "required_state_slots_by_step"
+      ],
+      "overlap_keys": [],
+      "gold_fields_in_trace_metadata": [],
+      "gold_fields_in_request_hints": [],
+      "gold_fields_in_workflow_benchmark_hints": [],
+      "gold_fields_in_scored_row": [],
+      "ordered_gold_structures_in_trace_metadata": [],
+      "ordered_gold_structures_in_request_hints": [],
+      "ordered_gold_structures_in_workflow_benchmark_hints": [],
+      "ordered_gold_structures_in_scored_row": [],
+      "leakage_detected": false,
+      "ordered_gold_structure_leakage_detected": false
+    }
+  },
+  "leakage_detected": false,
+  "ordered_gold_structure_leakage_detected": false
+}

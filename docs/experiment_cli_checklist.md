@@ -27,7 +27,7 @@ This checklist defines a clean, reproducible experiment workspace so every run m
 2. ToolSandbox failtax/focused/reuse summaries (P0 follow-up analysis)
 3. `exp02_tau_a0_a4` and `exp03_tau2_a0_a4` (P1)
 4. `exp04_bfcl_fc_core` (P2 planner/binder limitation protocol; not current headline evidence)
-5. `exp05_toolsandbox_planner_sensitive_v2_capability_fix` (P1 HTGP mechanism-supporting protocol)
+5. `exp05_toolsandbox_planner_sensitive_v2_f2` (P1 HTGP mechanism-supporting protocol)
 6. `exp06_bfcl_agentic_ext` (supporting-only appendix protocol)
 7. robustness and budget sweeps (P2)
 8. TRAJECT-Bench (optional diagnostic extension)
@@ -61,9 +61,9 @@ At minimum, keep these files for writeup:
 
 The current paper-safe HTGP mechanism-supporting bundle is:
 
-- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/planner_sensitive_summary.json`
-- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/hint_leakage_report.json`
-- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/planner_sensitive_family_diagnostics.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal/planner_sensitive_summary.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal/hint_leakage_report.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal/planner_sensitive_family_diagnostics.json`
 
 Reproduction command:
 
@@ -73,7 +73,7 @@ PYTHONPATH=src python3 scripts/run_toolsandbox_bench.py \
   --systems a1_recovery,a2_planner,a3_interaction,a4_reuse \
   --num-runs 3 \
   --planner-sensitive-protocol \
-  --outdir outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal
+  --outdir outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal
 ```
 
 Use `planner_sensitive_summary.md` as the canonical report. The generic `report.md` is diagnostic only and marked non-canonical for planner-sensitive claims.

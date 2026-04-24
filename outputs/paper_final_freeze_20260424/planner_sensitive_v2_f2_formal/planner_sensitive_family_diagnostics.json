@@ -1,0 +1,969 @@
+{
+  "families": {
+    "branch_select_execute": {
+      "a1_recovery": {
+        "n": 33,
+        "strict_scored_success": 0.0,
+        "classification_counts": {
+          "capability_intent_gap": 33
+        },
+        "recommended_fix_scope_counts": {
+          "capability_intent_rules": 33
+        },
+        "examples": [
+          {
+            "task_id": "planner_sensitive_branch_select_execute_01",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_select",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve",
+              "cap_select",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "context_retriever",
+              "branch_selector",
+              "branch_executor",
+              "result_verifier"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_branch_select_execute_02",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_select",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve",
+              "cap_select",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "context_retriever",
+              "branch_selector",
+              "branch_executor",
+              "result_verifier"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_branch_select_execute_03",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_select",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve",
+              "cap_select",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "context_retriever",
+              "branch_selector",
+              "branch_executor",
+              "result_verifier"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_branch_select_execute_04",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_select",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve",
+              "cap_select",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "context_retriever",
+              "branch_selector",
+              "branch_executor",
+              "result_verifier"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_branch_select_execute_05",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_select",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve",
+              "cap_select",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "context_retriever",
+              "branch_selector",
+              "branch_executor",
+              "result_verifier"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          }
+        ]
+      },
+      "a2_planner": {
+        "n": 33,
+        "strict_scored_success": 1.0,
+        "classification_counts": {},
+        "recommended_fix_scope_counts": {},
+        "examples": []
+      },
+      "a3_interaction": {
+        "n": 33,
+        "strict_scored_success": 1.0,
+        "classification_counts": {},
+        "recommended_fix_scope_counts": {},
+        "examples": []
+      },
+      "a4_reuse": {
+        "n": 33,
+        "strict_scored_success": 1.0,
+        "classification_counts": {},
+        "recommended_fix_scope_counts": {},
+        "examples": []
+      }
+    },
+    "check_modify_verify": {
+      "a1_recovery": {
+        "n": 33,
+        "strict_scored_success": 0.0,
+        "classification_counts": {
+          "capability_intent_gap": 33
+        },
+        "recommended_fix_scope_counts": {
+          "capability_intent_rules": 33
+        },
+        "examples": [
+          {
+            "task_id": "planner_sensitive_check_modify_verify_01",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_check",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_check",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "state_checker",
+              "state_modifier",
+              "change_verifier"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_check_modify_verify_02",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_check",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_check",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "state_checker",
+              "state_modifier",
+              "change_verifier"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_check_modify_verify_03",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_check",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_check",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "state_checker",
+              "state_modifier",
+              "change_verifier"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_check_modify_verify_04",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_check",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_check",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "state_checker",
+              "state_modifier",
+              "change_verifier"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_check_modify_verify_05",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_check",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_check",
+              "cap_modify",
+              "cap_verify"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "state_checker",
+              "state_modifier",
+              "change_verifier"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          }
+        ]
+      },
+      "a2_planner": {
+        "n": 33,
+        "strict_scored_success": 1.0,
+        "classification_counts": {},
+        "recommended_fix_scope_counts": {},
+        "examples": []
+      },
+      "a3_interaction": {
+        "n": 33,
+        "strict_scored_success": 1.0,
+        "classification_counts": {},
+        "recommended_fix_scope_counts": {},
+        "examples": []
+      },
+      "a4_reuse": {
+        "n": 33,
+        "strict_scored_success": 1.0,
+        "classification_counts": {},
+        "recommended_fix_scope_counts": {},
+        "examples": []
+      }
+    },
+    "multi_source_merge_write": {
+      "a1_recovery": {
+        "n": 33,
+        "strict_scored_success": 0.0,
+        "classification_counts": {
+          "capability_intent_gap": 33
+        },
+        "recommended_fix_scope_counts": {
+          "capability_intent_rules": 33
+        },
+        "examples": [
+          {
+            "task_id": "planner_sensitive_multi_source_merge_write_01",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_merge",
+              "cap_write"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve.primary",
+              "cap_retrieve.secondary",
+              "cap_merge",
+              "cap_write"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "primary_source_fetcher",
+              "secondary_source_fetcher",
+              "source_merger",
+              "merged_report_writer"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_multi_source_merge_write_02",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_merge",
+              "cap_write"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve.primary",
+              "cap_retrieve.secondary",
+              "cap_merge",
+              "cap_write"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "primary_source_fetcher",
+              "secondary_source_fetcher",
+              "source_merger",
+              "merged_report_writer"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_multi_source_merge_write_03",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_merge",
+              "cap_write"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve.primary",
+              "cap_retrieve.secondary",
+              "cap_merge",
+              "cap_write"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "primary_source_fetcher",
+              "secondary_source_fetcher",
+              "source_merger",
+              "merged_report_writer"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_multi_source_merge_write_04",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_merge",
+              "cap_write"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve.primary",
+              "cap_retrieve.secondary",
+              "cap_merge",
+              "cap_write"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "primary_source_fetcher",
+              "secondary_source_fetcher",
+              "source_merger",
+              "merged_report_writer"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_multi_source_merge_write_05",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_merge",
+              "cap_write"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve.primary",
+              "cap_retrieve.secondary",
+              "cap_merge",
+              "cap_write"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "primary_source_fetcher",
+              "secondary_source_fetcher",
+              "source_merger",
+              "merged_report_writer"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          }
+        ]
+      },
+      "a2_planner": {
+        "n": 33,
+        "strict_scored_success": 1.0,
+        "classification_counts": {},
+        "recommended_fix_scope_counts": {},
+        "examples": []
+      },
+      "a3_interaction": {
+        "n": 33,
+        "strict_scored_success": 1.0,
+        "classification_counts": {},
+        "recommended_fix_scope_counts": {},
+        "examples": []
+      },
+      "a4_reuse": {
+        "n": 33,
+        "strict_scored_success": 1.0,
+        "classification_counts": {},
+        "recommended_fix_scope_counts": {},
+        "examples": []
+      }
+    },
+    "retrieve_summarize_write": {
+      "a1_recovery": {
+        "n": 27,
+        "strict_scored_success": 0.0,
+        "classification_counts": {
+          "capability_intent_gap": 27
+        },
+        "recommended_fix_scope_counts": {
+          "capability_intent_rules": 27
+        },
+        "examples": [
+          {
+            "task_id": "planner_sensitive_retrieve_summarize_write_01",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_summarize",
+              "cap_write"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve",
+              "cap_summarize",
+              "cap_write"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "source_lookup",
+              "summary_builder",
+              "report_writer"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_retrieve_summarize_write_02",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_summarize",
+              "cap_write"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve",
+              "cap_summarize",
+              "cap_write"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "source_lookup",
+              "summary_builder",
+              "report_writer"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_retrieve_summarize_write_03",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_summarize",
+              "cap_write"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve",
+              "cap_summarize",
+              "cap_write"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "source_lookup",
+              "summary_builder",
+              "report_writer"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_retrieve_summarize_write_04",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_summarize",
+              "cap_write"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve",
+              "cap_summarize",
+              "cap_write"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "source_lookup",
+              "summary_builder",
+              "report_writer"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          },
+          {
+            "task_id": "planner_sensitive_retrieve_summarize_write_05",
+            "run_index": 1,
+            "expected_capability_order": [
+              "cap_retrieve",
+              "cap_summarize",
+              "cap_write"
+            ],
+            "actual_capability_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_capability_instance_order": [
+              "cap_retrieve",
+              "cap_summarize",
+              "cap_write"
+            ],
+            "actual_capability_instance_order": [
+              "cap_retrieve",
+              "cap_write"
+            ],
+            "expected_tool_sequence": [
+              "source_lookup",
+              "summary_builder",
+              "report_writer"
+            ],
+            "actual_tool_sequence": [
+              "search_tool",
+              "write_tool"
+            ],
+            "selected_capability_order_initial": "unavailable",
+            "selected_capability_order_final": "unavailable",
+            "bound_tool_order": "unavailable",
+            "unresolved_capabilities": "unavailable",
+            "planner_bypass": "unknown",
+            "planner_bypass_source": "unknown",
+            "trace_status": "ok",
+            "failure_classification": "capability_intent_gap",
+            "recommended_fix_scope": "capability_intent_rules"
+          }
+        ]
+      },
+      "a2_planner": {
+        "n": 27,
+        "strict_scored_success": 1.0,
+        "classification_counts": {},
+        "recommended_fix_scope_counts": {},
+        "examples": []
+      },
+      "a3_interaction": {
+        "n": 27,
+        "strict_scored_success": 1.0,
+        "classification_counts": {},
+        "recommended_fix_scope_counts": {},
+        "examples": []
+      },
+      "a4_reuse": {
+        "n": 27,
+        "strict_scored_success": 1.0,
+        "classification_counts": {},
+        "recommended_fix_scope_counts": {},
+        "examples": []
+      }
+    }
+  }
+}

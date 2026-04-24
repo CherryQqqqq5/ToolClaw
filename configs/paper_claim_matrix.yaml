@@ -63,10 +63,10 @@
       }
     },
     "planner_structural_mechanism": {
-      "status": "supported_current_evidence_capability_fix_v2",
+      "status": "supported_current_evidence_f2_v2",
       "claim_strength": "mechanism_supporting",
-      "benchmark_suite": "toolsandbox_planner_sensitive_v2_capability_fix",
-      "claim": "HTGP provides structured planner-mechanism evidence on planner-sensitive V2 after capability-vocabulary, instance-graph, binder, and observability repair. Evidence is positive across 3/4 families with no leakage or bypass confounds, but multi-source merge remains a binder-selection limitation and the claim is not headline.",
+      "benchmark_suite": "toolsandbox_planner_sensitive_v2_f2",
+      "claim": "HTGP provides planner-sensitive structural mechanism evidence across all four V2 structural families, with structured observability, no hint or ordered-structure leakage, known bypass telemetry, and controlled cost. The claim remains mechanism-level rather than headline because external exact function-calling transfer, especially BFCL, is not yet positive.",
       "metrics": {
         "primary": [
           "a2_minus_a1_success_delta",
@@ -417,7 +417,37 @@
       "paper_role": "supporting_only"
     },
     "toolsandbox_planner_sensitive_v2_capability_fix": {
-      "status": "formal_capability_fix_supported_mechanism_supporting",
+      "status": "historical_capability_fix_3_of_4_mechanism_evidence",
+      "prepare_script": "scripts/derive_toolsandbox_planner_sensitive.py --version v2",
+      "runner": "scripts/run_toolsandbox_bench.py",
+      "score_script": "scripts/score_toolsandbox_planner_sensitive.py",
+      "default_source": "data/toolsandbox_planner_sensitive_v2.jsonl",
+      "default_manifest": "data/toolsandbox_planner_sensitive_v2.manifest.json",
+      "default_mode": "planner",
+      "default_systems": "a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "default_num_runs": 3,
+      "runner_flags": [
+        "--planner-sensitive-protocol"
+      ],
+      "claim_ids": [],
+      "claim_strength": "mechanism_supporting",
+      "paper_role": "historical_boundary",
+      "formal_bundle": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal",
+      "promotion_gate": "Historical capability-fix bundle: 42 source tasks, no leakage, a2-a1 strict success delta 0.738, paired wins/losses/ties 93/0/33, 3/4 positive families. Superseded as canonical planner evidence by toolsandbox_planner_sensitive_v2_f2 after multi-source execution repair.",
+      "capability_fix_summary": {
+        "source_task_count": 42,
+        "family_positive_count": 3,
+        "a2_minus_a1_success_delta": 0.7380952380952381,
+        "paired_wins": 93,
+        "paired_losses": 0,
+        "paired_ties": 33,
+        "leakage_detected": false,
+        "ordered_gold_structure_leakage_detected": false,
+        "remaining_limitation": "resolved by toolsandbox_planner_sensitive_v2_f2; retained as historical 3/4 evidence"
+      }
+    },
+    "toolsandbox_planner_sensitive_v2_f2": {
+      "status": "formal_f2_supported_mechanism_supporting",
       "prepare_script": "scripts/derive_toolsandbox_planner_sensitive.py --version v2",
       "runner": "scripts/run_toolsandbox_bench.py",
       "score_script": "scripts/score_toolsandbox_planner_sensitive.py",
@@ -434,18 +464,20 @@
       ],
       "claim_strength": "mechanism_supporting",
       "paper_role": "planner_mechanism_supporting",
-      "formal_bundle": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal",
-      "promotion_gate": "Capability-fix V2 passes mechanism-supporting gates: 42 source tasks, no field-name or ordered-structure leakage, a2-a1 strict success delta >=20pp, paired wins > losses, 3/4 positive families, planner_bypass_known_rate >=90%, known-row bypass <=25%, and no a2 cost explosion. Multi-source merge remains a binder-selection limitation, so this is not headline evidence.",
-      "capability_fix_summary": {
+      "formal_bundle": "outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal",
+      "promotion_gate": "F2 V2 passes mechanism-supporting gates: 42 source tasks, no field-name or ordered-structure leakage, a2-a1 strict success delta 1.0, paired wins/losses/ties 126/0/0, 4/4 positive families, planner_bypass_known_rate 1.0, known-row bypass 0.0, and no a2 cost explosion. This is planner-sensitive mechanism evidence only, not headline or BFCL transfer evidence.",
+      "f2_summary": {
         "source_task_count": 42,
-        "family_positive_count": 3,
-        "a2_minus_a1_success_delta": 0.7380952380952381,
-        "paired_wins": 93,
+        "family_positive_count": 4,
+        "a2_minus_a1_success_delta": 1.0,
+        "paired_wins": 126,
         "paired_losses": 0,
-        "paired_ties": 33,
+        "paired_ties": 0,
         "leakage_detected": false,
         "ordered_gold_structure_leakage_detected": false,
-        "remaining_limitation": "multi_source_merge_write remains a binder-selection gap"
+        "planner_bypass_known_rate": 1.0,
+        "known_row_planner_bypass_rate": 0.0,
+        "remaining_limitation": "none inside planner-sensitive V2 f2; external exact function-calling transfer remains unsupported"
       }
     }
   }
