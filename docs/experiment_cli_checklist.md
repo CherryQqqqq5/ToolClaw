@@ -26,10 +26,11 @@ This checklist defines a clean, reproducible experiment workspace so every run m
 1. `exp01_toolsandbox_core_a0_a4` (P0)
 2. ToolSandbox failtax/focused/reuse summaries (P0 follow-up analysis)
 3. `exp02_tau_a0_a4` and `exp03_tau2_a0_a4` (P1)
-4. `exp04_bfcl_fc_core` (P2 headline planner/binder protocol)
-5. `exp05_bfcl_agentic_ext` (supporting-only appendix protocol)
-6. robustness and budget sweeps (P2)
-7. TRAJECT-Bench (optional diagnostic extension)
+4. `exp04_bfcl_fc_core` (P2 planner/binder limitation protocol; not current headline evidence)
+5. `exp05_toolsandbox_planner_sensitive_v2_capability_fix` (P1 HTGP mechanism-supporting protocol)
+6. `exp06_bfcl_agentic_ext` (supporting-only appendix protocol)
+7. robustness and budget sweeps (P2)
+8. TRAJECT-Bench (optional diagnostic extension)
 
 ## 4) First experiment command
 
@@ -54,3 +55,25 @@ At minimum, keep these files for writeup:
 - `outputs/paper_clean_v1/exp01_toolsandbox_core_a0_a4/per_failtax_summary.json`
 - `outputs/paper_clean_v1/exp01_toolsandbox_core_a0_a4/focused_slice_summary.json`
 - `outputs/paper_clean_v1/exp01_toolsandbox_core_a0_a4/runs/run_01/comparison.csv`
+
+
+## 6) Current HTGP planner-sensitive formal
+
+The current paper-safe HTGP mechanism-supporting bundle is:
+
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/planner_sensitive_summary.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/hint_leakage_report.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/planner_sensitive_family_diagnostics.json`
+
+Reproduction command:
+
+```bash
+PYTHONPATH=src python3 scripts/run_toolsandbox_bench.py \
+  --source data/toolsandbox_planner_sensitive_v2.jsonl \
+  --systems a1_recovery,a2_planner,a3_interaction,a4_reuse \
+  --num-runs 3 \
+  --planner-sensitive-protocol \
+  --outdir outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal
+```
+
+Use `planner_sensitive_summary.md` as the canonical report. The generic `report.md` is diagnostic only and marked non-canonical for planner-sensitive claims.

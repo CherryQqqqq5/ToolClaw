@@ -37,6 +37,13 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
     - `repair_semantic_positive`: trace-backed official tasks with human-reviewed useful repair signal
     - `probe_only_control`: contract/probe caveat tasks that must not be counted as semantic repair
 
+- `toolsandbox_planner_sensitive_v2_capability_fix`
+  - role: mechanism-supporting HTGP structural planner suite
+  - current claim: `planner_structural_mechanism`
+  - result bundle: `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal`
+  - reason: after capability-vocabulary, instance-graph, binder, runtime mock, and structured-observability repair, the 42-task x 3-run formal bundle passes mechanism-supporting gates: `a2_minus_a1_success_delta = 0.738`, paired wins/losses/ties `93/0/33`, no hint or ordered-gold leakage, known bypass telemetry, controlled cost, and 3/4 positive families
+  - boundary: `multi_source_merge_write` remains a binder-selection gap, so this suite supports planner structural mechanism evidence but not a headline claim
+
 - `bfcl_fc_core`
   - role: planner / binder / parameter correctness limitation benchmark
   - current claim: `planner_binding_headline`
@@ -68,7 +75,7 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
 
 - ToolSandbox official should stay the main headline benchmark.
 - ToolSandbox semantic-usefulness should be treated as a targeted mechanism claim anchored to `toolsandbox_semantic_repair_official_v1`, not a whole-benchmark headline claim.
-- Planner should not be sold as a headline lift on ToolSandbox official until a planner-visible benchmark is added.
+- Planner should not be sold as a ToolSandbox official headline lift. The dedicated `toolsandbox_planner_sensitive_v2_capability_fix` bundle now provides mechanism-supporting HTGP structural evidence, with multi-source merge retained as a limitation.
 - Reuse should stay pending and scoped to exact/matched-signature cost reduction until a committed persistent-reuse v2 formal bundle demonstrates cost/headroom gains.
 - ToolGym is best treated as a later supplementary stress test, not the main paper anchor.
 - WebArena, WorkArena, and OSWorld are strong benchmarks, but they move the paper toward browser or computer-use agents rather than workflow intelligence over tool calling.

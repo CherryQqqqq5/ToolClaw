@@ -138,19 +138,16 @@ Paper-safe summary:
 
 ### 5.2 Planner claim
 
-Supported:
+Current 2026-04-24 update:
 
-- planner helps on failure-heavy mechanism slices, but planner is not the dominant source of gains
-
-Main evidence:
-
-- `a2 > a1` on official ToolSandbox after the planner structural-fallback fix
-- `a2 > a1` on bundled core slice
-- matched ablation shows planner-only is insufficient without repair/interaction
+- This older freeze-plan section is superseded by [paper_claim_boundary_20260424.md](paper_claim_boundary_20260424.md) and [configs/paper_claim_matrix.yaml](../configs/paper_claim_matrix.yaml).
+- HTGP planner structural contribution is now supported as `mechanism_supporting` by `toolsandbox_planner_sensitive_v2_capability_fix`, not by the official ToolSandbox headline benchmark.
+- The capability-fix formal bundle reports `a2_minus_a1_success_delta = 0.738`, paired wins/losses/ties `93/0/33`, no hint leakage, no ordered gold leakage, controlled bypass, and 3/4 positive families.
+- The remaining limitation is `multi_source_merge_write`, classified as a binder-selection gap.
 
 Paper-safe summary:
 
-- planner is beneficial on harder slices, but it is not the primary driver of the large gains seen in the full system
+- planner structural contribution can be described as mechanism-supporting on the dedicated planner-sensitive suite, but it is not a headline claim and should not be attributed to BFCL transfer or full ToolSandbox official gains.
 
 ### 5.3 Interaction claim
 

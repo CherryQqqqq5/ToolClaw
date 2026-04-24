@@ -14,6 +14,8 @@ Artifacts:
 - `data/toolsandbox_semantic_repair_official_v1.manifest.json`
 - `outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/claim_summary.json`
 - `outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/report.md`
+- `outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/paired_delta_summary.json`
+- `outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/paired_delta_summary.md`
 
 The formal 3-run bundle supports the semantic repair mechanism claim when `claim_summary.json` reports:
 
@@ -23,7 +25,7 @@ The formal 3-run bundle supports the semantic repair mechanism claim when `claim
 - `probe_only_success_caveat_present = true`
 - `primary_result_ready = true`
 
-Next required artifact: regenerate the scorer on the committed bundle to add `paired_delta_summary.json` and `paired_delta_summary.md`. The target repair-semantic-positive paired result is `a3_full_interaction` beating `a2_planner`, `a3_no_query`, and `a3_noisy_user` with `wins=18`, `losses=0`, `ties=0` for each comparison.
+Paired evidence is now committed. On `repair_semantic_positive`, `a3_full_interaction` beats `a2_planner`, `a3_no_query`, and `a3_noisy_user` with `wins=18`, `losses=0`, `ties=0`, `mean_delta=1.0` for each comparison. On `probe_only_control`, `a3_full_interaction` ties `a3_noisy_user` with `ties=18`, `mean_delta=0.0`, so probe-only success remains a caveat rather than semantic repair evidence.
 
 ## Persistent Reuse V2
 
@@ -43,3 +45,18 @@ Artifacts:
 - `data/tau2_dual_control_family_v1.manifest.json`
 
 This is a supporting/boundary family dataset, not headline evidence. Compound approval plus repair remains sparse and must be expanded before any stronger TAU2 dual-control claim.
+
+## HTGP Planner-Sensitive V2 Capability Fix
+
+Artifacts:
+
+- `data/toolsandbox_planner_sensitive_v2.jsonl`
+- `data/toolsandbox_planner_sensitive_v2.manifest.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/planner_sensitive_summary.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/hint_leakage_report.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/planner_sensitive_family_diagnostics.json`
+- `outputs/paper_final_freeze_20260424/planner_sensitive_v2_capability_fix_formal/experiment_manifest.json`
+
+Status: mechanism-supporting evidence is now available and committed. The capability-fix formal bundle reports `source_task_count = 42`, `family_positive_count = 3`, `a2_minus_a1_success_delta = 0.7380952381`, paired wins/losses/ties `93/0/33`, `leakage_detected = false`, `ordered_gold_structure_leakage_detected = false`, `v2_promotion_ready = true`, and `paper_safe_for_planner_claim = true`.
+
+Claim boundary: this upgrades HTGP from pending scaffold to `mechanism_supporting`, not headline. `multi_source_merge_write` remains a binder-selection gap and should be described as the next repair target before any stronger planner claim.
