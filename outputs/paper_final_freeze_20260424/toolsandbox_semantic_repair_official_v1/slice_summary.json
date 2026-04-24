@@ -131,5 +131,6 @@
       "post_query_progress_rate": 0.0,
       "useful_interaction_round_rate": 0.0
     }
-  }
+  },
+  "paired_delta_path": "outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/paired_delta_summary.json"
 }

@@ -1,8 +1,9 @@
 {
-  "updated_at": "2026-04-23",
+  "updated_at": "2026-04-24",
   "claims": {
     "interaction_headline": {
       "status": "supported_current_evidence",
+      "claim_strength": "headline",
       "benchmark_suite": "toolsandbox_official",
       "claim": "ToolSandbox official carries the headline claim for interaction and stateful workflow intelligence.",
       "metrics": {
@@ -19,14 +20,16 @@
     },
     "interaction_semantic_usefulness_mechanism": {
       "status": "supported_current_evidence",
-      "benchmark_suite": "toolsandbox_interaction_live_v1",
-      "claim": "ToolSandbox interaction-live carries the mechanism claim: on repair-sensitive state-dependency tasks, interaction gains align with semantic-usefulness, target-aligned patch, post-query progress, and extraction PRF, while must-query slices remain probe-only and contract-sensitive.",
+      "claim_strength": "mechanism_primary",
+      "benchmark_suite": "toolsandbox_semantic_repair_official_v1",
+      "claim": "ToolSandbox semantic-repair official v1 carries the targeted official-slice mechanism claim: on trace-backed repair-semantic-positive tasks, interaction converts usable user replies into target-aligned effective patches and post-query progress, while probe-only controls remain contract/probe caveats.",
       "metrics": {
         "primary": [
           "repair_semantic_usefulness_supported",
           "interaction_not_cheating_supported"
         ],
         "supporting": [
+          "paired_delta_summary@repair_semantic_positive",
           "reply_usable_rate@repair_semantic",
           "target_aligned_patch_rate@repair_semantic",
           "effective_patch_rate@repair_semantic",
@@ -38,6 +41,7 @@
     },
     "planner_binding_headline": {
       "status": "headline_not_supported_mechanism_only",
+      "claim_strength": "limitation",
       "benchmark_suite": "bfcl_fc_core",
       "claim": "BFCL fc_core is now paper-safe after official evaluator dependency preflight, but current full formal results do not support a headline planner/binder lift: a2_planner remains below a0_baseline/a1_recovery on official success, tool selection, argument correctness, and structure. BFCL should be used as mechanism evidence only until a future formal run shows stable positive separation.",
       "metrics": {
@@ -60,6 +64,7 @@
     },
     "bfcl_agentic_supporting": {
       "status": "supporting_only",
+      "claim_strength": "mechanism_supporting",
       "benchmark_suite": "bfcl_agentic_ext",
       "claim": "BFCL agentic extension tracks broader BFCL v4 capabilities such as web search, memory, and format sensitivity, and is supplementary only.",
       "metrics": {
@@ -72,9 +77,10 @@
       }
     },
     "dual_control_interaction": {
-      "status": "supported_current_evidence",
-      "benchmark_suite": "tau2_dual_control",
-      "claim": "Tau2-bench carries the headline claim for dual-control interaction and interactive correction.",
+      "status": "supporting_boundary_until_family_formal_expands",
+      "claim_strength": "boundary",
+      "benchmark_suite": "tau2_dual_control_family_v1",
+      "claim": "TAU2 dual-control currently provides supporting/boundary evidence only: the family dataset separates non-interactive, must-interact approval, and compound approval-plus-repair cases, but the compound slice is still sparse and cannot carry a headline claim.",
       "metrics": {
         "primary": [
           "mean_success_rate",
@@ -89,6 +95,7 @@
     },
     "tau_bench_supporting": {
       "status": "supporting_only_until_audit_passes",
+      "claim_strength": "pending",
       "benchmark_suite": "tau_bench_supporting",
       "claim": "Tau-bench remains supporting-only until the semantic audit explicitly promotes it.",
       "metrics": {
@@ -104,9 +111,10 @@
       }
     },
     "reuse_exact_match_cost": {
-      "status": "evidence_pending_headroom_and_false_positive_fix",
-      "benchmark_suite": "toolsandbox_reuse_persistent_v1",
-      "claim": "Reuse is being tested under a narrow exact/matched-signature second-run cost-reduction protocol; current ToolSandbox persistent-reuse V1 smoke is diagnostic only until sham false positives and missing cost headroom are resolved.",
+      "status": "pending_committed_formal_bundle",
+      "claim_strength": "pending",
+      "benchmark_suite": "toolsandbox_reuse_persistent_v2",
+      "claim": "Reuse is being tested under a narrow exact/matched-signature second-run cost-reduction protocol. Server-side V2 smoke indicates the sham false-positive issue has been addressed, but no committed paper-safe V2 formal result bundle yet shows warm exact hits plus positive cost/headroom deltas.",
       "metrics": {
         "primary": [
           "tool_call_reduction@warm_vs_cold",
@@ -135,6 +143,7 @@
       "official_eval": true,
       "toolclaw_diagnostics": true,
       "claim_ids": [],
+      "claim_strength": "pending",
       "paper_role": "readiness_only"
     },
     "toolsandbox_official": {
@@ -147,7 +156,25 @@
       "claim_ids": [
         "interaction_headline"
       ],
+      "claim_strength": "headline",
       "paper_role": "headline"
+    },
+    "toolsandbox_semantic_repair_official_v1": {
+      "status": "implemented",
+      "prepare_script": "scripts/derive_toolsandbox_semantic_repair_official.py",
+      "runner": "scripts/run_toolsandbox_semantic_repair_official.py",
+      "score_script": "scripts/score_toolsandbox_semantic_repair_official.py",
+      "default_source": "data/toolsandbox_semantic_repair_official_v1.jsonl",
+      "default_manifest": "data/toolsandbox_semantic_repair_official_v1.manifest.json",
+      "default_mode": "planner",
+      "default_systems": "a2_planner,a3_full_interaction,a3_no_query,a3_noisy_user",
+      "default_num_runs": 3,
+      "claim_ids": [
+        "interaction_semantic_usefulness_mechanism"
+      ],
+      "slice_policy_version": "toolsandbox_semantic_repair_official_v1",
+      "claim_strength": "mechanism_primary",
+      "paper_role": "mechanism_primary"
     },
     "toolsandbox_interaction_causality_formal": {
       "status": "implemented",
@@ -156,11 +183,10 @@
       "default_mode": "planner",
       "default_systems": "a2_planner,a3_full_interaction,a3_no_query,a3_noisy_user",
       "default_num_runs": 3,
-      "claim_ids": [
-        "interaction_semantic_usefulness_mechanism"
-      ],
+      "claim_ids": [],
       "slice_policy_version": "toolsandbox_causality_v1",
-      "paper_role": "mechanism_supporting"
+      "claim_strength": "boundary",
+      "paper_role": "boundary"
     },
     "toolsandbox_interaction_live_v1": {
       "status": "implemented",
@@ -176,6 +202,7 @@
         "interaction_semantic_usefulness_mechanism"
       ],
       "slice_policy_version": "toolsandbox_interaction_live_v1",
+      "claim_strength": "mechanism_supporting",
       "paper_role": "mechanism_supporting"
     },
     "bfcl_fc_core": {
@@ -194,6 +221,7 @@
       "claim_ids": [
         "planner_binding_headline"
       ],
+      "claim_strength": "limitation",
       "paper_role": "mechanism_evidence_only"
     },
     "bfcl_agentic_ext": {
@@ -210,6 +238,7 @@
       "claim_ids": [
         "bfcl_agentic_supporting"
       ],
+      "claim_strength": "mechanism_supporting",
       "paper_role": "supporting_only"
     },
     "tau2_dual_control": {
@@ -224,7 +253,24 @@
       ],
       "slice_by": "scenario",
       "slice_values": "dual_control",
-      "paper_role": "headline"
+      "claim_strength": "mechanism_supporting",
+      "paper_role": "supporting_only"
+    },
+    "tau2_dual_control_family_v1": {
+      "status": "dataset_ready_pending_formal",
+      "runner": "scripts/run_tau2_bench.py",
+      "default_source": "data/tau2_dual_control_family_v1.json",
+      "default_manifest": "data/tau2_dual_control_family_v1.manifest.json",
+      "default_mode": "planner",
+      "default_systems": "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "default_num_runs": 3,
+      "claim_ids": [
+        "dual_control_interaction"
+      ],
+      "slice_by": "family",
+      "slice_values": "non_interactive_solvable,must_interact_approval,compound_approval_plus_repair",
+      "claim_strength": "boundary",
+      "paper_role": "supporting_boundary"
     },
     "tau_bench_supporting": {
       "status": "implemented",
@@ -237,6 +283,7 @@
         "tau_bench_supporting"
       ],
       "audit_config": "configs/tau_bench_semantic_audit.json",
+      "claim_strength": "pending",
       "paper_role": "supporting_only"
     },
     "tau_bench_headline": {
@@ -251,6 +298,7 @@
       ],
       "audit_config": "configs/tau_bench_semantic_audit.json",
       "requires_audit_promotion": true,
+      "claim_strength": "pending",
       "paper_role": "headline_candidate"
     },
     "reuse_exact_match": {
@@ -268,7 +316,24 @@
         "reuse_strata",
         "reuse_headroom"
       ],
+      "claim_strength": "pending",
       "paper_role": "supporting_only"
+    },
+    "toolsandbox_reuse_persistent_v2": {
+      "status": "dataset_ready_pending_formal",
+      "runner": "scripts/run_toolsandbox_reuse_persistent.py",
+      "score_script": "scripts/score_toolsandbox_reuse_persistent.py",
+      "default_source": "data/toolsandbox_reuse_persistent_v2.jsonl",
+      "default_manifest": "data/toolsandbox_reuse_persistent_v2.manifest.json",
+      "default_mode": "planner",
+      "reuse_scope": "exact",
+      "default_systems": "a3_interaction,a4_reuse_cold,a4_reuse_warm,a4_reuse_sham",
+      "default_num_runs": 3,
+      "claim_ids": [
+        "reuse_exact_match_cost"
+      ],
+      "claim_strength": "pending",
+      "paper_role": "pending"
     },
     "toolsandbox_reuse_persistent_v1": {
       "status": "implemented",
@@ -282,6 +347,7 @@
       "claim_ids": [
         "reuse_exact_match_cost"
       ],
+      "claim_strength": "pending",
       "paper_role": "supporting_only"
     }
   }

@@ -29,3 +29,18 @@
 |---|---|---:|---:|---:|---:|---:|---:|
 | a3_full_interaction | repair_semantic_positive | 18 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 |
 | a3_noisy_user | repair_semantic_positive | 18 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
+
+## Paired Delta Summary
+
+Paired deltas use `(task_id, run_index)` and strict scored success. The repair-semantic-positive slice is mechanism evidence; probe-only control is a contract/probe caveat.
+
+| comparison | slice | pairs | wins | losses | ties | mean_delta |
+|---|---|---:|---:|---:|---:|---:|
+| a3_full_interaction_vs_a2_planner | probe_only_control | 18 | 18 | 0 | 0 | 1.000 |
+| a3_full_interaction_vs_a2_planner | repair_semantic_positive | 18 | 18 | 0 | 0 | 1.000 |
+| a3_full_interaction_vs_a3_no_query | probe_only_control | 18 | 18 | 0 | 0 | 1.000 |
+| a3_full_interaction_vs_a3_no_query | repair_semantic_positive | 18 | 18 | 0 | 0 | 1.000 |
+| a3_full_interaction_vs_a3_noisy_user | probe_only_control | 18 | 0 | 0 | 18 | 0.000 |
+| a3_full_interaction_vs_a3_noisy_user | repair_semantic_positive | 18 | 18 | 0 | 0 | 1.000 |
+
+See `paired_delta_summary.md` and `paired_delta_summary.json` for the standalone paired evidence artifact.

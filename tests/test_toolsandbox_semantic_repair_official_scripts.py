@@ -332,3 +332,13 @@ def test_score_toolsandbox_semantic_repair_official(tmp_path: Path) -> None:
     claim = json.loads((outdir / "claim_summary.json").read_text(encoding="utf-8"))
     assert claim["semantic_repair_mechanism_supported"] is True
     assert claim["probe_only_success_caveat_present"] is True
+    paired = json.loads((outdir / "paired_delta_summary.json").read_text(encoding="utf-8"))
+    repair_stats = paired["comparisons"]["a3_full_interaction_vs_a2_planner"]["by_slice"]["repair_semantic_positive"]
+    assert repair_stats["wins"] == 1
+    assert repair_stats["losses"] == 0
+    assert repair_stats["ties"] == 0
+    assert repair_stats["mean_delta"] == 1.0
+    probe_stats = paired["comparisons"]["a3_full_interaction_vs_a3_noisy_user"]["by_slice"]["probe_only_control"]
+    assert probe_stats["wins"] == 0
+    assert probe_stats["ties"] == 1
+    assert (outdir / "paired_delta_summary.md").exists()

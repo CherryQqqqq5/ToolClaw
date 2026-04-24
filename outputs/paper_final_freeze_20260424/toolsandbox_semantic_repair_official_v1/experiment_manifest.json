@@ -74,5 +74,7 @@
   "claim_summary_path": "outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/claim_summary.json",
   "interaction_rounds_path": "outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/interaction_rounds.jsonl",
   "runner_script": "scripts/run_toolsandbox_semantic_repair_official.py",
-  "score_script": "scripts/score_toolsandbox_semantic_repair_official.py"
+  "score_script": "scripts/score_toolsandbox_semantic_repair_official.py",
+  "paired_delta_summary_path": "outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/paired_delta_summary.json",
+  "paired_delta_summary_md_path": "outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/paired_delta_summary.md"
 }

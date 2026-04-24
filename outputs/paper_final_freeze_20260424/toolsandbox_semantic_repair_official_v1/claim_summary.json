@@ -158,5 +158,6 @@
     "a3_full_interaction": {},
     "a3_no_query": {},
     "a3_noisy_user": {}
-  }
+  },
+  "paired_delta_summary_path": "outputs/paper_final_freeze_20260424/toolsandbox_semantic_repair_official_v1/paired_delta_summary.json"
 }

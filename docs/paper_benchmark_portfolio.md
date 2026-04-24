@@ -2,6 +2,8 @@
 
 This note updates the paper-facing benchmark plan after reviewing the current repository, archived outputs, and the newer benchmark landscape.
 
+Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.md](paper_claim_boundary_20260424.md). If older exploratory notes in this file conflict with that boundary document, use the boundary document and [configs/paper_claim_matrix.yaml](../configs/paper_claim_matrix.yaml) as the source of truth.
+
 ## Current mapping
 
 - `toolsandbox_official`
@@ -10,9 +12,9 @@ This note updates the paper-facing benchmark plan after reviewing the current re
   - reason: the archived official run already makes interaction/stateful control visible, while `a2_planner = a1_recovery` keeps planner lift non-headline here
 
 - `toolsandbox_interaction_causality_formal`
-  - role: mechanism-only ToolSandbox causality suite
-  - current claim: `interaction_semantic_usefulness_mechanism`
-  - reason: semantic-usefulness is not a safe whole-benchmark claim on ToolSandbox aggregate; it should be anchored only to repair-sensitive `state_dependency` slices, with `multiple_user_turn` and `insufficient_information` treated as probe-only / contract-sensitive supporting strata
+  - role: boundary / caveat suite
+  - current claim: `causal_v2_probe_boundary`
+  - reason: the full causal suite shows that ToolSandbox gains can be probe/contract-mediated, so it motivates the targeted semantic repair official slice rather than carrying the positive semantic repair mechanism claim itself
   - protocol:
     - `overall`: retained for interaction headline context only
     - `repair_semantic`: `failure_type == state_dependency`
@@ -20,17 +22,25 @@ This note updates the paper-facing benchmark plan after reviewing the current re
 
 - `toolsandbox_interaction_live_v1`
   - role: mechanism benchmark for interaction as workflow control signal
-  - current claim: `interaction_semantic_usefulness_mechanism`
-  - reason: the live suite turns the causality finding into a versioned dataset with oracle, partial, noisy, irrelevant, and wrong-parameter user modes, then scores whether replies become target-aligned effective patches and post-query progress
+  - current claim: mechanism supporting evidence for `interaction_semantic_usefulness_mechanism`
+  - reason: the live suite validates the semantic decoder and patch compiler under oracle, partial, noisy, irrelevant, and wrong-parameter user modes; it is supporting evidence, not the primary official mechanism suite
   - protocol:
     - `repair_semantic_primary`: `state_dependency` tasks where the main claim is evaluated
     - `probe_only_control`: `multiple_user_turn` and `insufficient_information` tasks used only as contract/probe caveats
     - negative user modes must keep usefulness metrics near zero and must not count as semantic repair
 
+- `toolsandbox_semantic_repair_official_v1`
+  - role: primary targeted official semantic-repair mechanism suite
+  - current claim: `interaction_semantic_usefulness_mechanism`
+  - reason: the 3-run official-slice bundle shows `a3_full_interaction` separates from `a2_planner`, `a3_no_query`, and `a3_noisy_user` on repair-semantic-positive tasks while useful/effective patch metrics remain zero on probe-only controls
+  - protocol:
+    - `repair_semantic_positive`: trace-backed official tasks with human-reviewed useful repair signal
+    - `probe_only_control`: contract/probe caveat tasks that must not be counted as semantic repair
+
 - `bfcl_fc_core`
-  - role: headline planner / binder / parameter correctness benchmark
+  - role: planner / binder / parameter correctness limitation benchmark
   - current claim: `planner_binding_headline`
-  - reason: only the function-calling core strata should carry the planner/binder headline claim
+  - reason: the current full formal bundle is paper-safe but negative for planner/binder headline lift
   - protocol: include `non_live`, `live`, and `multi_turn` function-calling rows; exclude `web_search`, `memory`, and `format_sensitivity`
 
 - `bfcl_agentic_ext`
@@ -40,9 +50,9 @@ This note updates the paper-facing benchmark plan after reviewing the current re
   - protocol: route `web_search`, `memory`, and `format_sensitivity` here and keep them out of the main BFCL headline table
 
 - `tau2_dual_control`
-  - role: dual-control interaction benchmark
+  - role: supporting / boundary dual-control interaction benchmark
   - current claim: `dual_control_interaction`
-  - reason: shared-world approval and coordination errors are much closer to ToolClaw's interactive correction claim than generic tool benchmarks
+  - reason: shared-world approval and coordination errors are relevant to ToolClaw, but the new TAU2 family still has a sparse compound approval-plus-repair slice and cannot carry a headline claim
 
 - `tau_bench_supporting`
   - role: supporting-only benchmark pending audit promotion
@@ -50,39 +60,38 @@ This note updates the paper-facing benchmark plan after reviewing the current re
   - reason: the current alignment pipeline is useful for internal comparison, but it is not yet paper-safe for headline claims until the semantic audit gate passes
 
 - `reuse_exact_match`
-  - role: narrow reuse claim benchmark
+  - role: pending narrow reuse claim benchmark
   - current claim: `reuse_exact_match_cost`
-  - reason: the repo only supports an exact-match cost-compression claim today, not a broad transfer claim
+  - reason: the repo has a v2 dataset and server-side smoke evidence, but no committed paper-safe v2 formal bundle yet shows warm exact hits plus positive cost/headroom deltas
 
 ## Current evidence boundary
 
 - ToolSandbox official should stay the main headline benchmark.
-- ToolSandbox semantic-usefulness should be treated as a mechanism claim, not a whole-benchmark headline claim.
+- ToolSandbox semantic-usefulness should be treated as a targeted mechanism claim anchored to `toolsandbox_semantic_repair_official_v1`, not a whole-benchmark headline claim.
 - Planner should not be sold as a headline lift on ToolSandbox official until a planner-visible benchmark is added.
-- Reuse should stay scoped to exact/matched-signature cost reduction, and persistent-reuse claims must use a two-stage registry protocol rather than same-process cache hits.
+- Reuse should stay pending and scoped to exact/matched-signature cost reduction until a committed persistent-reuse v2 formal bundle demonstrates cost/headroom gains.
 - ToolGym is best treated as a later supplementary stress test, not the main paper anchor.
 - WebArena, WorkArena, and OSWorld are strong benchmarks, but they move the paper toward browser or computer-use agents rather than workflow intelligence over tool calling.
 
-## ToolSandbox persistent reuse boundary on 2026-04-23
+## ToolSandbox persistent reuse boundary on 2026-04-24
 
-The paper-facing reuse path is now `toolsandbox_reuse_persistent_v1`, backed by a versioned paired source:
+The paper-facing reuse path is now `toolsandbox_reuse_persistent_v2`, backed by a versioned paired source:
 
-- source: `data/toolsandbox_reuse_persistent_v1.jsonl`
-- manifest: `data/toolsandbox_reuse_persistent_v1.manifest.json`
+- source: `data/toolsandbox_reuse_persistent_v2.jsonl`
+- manifest: `data/toolsandbox_reuse_persistent_v2.manifest.json`
 - runner: `scripts/run_toolsandbox_reuse_persistent.py`
 - scorer: `scripts/score_toolsandbox_reuse_persistent.py`
 
 The suite separates pass-1 asset compilation from pass-2 evaluation and compares four pass-2 arms: `a3_interaction`, `a4_reuse_cold`, `a4_reuse_warm`, and `a4_reuse_sham`. The `sham` arm is mandatory because a paper-safe persistent-reuse claim requires showing that unrelated registries do not produce the same benefit.
 
-Initial smoke status:
+Current status:
 
-- registry preflight passes and `a4_reuse_warm` can hit persistent assets.
-- `a4_reuse_cold` has no reuse hits, so same-invocation cache contamination is controlled.
-- paper-scope reuse is now exact-only: `a4_reuse_warm` exact hits count toward the claim, while transfer hits remain diagnostic.
-- `a4_reuse_sham` still shows high transfer hits with wrong source-family matches, so it remains a false-positive risk.
-- the current curated slice has no visible cost headroom: success, tool-call count, repair count, and user turns are already identical across cold and warm arms.
+- the v2 dataset is committed and has `family_count = 8`, `headroom_candidate_count = 3`, and `statistical_claim_allowed = false`.
+- server-side smoke indicates the sham false-positive issue has been addressed, but that smoke bundle is not a committed paper-safe formal result bundle.
+- paper-scope reuse remains exact-only: warm exact hits can count toward the claim only when source-family and signature provenance match.
+- reuse remains pending until a committed v2 smoke/formal bundle shows warm exact hits, low sham false positive, and positive cost/headroom delta.
 
-This means the current suite is implemented, but the formal run is intentionally gated. It currently supports a diagnostic statement that persistent reuse is triggerable, while also exposing an over-broad retrieval / false-positive risk. It does not yet support a second-run cost-reduction paper claim.
+This means reuse can be discussed as implemented protocol and pending evidence, not as a proven second-run cost-reduction claim.
 
 ## ToolSandbox causality boundary on 2026-04-23
 
@@ -94,43 +103,12 @@ The current ToolSandbox causality instrumentation is implemented in the benchmar
 - `post_query_progress_rate`
 - `useful_interaction_round_rate`
 
-Exploratory bundle [outputs/paper_causal_v2_full_r1/causal_claim_summary.json](../outputs/paper_causal_v2_full_r1/causal_claim_summary.json) already shows that `interaction_not_cheating_supported = true`, but it also shows that the semantic-usefulness signal is sparse and concentrated in `state_dependency` rows. In that exploratory run, the useful interaction rounds are confined to six repair-sensitive tasks, while `multiple_user_turn` and `insufficient_information` mostly behave as probe-only / contract-satisfaction slices.
+Current boundary:
 
-This means the current evidence supports the following boundary:
-
-- supported after formal freeze:
-  - a mechanism claim that semantic-usefulness and target-aligned patch explain interaction gains on repair-sensitive ToolSandbox slices
-  - a caveat claim that must-query slices are not clean semantic-usefulness evidence
-- not supported:
-  - a claim that all ToolSandbox interaction gain comes from semantic-usefulness
-  - a claim that noisy-user collapse should occur across the whole benchmark aggregate
-
-The paper-facing causality suite therefore needs to be frozen separately from the main `toolsandbox_official` headline run.
-
-Formal freeze on 2026-04-23:
-
-- frozen bundle: `outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal`
-- verdicts:
-  - `overall_interaction_query_contribution_supported = true`
-  - `repair_semantic_usefulness_supported = true`
-  - `probe_only_success_caveat_present = true`
-  - `interaction_not_cheating_supported = true`
-- repair-semantic slice:
-  - `a2_planner.strict_scored_success = 0.50`
-  - `a3_full_interaction.strict_scored_success = 1.00`
-  - `a3_no_query.strict_scored_success = 0.50`
-  - `a3_noisy_user.strict_scored_success = 0.50`
-  - `a3_full_interaction.reply_usable_rate = 0.50`
-  - `a3_full_interaction.target_aligned_patch_rate = 0.50`
-  - `a3_full_interaction.effective_patch_rate = 0.50`
-  - `a3_full_interaction.post_query_progress_rate = 0.50`
-  - `a3_full_interaction.useful_interaction_round_rate = 0.50`
-  - `a3_noisy_user` usefulness metrics remain `0.00`
-- probe-only slice:
-  - `a3_full_interaction.strict_scored_success = 1.00`
-  - `a3_noisy_user.strict_scored_success = 1.00`
-  - both arms keep usefulness metrics at `0.00`
-  - this slice therefore remains contract/probe evidence, not semantic patch evidence
+- causal v2 is not the primary positive semantic repair mechanism evidence.
+- causal v2 shows that full-suite gains can be probe/contract-mediated, especially on must-query or probe-only rows.
+- the positive mechanism claim is now anchored to `toolsandbox_semantic_repair_official_v1`, whose primary slice is targeted to trace-backed semantic repair.
+- noisy-user success on probe-only rows must remain a caveat, not a semantic repair win.
 
 Interaction Live v1 formal run:
 

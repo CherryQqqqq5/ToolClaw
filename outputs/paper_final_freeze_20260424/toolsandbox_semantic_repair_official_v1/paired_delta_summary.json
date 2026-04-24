@@ -1,0 +1,76 @@
+{
+  "summary_version": "toolsandbox_semantic_repair_official_v1_paired_delta",
+  "paired_key": [
+    "task_id",
+    "run_index"
+  ],
+  "metric": "strict_scored_success_rate",
+  "comparisons": {
+    "a3_full_interaction_vs_a2_planner": {
+      "treatment": "a3_full_interaction",
+      "control": "a2_planner",
+      "by_slice": {
+        "probe_only_control": {
+          "num_pairs": 18,
+          "wins": 18,
+          "losses": 0,
+          "ties": 0,
+          "mean_delta": 1.0,
+          "task_count": 6
+        },
+        "repair_semantic_positive": {
+          "num_pairs": 18,
+          "wins": 18,
+          "losses": 0,
+          "ties": 0,
+          "mean_delta": 1.0,
+          "task_count": 6
+        }
+      }
+    },
+    "a3_full_interaction_vs_a3_no_query": {
+      "treatment": "a3_full_interaction",
+      "control": "a3_no_query",
+      "by_slice": {
+        "probe_only_control": {
+          "num_pairs": 18,
+          "wins": 18,
+          "losses": 0,
+          "ties": 0,
+          "mean_delta": 1.0,
+          "task_count": 6
+        },
+        "repair_semantic_positive": {
+          "num_pairs": 18,
+          "wins": 18,
+          "losses": 0,
+          "ties": 0,
+          "mean_delta": 1.0,
+          "task_count": 6
+        }
+      }
+    },
+    "a3_full_interaction_vs_a3_noisy_user": {
+      "treatment": "a3_full_interaction",
+      "control": "a3_noisy_user",
+      "by_slice": {
+        "probe_only_control": {
+          "num_pairs": 18,
+          "wins": 0,
+          "losses": 0,
+          "ties": 18,
+          "mean_delta": 0.0,
+          "task_count": 6
+        },
+        "repair_semantic_positive": {
+          "num_pairs": 18,
+          "wins": 18,
+          "losses": 0,
+          "ties": 0,
+          "mean_delta": 1.0,
+          "task_count": 6
+        }
+      }
+    }
+  }
+}

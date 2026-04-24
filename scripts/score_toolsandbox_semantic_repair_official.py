@@ -121,6 +121,84 @@ def _aggregate_rounds(rounds: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]
     return result
 
 
+def _paired_delta_summary(rows: List[Dict[str, str]], dataset_by_id: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    comparisons = {
+        "a3_full_interaction_vs_a2_planner": ("a3_full_interaction", "a2_planner"),
+        "a3_full_interaction_vs_a3_no_query": ("a3_full_interaction", "a3_no_query"),
+        "a3_full_interaction_vs_a3_noisy_user": ("a3_full_interaction", "a3_noisy_user"),
+    }
+    by_key: Dict[Tuple[str, str, str], Dict[str, Dict[str, str]]] = defaultdict(dict)
+    for row in rows:
+        task_id = str(row.get("task_id") or "")
+        dataset_row = dataset_by_id.get(task_id)
+        if not dataset_row:
+            continue
+        slice_type = str(dataset_row.get("slice_type") or "")
+        run_index = str(row.get("run_index") or "1")
+        system = str(row.get("system") or "")
+        by_key[(slice_type, task_id, run_index)][system] = row
+
+    result: Dict[str, Any] = {
+        "summary_version": "toolsandbox_semantic_repair_official_v1_paired_delta",
+        "paired_key": ["task_id", "run_index"],
+        "metric": "strict_scored_success_rate",
+        "comparisons": {},
+    }
+    for comparison_name, (treatment, control) in comparisons.items():
+        by_slice: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for (slice_type, task_id, run_index), system_rows in sorted(by_key.items()):
+            if treatment not in system_rows or control not in system_rows:
+                continue
+            treatment_value = _float(system_rows[treatment].get("strict_scored_success_rate", 0.0))
+            control_value = _float(system_rows[control].get("strict_scored_success_rate", 0.0))
+            delta = treatment_value - control_value
+            by_slice[slice_type].append(
+                {
+                    "task_id": task_id,
+                    "run_index": run_index,
+                    "treatment_value": treatment_value,
+                    "control_value": control_value,
+                    "delta": delta,
+                }
+            )
+        comparison_summary: Dict[str, Any] = {
+            "treatment": treatment,
+            "control": control,
+            "by_slice": {},
+        }
+        for slice_type, pairs in sorted(by_slice.items()):
+            deltas = [float(pair["delta"]) for pair in pairs]
+            comparison_summary["by_slice"][slice_type] = {
+                "num_pairs": len(pairs),
+                "wins": sum(1 for delta in deltas if delta > 0.0),
+                "losses": sum(1 for delta in deltas if delta < 0.0),
+                "ties": sum(1 for delta in deltas if delta == 0.0),
+                "mean_delta": _mean(deltas),
+                "task_count": len({str(pair["task_id"]) for pair in pairs}),
+            }
+        result["comparisons"][comparison_name] = comparison_summary
+    return result
+
+
+def _write_paired_delta_markdown(path: Path, paired_summary: Dict[str, Any]) -> None:
+    lines = [
+        "# ToolSandbox Semantic Repair Official v1 Paired Delta Summary",
+        "",
+        "Paired key: `(task_id, run_index)`.",
+        "",
+        "The repair-semantic-positive slice is the mechanism evidence. The probe-only control slice is a caveat: strict success there can be contract/probe-mediated and must not be interpreted as semantic repair.",
+        "",
+        "| comparison | slice | pairs | wins | losses | ties | mean_delta | task_count |",
+        "|---|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    for comparison_name, comparison in sorted(paired_summary.get("comparisons", {}).items()):
+        for slice_type, stats in sorted(comparison.get("by_slice", {}).items()):
+            lines.append(
+                f"| {comparison_name} | {slice_type} | {int(stats.get('num_pairs', 0))} | {int(stats.get('wins', 0))} | {int(stats.get('losses', 0))} | {int(stats.get('ties', 0))} | {float(stats.get('mean_delta', 0.0)):.3f} | {int(stats.get('task_count', 0))} |"
+            )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def _claim_summary(
     row_summary: Dict[str, Dict[str, Any]],
     round_summary: Dict[str, Dict[str, Any]],
@@ -196,7 +274,13 @@ def _claim_summary(
     }
 
 
-def _write_report(path: Path, summary: Dict[str, Any], row_summary: Dict[str, Dict[str, Any]], round_summary: Dict[str, Dict[str, Any]]) -> None:
+def _write_report(
+    path: Path,
+    summary: Dict[str, Any],
+    row_summary: Dict[str, Dict[str, Any]],
+    round_summary: Dict[str, Dict[str, Any]],
+    paired_summary: Dict[str, Any],
+) -> None:
     lines = [
         "# ToolSandbox Semantic Repair Official v1",
         "",
@@ -236,51 +320,90 @@ def _write_report(path: Path, summary: Dict[str, Any], row_summary: Dict[str, Di
         lines.append(
             f"| {system} | {slice_type} | {int(stats.get('num_rounds', 0))} | {stats.get('reply_usable_rate', 0.0):.3f} | {stats.get('target_aligned_patch_rate', 0.0):.3f} | {stats.get('effective_patch_rate', 0.0):.3f} | {stats.get('post_query_progress_rate', 0.0):.3f} | {stats.get('useful_interaction_round_rate', 0.0):.3f} |"
         )
+    lines.extend([
+        "",
+        "## Paired Delta Summary",
+        "",
+        "Paired deltas use `(task_id, run_index)` and strict scored success. The repair-semantic-positive slice is mechanism evidence; probe-only control is a contract/probe caveat.",
+        "",
+        "| comparison | slice | pairs | wins | losses | ties | mean_delta |",
+        "|---|---|---:|---:|---:|---:|---:|",
+    ])
+    for comparison_name, comparison in sorted(paired_summary.get("comparisons", {}).items()):
+        for slice_type, stats in sorted(comparison.get("by_slice", {}).items()):
+            lines.append(
+                f"| {comparison_name} | {slice_type} | {int(stats.get('num_pairs', 0))} | {int(stats.get('wins', 0))} | {int(stats.get('losses', 0))} | {int(stats.get('ties', 0))} | {float(stats.get('mean_delta', 0.0)):.3f} |"
+            )
+    lines.extend([
+        "",
+        "See `paired_delta_summary.md` and `paired_delta_summary.json` for the standalone paired evidence artifact.",
+    ])
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Score ToolSandbox semantic-repair official outputs")
-    parser.add_argument("--dataset", required=True)
-    parser.add_argument("--comparison", required=True)
+    parser.add_argument("--dataset")
+    parser.add_argument("--comparison")
     parser.add_argument("--outdir", required=True)
     return parser.parse_args()
+
+
+def _resolve_input_paths(args: argparse.Namespace, outdir: Path) -> Tuple[Path, Path]:
+    manifest_path = outdir / "experiment_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+    dataset = args.dataset or manifest.get("dataset") or "data/toolsandbox_semantic_repair_official_v1.jsonl"
+    comparison = args.comparison or manifest.get("comparison_scored") or str(outdir / "comparison.scored.csv")
+    return Path(dataset), Path(comparison)
 
 
 def main() -> None:
     args = parse_args()
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    dataset = _read_jsonl(Path(args.dataset))
+    dataset_path, comparison_path = _resolve_input_paths(args, outdir)
+    dataset = _read_jsonl(dataset_path)
     dataset_by_id = {str(row.get("task_id") or row.get("name")): row for row in dataset}
-    scored_rows = _read_csv(Path(args.comparison))
+    scored_rows = _read_csv(comparison_path)
     filtered_rows = [row for row in scored_rows if str(row.get("task_id") or "") in dataset_by_id]
+    interaction_rounds_path = outdir / "interaction_rounds.jsonl"
     rounds = _rounds(filtered_rows, dataset_by_id)
-    (outdir / "interaction_rounds.jsonl").write_text(
+    if not rounds and interaction_rounds_path.exists():
+        # Paper-facing bundles intentionally omit raw traces. Preserve the
+        # already-materialized round summary input when re-scoring such bundles.
+        rounds = _read_jsonl(interaction_rounds_path)
+    interaction_rounds_path.write_text(
         "\n".join(json.dumps(row, ensure_ascii=True, sort_keys=True) for row in rounds) + ("\n" if rounds else ""),
         encoding="utf-8",
     )
     row_summary = _aggregate_rows(filtered_rows, dataset_by_id)
     round_summary = _aggregate_rounds(rounds)
+    paired_summary = _paired_delta_summary(filtered_rows, dataset_by_id)
+    (outdir / "paired_delta_summary.json").write_text(json.dumps(paired_summary, indent=2), encoding="utf-8")
+    _write_paired_delta_markdown(outdir / "paired_delta_summary.md", paired_summary)
     slice_summary = {
         "summary_version": "toolsandbox_semantic_repair_official_v1",
         "row_level": row_summary,
         "round_level": round_summary,
+        "paired_delta_path": _repo_relative(outdir / "paired_delta_summary.json"),
     }
     (outdir / "slice_summary.json").write_text(json.dumps(slice_summary, indent=2), encoding="utf-8")
     systems_observed = sorted({str(row.get("system") or "") for row in filtered_rows})
     claim_summary = _claim_summary(row_summary, round_summary, systems_observed)
+    claim_summary["paired_delta_summary_path"] = _repo_relative(outdir / "paired_delta_summary.json")
     (outdir / "claim_summary.json").write_text(json.dumps(claim_summary, indent=2), encoding="utf-8")
-    _write_report(outdir / "report.md", claim_summary, row_summary, round_summary)
+    _write_report(outdir / "report.md", claim_summary, row_summary, round_summary, paired_summary)
 
     manifest_path = outdir / "experiment_manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
     manifest.update(
         {
             "benchmark": "toolsandbox_semantic_repair_official_v1",
-            "dataset": _repo_relative(Path(args.dataset)),
-            "comparison_scored": _repo_relative(Path(args.comparison)),
+            "dataset": _repo_relative(dataset_path),
+            "comparison_scored": _repo_relative(comparison_path),
             "slice_summary_path": _repo_relative(outdir / "slice_summary.json"),
+            "paired_delta_summary_path": _repo_relative(outdir / "paired_delta_summary.json"),
+            "paired_delta_summary_md_path": _repo_relative(outdir / "paired_delta_summary.md"),
             "claim_summary_path": _repo_relative(outdir / "claim_summary.json"),
             "interaction_rounds_path": _repo_relative(outdir / "interaction_rounds.jsonl"),
             "report_path": _repo_relative(outdir / "report.md"),
