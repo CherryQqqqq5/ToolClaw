@@ -770,6 +770,10 @@ def _bfcl_candidate_coverage_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "abstain_due_to_parallel_shape_guard": bool(diagnostic.get("abstain_due_to_parallel_shape_guard", False)),
         "abstain_with_schema_top1_available": bool(diagnostic.get("abstain_with_schema_top1_available", False)),
         "abstain_with_operation_cues_present": bool(diagnostic.get("abstain_with_operation_cues_present", False)),
+        "abstain_blocked_by_serial_schema_top1": bool(diagnostic.get("abstain_blocked_by_serial_schema_top1", False)),
+        "serial_positive_call_forced": bool(diagnostic.get("serial_positive_call_forced", False)),
+        "irrelevance_abstain_allowed": bool(diagnostic.get("irrelevance_abstain_allowed", False)),
+        "explicit_no_call_signal": bool(diagnostic.get("explicit_no_call_signal", False)),
         "operation_cues_present": bool(diagnostic.get("operation_cues_present", False)),
         "expected_in_raw_function_docs": expected_in_raw,
         "expected_in_prepared_schema": expected_in_prepared,
@@ -828,6 +832,9 @@ def _coverage_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
             "abstain_due_to_parallel_shape_guard": sum(1 for row in abstain_rows if row.get("abstain_due_to_parallel_shape_guard")),
             "abstain_with_schema_top1_available": sum(1 for row in abstain_rows if row.get("abstain_with_schema_top1_available")),
             "abstain_with_operation_cues_present": sum(1 for row in abstain_rows if row.get("abstain_with_operation_cues_present")),
+            "abstain_blocked_by_serial_schema_top1": sum(1 for row in rows if row.get("abstain_blocked_by_serial_schema_top1")),
+            "serial_positive_call_forced": sum(1 for row in rows if row.get("serial_positive_call_forced")),
+            "irrelevance_abstain_allowed": sum(1 for row in rows if row.get("irrelevance_abstain_allowed")),
         },
         "abstain_reason_counts": dict(Counter(str(row.get("abstain_reason") or "unknown") for row in abstain_rows)),
     }
@@ -1184,6 +1191,15 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
         case_type=case_type,
         failure_bucket=failure_bucket,
     )
+    diagnostic = _first_bfcl_selection_diagnostic(row)
+    zero_emitted = bool(expected_call_count > 0 and emitted_call_count == 0)
+    candidate_pool_exception = str(coverage.get("candidate_pool_exception") or "")
+    selected_required_coverage = diagnostic.get("selected_required_argument_coverage") if isinstance(diagnostic, dict) else None
+    try:
+        selected_required_coverage_value = float(selected_required_coverage or 0.0)
+    except (TypeError, ValueError):
+        selected_required_coverage_value = 0.0
+    is_parallel_case = call_pattern == "parallel" or "parallel" in case_type
     wrong_call_count = bool(shape["wrong_call_count"])
     wrong_call_order = bool(shape["wrong_call_order"])
     parallel_shape_error = bool(shape["parallel_or_multiple_shape_mismatch"])
@@ -1251,6 +1267,11 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "parallel_order_only_mismatch": shape["parallel_order_only_mismatch"],
         "parallel_or_multiple_shape_mismatch": parallel_shape_error,
         "multi_turn_state_mismatch": multi_turn_state_mismatch,
+        "zero_emitted_due_to_abstain_classifier": bool(zero_emitted and candidate_pool_exception == "bfcl_abstain"),
+        "zero_emitted_after_schema_selection": bool(zero_emitted and selected_is_expected and candidate_pool_exception != "bfcl_abstain"),
+        "zero_emitted_due_to_call_shape_canonicalizer": bool(zero_emitted and selected_is_expected and not is_parallel_case),
+        "zero_emitted_due_to_parallel_clause_drop": bool(zero_emitted and selected_is_expected and is_parallel_case),
+        "zero_emitted_due_to_no_grounded_args": bool(zero_emitted and selected_is_expected and selected_required_coverage_value == 0.0),
         "trace_status": trace_status,
         "selected_correct_failure_bucket": selected_correct_failure_bucket,
     }
@@ -1287,6 +1308,11 @@ def _selected_correct_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, 
         "parallel_grouping_mismatch": sum(1 for row in selected_rows if row.get("parallel_grouping_mismatch")),
         "parallel_call_count_correct_but_grouping_wrong": sum(1 for row in selected_rows if row.get("parallel_call_count_correct_but_grouping_wrong")),
         "parallel_order_only_mismatch": sum(1 for row in selected_rows if row.get("parallel_order_only_mismatch")),
+        "zero_emitted_due_to_abstain_classifier": sum(1 for row in rows if row.get("zero_emitted_due_to_abstain_classifier")),
+        "zero_emitted_after_schema_selection": sum(1 for row in selected_rows if row.get("zero_emitted_after_schema_selection")),
+        "zero_emitted_due_to_call_shape_canonicalizer": sum(1 for row in selected_rows if row.get("zero_emitted_due_to_call_shape_canonicalizer")),
+        "zero_emitted_due_to_parallel_clause_drop": sum(1 for row in selected_rows if row.get("zero_emitted_due_to_parallel_clause_drop")),
+        "zero_emitted_due_to_no_grounded_args": sum(1 for row in selected_rows if row.get("zero_emitted_due_to_no_grounded_args")),
         "call_count_delta_counts": dict(call_count_deltas),
         "selected_correct_failure_bucket_counts": dict(bucket_counts),
     }

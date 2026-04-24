@@ -2085,3 +2085,76 @@ def test_bfcl_selected_correct_failure_audit_matches_candidate_coverage_selected
 
     assert coverage["summary"]["selected_is_expected"] == 1
     assert selected_correct["summary"]["selected_is_expected_count"] == coverage["summary"]["selected_is_expected"]
+
+
+def test_bfcl_selected_correct_summary_splits_zero_emitted_sources() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_zero_emitted_sources_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    rows = [
+        {
+            "selected_is_expected": False,
+            "selected_correct_failure_bucket": "not_selected_expected",
+            "zero_emitted_due_to_abstain_classifier": True,
+        },
+        {
+            "selected_is_expected": True,
+            "selected_correct_failure_bucket": "wrong_call_count",
+            "wrong_call_count_zero_emitted": True,
+            "zero_emitted_after_schema_selection": True,
+            "zero_emitted_due_to_call_shape_canonicalizer": True,
+            "zero_emitted_due_to_no_grounded_args": True,
+            "call_count_delta": -1,
+        },
+        {
+            "selected_is_expected": True,
+            "selected_correct_failure_bucket": "parallel_shape_error",
+            "parallel_or_multiple_shape_mismatch": True,
+            "wrong_call_count_zero_emitted": True,
+            "zero_emitted_after_schema_selection": True,
+            "zero_emitted_due_to_parallel_clause_drop": True,
+            "call_count_delta": -2,
+        },
+    ]
+
+    summary = module._selected_correct_summary_for_rows(rows)
+
+    assert summary["zero_emitted_due_to_abstain_classifier"] == 1
+    assert summary["zero_emitted_after_schema_selection"] == 2
+    assert summary["zero_emitted_due_to_call_shape_canonicalizer"] == 1
+    assert summary["zero_emitted_due_to_parallel_clause_drop"] == 1
+    assert summary["zero_emitted_due_to_no_grounded_args"] == 1
+
+
+def test_bfcl_candidate_coverage_summary_counts_serial_abstain_blocked_rows() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_serial_abstain_blocked_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    rows = [
+        {
+            "selected_is_expected": True,
+            "expected_in_runtime_candidates": True,
+            "expected_is_schema_top1": True,
+            "official_success": False,
+            "drop_stage": "selected_correct_arg_or_shape_error",
+            "abstain_blocked_by_serial_schema_top1": True,
+            "serial_positive_call_forced": True,
+            "irrelevance_abstain_allowed": False,
+        }
+    ]
+
+    summary = module._coverage_summary_for_rows(rows)
+
+    assert summary["abstain_substage_counts"]["abstain_blocked_by_serial_schema_top1"] == 1
+    assert summary["abstain_substage_counts"]["serial_positive_call_forced"] == 1
+    assert summary["abstain_substage_counts"]["irrelevance_abstain_allowed"] == 0

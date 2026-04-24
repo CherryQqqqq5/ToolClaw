@@ -469,6 +469,24 @@ def _bfcl_irrelevance_signal(task: Dict[str, Any]) -> bool:
     return "irrelevance" in joined or "no_call" in joined or task.get("ideal_tool_calls") == 0
 
 
+_BFCL_EXPLICIT_NO_CALL_RE = re.compile(
+    r"\b("
+    r"no\s+(?:function\s+)?call|do\s+not\s+(?:call|use)|don['’]?t\s+(?:call|use)|"
+    r"no\s+tool|without\s+(?:a\s+)?(?:function|tool)|no\s+api"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _bfcl_explicit_no_call_signal(text: str) -> bool:
+    return bool(_BFCL_EXPLICIT_NO_CALL_RE.search(str(text or "")))
+
+
+def _bfcl_call_pattern(task: Dict[str, Any]) -> str:
+    metadata = task.get("metadata", {}) if isinstance(task.get("metadata"), dict) else {}
+    return str(metadata.get("bfcl_call_pattern") or "serial").strip().lower() or "serial"
+
+
 def _bfcl_schema_viability_diagnostics(candidate_tools: List[ToolSpec], text: str) -> Dict[str, Any]:
     ranked = rank_candidate_tools(text, candidate_tools)
     if not ranked:
@@ -512,6 +530,9 @@ def _bfcl_abstain_decision(
     """
     viability = _bfcl_schema_viability_diagnostics(candidate_tools, text)
     irrelevance_signal = _bfcl_irrelevance_signal(task)
+    explicit_no_call_signal = _bfcl_explicit_no_call_signal(text)
+    call_pattern = _bfcl_call_pattern(task)
+    serial_case = call_pattern == "serial"
     top1_viable = _bfcl_top1_is_viable(viability)
     operation_cues = bool(viability.get("operation_cues_present"))
     groundable_required = float(viability.get("schema_top_required_argument_coverage") or 0.0) > 0.0
@@ -520,12 +541,20 @@ def _bfcl_abstain_decision(
 
     should_abstain = False
     reason = "not_applied"
+    abstain_blocked_by_serial_schema_top1 = False
+    serial_positive_call_forced = False
+    irrelevance_abstain_allowed = False
     if not candidate_tools:
         should_abstain = True
         reason = "no_candidate_tools"
     elif irrelevance_signal:
-        should_abstain = True
-        reason = "irrelevance_classifier"
+        irrelevance_abstain_allowed = bool(explicit_no_call_signal or no_viable_schema_top1 or not operation_cues)
+        if serial_case and top1_viable and operation_cues and not explicit_no_call_signal:
+            abstain_blocked_by_serial_schema_top1 = True
+            serial_positive_call_forced = True
+        elif irrelevance_abstain_allowed:
+            should_abstain = True
+            reason = "irrelevance_classifier"
     elif no_viable_schema_top1 and not operation_cues:
         should_abstain = True
         reason = "no_viable_schema_top1"
@@ -546,6 +575,11 @@ def _bfcl_abstain_decision(
             "abstain_due_to_parallel_shape_guard": False,
             "abstain_with_schema_top1_available": should_abstain and bool(viability.get("schema_top_tool_id")),
             "abstain_with_operation_cues_present": should_abstain and operation_cues,
+            "abstain_blocked_by_serial_schema_top1": abstain_blocked_by_serial_schema_top1,
+            "serial_positive_call_forced": serial_positive_call_forced,
+            "irrelevance_abstain_allowed": irrelevance_abstain_allowed,
+            "explicit_no_call_signal": explicit_no_call_signal,
+            "bfcl_call_pattern": call_pattern,
             "operation_cues_present": operation_cues,
             "schema_top_tool_id": str(viability.get("schema_top_tool_id") or ""),
             "schema_top_score": float(viability.get("schema_top_score") or 0.0),
@@ -554,6 +588,30 @@ def _bfcl_abstain_decision(
             "ranked": list(viability.get("ranked", []) or []),
         },
     }
+
+
+_BFCL_ABSTAIN_POLICY_DIAGNOSTIC_KEYS = {
+    "abstain_policy_version",
+    "abstain_blocked_by_serial_schema_top1",
+    "serial_positive_call_forced",
+    "irrelevance_abstain_allowed",
+    "explicit_no_call_signal",
+    "bfcl_call_pattern",
+    "operation_cues_present",
+}
+
+
+def _merge_bfcl_abstain_policy_diagnostics(
+    selection_diagnostics: Dict[str, Any],
+    abstain_diagnostics: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    if not abstain_diagnostics:
+        return dict(selection_diagnostics)
+    merged = dict(selection_diagnostics)
+    for key in _BFCL_ABSTAIN_POLICY_DIAGNOSTIC_KEYS:
+        if key in abstain_diagnostics:
+            merged[key] = abstain_diagnostics[key]
+    return merged
 
 
 def _bfcl_rank_summary(item: Dict[str, Any]) -> Dict[str, Any]:
@@ -1223,20 +1281,30 @@ def _split_parallel_clauses(text: str) -> List[str]:
     return clauses if len(clauses) > 1 else [text]
 
 
-def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user_goal: str) -> List[Dict[str, Any]]:
+def _bfcl_seed_specs(
+    task: Dict[str, Any],
+    candidate_tools: List[ToolSpec],
+    user_goal: str,
+    *,
+    abstain_policy_diagnostics: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, Any]]:
     metadata = task.get("metadata", {}) if isinstance(task.get("metadata"), dict) else {}
     call_pattern = str(metadata.get("bfcl_call_pattern") or "serial")
     query = str(task.get("query") or user_goal)
     milestones = [str(item).strip() for item in task.get("milestones", []) if str(item).strip()]
     if call_pattern == "parallel":
-        if len(candidate_tools) == 1:
-            tool = candidate_tools[0]
-            arg_sets = extract_parallel_argument_sets(tool.tool_id, _bfcl_tool_parameters(tool), query)
+        selected_parallel_tool, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, query)
+        if selected_parallel_tool is not None:
+            arg_sets = extract_parallel_argument_sets(
+                selected_parallel_tool.tool_id,
+                _bfcl_tool_parameters(selected_parallel_tool),
+                query,
+            )
             if len(arg_sets) > 1:
-                _selected, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, query)
+                diagnostics = _merge_bfcl_abstain_policy_diagnostics(diagnostics, abstain_policy_diagnostics)
                 return [
                     {
-                        "tool": tool,
+                        "tool": selected_parallel_tool,
                         "inputs": arg_set,
                         "text": query,
                         "selection_diagnostics": dict(diagnostics),
@@ -1248,6 +1316,7 @@ def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user
             tool, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, clause)
             if tool is None:
                 continue
+            diagnostics = _merge_bfcl_abstain_policy_diagnostics(diagnostics, abstain_policy_diagnostics)
             step_specs.append(
                 {
                     "tool": tool,
@@ -1264,6 +1333,7 @@ def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user
             tool, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, milestone)
             if tool is None:
                 continue
+            diagnostics = _merge_bfcl_abstain_policy_diagnostics(diagnostics, abstain_policy_diagnostics)
             step_specs.append(
                 {
                     "tool": tool,
@@ -1277,6 +1347,7 @@ def _bfcl_seed_specs(task: Dict[str, Any], candidate_tools: List[ToolSpec], user
     tool, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, query)
     if tool is None:
         return []
+    diagnostics = _merge_bfcl_abstain_policy_diagnostics(diagnostics, abstain_policy_diagnostics)
     return [{"tool": tool, "inputs": _bfcl_build_step_inputs(tool, query), "text": query, "selection_diagnostics": diagnostics}]
 
 
@@ -1305,7 +1376,12 @@ def _build_seed_workflow(
                 reason=str(abstain_decision.get("reason") or "bfcl_abstain"),
                 abstain_diagnostics=abstain_decision.get("diagnostics") if isinstance(abstain_decision.get("diagnostics"), dict) else None,
             )
-        step_specs = _bfcl_seed_specs(task, candidate_tools, user_goal)
+        step_specs = _bfcl_seed_specs(
+            task,
+            candidate_tools,
+            user_goal,
+            abstain_policy_diagnostics=abstain_decision.get("diagnostics") if isinstance(abstain_decision.get("diagnostics"), dict) else None,
+        )
         if not step_specs:
             return workflow
         if not enable_grounding:
@@ -1410,7 +1486,12 @@ def _adapt_bfcl_workflow(
         return workflow
 
     if call_pattern == "serial" and (mode == "planner" or len(workflow.execution_plan) != 1):
-        seed_specs = _bfcl_seed_specs(task, candidate_tools, query)
+        seed_specs = _bfcl_seed_specs(
+            task,
+            candidate_tools,
+            query,
+            abstain_policy_diagnostics=abstain_decision.get("diagnostics") if isinstance(abstain_decision.get("diagnostics"), dict) else None,
+        )
         if seed_specs:
             if not enable_grounding:
                 seed_specs = [
@@ -1440,7 +1521,12 @@ def _adapt_bfcl_workflow(
             return workflow
 
     if call_pattern == "parallel":
-        parallel_specs = _bfcl_seed_specs(task, candidate_tools, query)
+        parallel_specs = _bfcl_seed_specs(
+            task,
+            candidate_tools,
+            query,
+            abstain_policy_diagnostics=abstain_decision.get("diagnostics") if isinstance(abstain_decision.get("diagnostics"), dict) else None,
+        )
         if len(parallel_specs) > 1:
             if not enable_grounding:
                 parallel_specs = [
@@ -1460,7 +1546,12 @@ def _adapt_bfcl_workflow(
     if metadata.get("bfcl_group") == "multi_turn" and (
         mode == "planner" or any(not str(step.tool_id or "").strip() for step in workflow.execution_plan)
     ):
-        seed_specs = _bfcl_seed_specs(task, candidate_tools, query)
+        seed_specs = _bfcl_seed_specs(
+            task,
+            candidate_tools,
+            query,
+            abstain_policy_diagnostics=abstain_decision.get("diagnostics") if isinstance(abstain_decision.get("diagnostics"), dict) else None,
+        )
         if seed_specs:
             if not enable_grounding:
                 seed_specs = [

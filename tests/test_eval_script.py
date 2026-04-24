@@ -2563,3 +2563,153 @@ def test_build_workflow_from_task_bfcl_abstain_records_candidate_pool_exception(
     assert diagnostics["candidate_pool_preserved"] is False
     assert diagnostics["candidate_pool_exception"] == "bfcl_abstain"
     assert diagnostics["planner_narrowing_applied"] is False
+
+
+def test_build_workflow_from_task_bfcl_live_serial_irrelevance_label_with_schema_top1_forces_call() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_live_serial_force_call", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "irrelevance_live_serial_positive_schema_top1",
+            "query": "Tell me the current weather in Boston, MA.",
+            "candidate_tools": [
+                {
+                    "tool_id": "get_current_weather",
+                    "description": "Gets current weather conditions for a location.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["location"],
+                        "properties": {"location": {"type": "string"}},
+                    },
+                }
+            ],
+            "metadata": {"benchmark": "bfcl", "bfcl_group": "live", "bfcl_call_pattern": "serial"},
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert workflow.metadata.get("bfcl_abstained") is not True
+    assert [step.tool_id for step in workflow.execution_plan] == ["get_current_weather"]
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"][0]
+    assert diagnostics["serial_positive_call_forced"] is True
+    assert diagnostics["abstain_blocked_by_serial_schema_top1"] is True
+    assert diagnostics["candidate_pool_exception"] == ""
+    assert "expected_call_count" not in json.dumps(diagnostics)
+
+
+def test_build_workflow_from_task_bfcl_non_live_serial_irrelevance_label_with_schema_top1_forces_call() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_non_live_serial_force_call", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "irrelevance_non_live_serial_positive_schema_top1",
+            "query": "Calculate the body mass index for height 1.8 meters and weight 75 kilograms.",
+            "candidate_tools": [
+                {
+                    "tool_id": "determine_body_mass_index",
+                    "description": "Calculate body mass index from height and weight.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["height", "weight"],
+                        "properties": {"height": {"type": "number"}, "weight": {"type": "number"}},
+                    },
+                }
+            ],
+            "metadata": {"benchmark": "bfcl", "bfcl_group": "non_live", "bfcl_call_pattern": "serial"},
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert workflow.metadata.get("bfcl_abstained") is not True
+    assert [step.tool_id for step in workflow.execution_plan] == ["determine_body_mass_index"]
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"][0]
+    assert diagnostics["serial_positive_call_forced"] is True
+    assert diagnostics["abstain_blocked_by_serial_schema_top1"] is True
+    assert diagnostics["candidate_pool_exception"] == ""
+
+
+def test_build_workflow_from_task_bfcl_explicit_no_call_still_abstains() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_explicit_no_call", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_live_irrelevance_explicit_no_call",
+            "query": "No function call is expected for this request.",
+            "candidate_tools": [
+                {"tool_id": "get_current_weather", "description": "Gets current weather conditions."}
+            ],
+            "metadata": {"benchmark": "bfcl", "bfcl_group": "live_irrelevance", "bfcl_call_pattern": "serial"},
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert workflow.metadata["bfcl_abstained"] is True
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"][0]
+    assert diagnostics["irrelevance_abstain_allowed"] is True
+    assert diagnostics["explicit_no_call_signal"] is True
+    assert diagnostics["candidate_pool_exception"] == "bfcl_abstain"
+
+
+def test_build_workflow_from_task_bfcl_parallel_multiple_candidates_expands_best_schema_tool() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_parallel_multi_candidate", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_non_live_parallel_multi_candidate",
+            "query": "Tell me the current weather for Boston, MA and also for San Francisco.",
+            "candidate_tools": [
+                {
+                    "tool_id": "get_current_weather",
+                    "description": "Gets current weather conditions for a location.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["location"],
+                        "properties": {"location": {"type": "string"}},
+                    },
+                },
+                {
+                    "tool_id": "get_stock_price",
+                    "description": "Gets a stock price for a ticker symbol.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["ticker"],
+                        "properties": {"ticker": {"type": "string"}},
+                    },
+                },
+            ],
+            "metadata": {"benchmark": "bfcl", "bfcl_group": "non_live", "bfcl_call_pattern": "parallel"},
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert workflow.metadata.get("bfcl_abstained") is not True
+    assert [step.tool_id for step in workflow.execution_plan] == ["get_current_weather", "get_current_weather"]
+    assert [step.inputs for step in workflow.execution_plan] == [
+        {"location": "Boston, MA"},
+        {"location": "San Francisco"},
+    ]
+    assert len(workflow.metadata["bfcl_rerank_diagnostics"]) == 2
