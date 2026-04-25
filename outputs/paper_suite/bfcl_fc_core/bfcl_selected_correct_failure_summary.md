@@ -12,9 +12,9 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 | selected_is_expected_count | 5120 |
 | success_given_selected_is_expected | 422 |
 | success_rate_given_selected_is_expected | 0.082421875 |
-| missing_required_given_selected_is_expected | 1710 |
-| wrong_arg_value_given_selected_is_expected | 948 |
-| wrong_arg_type_given_selected_is_expected | 164 |
+| missing_required_given_selected_is_expected | 1705 |
+| wrong_arg_value_given_selected_is_expected | 958 |
+| wrong_arg_type_given_selected_is_expected | 159 |
 | wrong_arg_structure_given_selected_is_expected | 91 |
 | wrong_call_count_given_selected_is_expected | 855 |
 | wrong_call_order_given_selected_is_expected | 0 |
@@ -32,7 +32,7 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 | parallel_order_only_mismatch | 0 |
 | trace_missing_or_unparseable_given_selected_is_expected | 0 |
 | other_selected_correct_failure_given_selected_is_expected | 0 |
-| missing_required_due_to_no_query_cue | 1105 |
+| missing_required_due_to_no_query_cue | 1100 |
 | missing_required_due_to_schema_alias_mismatch | 870 |
 | missing_required_due_to_grounder_not_attempted | 50 |
 | missing_required_due_to_value_filtered | 45 |
@@ -42,12 +42,12 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 
 | bucket | count |
 |---|---:|
-| missing_required | 1710 |
+| missing_required | 1705 |
 | parallel_shape_error | 930 |
 | selected_correct_success | 422 |
 | wrong_arg_structure | 91 |
-| wrong_arg_type | 164 |
-| wrong_arg_value | 948 |
+| wrong_arg_type | 159 |
+| wrong_arg_value | 958 |
 | wrong_call_count | 855 |
 
 ## By Case Type

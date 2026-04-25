@@ -23,10 +23,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.49169024869327826,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1384,
-          "value_error": 858,
+          "value_error": 860,
           "wrong_func_name": 153,
-          "other_official_failure": 237,
-          "missing_required": 416,
+          "other_official_failure": 243,
+          "missing_required": 408,
           "wrong_count": 443,
           "multi_turn_mismatch": 730,
           "multi_turn_other": 70
@@ -43,10 +43,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.4913018388432045,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1384,
-          "value_error": 858,
+          "value_error": 860,
           "wrong_func_name": 153,
-          "other_official_failure": 239,
-          "missing_required": 416,
+          "other_official_failure": 245,
+          "missing_required": 408,
           "wrong_count": 441,
           "multi_turn_mismatch": 746,
           "multi_turn_other": 54
@@ -63,10 +63,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.49140615463151005,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1361,
-          "value_error": 858,
+          "value_error": 860,
           "wrong_func_name": 153,
-          "other_official_failure": 266,
-          "missing_required": 416,
+          "other_official_failure": 272,
+          "missing_required": 408,
           "wrong_count": 437,
           "multi_turn_mismatch": 752,
           "multi_turn_other": 48
@@ -83,10 +83,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.42726470686153745,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1364,
-          "value_error": 858,
+          "value_error": 860,
           "wrong_func_name": 154,
-          "other_official_failure": 317,
-          "missing_required": 418,
+          "other_official_failure": 323,
+          "missing_required": 410,
           "wrong_count": 380,
           "multi_turn_mismatch": 784,
           "multi_turn_other": 16
@@ -103,10 +103,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.42726470686153745,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1364,
-          "value_error": 858,
+          "value_error": 860,
           "wrong_func_name": 154,
-          "other_official_failure": 317,
-          "missing_required": 418,
+          "other_official_failure": 323,
+          "missing_required": 410,
           "wrong_count": 380,
           "multi_turn_mismatch": 784,
           "multi_turn_other": 16
@@ -126,10 +126,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.556303547629625,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1061,
-          "value_error": 657,
+          "value_error": 659,
           "wrong_func_name": 143,
-          "other_official_failure": 166,
-          "missing_required": 170,
+          "other_official_failure": 172,
+          "missing_required": 162,
           "wrong_count": 54
         }
       },
@@ -179,10 +179,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.556303547629625,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1061,
-          "value_error": 657,
+          "value_error": 659,
           "wrong_func_name": 143,
-          "other_official_failure": 166,
-          "missing_required": 170,
+          "other_official_failure": 172,
+          "missing_required": 162,
           "wrong_count": 54
         }
       },
@@ -232,10 +232,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.5563775887965137,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1038,
-          "value_error": 657,
+          "value_error": 659,
           "wrong_func_name": 143,
-          "other_official_failure": 186,
-          "missing_required": 170,
+          "other_official_failure": 192,
+          "missing_required": 162,
           "wrong_count": 57
         }
       },
@@ -285,10 +285,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.5505653571957437,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1041,
-          "value_error": 657,
+          "value_error": 659,
           "wrong_func_name": 144,
-          "other_official_failure": 192,
-          "missing_required": 172,
+          "other_official_failure": 198,
+          "missing_required": 164,
           "wrong_count": 45
         }
       },
@@ -338,10 +338,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.5505653571957437,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1041,
-          "value_error": 657,
+          "value_error": 659,
           "wrong_func_name": 144,
-          "other_official_failure": 192,
-          "missing_required": 172,
+          "other_official_failure": 198,
+          "missing_required": 164,
           "wrong_count": 45
         }
       },
@@ -409,10 +409,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.4697107121217742,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1377,
-          "value_error": 858,
+          "value_error": 860,
           "wrong_func_name": 153,
-          "other_official_failure": 213,
-          "missing_required": 416,
+          "other_official_failure": 219,
+          "missing_required": 408,
           "wrong_count": 34,
           "multi_turn_mismatch": 730,
           "multi_turn_other": 70
@@ -446,10 +446,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.4697107121217742,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1377,
-          "value_error": 858,
+          "value_error": 860,
           "wrong_func_name": 153,
-          "other_official_failure": 213,
-          "missing_required": 416,
+          "other_official_failure": 219,
+          "missing_required": 408,
           "wrong_count": 34,
           "multi_turn_mismatch": 746,
           "multi_turn_other": 54
@@ -483,10 +483,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.4697972697258597,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1354,
-          "value_error": 858,
+          "value_error": 860,
           "wrong_func_name": 153,
-          "other_official_failure": 236,
-          "missing_required": 416,
+          "other_official_failure": 242,
+          "missing_required": 408,
           "wrong_count": 34,
           "multi_turn_mismatch": 752,
           "multi_turn_other": 48
@@ -520,10 +520,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.462007085358163,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1357,
-          "value_error": 858,
+          "value_error": 860,
           "wrong_func_name": 154,
-          "other_official_failure": 236,
-          "missing_required": 418,
+          "other_official_failure": 242,
+          "missing_required": 410,
           "wrong_count": 28,
           "multi_turn_mismatch": 784,
           "multi_turn_other": 16
@@ -557,10 +557,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.462007085358163,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1357,
-          "value_error": 858,
+          "value_error": 860,
           "wrong_func_name": 154,
-          "other_official_failure": 236,
-          "missing_required": 418,
+          "other_official_failure": 242,
+          "missing_required": 410,
           "wrong_count": 28,
           "multi_turn_mismatch": 784,
           "multi_turn_other": 16
@@ -598,10 +598,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.5574352264650773,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1059,
-          "value_error": 657,
+          "value_error": 659,
           "wrong_func_name": 143,
-          "other_official_failure": 152,
-          "missing_required": 170,
+          "other_official_failure": 158,
+          "missing_required": 162,
           "wrong_count": 30
         }
       },
@@ -688,10 +688,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.5574352264650773,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1059,
-          "value_error": 657,
+          "value_error": 659,
           "wrong_func_name": 143,
-          "other_official_failure": 152,
-          "missing_required": 170,
+          "other_official_failure": 158,
+          "missing_required": 162,
           "wrong_count": 30
         }
       },
@@ -778,10 +778,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.5575859878098685,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1036,
-          "value_error": 657,
+          "value_error": 659,
           "wrong_func_name": 143,
-          "other_official_failure": 175,
-          "missing_required": 170,
+          "other_official_failure": 181,
+          "missing_required": 162,
           "wrong_count": 30
         }
       },
@@ -868,10 +868,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.5566814197411213,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1039,
-          "value_error": 657,
+          "value_error": 659,
           "wrong_func_name": 144,
-          "other_official_failure": 175,
-          "missing_required": 172,
+          "other_official_failure": 181,
+          "missing_required": 164,
           "wrong_count": 24
         }
       },
@@ -958,10 +958,10 @@
         "toolclaw_diagnostics_parameter_fill_ratio": 0.5566814197411213,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1039,
-          "value_error": 657,
+          "value_error": 659,
           "wrong_func_name": 144,
-          "other_official_failure": 175,
-          "missing_required": 172,
+          "other_official_failure": 181,
+          "missing_required": 164,
           "wrong_count": 24
         }
       },
@@ -1023,15 +1023,15 @@
       {
         "system": "a0_baseline",
         "official_failure_bucket": "missing_required",
-        "num_rows": 416.0,
+        "num_rows": 408.0,
         "official_bfcl_eval_success": 0.0,
         "official_bfcl_eval_tool_selection_correctness": 1.0,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 1.0,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.13656707875457874,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.13793767507002802,
         "failure_bucket_counts": {
-          "missing_required": 416
+          "missing_required": 408
         }
       },
       {
@@ -1079,29 +1079,29 @@
       {
         "system": "a0_baseline",
         "official_failure_bucket": "other_official_failure",
-        "num_rows": 237.0,
+        "num_rows": 243.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.9880450070323488,
+        "official_bfcl_eval_tool_selection_correctness": 0.9883401920438958,
         "official_bfcl_eval_argument_correctness": 0.0,
-        "official_bfcl_eval_structure_correctness": 0.9746835443037974,
-        "toolclaw_diagnostics_binder_selection_match": 0.9880450070323488,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.2938215792646172,
+        "official_bfcl_eval_structure_correctness": 0.9753086419753086,
+        "toolclaw_diagnostics_binder_selection_match": 0.9883401920438958,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.28738977072310407,
         "failure_bucket_counts": {
-          "other_official_failure": 237
+          "other_official_failure": 243
         }
       },
       {
         "system": "a0_baseline",
         "official_failure_bucket": "value_error",
-        "num_rows": 858.0,
+        "num_rows": 860.0,
         "official_bfcl_eval_success": 0.0,
         "official_bfcl_eval_tool_selection_correctness": 1.0,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 1.0,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.21855875605875605,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.21843807678110003,
         "failure_bucket_counts": {
-          "value_error": 858
+          "value_error": 860
         }
       },
       {
@@ -1135,15 +1135,15 @@
       {
         "system": "a1_recovery",
         "official_failure_bucket": "missing_required",
-        "num_rows": 416.0,
+        "num_rows": 408.0,
         "official_bfcl_eval_success": 0.0,
         "official_bfcl_eval_tool_selection_correctness": 1.0,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 1.0,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.13656707875457874,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.13793767507002802,
         "failure_bucket_counts": {
-          "missing_required": 416
+          "missing_required": 408
         }
       },
       {
@@ -1191,29 +1191,29 @@
       {
         "system": "a1_recovery",
         "official_failure_bucket": "other_official_failure",
-        "num_rows": 239.0,
+        "num_rows": 245.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.9860529986052998,
+        "official_bfcl_eval_tool_selection_correctness": 0.9863945578231292,
         "official_bfcl_eval_argument_correctness": 0.0,
-        "official_bfcl_eval_structure_correctness": 0.9707112970711297,
-        "toolclaw_diagnostics_binder_selection_match": 0.9860529986052998,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.2927575214186093,
+        "official_bfcl_eval_structure_correctness": 0.9714285714285714,
+        "toolclaw_diagnostics_binder_selection_match": 0.9863945578231292,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.28640427599611273,
         "failure_bucket_counts": {
-          "other_official_failure": 239
+          "other_official_failure": 245
         }
       },
       {
         "system": "a1_recovery",
         "official_failure_bucket": "value_error",
-        "num_rows": 858.0,
+        "num_rows": 860.0,
         "official_bfcl_eval_success": 0.0,
         "official_bfcl_eval_tool_selection_correctness": 1.0,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 1.0,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.21855875605875605,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.21843807678110003,
         "failure_bucket_counts": {
-          "value_error": 858
+          "value_error": 860
         }
       },
       {
@@ -1247,15 +1247,15 @@
       {
         "system": "a2_planner",
         "official_failure_bucket": "missing_required",
-        "num_rows": 416.0,
+        "num_rows": 408.0,
         "official_bfcl_eval_success": 0.0,
         "official_bfcl_eval_tool_selection_correctness": 1.0,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 1.0,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.13656707875457874,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.13793767507002802,
         "failure_bucket_counts": {
-          "missing_required": 416
+          "missing_required": 408
         }
       },
       {
@@ -1303,29 +1303,29 @@
       {
         "system": "a2_planner",
         "official_failure_bucket": "other_official_failure",
-        "num_rows": 266.0,
+        "num_rows": 272.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.9774436090225563,
+        "official_bfcl_eval_tool_selection_correctness": 0.9779411764705882,
         "official_bfcl_eval_argument_correctness": 0.0,
-        "official_bfcl_eval_structure_correctness": 0.9586466165413534,
-        "toolclaw_diagnostics_binder_selection_match": 0.9774436090225563,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.35,
+        "official_bfcl_eval_structure_correctness": 0.9595588235294118,
+        "toolclaw_diagnostics_binder_selection_match": 0.9779411764705882,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.34301470588235294,
         "failure_bucket_counts": {
-          "other_official_failure": 266
+          "other_official_failure": 272
         }
       },
       {
         "system": "a2_planner",
         "official_failure_bucket": "value_error",
-        "num_rows": 858.0,
+        "num_rows": 860.0,
         "official_bfcl_eval_success": 0.0,
         "official_bfcl_eval_tool_selection_correctness": 1.0,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 1.0,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.21855875605875605,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.21843807678110003,
         "failure_bucket_counts": {
-          "value_error": 858
+          "value_error": 860
         }
       },
       {
@@ -1359,15 +1359,15 @@
       {
         "system": "a3_interaction",
         "official_failure_bucket": "missing_required",
-        "num_rows": 418.0,
+        "num_rows": 410.0,
         "official_bfcl_eval_success": 0.0,
         "official_bfcl_eval_tool_selection_correctness": 1.0,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 1.0,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.13591364775575301,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.13726480836236934,
         "failure_bucket_counts": {
-          "missing_required": 418
+          "missing_required": 410
         }
       },
       {
@@ -1415,29 +1415,29 @@
       {
         "system": "a3_interaction",
         "official_failure_bucket": "other_official_failure",
-        "num_rows": 317.0,
+        "num_rows": 323.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.9492639327024185,
+        "official_bfcl_eval_tool_selection_correctness": 0.9502063983488133,
         "official_bfcl_eval_argument_correctness": 0.0,
-        "official_bfcl_eval_structure_correctness": 0.9053627760252366,
-        "toolclaw_diagnostics_binder_selection_match": 0.9492639327024185,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.315613890140704,
+        "official_bfcl_eval_structure_correctness": 0.9071207430340558,
+        "toolclaw_diagnostics_binder_selection_match": 0.9502063983488133,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.3103702884662637,
         "failure_bucket_counts": {
-          "other_official_failure": 317
+          "other_official_failure": 323
         }
       },
       {
         "system": "a3_interaction",
         "official_failure_bucket": "value_error",
-        "num_rows": 858.0,
+        "num_rows": 860.0,
         "official_bfcl_eval_success": 0.0,
         "official_bfcl_eval_tool_selection_correctness": 1.0,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 1.0,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.21855875605875605,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.21843807678110003,
         "failure_bucket_counts": {
-          "value_error": 858
+          "value_error": 860
         }
       },
       {
@@ -1471,15 +1471,15 @@
       {
         "system": "a4_reuse",
         "official_failure_bucket": "missing_required",
-        "num_rows": 418.0,
+        "num_rows": 410.0,
         "official_bfcl_eval_success": 0.0,
         "official_bfcl_eval_tool_selection_correctness": 1.0,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 1.0,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.13591364775575301,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.13726480836236934,
         "failure_bucket_counts": {
-          "missing_required": 418
+          "missing_required": 410
         }
       },
       {
@@ -1527,29 +1527,29 @@
       {
         "system": "a4_reuse",
         "official_failure_bucket": "other_official_failure",
-        "num_rows": 317.0,
+        "num_rows": 323.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.9492639327024185,
+        "official_bfcl_eval_tool_selection_correctness": 0.9502063983488133,
         "official_bfcl_eval_argument_correctness": 0.0,
-        "official_bfcl_eval_structure_correctness": 0.9053627760252366,
-        "toolclaw_diagnostics_binder_selection_match": 0.9492639327024185,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.315613890140704,
+        "official_bfcl_eval_structure_correctness": 0.9071207430340558,
+        "toolclaw_diagnostics_binder_selection_match": 0.9502063983488133,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.3103702884662637,
         "failure_bucket_counts": {
-          "other_official_failure": 317
+          "other_official_failure": 323
         }
       },
       {
         "system": "a4_reuse",
         "official_failure_bucket": "value_error",
-        "num_rows": 858.0,
+        "num_rows": 860.0,
         "official_bfcl_eval_success": 0.0,
         "official_bfcl_eval_tool_selection_correctness": 1.0,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 1.0,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.21855875605875605,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.21843807678110003,
         "failure_bucket_counts": {
-          "value_error": 858
+          "value_error": 860
         }
       },
       {

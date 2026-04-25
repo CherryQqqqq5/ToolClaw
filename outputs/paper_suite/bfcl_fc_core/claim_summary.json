@@ -137,50 +137,50 @@
     "failure_bucket_counts_by_system": {
       "a0_baseline": {
         "official_success_or_safe_failure": 1384,
-        "value_error": 858,
+        "value_error": 860,
         "wrong_func_name": 153,
-        "other_official_failure": 237,
-        "missing_required": 416,
+        "other_official_failure": 243,
+        "missing_required": 408,
         "wrong_count": 443,
         "multi_turn_mismatch": 730,
         "multi_turn_other": 70
       },
       "a1_recovery": {
         "official_success_or_safe_failure": 1384,
-        "value_error": 858,
+        "value_error": 860,
         "wrong_func_name": 153,
-        "other_official_failure": 239,
-        "missing_required": 416,
+        "other_official_failure": 245,
+        "missing_required": 408,
         "wrong_count": 441,
         "multi_turn_mismatch": 746,
         "multi_turn_other": 54
       },
       "a2_planner": {
         "official_success_or_safe_failure": 1361,
-        "value_error": 858,
+        "value_error": 860,
         "wrong_func_name": 153,
-        "other_official_failure": 266,
-        "missing_required": 416,
+        "other_official_failure": 272,
+        "missing_required": 408,
         "wrong_count": 437,
         "multi_turn_mismatch": 752,
         "multi_turn_other": 48
       },
       "a3_interaction": {
         "official_success_or_safe_failure": 1364,
-        "value_error": 858,
+        "value_error": 860,
         "wrong_func_name": 154,
-        "other_official_failure": 317,
-        "missing_required": 418,
+        "other_official_failure": 323,
+        "missing_required": 410,
         "wrong_count": 380,
         "multi_turn_mismatch": 784,
         "multi_turn_other": 16
       },
       "a4_reuse": {
         "official_success_or_safe_failure": 1364,
-        "value_error": 858,
+        "value_error": 860,
         "wrong_func_name": 154,
-        "other_official_failure": 317,
-        "missing_required": 418,
+        "other_official_failure": 323,
+        "missing_required": 410,
         "wrong_count": 380,
         "multi_turn_mismatch": 784,
         "multi_turn_other": 16
@@ -200,34 +200,34 @@
     "baseline_missing_required_slice": {
       "slice_id": "baseline_missing_required_slice",
       "definition": "rows where a0_baseline official failure bucket == missing_required",
-      "num_task_run_pairs": 416.0,
+      "num_task_run_pairs": 408.0,
       "per_system": {
         "a0_baseline": {
-          "num_rows": 416.0,
+          "num_rows": 408.0,
           "missing_required_rate": 1.0,
           "wrong_func_name_rate": 0.0,
           "success_rate": 0.0
         },
         "a1_recovery": {
-          "num_rows": 416.0,
+          "num_rows": 408.0,
           "missing_required_rate": 1.0,
           "wrong_func_name_rate": 0.0,
           "success_rate": 0.0
         },
         "a2_planner": {
-          "num_rows": 416.0,
+          "num_rows": 408.0,
           "missing_required_rate": 1.0,
           "wrong_func_name_rate": 0.0,
           "success_rate": 0.0
         },
         "a3_interaction": {
-          "num_rows": 416.0,
+          "num_rows": 408.0,
           "missing_required_rate": 1.0,
           "wrong_func_name_rate": 0.0,
           "success_rate": 0.0
         },
         "a4_reuse": {
-          "num_rows": 416.0,
+          "num_rows": 408.0,
           "missing_required_rate": 1.0,
           "wrong_func_name_rate": 0.0,
           "success_rate": 0.0
@@ -320,34 +320,34 @@
       "slice": {
         "slice_id": "baseline_missing_required_slice",
         "definition": "rows where a0_baseline official failure bucket == missing_required",
-        "num_task_run_pairs": 416.0,
+        "num_task_run_pairs": 408.0,
         "per_system": {
           "a0_baseline": {
-            "num_rows": 416.0,
+            "num_rows": 408.0,
             "missing_required_rate": 1.0,
             "wrong_func_name_rate": 0.0,
             "success_rate": 0.0
           },
           "a1_recovery": {
-            "num_rows": 416.0,
+            "num_rows": 408.0,
             "missing_required_rate": 1.0,
             "wrong_func_name_rate": 0.0,
             "success_rate": 0.0
           },
           "a2_planner": {
-            "num_rows": 416.0,
+            "num_rows": 408.0,
             "missing_required_rate": 1.0,
             "wrong_func_name_rate": 0.0,
             "success_rate": 0.0
           },
           "a3_interaction": {
-            "num_rows": 416.0,
+            "num_rows": 408.0,
             "missing_required_rate": 1.0,
             "wrong_func_name_rate": 0.0,
             "success_rate": 0.0
           },
           "a4_reuse": {
-            "num_rows": 416.0,
+            "num_rows": 408.0,
             "missing_required_rate": 1.0,
             "wrong_func_name_rate": 0.0,
             "success_rate": 0.0
