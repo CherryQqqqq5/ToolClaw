@@ -1308,6 +1308,51 @@ def _trace_parallel_bridge_features(trace_payload: Dict[str, Any] | None) -> Dic
     }
 
 
+def _parallel_count_alignment_breakdown(
+    *,
+    selected_is_expected: bool,
+    is_parallel_case: bool,
+    expected_call_count: int,
+    emitted_call_count: int,
+    trace_metric_tool_calls: int,
+    parallel_argument_set_count: int,
+    parallel_clause_materialized_count: int,
+) -> Dict[str, Any]:
+    argument_set_count_delta = parallel_argument_set_count - expected_call_count
+    materialized_count_delta = parallel_clause_materialized_count - expected_call_count
+    emitted_vs_materialized_delta = emitted_call_count - parallel_clause_materialized_count
+    trace_vs_materialized_delta = trace_metric_tool_calls - parallel_clause_materialized_count
+    bucket = ""
+    if selected_is_expected and is_parallel_case:
+        if expected_call_count > 1 and parallel_argument_set_count == 1:
+            bucket = "single_extracted_for_multi_expected"
+        elif expected_call_count == 1 and parallel_argument_set_count > 1:
+            bucket = "multi_extracted_for_single_expected"
+        elif parallel_argument_set_count < expected_call_count:
+            bucket = "extracted_too_few_argument_sets"
+        elif parallel_argument_set_count > expected_call_count:
+            bucket = "extracted_too_many_argument_sets"
+        elif parallel_clause_materialized_count == emitted_call_count and emitted_call_count != expected_call_count:
+            bucket = "materialized_count_matches_emitted_but_not_expected"
+        elif parallel_clause_materialized_count < parallel_argument_set_count:
+            bucket = "materialized_less_than_extracted"
+        elif emitted_call_count < parallel_clause_materialized_count:
+            bucket = "emitted_less_than_materialized"
+        elif emitted_call_count > expected_call_count:
+            bucket = "emitted_more_than_expected"
+        elif expected_call_count == parallel_clause_materialized_count == emitted_call_count:
+            bucket = "count_aligned"
+        else:
+            bucket = "parallel_count_alignment_unclassified"
+    return {
+        "argument_set_count_delta": argument_set_count_delta,
+        "materialized_count_delta": materialized_count_delta,
+        "emitted_vs_materialized_delta": emitted_vs_materialized_delta,
+        "trace_vs_materialized_delta": trace_vs_materialized_delta,
+        "parallel_count_alignment_bucket": bucket,
+    }
+
+
 def _parallel_bridge_breakdown(
     *,
     selected_is_expected: bool,
@@ -1488,6 +1533,15 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
         parallel_clause_materialized_count=parallel_clause_materialized_count,
         trace_features=trace_features,
     )
+    parallel_count_alignment = _parallel_count_alignment_breakdown(
+        selected_is_expected=selected_is_expected,
+        is_parallel_case=is_parallel_case,
+        expected_call_count=expected_call_count,
+        emitted_call_count=emitted_call_count,
+        trace_metric_tool_calls=trace_metric_tool_calls,
+        parallel_argument_set_count=parallel_argument_set_count,
+        parallel_clause_materialized_count=parallel_clause_materialized_count,
+    )
 
     return {
         "row_id": str(coverage.get("row_id") or ""),
@@ -1540,6 +1594,7 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "parallel_collapsed_to_serial": bool(diagnostic.get("parallel_collapsed_to_serial")),
         "parallel_clause_drop_reasons": list(diagnostic.get("parallel_clause_drop_reasons") or []) if isinstance(diagnostic.get("parallel_clause_drop_reasons"), list) else [],
         **parallel_bridge,
+        **parallel_count_alignment,
         "trace_tool_call_expected_by_bfcl_serial": trace_tool_call_expected_by_bfcl_serial,
         "serial_selected_top1_materialization_blocked": serial_selected_top1_materialization_blocked,
         "serial_materialization_block_reason": str(diagnostic.get("serial_materialization_block_reason") or ""),
@@ -1556,6 +1611,7 @@ def _selected_correct_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, 
     success_count = int(bucket_counts.get("selected_correct_success", 0))
     call_count_deltas = Counter(str(int(row.get("call_count_delta", 0) or 0)) for row in selected_rows)
     parallel_bridge_rows = [row for row in selected_rows if row.get("parallel_bridge_drop_stage")]
+    parallel_count_alignment_rows = [row for row in selected_rows if row.get("parallel_count_alignment_bucket")]
     return {
         "total_rows": len(rows),
         "selected_is_expected_count": selected_count,
@@ -1596,6 +1652,16 @@ def _selected_correct_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, 
         "parallel_clause_drop_count": sum(int(row.get("parallel_clause_drop_count") or 0) for row in selected_rows),
         "parallel_collapsed_to_serial": sum(1 for row in selected_rows if row.get("parallel_collapsed_to_serial")),
         "parallel_bridge_drop_stage_counts": dict(Counter(str(row.get("parallel_bridge_drop_stage") or "") for row in parallel_bridge_rows)),
+        "parallel_count_alignment_bucket_counts": dict(Counter(str(row.get("parallel_count_alignment_bucket") or "") for row in parallel_count_alignment_rows)),
+        "extracted_too_few_argument_sets": sum(1 for row in parallel_count_alignment_rows if row.get("parallel_count_alignment_bucket") == "extracted_too_few_argument_sets"),
+        "extracted_too_many_argument_sets": sum(1 for row in parallel_count_alignment_rows if row.get("parallel_count_alignment_bucket") == "extracted_too_many_argument_sets"),
+        "materialized_less_than_extracted": sum(1 for row in parallel_count_alignment_rows if row.get("parallel_count_alignment_bucket") == "materialized_less_than_extracted"),
+        "emitted_less_than_materialized": sum(1 for row in parallel_count_alignment_rows if row.get("parallel_count_alignment_bucket") == "emitted_less_than_materialized"),
+        "emitted_more_than_expected": sum(1 for row in parallel_count_alignment_rows if row.get("parallel_count_alignment_bucket") == "emitted_more_than_expected"),
+        "materialized_count_matches_emitted_but_not_expected": sum(1 for row in parallel_count_alignment_rows if row.get("parallel_count_alignment_bucket") == "materialized_count_matches_emitted_but_not_expected"),
+        "single_extracted_for_multi_expected": sum(1 for row in parallel_count_alignment_rows if row.get("parallel_count_alignment_bucket") == "single_extracted_for_multi_expected"),
+        "multi_extracted_for_single_expected": sum(1 for row in parallel_count_alignment_rows if row.get("parallel_count_alignment_bucket") == "multi_extracted_for_single_expected"),
+        "count_aligned": sum(1 for row in parallel_count_alignment_rows if row.get("parallel_count_alignment_bucket") == "count_aligned"),
         "materialized_gt0_trace0": sum(1 for row in selected_rows if int(row.get("parallel_clause_materialized_count") or 0) > 0 and int(row.get("trace_metric_tool_calls") or 0) == 0),
         "trace_gt0_emitted0": sum(1 for row in parallel_bridge_rows if int(row.get("trace_metric_tool_calls") or 0) > 0 and int(row.get("emitted_call_count") or 0) == 0),
         "emitted_gt0_wrong_count": sum(1 for row in parallel_bridge_rows if int(row.get("emitted_call_count") or 0) > 0 and row.get("wrong_call_count")),

@@ -1698,6 +1698,9 @@ def _configure_bfcl_step_metadata(
             "parallel_clause_drop_count",
             "parallel_collapsed_to_serial",
             "parallel_clause_drop_reasons",
+            "trace_tool_call_expected_by_bfcl_parallel",
+            "parallel_partial_call_emitted_due_to_missing_args",
+            "parallel_preflight_bypass_policy_version",
         ):
             if key in selection_diagnostics:
                 merged_metadata[key] = selection_diagnostics[key]
@@ -1766,6 +1769,15 @@ def _configure_bfcl_step_metadata(
         # failure as missing/incorrect args instead of zero emitted calls.
         merged_metadata["disable_schema_preflight"] = True
         merged_metadata["serial_partial_call_emitted_due_to_missing_args"] = bool(
+            merged_metadata.get("unresolved_required_inputs")
+        )
+    if merged_metadata.get("trace_tool_call_expected_by_bfcl_parallel") is True:
+        # BFCL parallel exact-call scoring should see each materialized clause
+        # even when some per-clause required inputs are missing. Keep this
+        # BFCL-specific and gold-free; official scoring will bucket argument
+        # failures after the call is visible.
+        merged_metadata["disable_schema_preflight"] = True
+        merged_metadata["parallel_partial_call_emitted_due_to_missing_args"] = bool(
             merged_metadata.get("unresolved_required_inputs")
         )
     if not _nonempty_metadata_value(merged_metadata.get("input_bindings")):
@@ -1970,6 +1982,7 @@ def _bfcl_parallel_materialization_diagnostics(
     materialized_count: int,
     drop_reasons: Optional[List[str]] = None,
     collapsed_to_serial: bool = False,
+    allow_preflight_bypass: bool = False,
 ) -> Dict[str, Any]:
     updated = dict(diagnostics or {})
     updated["parallel_materialization_policy_version"] = "bfcl_non_live_parallel_clause_materialization_v1"
@@ -1979,6 +1992,10 @@ def _bfcl_parallel_materialization_diagnostics(
     updated["parallel_clause_drop_count"] = max(int(argument_set_count) - int(materialized_count), 0)
     updated["parallel_collapsed_to_serial"] = bool(collapsed_to_serial)
     updated["parallel_clause_drop_reasons"] = list(drop_reasons or [])
+    if allow_preflight_bypass and argument_set_count > 0 and materialized_count > 0:
+        updated["trace_tool_call_expected_by_bfcl_parallel"] = True
+        updated["parallel_partial_call_emitted_due_to_missing_args"] = False
+        updated["parallel_preflight_bypass_policy_version"] = "bfcl_parallel_partial_call_materialization_v1"
     return updated
 
 
@@ -2009,6 +2026,7 @@ def _bfcl_seed_specs(
                     argument_set_count=len(arg_sets),
                     materialized_count=len(arg_sets),
                     collapsed_to_serial=len(arg_sets) == 1,
+                    allow_preflight_bypass=bfcl_group == "non_live",
                 )
                 return [
                     {
@@ -2048,6 +2066,7 @@ def _bfcl_seed_specs(
                     materialized_count=shared_count,
                     drop_reasons=drop_reasons,
                     collapsed_to_serial=shared_count == 1,
+                    allow_preflight_bypass=bfcl_group == "non_live",
                 )
             return step_specs
     if metadata.get("bfcl_group") == "multi_turn" and milestones:

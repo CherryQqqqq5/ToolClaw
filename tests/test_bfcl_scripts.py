@@ -2498,6 +2498,49 @@ def test_bfcl_parallel_bridge_audit_classifies_emission_stages(tmp_path: Path) -
     assert summary["trace_gt0_emitted0"] == 1
     assert summary["emitted_gt0_wrong_count"] == 1
     assert summary["emitted_count_correct_wrong_grouping"] == 1
+    assert by_task["preflight_blocked"]["parallel_count_alignment_bucket"] == "emitted_less_than_materialized"
+    assert by_task["preflight_blocked"]["argument_set_count_delta"] == 0
+    assert by_task["preflight_blocked"]["materialized_count_delta"] == 0
+    assert by_task["preflight_blocked"]["emitted_vs_materialized_delta"] == -2
+    assert by_task["wrong_grouping"]["parallel_count_alignment_bucket"] == "count_aligned"
+    assert summary["parallel_count_alignment_bucket_counts"]["emitted_less_than_materialized"] == 5
+    assert summary["parallel_count_alignment_bucket_counts"]["count_aligned"] == 3
+
+
+def test_bfcl_parallel_count_alignment_buckets() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_parallel_count_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    def bucket(*, expected: int, emitted: int, trace: int, argument_sets: int, materialized: int) -> dict:
+        return module._parallel_count_alignment_breakdown(
+            selected_is_expected=True,
+            is_parallel_case=True,
+            expected_call_count=expected,
+            emitted_call_count=emitted,
+            trace_metric_tool_calls=trace,
+            parallel_argument_set_count=argument_sets,
+            parallel_clause_materialized_count=materialized,
+        )
+
+    assert bucket(expected=3, emitted=1, trace=1, argument_sets=1, materialized=1)["parallel_count_alignment_bucket"] == "single_extracted_for_multi_expected"
+    assert bucket(expected=1, emitted=2, trace=2, argument_sets=2, materialized=2)["parallel_count_alignment_bucket"] == "multi_extracted_for_single_expected"
+    assert bucket(expected=3, emitted=2, trace=2, argument_sets=2, materialized=2)["parallel_count_alignment_bucket"] == "extracted_too_few_argument_sets"
+    assert bucket(expected=2, emitted=3, trace=3, argument_sets=3, materialized=3)["parallel_count_alignment_bucket"] == "extracted_too_many_argument_sets"
+    assert bucket(expected=3, emitted=1, trace=1, argument_sets=3, materialized=2)["parallel_count_alignment_bucket"] == "materialized_less_than_extracted"
+    assert bucket(expected=3, emitted=2, trace=2, argument_sets=3, materialized=3)["parallel_count_alignment_bucket"] == "emitted_less_than_materialized"
+    assert bucket(expected=2, emitted=3, trace=3, argument_sets=2, materialized=2)["parallel_count_alignment_bucket"] == "emitted_more_than_expected"
+    mismatch = bucket(expected=2, emitted=3, trace=3, argument_sets=2, materialized=3)
+    assert mismatch["parallel_count_alignment_bucket"] == "materialized_count_matches_emitted_but_not_expected"
+    assert mismatch["argument_set_count_delta"] == 0
+    assert mismatch["materialized_count_delta"] == 1
+    assert mismatch["emitted_vs_materialized_delta"] == 0
+    assert mismatch["trace_vs_materialized_delta"] == 0
+    assert bucket(expected=2, emitted=2, trace=2, argument_sets=2, materialized=2)["parallel_count_alignment_bucket"] == "count_aligned"
 
 def test_bfcl_guard_gates_separate_wrong_function_bucket_from_claim_readiness() -> None:
     spec = importlib.util.spec_from_file_location(

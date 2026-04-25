@@ -2854,7 +2854,7 @@ def test_build_workflow_from_task_bfcl_non_live_parallel_emails_emit_per_email()
     assert "official_failure" not in json.dumps(diagnostics)
 
 
-def test_build_workflow_from_task_bfcl_non_live_parallel_partial_args_do_not_suppress_clauses() -> None:
+def test_build_workflow_from_task_bfcl_non_live_parallel_partial_args_do_not_suppress_clauses(tmp_path: Path) -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_parallel_partial", module_path)
     assert spec is not None and spec.loader is not None
@@ -2894,6 +2894,74 @@ def test_build_workflow_from_task_bfcl_non_live_parallel_partial_args_do_not_sup
     diagnostics = workflow.metadata["bfcl_rerank_diagnostics"]
     assert all(item["parallel_argument_sets_extracted"] is True for item in diagnostics)
     assert all(item["parallel_collapsed_to_serial"] is False for item in diagnostics)
+    assert all(item["trace_tool_call_expected_by_bfcl_parallel"] is True for item in diagnostics)
+    assert all(
+        item["parallel_preflight_bypass_policy_version"] == "bfcl_parallel_partial_call_materialization_v1"
+        for item in diagnostics
+    )
+    assert "expected_call_count" not in json.dumps(diagnostics)
+
+    assert all(step.metadata["trace_tool_call_expected_by_bfcl_parallel"] is True for step in workflow.execution_plan)
+    assert all(step.metadata["disable_schema_preflight"] is True for step in workflow.execution_plan)
+    assert all(step.metadata["parallel_partial_call_emitted_due_to_missing_args"] is True for step in workflow.execution_plan)
+    assert all(
+        step.metadata["parallel_preflight_bypass_policy_version"] == "bfcl_parallel_partial_call_materialization_v1"
+        for step in workflow.execution_plan
+    )
+
+    from toolclaw.execution.executor import SequentialExecutor
+
+    trace_path = tmp_path / "parallel_partial_trace.json"
+    outcome = SequentialExecutor().run_until_blocked(
+        workflow=workflow,
+        run_id="bfcl_non_live_parallel_partial",
+        output_path=str(trace_path),
+        backup_tool_map={},
+    )
+    assert outcome.blocked is False
+    trace_payload = json.loads(trace_path.read_text(encoding="utf-8"))
+    tool_calls = [event for event in trace_payload["events"] if event.get("event_type") == "tool_call"]
+    assert len(tool_calls) == 2
+    assert [event["tool_id"] for event in tool_calls] == ["mailer.send", "mailer.send"]
+
+
+def test_build_workflow_from_task_bfcl_parallel_preflight_bypass_is_non_live_only() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_parallel_live_preflight", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_live_parallel_partial",
+            "query": "Send the notification to alice@example.com and bob@example.com.",
+            "candidate_tools": [
+                {
+                    "tool_id": "mailer.send",
+                    "description": "Send an email notification.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["recipient_email", "subject"],
+                        "properties": {
+                            "recipient_email": {"type": "string", "description": "recipient email address"},
+                            "subject": {"type": "string"},
+                        },
+                    },
+                }
+            ],
+            "metadata": {"benchmark": "bfcl", "bfcl_group": "live", "bfcl_call_pattern": "parallel"},
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert len(workflow.execution_plan) == 2
+    assert all("trace_tool_call_expected_by_bfcl_parallel" not in step.metadata for step in workflow.execution_plan)
+    assert all(step.metadata.get("disable_schema_preflight") is not True for step in workflow.execution_plan)
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"]
+    assert all("parallel_preflight_bypass_policy_version" not in item for item in diagnostics)
 
 
 def test_bfcl_serial_required_grounder_fills_runtime_visible_required_args() -> None:
