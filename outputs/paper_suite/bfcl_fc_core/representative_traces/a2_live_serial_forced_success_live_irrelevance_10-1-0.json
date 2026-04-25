@@ -1,0 +1,444 @@
+{
+  "run_id": "a2_planner_live_irrelevance_10-1-0",
+  "workflow_id": "wf_live_irrelevance_10-1-0",
+  "task_id": "live_irrelevance_10-1-0",
+  "phase": "phase2_workflow_intelligence",
+  "metadata": {
+    "model_name": "phase1_executor",
+    "mode": "toolclaw",
+    "start_time": "2026-04-24T15:11:35.750335+00:00",
+    "end_time": "2026-04-24T15:11:35.750947+00:00",
+    "benchmark": null,
+    "task_source": null,
+    "primary_failtax": "recovery",
+    "failtaxes": [
+      "recovery"
+    ],
+    "budget_profile": {},
+    "task_annotations": {
+      "primary_failtax": "recovery",
+      "failtaxes": [
+        "recovery"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "repair_then_retry",
+      "gold_tool": "uber.ride",
+      "state_slots": [
+        "query"
+      ],
+      "dependency_edges": [],
+      "bfcl_planner_selected_tools": [
+        ""
+      ],
+      "bfcl_final_ranked_tools": [
+        [
+          "uber.ride"
+        ]
+      ],
+      "bfcl_rerank_override_applied": false,
+      "bfcl_rerank_override_reason": "schema_top1_no_planner",
+      "planner_canonicalized_to_bfcl_seed": true,
+      "bfcl_protocol_fallback_reason": "serial_exact_call_protocol",
+      "bfcl_canonicalized_step_count_before": 1,
+      "bfcl_canonicalized_step_count_after": 1,
+      "bfcl_rerank_diagnostics": [
+        {
+          "guard_policy_version": "strict_schema_top1_tie_drop_v1",
+          "planner_tool_id": "",
+          "prepared_function_count": 1,
+          "runtime_candidate_count": 1,
+          "runtime_candidate_tool_ids": [
+            "uber.ride"
+          ],
+          "runtime_candidate_original_function_names": [
+            "uber.ride"
+          ],
+          "candidate_pool_preserved": true,
+          "candidate_pool_source": "bfcl_prepared_row_functions",
+          "planner_narrowing_applied": false,
+          "candidate_pool_exception": "",
+          "drop_reason": "",
+          "ranker_candidate_count": 1,
+          "ranker_candidate_tool_ids": [
+            "uber.ride"
+          ],
+          "ranker_candidate_original_function_names": [
+            "uber.ride"
+          ],
+          "schema_top_5": [
+            {
+              "tool_id": "uber.ride",
+              "bfcl_original_function_name": "uber.ride",
+              "score": 3.833333333333333,
+              "exact_match": false,
+              "required_argument_coverage": 0.3333333333333333,
+              "schema_name_overlap_count": 0,
+              "overlap": [
+                "uber"
+              ]
+            }
+          ],
+          "schema_top_tool_id": "uber.ride",
+          "schema_top_score": 3.833333333333333,
+          "planner_score": null,
+          "score_margin": null,
+          "planner_in_schema_top2": false,
+          "selected_tool_id": "uber.ride",
+          "selected_reason": "schema_top1_no_planner",
+          "rerank_override_applied": false,
+          "rerank_override_reason": "schema_top1_no_planner",
+          "schema_guard_applied": false,
+          "planner_required_argument_coverage": null,
+          "selected_required_argument_coverage": 0.3333333333333333,
+          "planner_required_args_present": [],
+          "selected_required_args_present": [
+            "loc"
+          ],
+          "planner_missing_required_args": [],
+          "selected_missing_required_args": [
+            "type",
+            "time"
+          ],
+          "explicit_no_call_signal": false,
+          "serial_positive_call_forced": true,
+          "abstain_policy_version": "bfcl_abstain_policy_v2",
+          "operation_cues_present": true,
+          "irrelevance_abstain_allowed": false,
+          "bfcl_call_pattern": "serial",
+          "abstain_blocked_by_serial_schema_top1": true
+        }
+      ],
+      "planner_observability": {
+        "planner_bypass_applied": false,
+        "minimal_path_reason": "not_applied",
+        "selected_capability_order_initial": [
+          "cap_retrieve"
+        ],
+        "selected_capability_instance_order_final": [
+          "cap_retrieve"
+        ],
+        "selected_capability_order_final": [
+          "cap_retrieve"
+        ],
+        "graph_builder_used": true,
+        "candidate_capability_count": 1,
+        "bound_tool_order": [
+          "uber.ride"
+        ],
+        "graph_edge_order": [],
+        "unresolved_capabilities": [],
+        "benchmark_hints_used": [
+          "primary_failtax",
+          "state_slots"
+        ]
+      }
+    },
+    "budget_limits": {
+      "max_tool_calls": null,
+      "max_user_turns": null,
+      "max_repair_attempts": null,
+      "max_recovery_budget": null,
+      "budget_limit": null,
+      "time_limit": null
+    },
+    "budget_usage": {
+      "tool_calls": 0,
+      "user_turns": 0,
+      "repair_attempts": 1,
+      "recovery_budget_used": 1.0,
+      "remaining_budgets": {
+        "tool_calls": null,
+        "user_turns": null,
+        "repair_attempts": null,
+        "recovery_budget": null
+      }
+    },
+    "interaction_modules": [
+      "uncertainty_detector",
+      "query_policy",
+      "answer_patch_compiler"
+    ],
+    "run_manifest": {
+      "tool_runtime_backend": "bfcl_stub"
+    },
+    "reusable_context": {
+      "resolved_asset_ids": [],
+      "profile_loaded": false,
+      "reuse_mode": "none",
+      "reuse_application": "none",
+      "utility_gain_score": 0.0,
+      "selected_match": {}
+    }
+  },
+  "state_snapshots": [
+    {
+      "snapshot_id": "snap_01_start",
+      "timestamp": "2026-04-24T15:11:35.750418+00:00",
+      "active_step_id": "step_01",
+      "completed_steps": [],
+      "pending_steps": [],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "query": "I want to order five 'burgers' and six 'chicken wings' from uber eat McDonald's.",
+        "__tool_calls__": 0,
+        "__user_turns__": 0,
+        "__repair_attempts__": 0,
+        "__recovery_budget_spent__": 0.0,
+        "__remaining_budgets__": {
+          "tool_calls": null,
+          "user_turns": null,
+          "repair_attempts": null,
+          "recovery_budget": null
+        }
+      }
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-24T15:11:35.750374+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 1
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-24T15:11:35.750401+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": false,
+        "missing_assets": [],
+        "missing_required_inputs": [
+          "step_01.type",
+          "step_01.time"
+        ],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_01",
+      "timestamp": "2026-04-24T15:11:35.750481+00:00",
+      "step_id": "step_01",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "uber.ride",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "low"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_preflight_required_inputs_step_01",
+      "timestamp": "2026-04-24T15:11:35.750524+00:00",
+      "step_id": "step_01",
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": "uber.ride",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "failed",
+        "reason": "missing_required_input",
+        "missing_required_inputs": [
+          "type",
+          "time"
+        ]
+      },
+      "message": null,
+      "metadata": {
+        "required_input_keys": [
+          "loc",
+          "type",
+          "time"
+        ],
+        "input_bindings": {}
+      }
+    },
+    {
+      "event_id": "evt_repair_triggered_step_01",
+      "timestamp": "2026-04-24T15:11:35.750906+00:00",
+      "step_id": "step_01",
+      "event_type": "repair_triggered",
+      "actor": "recovery_engine",
+      "tool_id": "uber.ride",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "repair_id": "rep_err_preflight_input_step_01",
+        "run_id": "a2_planner_live_irrelevance_10-1-0",
+        "workflow_id": "wf_live_irrelevance_10-1-0",
+        "triggered_error_ids": [
+          "err_preflight_input_step_01"
+        ],
+        "trigger_event_id": null,
+        "phase": "phase2_workflow_intelligence",
+        "repair_type": "ask_user",
+        "decision": {
+          "strategy": "user_in_the_loop",
+          "rationale": "Binding failure has unresolved required inputs without concrete repair values, so execution blocks instead of inventing placeholders.",
+          "confidence": 0.78,
+          "metadata": {}
+        },
+        "actions": [
+          {
+            "action_id": "act_ask_err_preflight_input_step_01",
+            "action_type": "ask_user",
+            "target": "step_01",
+            "value_source": null,
+            "value": null,
+            "metadata": {
+              "missing_targets": [
+                "type",
+                "time"
+              ]
+            }
+          }
+        ],
+        "interaction": {
+          "ask_user": true,
+          "question": "Provide `type, time` so step step_01 can continue.",
+          "expected_answer_type": "missing_asset_patch",
+          "user_response": null,
+          "answer_patch": {
+            "patched_slots": [],
+            "patched_constraints": {},
+            "patch_confidence": 0.0,
+            "compiler_status": "pending",
+            "metadata": {}
+          }
+        },
+        "workflow_patch": {
+          "modified_steps": [
+            "step_01"
+          ],
+          "reordered_steps": [],
+          "inserted_steps": [],
+          "removed_steps": [],
+          "metadata": {}
+        },
+        "graph_patch": {
+          "inserted_edges": [],
+          "removed_edges": [],
+          "node_updates": {}
+        },
+        "policy_patch": {
+          "approval_pending": null,
+          "approved_actions": [],
+          "budget_delta": 0.0,
+          "metadata": {}
+        },
+        "asset_patch": {
+          "missing_assets_resolved": {},
+          "metadata": {}
+        },
+        "post_conditions": {
+          "expected_effects": [
+            "required missing inputs are concretely supplied",
+            "the failed step can be retried without placeholder arguments"
+          ],
+          "stop_if": [
+            "same binding_failure repeats twice",
+            "patched value is still rejected by tool constraints"
+          ]
+        },
+        "result": {
+          "status": "pending",
+          "success": null,
+          "followup_error_id": null,
+          "message": null,
+          "metadata": {}
+        },
+        "timestamp": "2026-04-24T15:11:35.750646+00:00",
+        "metadata": {
+          "mapped_from_error_category": "binding_failure",
+          "missing_input_keys": [
+            "type",
+            "time"
+          ],
+          "unresolved_required_inputs": [
+            "type",
+            "time"
+          ],
+          "phase": "phase1_training_free"
+        }
+      },
+      "message": null,
+      "metadata": {
+        "failtax_label": "binding_failure",
+        "root_cause": "missing or invalid tool arguments"
+      }
+    },
+    {
+      "event_id": "evt_stop_blocked",
+      "timestamp": "2026-04-24T15:11:35.750939+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "blocked",
+        "reason": "awaiting_user_interaction"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 1,
+    "tool_calls": 0,
+    "user_queries": 0,
+    "probe_user_queries": 0,
+    "repair_user_queries": 0,
+    "probe_user_replies": 0,
+    "repair_user_replies": 0,
+    "repair_actions": 0,
+    "success": false,
+    "token_cost": null,
+    "latency_ms": null,
+    "clarification_precision": 0.0,
+    "clarification_recall": 0.0,
+    "unnecessary_question_rate": 0.0,
+    "patch_success_rate": 0.0,
+    "post_answer_retry_count": 0,
+    "recovery_budget_used": 1.0,
+    "budget_violation": false,
+    "budget_violation_reason": null,
+    "safe_abort": false,
+    "policy_compliance_success": false,
+    "state_repair_success": false
+  }
+}

@@ -1,11 +1,43 @@
 {
   "benchmark": "bfcl",
-  "generated_at": "2026-04-24T12:17:02.046624+00:00",
-  "track": "fc_core",
+  "bfcl_candidate_coverage_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_candidate_coverage_audit.json",
+  "bfcl_candidate_coverage_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_candidate_coverage_summary.json",
+  "bfcl_failure_slice_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_failure_slice_summary.json",
+  "bfcl_function_selection_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_function_selection_audit.json",
+  "bfcl_selected_correct_failure_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_selected_correct_failure_audit.json",
+  "bfcl_selected_correct_failure_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_selected_correct_failure_summary.json",
+  "canonical_claim_report": "claim_summary.json",
+  "claim_ids": [
+    "planner_binding_headline",
+    "bfcl_exact_function_guard",
+    "bfcl_missing_required_guarded_reduction"
+  ],
+  "claim_summary_path": "outputs/paper_suite/bfcl_fc_core/claim_summary.json",
+  "comparison_path": "outputs/paper_suite/bfcl_fc_core/comparison.raw.csv",
+  "comparison_scored_path": "outputs/paper_suite/bfcl_fc_core/comparison.scored.csv",
+  "diagnostic_note": "d9d5f8d_rerun_diagnostic_note.md",
+  "experiment_metadata": {
+    "mode": "planner",
+    "official_eval_requested": true,
+    "raw_only": true,
+    "runner_script": "scripts/run_bfcl_bench.py",
+    "toolclaw_diagnostics_requested": true
+  },
+  "generated_at": "2026-04-24T15:27:09.263049+00:00",
+  "git_branch": "main",
+  "git_commit": "d9d5f8dc4bfb027022ab8c05ebe23df0f03c2402",
+  "git_dirty_at_run_start": false,
+  "normalized_taskset": "outputs/paper_suite/bfcl_fc_core/prepared/bfcl.normalized.json",
+  "num_runs": 1,
+  "official_scoreboard_path": "outputs/paper_suite/bfcl_fc_core/official_scoreboard.json",
+  "paper_role": "limitation_with_candidate_coverage_diagnostic",
+  "representative_trace_dir": "representative_traces",
   "source": "data/bfcl_formal/bfcl_v4.fc_core.aligned.jsonl",
   "source_manifest": "data/bfcl_formal/manifest.json",
-  "normalized_taskset": "outputs/paper_suite/bfcl_fc_core/prepared/bfcl.normalized.json",
-  "comparison_path": "outputs/paper_suite/bfcl_fc_core/comparison.raw.csv",
+  "suite": "bfcl_fc_core",
+  "suite_command": "PYTHONPATH=src python3 scripts/run_paper_bench_suite.py bfcl_fc_core",
+  "suite_started_at": null,
+  "suite_started_at_note": "not recorded by runner; full rerun executed at commit d9d5f8dc4bfb027022ab8c05ebe23df0f03c2402",
   "systems": [
     "a0_baseline",
     "a1_recovery",
@@ -13,29 +45,6 @@
     "a3_interaction",
     "a4_reuse"
   ],
-  "num_runs": 1,
-  "experiment_metadata": {
-    "runner_script": "scripts/run_bfcl_bench.py",
-    "official_eval_requested": true,
-    "toolclaw_diagnostics_requested": true,
-    "mode": "planner",
-    "raw_only": true
-  },
-  "comparison_scored_path": "outputs/paper_suite/bfcl_fc_core/comparison.scored.csv",
-  "official_scoreboard_path": "outputs/paper_suite/bfcl_fc_core/official_scoreboard.json",
   "toolclaw_diagnostics_path": "outputs/paper_suite/bfcl_fc_core/toolclaw_diagnostics.json",
-  "claim_summary_path": "outputs/paper_suite/bfcl_fc_core/claim_summary.json",
-  "bfcl_failure_slice_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_failure_slice_summary.json",
-  "bfcl_function_selection_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_function_selection_audit.json",
-  "bfcl_candidate_coverage_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_candidate_coverage_audit.json",
-  "bfcl_candidate_coverage_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_candidate_coverage_summary.json",
-  "bfcl_selected_correct_failure_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_selected_correct_failure_audit.json",
-  "bfcl_selected_correct_failure_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_selected_correct_failure_summary.json",
-  "suite": "bfcl_fc_core",
-  "paper_role": "limitation_with_candidate_coverage_diagnostic",
-  "claim_ids": [
-    "planner_binding_headline",
-    "bfcl_exact_function_guard",
-    "bfcl_missing_required_guarded_reduction"
-  ]
+  "track": "fc_core"
 }

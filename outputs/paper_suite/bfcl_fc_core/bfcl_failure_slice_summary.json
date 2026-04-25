@@ -15,18 +15,18 @@
       {
         "system": "a0_baseline",
         "num_rows": 4291.0,
-        "official_bfcl_eval_success": 0.3099510603588907,
-        "official_bfcl_eval_tool_selection_correctness": 0.5113978870504156,
-        "official_bfcl_eval_argument_correctness": 0.3099510603588907,
-        "official_bfcl_eval_structure_correctness": 0.49662083430435794,
-        "toolclaw_diagnostics_binder_selection_match": 0.5438930058157031,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.641260963330411,
+        "official_bfcl_eval_success": 0.2803542297832673,
+        "official_bfcl_eval_tool_selection_correctness": 0.48109415054765786,
+        "official_bfcl_eval_argument_correctness": 0.2803542297832673,
+        "official_bfcl_eval_structure_correctness": 0.46725704963877884,
+        "toolclaw_diagnostics_binder_selection_match": 0.5431860998885688,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.6433506083238081,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1346,
           "value_error": 629,
           "wrong_func_name": 81,
-          "other_official_failure": 175,
-          "wrong_count": 1260,
+          "other_official_failure": 179,
+          "wrong_count": 1256,
           "multi_turn_mismatch": 730,
           "multi_turn_other": 70
         }
@@ -34,18 +34,18 @@
       {
         "system": "a1_recovery",
         "num_rows": 4291.0,
-        "official_bfcl_eval_success": 0.3099510603588907,
-        "official_bfcl_eval_tool_selection_correctness": 0.5129126854657035,
-        "official_bfcl_eval_argument_correctness": 0.3099510603588907,
-        "official_bfcl_eval_structure_correctness": 0.49801910976462366,
-        "toolclaw_diagnostics_binder_selection_match": 0.5454078042309909,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.6398238468851379,
+        "official_bfcl_eval_success": 0.2803542297832673,
+        "official_bfcl_eval_tool_selection_correctness": 0.4826089489629457,
+        "official_bfcl_eval_argument_correctness": 0.2803542297832673,
+        "official_bfcl_eval_structure_correctness": 0.4686553250990445,
+        "toolclaw_diagnostics_binder_selection_match": 0.5447008983038566,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.641913491878535,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1346,
           "value_error": 634,
           "wrong_func_name": 81,
-          "other_official_failure": 176,
-          "wrong_count": 1254,
+          "other_official_failure": 181,
+          "wrong_count": 1249,
           "multi_turn_mismatch": 746,
           "multi_turn_other": 54
         }
@@ -53,18 +53,18 @@
       {
         "system": "a2_planner",
         "num_rows": 4291.0,
-        "official_bfcl_eval_success": 0.304357958517828,
-        "official_bfcl_eval_tool_selection_correctness": 0.5125048551231259,
-        "official_bfcl_eval_argument_correctness": 0.304357958517828,
-        "official_bfcl_eval_structure_correctness": 0.49778606385457935,
-        "toolclaw_diagnostics_binder_selection_match": 0.5449999738884135,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.6397650305364125,
+        "official_bfcl_eval_success": 0.27476112794220464,
+        "official_bfcl_eval_tool_selection_correctness": 0.4823953235454051,
+        "official_bfcl_eval_argument_correctness": 0.27476112794220464,
+        "official_bfcl_eval_structure_correctness": 0.4686553250990445,
+        "toolclaw_diagnostics_binder_selection_match": 0.544487272886316,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.6419401256968258,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1322,
           "value_error": 634,
           "wrong_func_name": 81,
-          "other_official_failure": 204,
-          "wrong_count": 1250,
+          "other_official_failure": 209,
+          "wrong_count": 1245,
           "multi_turn_mismatch": 752,
           "multi_turn_other": 48
         }
@@ -72,19 +72,19 @@
       {
         "system": "a3_interaction",
         "num_rows": 4291.0,
-        "official_bfcl_eval_success": 0.30505709624796085,
-        "official_bfcl_eval_tool_selection_correctness": 0.7169909888914783,
-        "official_bfcl_eval_argument_correctness": 0.30505709624796085,
-        "official_bfcl_eval_structure_correctness": 0.6786296900489397,
-        "toolclaw_diagnostics_binder_selection_match": 0.7509165656474661,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.4123601262147056,
+        "official_bfcl_eval_success": 0.23957119552551853,
+        "official_bfcl_eval_tool_selection_correctness": 0.6519323390041172,
+        "official_bfcl_eval_argument_correctness": 0.23957119552551853,
+        "official_bfcl_eval_structure_correctness": 0.612910743416453,
+        "toolclaw_diagnostics_binder_selection_match": 0.7513438164825473,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.41186980501825526,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1325,
           "value_error": 913,
           "wrong_func_name": 154,
-          "other_official_failure": 338,
+          "other_official_failure": 343,
           "missing_required": 376,
-          "wrong_count": 385,
+          "wrong_count": 380,
           "multi_turn_mismatch": 784,
           "multi_turn_other": 16
         }
@@ -92,19 +92,19 @@
       {
         "system": "a4_reuse",
         "num_rows": 4291.0,
-        "official_bfcl_eval_success": 0.30505709624796085,
-        "official_bfcl_eval_tool_selection_correctness": 0.7169909888914783,
-        "official_bfcl_eval_argument_correctness": 0.30505709624796085,
-        "official_bfcl_eval_structure_correctness": 0.6786296900489397,
-        "toolclaw_diagnostics_binder_selection_match": 0.7509165656474661,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.4123601262147056,
+        "official_bfcl_eval_success": 0.23957119552551853,
+        "official_bfcl_eval_tool_selection_correctness": 0.6519323390041172,
+        "official_bfcl_eval_argument_correctness": 0.23957119552551853,
+        "official_bfcl_eval_structure_correctness": 0.612910743416453,
+        "toolclaw_diagnostics_binder_selection_match": 0.7513438164825473,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.41186980501825526,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1325,
           "value_error": 913,
           "wrong_func_name": 154,
-          "other_official_failure": 338,
+          "other_official_failure": 343,
           "missing_required": 376,
-          "wrong_count": 385,
+          "wrong_count": 380,
           "multi_turn_mismatch": 784,
           "multi_turn_other": 16
         }
@@ -115,18 +115,18 @@
         "system": "a0_baseline",
         "bfcl_group": "live",
         "num_rows": 2251.0,
-        "official_bfcl_eval_success": 0.4611283873833852,
-        "official_bfcl_eval_tool_selection_correctness": 0.7678809418036429,
-        "official_bfcl_eval_argument_correctness": 0.4611283873833852,
-        "official_bfcl_eval_structure_correctness": 0.76499333629498,
-        "toolclaw_diagnostics_binder_selection_match": 0.7749888938249667,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.6990954637445086,
+        "official_bfcl_eval_success": 0.40693025322079074,
+        "official_bfcl_eval_tool_selection_correctness": 0.7139049311417148,
+        "official_bfcl_eval_argument_correctness": 0.40693025322079074,
+        "official_bfcl_eval_structure_correctness": 0.7112394491337184,
+        "toolclaw_diagnostics_binder_selection_match": 0.775211017325633,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.6988955525939089,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1054,
           "value_error": 537,
           "wrong_func_name": 80,
-          "other_official_failure": 149,
-          "wrong_count": 431
+          "other_official_failure": 151,
+          "wrong_count": 429
         }
       },
       {
@@ -148,36 +148,36 @@
         "system": "a0_baseline",
         "bfcl_group": "non_live",
         "num_rows": 1240.0,
-        "official_bfcl_eval_success": 0.23548387096774193,
-        "official_bfcl_eval_tool_selection_correctness": 0.37573252688172043,
-        "official_bfcl_eval_argument_correctness": 0.23548387096774193,
-        "official_bfcl_eval_structure_correctness": 0.32983870967741935,
-        "toolclaw_diagnostics_binder_selection_match": 0.37573252688172043,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.8284034178187404,
+        "official_bfcl_eval_success": 0.2314516129032258,
+        "official_bfcl_eval_tool_selection_correctness": 0.3688508064516129,
+        "official_bfcl_eval_argument_correctness": 0.2314516129032258,
+        "official_bfcl_eval_structure_correctness": 0.3258064516129032,
+        "toolclaw_diagnostics_binder_selection_match": 0.372883064516129,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.8359975038402457,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 292,
-          "wrong_count": 829,
+          "wrong_count": 827,
           "value_error": 92,
           "wrong_func_name": 1,
-          "other_official_failure": 26
+          "other_official_failure": 28
         }
       },
       {
         "system": "a1_recovery",
         "bfcl_group": "live",
         "num_rows": 2251.0,
-        "official_bfcl_eval_success": 0.4611283873833852,
-        "official_bfcl_eval_tool_selection_correctness": 0.7687694358063083,
-        "official_bfcl_eval_argument_correctness": 0.4611283873833852,
-        "official_bfcl_eval_structure_correctness": 0.7658818302976454,
-        "toolclaw_diagnostics_binder_selection_match": 0.7758773878276322,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.6982069697418432,
+        "official_bfcl_eval_success": 0.40693025322079074,
+        "official_bfcl_eval_tool_selection_correctness": 0.7147934251443803,
+        "official_bfcl_eval_argument_correctness": 0.40693025322079074,
+        "official_bfcl_eval_structure_correctness": 0.7121279431363838,
+        "toolclaw_diagnostics_binder_selection_match": 0.7760995113282986,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.6980070585912433,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1054,
           "value_error": 539,
           "wrong_func_name": 80,
-          "other_official_failure": 149,
-          "wrong_count": 429
+          "other_official_failure": 151,
+          "wrong_count": 427
         }
       },
       {
@@ -199,36 +199,36 @@
         "system": "a1_recovery",
         "bfcl_group": "non_live",
         "num_rows": 1240.0,
-        "official_bfcl_eval_success": 0.23548387096774193,
-        "official_bfcl_eval_tool_selection_correctness": 0.3793615591397849,
-        "official_bfcl_eval_argument_correctness": 0.23548387096774193,
-        "official_bfcl_eval_structure_correctness": 0.33306451612903226,
-        "toolclaw_diagnostics_binder_selection_match": 0.3793615591397849,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.825043202764977,
+        "official_bfcl_eval_success": 0.2314516129032258,
+        "official_bfcl_eval_tool_selection_correctness": 0.37247983870967744,
+        "official_bfcl_eval_argument_correctness": 0.2314516129032258,
+        "official_bfcl_eval_structure_correctness": 0.32903225806451614,
+        "toolclaw_diagnostics_binder_selection_match": 0.37651209677419356,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.8326372887864824,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 292,
-          "wrong_count": 825,
+          "wrong_count": 822,
           "value_error": 95,
           "wrong_func_name": 1,
-          "other_official_failure": 27
+          "other_official_failure": 30
         }
       },
       {
         "system": "a2_planner",
         "bfcl_group": "live",
         "num_rows": 2251.0,
-        "official_bfcl_eval_success": 0.4504664593513994,
-        "official_bfcl_eval_tool_selection_correctness": 0.768177106471198,
-        "official_bfcl_eval_argument_correctness": 0.4504664593513994,
-        "official_bfcl_eval_structure_correctness": 0.7654375832963127,
-        "toolclaw_diagnostics_binder_selection_match": 0.7752850584925218,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.697970038007799,
+        "official_bfcl_eval_success": 0.39626832518880495,
+        "official_bfcl_eval_tool_selection_correctness": 0.7144232193099364,
+        "official_bfcl_eval_argument_correctness": 0.39626832518880495,
+        "official_bfcl_eval_structure_correctness": 0.7121279431363838,
+        "toolclaw_diagnostics_binder_selection_match": 0.7757293054938545,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.6979330174243547,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1030,
           "value_error": 539,
           "wrong_func_name": 80,
-          "other_official_failure": 170,
-          "wrong_count": 432
+          "other_official_failure": 172,
+          "wrong_count": 430
         }
       },
       {
@@ -250,37 +250,37 @@
         "system": "a2_planner",
         "bfcl_group": "non_live",
         "num_rows": 1240.0,
-        "official_bfcl_eval_success": 0.23548387096774193,
-        "official_bfcl_eval_tool_selection_correctness": 0.3790255376344086,
-        "official_bfcl_eval_argument_correctness": 0.23548387096774193,
-        "official_bfcl_eval_structure_correctness": 0.33306451612903226,
-        "toolclaw_diagnostics_binder_selection_match": 0.3790255376344086,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.825269777265745,
+        "official_bfcl_eval_success": 0.2314516129032258,
+        "official_bfcl_eval_tool_selection_correctness": 0.3724126344086022,
+        "official_bfcl_eval_argument_correctness": 0.2314516129032258,
+        "official_bfcl_eval_structure_correctness": 0.32903225806451614,
+        "toolclaw_diagnostics_binder_selection_match": 0.3764448924731183,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.8328638632872504,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 292,
-          "wrong_count": 818,
+          "wrong_count": 815,
           "value_error": 95,
           "wrong_func_name": 1,
-          "other_official_failure": 34
+          "other_official_failure": 37
         }
       },
       {
         "system": "a3_interaction",
         "bfcl_group": "live",
         "num_rows": 2251.0,
-        "official_bfcl_eval_success": 0.4517992003553976,
-        "official_bfcl_eval_tool_selection_correctness": 0.9109062638827188,
-        "official_bfcl_eval_argument_correctness": 0.4517992003553976,
-        "official_bfcl_eval_structure_correctness": 0.9062638827187917,
-        "toolclaw_diagnostics_binder_selection_match": 0.9180142159040426,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.5410616445600896,
+        "official_bfcl_eval_success": 0.3402932030208796,
+        "official_bfcl_eval_tool_selection_correctness": 0.7996223900488671,
+        "official_bfcl_eval_argument_correctness": 0.3402932030208796,
+        "official_bfcl_eval_structure_correctness": 0.7952021323856064,
+        "toolclaw_diagnostics_binder_selection_match": 0.9182363394047091,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.54086173340949,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1033,
           "value_error": 680,
           "wrong_func_name": 144,
-          "other_official_failure": 207,
+          "other_official_failure": 209,
           "missing_required": 140,
-          "wrong_count": 47
+          "wrong_count": 45
         }
       },
       {
@@ -302,38 +302,38 @@
         "system": "a3_interaction",
         "bfcl_group": "non_live",
         "num_rows": 1240.0,
-        "official_bfcl_eval_success": 0.23548387096774193,
-        "official_bfcl_eval_tool_selection_correctness": 0.8275470430107527,
-        "official_bfcl_eval_argument_correctness": 0.23548387096774193,
-        "official_bfcl_eval_structure_correctness": 0.7032258064516129,
-        "toolclaw_diagnostics_binder_selection_match": 0.8275470430107527,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.3457587685611879,
+        "official_bfcl_eval_success": 0.21129032258064517,
+        "official_bfcl_eval_tool_selection_correctness": 0.8044287634408602,
+        "official_bfcl_eval_argument_correctness": 0.21129032258064517,
+        "official_bfcl_eval_structure_correctness": 0.6774193548387096,
+        "toolclaw_diagnostics_binder_selection_match": 0.828622311827957,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.3444249231950845,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 292,
           "value_error": 233,
           "missing_required": 236,
           "wrong_func_name": 10,
-          "other_official_failure": 131,
-          "wrong_count": 338
+          "other_official_failure": 134,
+          "wrong_count": 335
         }
       },
       {
         "system": "a4_reuse",
         "bfcl_group": "live",
         "num_rows": 2251.0,
-        "official_bfcl_eval_success": 0.4517992003553976,
-        "official_bfcl_eval_tool_selection_correctness": 0.9109062638827188,
-        "official_bfcl_eval_argument_correctness": 0.4517992003553976,
-        "official_bfcl_eval_structure_correctness": 0.9062638827187917,
-        "toolclaw_diagnostics_binder_selection_match": 0.9180142159040426,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.5410616445600896,
+        "official_bfcl_eval_success": 0.3402932030208796,
+        "official_bfcl_eval_tool_selection_correctness": 0.7996223900488671,
+        "official_bfcl_eval_argument_correctness": 0.3402932030208796,
+        "official_bfcl_eval_structure_correctness": 0.7952021323856064,
+        "toolclaw_diagnostics_binder_selection_match": 0.9182363394047091,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.54086173340949,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 1033,
           "value_error": 680,
           "wrong_func_name": 144,
-          "other_official_failure": 207,
+          "other_official_failure": 209,
           "missing_required": 140,
-          "wrong_count": 47
+          "wrong_count": 45
         }
       },
       {
@@ -355,19 +355,19 @@
         "system": "a4_reuse",
         "bfcl_group": "non_live",
         "num_rows": 1240.0,
-        "official_bfcl_eval_success": 0.23548387096774193,
-        "official_bfcl_eval_tool_selection_correctness": 0.8275470430107527,
-        "official_bfcl_eval_argument_correctness": 0.23548387096774193,
-        "official_bfcl_eval_structure_correctness": 0.7032258064516129,
-        "toolclaw_diagnostics_binder_selection_match": 0.8275470430107527,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.3457587685611879,
+        "official_bfcl_eval_success": 0.21129032258064517,
+        "official_bfcl_eval_tool_selection_correctness": 0.8044287634408602,
+        "official_bfcl_eval_argument_correctness": 0.21129032258064517,
+        "official_bfcl_eval_structure_correctness": 0.6774193548387096,
+        "toolclaw_diagnostics_binder_selection_match": 0.828622311827957,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.3444249231950845,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 292,
           "value_error": 233,
           "missing_required": 236,
           "wrong_func_name": 10,
-          "other_official_failure": 131,
-          "wrong_count": 338
+          "other_official_failure": 134,
+          "wrong_count": 335
         }
       }
     ],
@@ -377,14 +377,14 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 440.0,
         "official_bfcl_eval_success": 0.015909090909090907,
-        "official_bfcl_eval_tool_selection_correctness": 0.19865530303030302,
+        "official_bfcl_eval_tool_selection_correctness": 0.19176136363636365,
         "official_bfcl_eval_argument_correctness": 0.015909090909090907,
-        "official_bfcl_eval_structure_correctness": 0.05454545454545454,
-        "toolclaw_diagnostics_binder_selection_match": 0.19865530303030302,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.6636823593073593,
+        "official_bfcl_eval_structure_correctness": 0.056818181818181816,
+        "toolclaw_diagnostics_binder_selection_match": 0.19176136363636365,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.6840611471861472,
         "failure_bucket_counts": {
-          "wrong_count": 413,
-          "other_official_failure": 20,
+          "wrong_count": 409,
+          "other_official_failure": 24,
           "official_success_or_safe_failure": 7
         }
       },
@@ -392,10 +392,10 @@
         "system": "a0_baseline",
         "bfcl_call_pattern": "serial",
         "num_rows": 3851.0,
-        "official_bfcl_eval_success": 0.3435471306154246,
-        "official_bfcl_eval_tool_selection_correctness": 0.5471306154245651,
-        "official_bfcl_eval_argument_correctness": 0.3435471306154246,
-        "official_bfcl_eval_structure_correctness": 0.5471306154245651,
+        "official_bfcl_eval_success": 0.31056868345884187,
+        "official_bfcl_eval_tool_selection_correctness": 0.5141521682679824,
+        "official_bfcl_eval_argument_correctness": 0.31056868345884187,
+        "official_bfcl_eval_structure_correctness": 0.5141521682679824,
         "toolclaw_diagnostics_binder_selection_match": 0.5833384976945855,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.6386991834732682,
         "failure_bucket_counts": {
@@ -413,14 +413,14 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 440.0,
         "official_bfcl_eval_success": 0.015909090909090907,
-        "official_bfcl_eval_tool_selection_correctness": 0.20206439393939393,
+        "official_bfcl_eval_tool_selection_correctness": 0.19517045454545454,
         "official_bfcl_eval_argument_correctness": 0.015909090909090907,
-        "official_bfcl_eval_structure_correctness": 0.056818181818181816,
-        "toolclaw_diagnostics_binder_selection_match": 0.20206439393939393,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.6598944805194805,
+        "official_bfcl_eval_structure_correctness": 0.05909090909090909,
+        "toolclaw_diagnostics_binder_selection_match": 0.19517045454545454,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.6802732683982684,
         "failure_bucket_counts": {
-          "wrong_count": 412,
-          "other_official_failure": 21,
+          "wrong_count": 407,
+          "other_official_failure": 26,
           "official_success_or_safe_failure": 7
         }
       },
@@ -428,10 +428,10 @@
         "system": "a1_recovery",
         "bfcl_call_pattern": "serial",
         "num_rows": 3851.0,
-        "official_bfcl_eval_success": 0.3435471306154246,
-        "official_bfcl_eval_tool_selection_correctness": 0.5484289794858478,
-        "official_bfcl_eval_argument_correctness": 0.3435471306154246,
-        "official_bfcl_eval_structure_correctness": 0.5484289794858478,
+        "official_bfcl_eval_success": 0.31056868345884187,
+        "official_bfcl_eval_tool_selection_correctness": 0.5154505323292651,
+        "official_bfcl_eval_argument_correctness": 0.31056868345884187,
+        "official_bfcl_eval_structure_correctness": 0.5154505323292651,
         "toolclaw_diagnostics_binder_selection_match": 0.5846368617558683,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.6375306558181136,
         "failure_bucket_counts": {
@@ -449,14 +449,14 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 440.0,
         "official_bfcl_eval_success": 0.015909090909090907,
-        "official_bfcl_eval_tool_selection_correctness": 0.19808712121212121,
+        "official_bfcl_eval_tool_selection_correctness": 0.1930871212121212,
         "official_bfcl_eval_argument_correctness": 0.015909090909090907,
-        "official_bfcl_eval_structure_correctness": 0.05454545454545454,
-        "toolclaw_diagnostics_binder_selection_match": 0.19808712121212121,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.6593208874458875,
+        "official_bfcl_eval_structure_correctness": 0.05909090909090909,
+        "toolclaw_diagnostics_binder_selection_match": 0.1930871212121212,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.6805330086580087,
         "failure_bucket_counts": {
-          "wrong_count": 408,
-          "other_official_failure": 25,
+          "wrong_count": 403,
+          "other_official_failure": 30,
           "official_success_or_safe_failure": 7
         }
       },
@@ -464,10 +464,10 @@
         "system": "a2_planner",
         "bfcl_call_pattern": "serial",
         "num_rows": 3851.0,
-        "official_bfcl_eval_success": 0.3373149831212672,
-        "official_bfcl_eval_tool_selection_correctness": 0.5484289794858478,
-        "official_bfcl_eval_argument_correctness": 0.3373149831212672,
-        "official_bfcl_eval_structure_correctness": 0.5484289794858478,
+        "official_bfcl_eval_success": 0.3043365359646845,
+        "official_bfcl_eval_tool_selection_correctness": 0.5154505323292651,
+        "official_bfcl_eval_argument_correctness": 0.3043365359646845,
+        "official_bfcl_eval_structure_correctness": 0.5154505323292651,
         "toolclaw_diagnostics_binder_selection_match": 0.5846368617558683,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.6375306558181136,
         "failure_bucket_counts": {
@@ -485,14 +485,14 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 440.0,
         "official_bfcl_eval_success": 0.015909090909090907,
-        "official_bfcl_eval_tool_selection_correctness": 0.5082007575757576,
+        "official_bfcl_eval_tool_selection_correctness": 0.5123674242424242,
         "official_bfcl_eval_argument_correctness": 0.015909090909090907,
-        "official_bfcl_eval_structure_correctness": 0.1340909090909091,
-        "toolclaw_diagnostics_binder_selection_match": 0.5082007575757576,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.12797168109668108,
+        "official_bfcl_eval_structure_correctness": 0.1318181818181818,
+        "toolclaw_diagnostics_binder_selection_match": 0.5123674242424242,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.12318993506493506,
         "failure_bucket_counts": {
-          "wrong_count": 357,
-          "other_official_failure": 76,
+          "wrong_count": 352,
+          "other_official_failure": 81,
           "official_success_or_safe_failure": 7
         }
       },
@@ -500,10 +500,10 @@
         "system": "a3_interaction",
         "bfcl_call_pattern": "serial",
         "num_rows": 3851.0,
-        "official_bfcl_eval_success": 0.33809400155803687,
-        "official_bfcl_eval_tool_selection_correctness": 0.7408465333679564,
-        "official_bfcl_eval_argument_correctness": 0.33809400155803687,
-        "official_bfcl_eval_structure_correctness": 0.7408465333679564,
+        "official_bfcl_eval_success": 0.26512594131394446,
+        "official_bfcl_eval_tool_selection_correctness": 0.667878473123864,
+        "official_bfcl_eval_argument_correctness": 0.26512594131394446,
+        "official_bfcl_eval_structure_correctness": 0.667878473123864,
         "toolclaw_diagnostics_binder_selection_match": 0.7786483120903516,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.444853223034215,
         "failure_bucket_counts": {
@@ -522,14 +522,14 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 440.0,
         "official_bfcl_eval_success": 0.015909090909090907,
-        "official_bfcl_eval_tool_selection_correctness": 0.5082007575757576,
+        "official_bfcl_eval_tool_selection_correctness": 0.5123674242424242,
         "official_bfcl_eval_argument_correctness": 0.015909090909090907,
-        "official_bfcl_eval_structure_correctness": 0.1340909090909091,
-        "toolclaw_diagnostics_binder_selection_match": 0.5082007575757576,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.12797168109668108,
+        "official_bfcl_eval_structure_correctness": 0.1318181818181818,
+        "toolclaw_diagnostics_binder_selection_match": 0.5123674242424242,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.12318993506493506,
         "failure_bucket_counts": {
-          "wrong_count": 357,
-          "other_official_failure": 76,
+          "wrong_count": 352,
+          "other_official_failure": 81,
           "official_success_or_safe_failure": 7
         }
       },
@@ -537,10 +537,10 @@
         "system": "a4_reuse",
         "bfcl_call_pattern": "serial",
         "num_rows": 3851.0,
-        "official_bfcl_eval_success": 0.33809400155803687,
-        "official_bfcl_eval_tool_selection_correctness": 0.7408465333679564,
-        "official_bfcl_eval_argument_correctness": 0.33809400155803687,
-        "official_bfcl_eval_structure_correctness": 0.7408465333679564,
+        "official_bfcl_eval_success": 0.26512594131394446,
+        "official_bfcl_eval_tool_selection_correctness": 0.667878473123864,
+        "official_bfcl_eval_argument_correctness": 0.26512594131394446,
+        "official_bfcl_eval_structure_correctness": 0.667878473123864,
         "toolclaw_diagnostics_binder_selection_match": 0.7786483120903516,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.444853223034215,
         "failure_bucket_counts": {
@@ -562,14 +562,14 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 40.0,
         "official_bfcl_eval_success": 0.05,
-        "official_bfcl_eval_tool_selection_correctness": 0.4625,
+        "official_bfcl_eval_tool_selection_correctness": 0.475,
         "official_bfcl_eval_argument_correctness": 0.05,
-        "official_bfcl_eval_structure_correctness": 0.3,
-        "toolclaw_diagnostics_binder_selection_match": 0.4625,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.505,
+        "official_bfcl_eval_structure_correctness": 0.325,
+        "toolclaw_diagnostics_binder_selection_match": 0.475,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.49375,
         "failure_bucket_counts": {
-          "wrong_count": 26,
-          "other_official_failure": 12,
+          "wrong_count": 24,
+          "other_official_failure": 14,
           "official_success_or_safe_failure": 2
         }
       },
@@ -578,10 +578,10 @@
         "bfcl_group": "live",
         "bfcl_call_pattern": "serial",
         "num_rows": 2211.0,
-        "official_bfcl_eval_success": 0.4685662596110357,
-        "official_bfcl_eval_tool_selection_correctness": 0.7734056987788331,
-        "official_bfcl_eval_argument_correctness": 0.4685662596110357,
-        "official_bfcl_eval_structure_correctness": 0.7734056987788331,
+        "official_bfcl_eval_success": 0.41338760741745817,
+        "official_bfcl_eval_tool_selection_correctness": 0.7182270465852555,
+        "official_bfcl_eval_argument_correctness": 0.41338760741745817,
+        "official_bfcl_eval_structure_correctness": 0.7182270465852555,
         "toolclaw_diagnostics_binder_selection_match": 0.7806422433288105,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.7026069149203478,
         "failure_bucket_counts": {
@@ -614,15 +614,15 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 400.0,
         "official_bfcl_eval_success": 0.0125,
-        "official_bfcl_eval_tool_selection_correctness": 0.17227083333333332,
+        "official_bfcl_eval_tool_selection_correctness": 0.16343749999999999,
         "official_bfcl_eval_argument_correctness": 0.0125,
         "official_bfcl_eval_structure_correctness": 0.03,
-        "toolclaw_diagnostics_binder_selection_match": 0.17227083333333332,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.6795505952380952,
+        "toolclaw_diagnostics_binder_selection_match": 0.16343749999999999,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.7030922619047619,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 5,
-          "wrong_count": 387,
-          "other_official_failure": 8
+          "wrong_count": 385,
+          "other_official_failure": 10
         }
       },
       {
@@ -630,10 +630,10 @@
         "bfcl_group": "non_live",
         "bfcl_call_pattern": "serial",
         "num_rows": 840.0,
-        "official_bfcl_eval_success": 0.3416666666666667,
-        "official_bfcl_eval_tool_selection_correctness": 0.4726190476190476,
-        "official_bfcl_eval_argument_correctness": 0.3416666666666667,
-        "official_bfcl_eval_structure_correctness": 0.4726190476190476,
+        "official_bfcl_eval_success": 0.3357142857142857,
+        "official_bfcl_eval_tool_selection_correctness": 0.4666666666666667,
+        "official_bfcl_eval_argument_correctness": 0.3357142857142857,
+        "official_bfcl_eval_structure_correctness": 0.4666666666666667,
         "toolclaw_diagnostics_binder_selection_match": 0.4726190476190476,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.8992857142857142,
         "failure_bucket_counts": {
@@ -650,14 +650,14 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 40.0,
         "official_bfcl_eval_success": 0.05,
-        "official_bfcl_eval_tool_selection_correctness": 0.4625,
+        "official_bfcl_eval_tool_selection_correctness": 0.475,
         "official_bfcl_eval_argument_correctness": 0.05,
-        "official_bfcl_eval_structure_correctness": 0.3,
-        "toolclaw_diagnostics_binder_selection_match": 0.4625,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.505,
+        "official_bfcl_eval_structure_correctness": 0.325,
+        "toolclaw_diagnostics_binder_selection_match": 0.475,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.49375,
         "failure_bucket_counts": {
-          "wrong_count": 26,
-          "other_official_failure": 12,
+          "wrong_count": 24,
+          "other_official_failure": 14,
           "official_success_or_safe_failure": 2
         }
       },
@@ -666,10 +666,10 @@
         "bfcl_group": "live",
         "bfcl_call_pattern": "serial",
         "num_rows": 2211.0,
-        "official_bfcl_eval_success": 0.4685662596110357,
-        "official_bfcl_eval_tool_selection_correctness": 0.7743102668475803,
-        "official_bfcl_eval_argument_correctness": 0.4685662596110357,
-        "official_bfcl_eval_structure_correctness": 0.7743102668475803,
+        "official_bfcl_eval_success": 0.41338760741745817,
+        "official_bfcl_eval_tool_selection_correctness": 0.7191316146540027,
+        "official_bfcl_eval_argument_correctness": 0.41338760741745817,
+        "official_bfcl_eval_structure_correctness": 0.7191316146540027,
         "toolclaw_diagnostics_binder_selection_match": 0.7815468113975577,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.7017023468516006,
         "failure_bucket_counts": {
@@ -702,15 +702,15 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 400.0,
         "official_bfcl_eval_success": 0.0125,
-        "official_bfcl_eval_tool_selection_correctness": 0.17602083333333332,
+        "official_bfcl_eval_tool_selection_correctness": 0.1671875,
         "official_bfcl_eval_argument_correctness": 0.0125,
         "official_bfcl_eval_structure_correctness": 0.0325,
-        "toolclaw_diagnostics_binder_selection_match": 0.17602083333333332,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.6753839285714286,
+        "toolclaw_diagnostics_binder_selection_match": 0.1671875,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.6989255952380953,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 5,
-          "wrong_count": 386,
-          "other_official_failure": 9
+          "wrong_count": 383,
+          "other_official_failure": 12
         }
       },
       {
@@ -718,10 +718,10 @@
         "bfcl_group": "non_live",
         "bfcl_call_pattern": "serial",
         "num_rows": 840.0,
-        "official_bfcl_eval_success": 0.3416666666666667,
-        "official_bfcl_eval_tool_selection_correctness": 0.47619047619047616,
-        "official_bfcl_eval_argument_correctness": 0.3416666666666667,
-        "official_bfcl_eval_structure_correctness": 0.47619047619047616,
+        "official_bfcl_eval_success": 0.3357142857142857,
+        "official_bfcl_eval_tool_selection_correctness": 0.47023809523809523,
+        "official_bfcl_eval_argument_correctness": 0.3357142857142857,
+        "official_bfcl_eval_structure_correctness": 0.47023809523809523,
         "toolclaw_diagnostics_binder_selection_match": 0.47619047619047616,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.8963095238095238,
         "failure_bucket_counts": {
@@ -738,14 +738,14 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 40.0,
         "official_bfcl_eval_success": 0.05,
-        "official_bfcl_eval_tool_selection_correctness": 0.42916666666666664,
+        "official_bfcl_eval_tool_selection_correctness": 0.45416666666666666,
         "official_bfcl_eval_argument_correctness": 0.05,
-        "official_bfcl_eval_structure_correctness": 0.275,
-        "toolclaw_diagnostics_binder_selection_match": 0.42916666666666664,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.49166666666666664,
+        "official_bfcl_eval_structure_correctness": 0.325,
+        "toolclaw_diagnostics_binder_selection_match": 0.45416666666666666,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.4895833333333333,
         "failure_bucket_counts": {
-          "wrong_count": 29,
-          "other_official_failure": 9,
+          "wrong_count": 27,
+          "other_official_failure": 11,
           "official_success_or_safe_failure": 2
         }
       },
@@ -754,10 +754,10 @@
         "bfcl_group": "live",
         "bfcl_call_pattern": "serial",
         "num_rows": 2211.0,
-        "official_bfcl_eval_success": 0.4577114427860697,
-        "official_bfcl_eval_tool_selection_correctness": 0.7743102668475803,
-        "official_bfcl_eval_argument_correctness": 0.4577114427860697,
-        "official_bfcl_eval_structure_correctness": 0.7743102668475803,
+        "official_bfcl_eval_success": 0.4025327905924921,
+        "official_bfcl_eval_tool_selection_correctness": 0.7191316146540027,
+        "official_bfcl_eval_argument_correctness": 0.4025327905924921,
+        "official_bfcl_eval_structure_correctness": 0.7191316146540027,
         "toolclaw_diagnostics_binder_selection_match": 0.7815468113975577,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.7017023468516006,
         "failure_bucket_counts": {
@@ -790,15 +790,15 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 400.0,
         "official_bfcl_eval_success": 0.0125,
-        "official_bfcl_eval_tool_selection_correctness": 0.17497916666666666,
+        "official_bfcl_eval_tool_selection_correctness": 0.16697916666666665,
         "official_bfcl_eval_argument_correctness": 0.0125,
         "official_bfcl_eval_structure_correctness": 0.0325,
-        "toolclaw_diagnostics_binder_selection_match": 0.17497916666666666,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.6760863095238095,
+        "toolclaw_diagnostics_binder_selection_match": 0.16697916666666665,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.6996279761904762,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 5,
-          "wrong_count": 379,
-          "other_official_failure": 16
+          "wrong_count": 376,
+          "other_official_failure": 19
         }
       },
       {
@@ -806,10 +806,10 @@
         "bfcl_group": "non_live",
         "bfcl_call_pattern": "serial",
         "num_rows": 840.0,
-        "official_bfcl_eval_success": 0.3416666666666667,
-        "official_bfcl_eval_tool_selection_correctness": 0.47619047619047616,
-        "official_bfcl_eval_argument_correctness": 0.3416666666666667,
-        "official_bfcl_eval_structure_correctness": 0.47619047619047616,
+        "official_bfcl_eval_success": 0.3357142857142857,
+        "official_bfcl_eval_tool_selection_correctness": 0.47023809523809523,
+        "official_bfcl_eval_argument_correctness": 0.3357142857142857,
+        "official_bfcl_eval_structure_correctness": 0.47023809523809523,
         "toolclaw_diagnostics_binder_selection_match": 0.47619047619047616,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.8963095238095238,
         "failure_bucket_counts": {
@@ -826,14 +826,14 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 40.0,
         "official_bfcl_eval_success": 0.05,
-        "official_bfcl_eval_tool_selection_correctness": 0.58625,
+        "official_bfcl_eval_tool_selection_correctness": 0.59875,
         "official_bfcl_eval_argument_correctness": 0.05,
-        "official_bfcl_eval_structure_correctness": 0.325,
-        "toolclaw_diagnostics_binder_selection_match": 0.58625,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.22375,
+        "official_bfcl_eval_structure_correctness": 0.35,
+        "toolclaw_diagnostics_binder_selection_match": 0.59875,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.2125,
         "failure_bucket_counts": {
-          "wrong_count": 23,
-          "other_official_failure": 15,
+          "wrong_count": 21,
+          "other_official_failure": 17,
           "official_success_or_safe_failure": 2
         }
       },
@@ -842,10 +842,10 @@
         "bfcl_group": "live",
         "bfcl_call_pattern": "serial",
         "num_rows": 2211.0,
-        "official_bfcl_eval_success": 0.45906829488919043,
-        "official_bfcl_eval_tool_selection_correctness": 0.9167797376752601,
-        "official_bfcl_eval_argument_correctness": 0.45906829488919043,
-        "official_bfcl_eval_structure_correctness": 0.9167797376752601,
+        "official_bfcl_eval_success": 0.34554500226142015,
+        "official_bfcl_eval_tool_selection_correctness": 0.8032564450474898,
+        "official_bfcl_eval_argument_correctness": 0.34554500226142015,
+        "official_bfcl_eval_structure_correctness": 0.8032564450474898,
         "toolclaw_diagnostics_binder_selection_match": 0.9240162822252375,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.5468022441903039,
         "failure_bucket_counts": {
@@ -879,15 +879,15 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 400.0,
         "official_bfcl_eval_success": 0.0125,
-        "official_bfcl_eval_tool_selection_correctness": 0.5003958333333334,
+        "official_bfcl_eval_tool_selection_correctness": 0.5037291666666667,
         "official_bfcl_eval_argument_correctness": 0.0125,
-        "official_bfcl_eval_structure_correctness": 0.115,
-        "toolclaw_diagnostics_binder_selection_match": 0.5003958333333334,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.1183938492063492,
+        "official_bfcl_eval_structure_correctness": 0.11,
+        "toolclaw_diagnostics_binder_selection_match": 0.5037291666666667,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.11425892857142857,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 5,
-          "wrong_count": 334,
-          "other_official_failure": 61
+          "wrong_count": 331,
+          "other_official_failure": 64
         }
       },
       {
@@ -895,10 +895,10 @@
         "bfcl_group": "non_live",
         "bfcl_call_pattern": "serial",
         "num_rows": 840.0,
-        "official_bfcl_eval_success": 0.3416666666666667,
-        "official_bfcl_eval_tool_selection_correctness": 0.9833333333333333,
-        "official_bfcl_eval_argument_correctness": 0.3416666666666667,
-        "official_bfcl_eval_structure_correctness": 0.9833333333333333,
+        "official_bfcl_eval_success": 0.305952380952381,
+        "official_bfcl_eval_tool_selection_correctness": 0.9476190476190476,
+        "official_bfcl_eval_argument_correctness": 0.305952380952381,
+        "official_bfcl_eval_structure_correctness": 0.9476190476190476,
         "toolclaw_diagnostics_binder_selection_match": 0.9833333333333333,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.45402777777777775,
         "failure_bucket_counts": {
@@ -916,14 +916,14 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 40.0,
         "official_bfcl_eval_success": 0.05,
-        "official_bfcl_eval_tool_selection_correctness": 0.58625,
+        "official_bfcl_eval_tool_selection_correctness": 0.59875,
         "official_bfcl_eval_argument_correctness": 0.05,
-        "official_bfcl_eval_structure_correctness": 0.325,
-        "toolclaw_diagnostics_binder_selection_match": 0.58625,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.22375,
+        "official_bfcl_eval_structure_correctness": 0.35,
+        "toolclaw_diagnostics_binder_selection_match": 0.59875,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.2125,
         "failure_bucket_counts": {
-          "wrong_count": 23,
-          "other_official_failure": 15,
+          "wrong_count": 21,
+          "other_official_failure": 17,
           "official_success_or_safe_failure": 2
         }
       },
@@ -932,10 +932,10 @@
         "bfcl_group": "live",
         "bfcl_call_pattern": "serial",
         "num_rows": 2211.0,
-        "official_bfcl_eval_success": 0.45906829488919043,
-        "official_bfcl_eval_tool_selection_correctness": 0.9167797376752601,
-        "official_bfcl_eval_argument_correctness": 0.45906829488919043,
-        "official_bfcl_eval_structure_correctness": 0.9167797376752601,
+        "official_bfcl_eval_success": 0.34554500226142015,
+        "official_bfcl_eval_tool_selection_correctness": 0.8032564450474898,
+        "official_bfcl_eval_argument_correctness": 0.34554500226142015,
+        "official_bfcl_eval_structure_correctness": 0.8032564450474898,
         "toolclaw_diagnostics_binder_selection_match": 0.9240162822252375,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.5468022441903039,
         "failure_bucket_counts": {
@@ -969,15 +969,15 @@
         "bfcl_call_pattern": "parallel",
         "num_rows": 400.0,
         "official_bfcl_eval_success": 0.0125,
-        "official_bfcl_eval_tool_selection_correctness": 0.5003958333333334,
+        "official_bfcl_eval_tool_selection_correctness": 0.5037291666666667,
         "official_bfcl_eval_argument_correctness": 0.0125,
-        "official_bfcl_eval_structure_correctness": 0.115,
-        "toolclaw_diagnostics_binder_selection_match": 0.5003958333333334,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.1183938492063492,
+        "official_bfcl_eval_structure_correctness": 0.11,
+        "toolclaw_diagnostics_binder_selection_match": 0.5037291666666667,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.11425892857142857,
         "failure_bucket_counts": {
           "official_success_or_safe_failure": 5,
-          "wrong_count": 334,
-          "other_official_failure": 61
+          "wrong_count": 331,
+          "other_official_failure": 64
         }
       },
       {
@@ -985,10 +985,10 @@
         "bfcl_group": "non_live",
         "bfcl_call_pattern": "serial",
         "num_rows": 840.0,
-        "official_bfcl_eval_success": 0.3416666666666667,
-        "official_bfcl_eval_tool_selection_correctness": 0.9833333333333333,
-        "official_bfcl_eval_argument_correctness": 0.3416666666666667,
-        "official_bfcl_eval_structure_correctness": 0.9833333333333333,
+        "official_bfcl_eval_success": 0.305952380952381,
+        "official_bfcl_eval_tool_selection_correctness": 0.9476190476190476,
+        "official_bfcl_eval_argument_correctness": 0.305952380952381,
+        "official_bfcl_eval_structure_correctness": 0.9476190476190476,
         "toolclaw_diagnostics_binder_selection_match": 0.9833333333333333,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.45402777777777775,
         "failure_bucket_counts": {
@@ -1034,10 +1034,10 @@
         "system": "a0_baseline",
         "official_failure_bucket": "official_success_or_safe_failure",
         "num_rows": 1346.0,
-        "official_bfcl_eval_success": 0.9881129271916791,
-        "official_bfcl_eval_tool_selection_correctness": 0.9881129271916791,
-        "official_bfcl_eval_argument_correctness": 0.9881129271916791,
-        "official_bfcl_eval_structure_correctness": 0.9881129271916791,
+        "official_bfcl_eval_success": 0.8937592867756315,
+        "official_bfcl_eval_tool_selection_correctness": 0.8937592867756315,
+        "official_bfcl_eval_argument_correctness": 0.8937592867756315,
+        "official_bfcl_eval_structure_correctness": 0.8937592867756315,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.9525631500742942,
         "failure_bucket_counts": {
@@ -1047,15 +1047,15 @@
       {
         "system": "a0_baseline",
         "official_failure_bucket": "other_official_failure",
-        "num_rows": 175.0,
+        "num_rows": 179.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.9914285714285714,
+        "official_bfcl_eval_tool_selection_correctness": 0.984171322160149,
         "official_bfcl_eval_argument_correctness": 0.0,
-        "official_bfcl_eval_structure_correctness": 0.9828571428571429,
-        "toolclaw_diagnostics_binder_selection_match": 0.9914285714285714,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.2976326530612245,
+        "official_bfcl_eval_structure_correctness": 0.9664804469273743,
+        "toolclaw_diagnostics_binder_selection_match": 0.984171322160149,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.28986432561851555,
         "failure_bucket_counts": {
-          "other_official_failure": 175
+          "other_official_failure": 179
         }
       },
       {
@@ -1075,15 +1075,15 @@
       {
         "system": "a0_baseline",
         "official_failure_bucket": "wrong_count",
-        "num_rows": 1260.0,
+        "num_rows": 1256.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.04913359788359788,
+        "official_bfcl_eval_tool_selection_correctness": 0.044751857749469215,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 0.0,
-        "toolclaw_diagnostics_binder_selection_match": 0.04913359788359788,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.8953316326530613,
+        "toolclaw_diagnostics_binder_selection_match": 0.044751857749469215,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.9054813087655444,
         "failure_bucket_counts": {
-          "wrong_count": 1260
+          "wrong_count": 1256
         }
       },
       {
@@ -1132,10 +1132,10 @@
         "system": "a1_recovery",
         "official_failure_bucket": "official_success_or_safe_failure",
         "num_rows": 1346.0,
-        "official_bfcl_eval_success": 0.9881129271916791,
-        "official_bfcl_eval_tool_selection_correctness": 0.9881129271916791,
-        "official_bfcl_eval_argument_correctness": 0.9881129271916791,
-        "official_bfcl_eval_structure_correctness": 0.9881129271916791,
+        "official_bfcl_eval_success": 0.8937592867756315,
+        "official_bfcl_eval_tool_selection_correctness": 0.8937592867756315,
+        "official_bfcl_eval_argument_correctness": 0.8937592867756315,
+        "official_bfcl_eval_structure_correctness": 0.8937592867756315,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.9525631500742942,
         "failure_bucket_counts": {
@@ -1145,15 +1145,15 @@
       {
         "system": "a1_recovery",
         "official_failure_bucket": "other_official_failure",
-        "num_rows": 176.0,
+        "num_rows": 181.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.9914772727272727,
+        "official_bfcl_eval_tool_selection_correctness": 0.9815837937384899,
         "official_bfcl_eval_argument_correctness": 0.0,
-        "official_bfcl_eval_structure_correctness": 0.9829545454545454,
-        "toolclaw_diagnostics_binder_selection_match": 0.9914772727272727,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.29594155844155845,
+        "official_bfcl_eval_structure_correctness": 0.9613259668508287,
+        "toolclaw_diagnostics_binder_selection_match": 0.9815837937384899,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.2885030255196001,
         "failure_bucket_counts": {
-          "other_official_failure": 176
+          "other_official_failure": 181
         }
       },
       {
@@ -1173,15 +1173,15 @@
       {
         "system": "a1_recovery",
         "official_failure_bucket": "wrong_count",
-        "num_rows": 1254.0,
+        "num_rows": 1249.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.049767410951621474,
+        "official_bfcl_eval_tool_selection_correctness": 0.04500266880170803,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 0.0,
-        "toolclaw_diagnostics_binder_selection_match": 0.049767410951621474,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.8942991949570896,
+        "toolclaw_diagnostics_binder_selection_match": 0.04500266880170803,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.9049515803118685,
         "failure_bucket_counts": {
-          "wrong_count": 1254
+          "wrong_count": 1249
         }
       },
       {
@@ -1230,10 +1230,10 @@
         "system": "a2_planner",
         "official_failure_bucket": "official_success_or_safe_failure",
         "num_rows": 1322.0,
-        "official_bfcl_eval_success": 0.9878971255673222,
-        "official_bfcl_eval_tool_selection_correctness": 0.9878971255673222,
-        "official_bfcl_eval_argument_correctness": 0.9878971255673222,
-        "official_bfcl_eval_structure_correctness": 0.9878971255673222,
+        "official_bfcl_eval_success": 0.8918305597579426,
+        "official_bfcl_eval_tool_selection_correctness": 0.8918305597579426,
+        "official_bfcl_eval_argument_correctness": 0.8918305597579426,
+        "official_bfcl_eval_structure_correctness": 0.8918305597579426,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.9517019667170953,
         "failure_bucket_counts": {
@@ -1243,15 +1243,15 @@
       {
         "system": "a2_planner",
         "official_failure_bucket": "other_official_failure",
-        "num_rows": 204.0,
+        "num_rows": 209.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.9771241830065359,
+        "official_bfcl_eval_tool_selection_correctness": 0.9712918660287081,
         "official_bfcl_eval_argument_correctness": 0.0,
-        "official_bfcl_eval_structure_correctness": 0.9607843137254902,
-        "toolclaw_diagnostics_binder_selection_match": 0.9771241830065359,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.36854575163398695,
+        "official_bfcl_eval_structure_correctness": 0.9473684210526315,
+        "toolclaw_diagnostics_binder_selection_match": 0.9712918660287081,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.36371610845295055,
         "failure_bucket_counts": {
-          "other_official_failure": 204
+          "other_official_failure": 209
         }
       },
       {
@@ -1271,15 +1271,15 @@
       {
         "system": "a2_planner",
         "official_failure_bucket": "wrong_count",
-        "num_rows": 1250.0,
+        "num_rows": 1245.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.04786,
+        "official_bfcl_eval_tool_selection_correctness": 0.04334002677376171,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 0.0,
-        "toolclaw_diagnostics_binder_selection_match": 0.04786,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.8976809523809524,
+        "toolclaw_diagnostics_binder_selection_match": 0.04334002677376171,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.9081134060049723,
         "failure_bucket_counts": {
-          "wrong_count": 1250
+          "wrong_count": 1245
         }
       },
       {
@@ -1342,10 +1342,10 @@
         "system": "a3_interaction",
         "official_failure_bucket": "official_success_or_safe_failure",
         "num_rows": 1325.0,
-        "official_bfcl_eval_success": 0.9879245283018868,
-        "official_bfcl_eval_tool_selection_correctness": 0.9879245283018868,
-        "official_bfcl_eval_argument_correctness": 0.9879245283018868,
-        "official_bfcl_eval_structure_correctness": 0.9879245283018868,
+        "official_bfcl_eval_success": 0.7758490566037736,
+        "official_bfcl_eval_tool_selection_correctness": 0.7758490566037736,
+        "official_bfcl_eval_argument_correctness": 0.7758490566037736,
+        "official_bfcl_eval_structure_correctness": 0.7758490566037736,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.951811320754717,
         "failure_bucket_counts": {
@@ -1355,15 +1355,15 @@
       {
         "system": "a3_interaction",
         "official_failure_bucket": "other_official_failure",
-        "num_rows": 338.0,
+        "num_rows": 343.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.9610453648915187,
+        "official_bfcl_eval_tool_selection_correctness": 0.9531098153547133,
         "official_bfcl_eval_argument_correctness": 0.0,
-        "official_bfcl_eval_structure_correctness": 0.9289940828402367,
-        "toolclaw_diagnostics_binder_selection_match": 0.9610453648915187,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.2965307128768667,
+        "official_bfcl_eval_structure_correctness": 0.9125364431486881,
+        "toolclaw_diagnostics_binder_selection_match": 0.9531098153547133,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.29081516960525705,
         "failure_bucket_counts": {
-          "other_official_failure": 338
+          "other_official_failure": 343
         }
       },
       {
@@ -1383,15 +1383,15 @@
       {
         "system": "a3_interaction",
         "official_failure_bucket": "wrong_count",
-        "num_rows": 385.0,
+        "num_rows": 380.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.3994155844155844,
+        "official_bfcl_eval_tool_selection_correctness": 0.40401315789473685,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 0.0,
-        "toolclaw_diagnostics_binder_selection_match": 0.3994155844155844,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.1715501958359101,
+        "toolclaw_diagnostics_binder_selection_match": 0.40401315789473685,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.16952798663324978,
         "failure_bucket_counts": {
-          "wrong_count": 385
+          "wrong_count": 380
         }
       },
       {
@@ -1454,10 +1454,10 @@
         "system": "a4_reuse",
         "official_failure_bucket": "official_success_or_safe_failure",
         "num_rows": 1325.0,
-        "official_bfcl_eval_success": 0.9879245283018868,
-        "official_bfcl_eval_tool_selection_correctness": 0.9879245283018868,
-        "official_bfcl_eval_argument_correctness": 0.9879245283018868,
-        "official_bfcl_eval_structure_correctness": 0.9879245283018868,
+        "official_bfcl_eval_success": 0.7758490566037736,
+        "official_bfcl_eval_tool_selection_correctness": 0.7758490566037736,
+        "official_bfcl_eval_argument_correctness": 0.7758490566037736,
+        "official_bfcl_eval_structure_correctness": 0.7758490566037736,
         "toolclaw_diagnostics_binder_selection_match": 1.0,
         "toolclaw_diagnostics_parameter_fill_ratio": 0.951811320754717,
         "failure_bucket_counts": {
@@ -1467,15 +1467,15 @@
       {
         "system": "a4_reuse",
         "official_failure_bucket": "other_official_failure",
-        "num_rows": 338.0,
+        "num_rows": 343.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.9610453648915187,
+        "official_bfcl_eval_tool_selection_correctness": 0.9531098153547133,
         "official_bfcl_eval_argument_correctness": 0.0,
-        "official_bfcl_eval_structure_correctness": 0.9289940828402367,
-        "toolclaw_diagnostics_binder_selection_match": 0.9610453648915187,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.2965307128768667,
+        "official_bfcl_eval_structure_correctness": 0.9125364431486881,
+        "toolclaw_diagnostics_binder_selection_match": 0.9531098153547133,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.29081516960525705,
         "failure_bucket_counts": {
-          "other_official_failure": 338
+          "other_official_failure": 343
         }
       },
       {
@@ -1495,15 +1495,15 @@
       {
         "system": "a4_reuse",
         "official_failure_bucket": "wrong_count",
-        "num_rows": 385.0,
+        "num_rows": 380.0,
         "official_bfcl_eval_success": 0.0,
-        "official_bfcl_eval_tool_selection_correctness": 0.3994155844155844,
+        "official_bfcl_eval_tool_selection_correctness": 0.40401315789473685,
         "official_bfcl_eval_argument_correctness": 0.0,
         "official_bfcl_eval_structure_correctness": 0.0,
-        "toolclaw_diagnostics_binder_selection_match": 0.3994155844155844,
-        "toolclaw_diagnostics_parameter_fill_ratio": 0.1715501958359101,
+        "toolclaw_diagnostics_binder_selection_match": 0.40401315789473685,
+        "toolclaw_diagnostics_parameter_fill_ratio": 0.16952798663324978,
         "failure_bucket_counts": {
-          "wrong_count": 385
+          "wrong_count": 380
         }
       },
       {

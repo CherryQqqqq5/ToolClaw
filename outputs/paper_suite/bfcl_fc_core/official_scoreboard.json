@@ -5,38 +5,38 @@
   "per_system": {
     "a0_baseline": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.3099510603588907,
-      "official_bfcl_eval_tool_selection_correctness": 0.5113978870504156,
-      "official_bfcl_eval_argument_correctness": 0.3099510603588907,
-      "official_bfcl_eval_structure_correctness": 0.49662083430435794
+      "official_bfcl_eval_success": 0.2803542297832673,
+      "official_bfcl_eval_tool_selection_correctness": 0.48109415054765786,
+      "official_bfcl_eval_argument_correctness": 0.2803542297832673,
+      "official_bfcl_eval_structure_correctness": 0.46725704963877884
     },
     "a1_recovery": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.3099510603588907,
-      "official_bfcl_eval_tool_selection_correctness": 0.5129126854657035,
-      "official_bfcl_eval_argument_correctness": 0.3099510603588907,
-      "official_bfcl_eval_structure_correctness": 0.49801910976462366
+      "official_bfcl_eval_success": 0.2803542297832673,
+      "official_bfcl_eval_tool_selection_correctness": 0.4826089489629457,
+      "official_bfcl_eval_argument_correctness": 0.2803542297832673,
+      "official_bfcl_eval_structure_correctness": 0.4686553250990445
     },
     "a2_planner": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.304357958517828,
-      "official_bfcl_eval_tool_selection_correctness": 0.5125048551231259,
-      "official_bfcl_eval_argument_correctness": 0.304357958517828,
-      "official_bfcl_eval_structure_correctness": 0.49778606385457935
+      "official_bfcl_eval_success": 0.27476112794220464,
+      "official_bfcl_eval_tool_selection_correctness": 0.4823953235454051,
+      "official_bfcl_eval_argument_correctness": 0.27476112794220464,
+      "official_bfcl_eval_structure_correctness": 0.4686553250990445
     },
     "a3_interaction": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.30505709624796085,
-      "official_bfcl_eval_tool_selection_correctness": 0.7169909888914783,
-      "official_bfcl_eval_argument_correctness": 0.30505709624796085,
-      "official_bfcl_eval_structure_correctness": 0.6786296900489397
+      "official_bfcl_eval_success": 0.23957119552551853,
+      "official_bfcl_eval_tool_selection_correctness": 0.6519323390041172,
+      "official_bfcl_eval_argument_correctness": 0.23957119552551853,
+      "official_bfcl_eval_structure_correctness": 0.612910743416453
     },
     "a4_reuse": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.30505709624796085,
-      "official_bfcl_eval_tool_selection_correctness": 0.7169909888914783,
-      "official_bfcl_eval_argument_correctness": 0.30505709624796085,
-      "official_bfcl_eval_structure_correctness": 0.6786296900489397
+      "official_bfcl_eval_success": 0.23957119552551853,
+      "official_bfcl_eval_tool_selection_correctness": 0.6519323390041172,
+      "official_bfcl_eval_argument_correctness": 0.23957119552551853,
+      "official_bfcl_eval_structure_correctness": 0.612910743416453
     }
   },
   "unsupported_strata": []
