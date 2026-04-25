@@ -869,6 +869,237 @@ def _bfcl_number_value(token: str) -> Optional[int]:
     return _BFCL_NUMBER_WORDS.get(raw)
 
 
+@dataclass(frozen=True)
+class _BFCLCandidateValue:
+    value: Any
+    value_type: str
+    source: str
+    span_start: int
+    span_end: int
+    local_context: str
+    confidence: float
+    preposition: str = ""
+
+
+_BFCL_ALIAS_GROUPS: Dict[str, Tuple[str, ...]] = {
+    "location": ("city", "location", "loc", "country", "place", "address", "region", "venue"),
+    "origin": ("origin", "source", "departure", "depart", "pickup", "start", "from"),
+    "destination": ("destination", "target", "arrival", "dropoff", "to"),
+    "email": ("email", "recipient", "contact", "mail"),
+    "date_time": ("date", "day", "time", "year", "month", "hour"),
+    "number": ("num", "number", "count", "limit", "days", "quantity", "amount", "size", "total"),
+    "person": ("name", "person", "user", "guest", "author", "customer", "client", "member"),
+    "text": ("query", "search", "text", "message", "keyword", "prompt", "title", "subject", "description"),
+    "list": ("list", "items", "guests", "names", "users", "ids", "values"),
+}
+
+
+def _bfcl_arg_descriptor_text(key: str, prop: Dict[str, Any]) -> str:
+    prop = prop if isinstance(prop, dict) else {}
+    bits = [str(key or "")]
+    for field in ("description", "title"):
+        value = prop.get(field)
+        if value:
+            bits.append(str(value))
+    return _bfcl_normalized_phrase(" ".join(bits))
+
+
+def _bfcl_alias_matches(key: str, prop: Dict[str, Any]) -> List[str]:
+    descriptor = _bfcl_arg_descriptor_text(key, prop)
+    key_descriptor = _bfcl_normalized_phrase(key)
+    direct: List[str] = []
+    contextual: List[str] = []
+    for alias, terms in _BFCL_ALIAS_GROUPS.items():
+        matched = False
+        direct_match = False
+        for term in terms:
+            pattern = rf"(?<![a-z0-9]){re.escape(term)}s?(?![a-z0-9])"
+            if re.search(pattern, descriptor):
+                matched = True
+            if re.search(pattern, key_descriptor):
+                direct_match = True
+        if direct_match:
+            direct.append(alias)
+        elif matched:
+            contextual.append(alias)
+    return direct + [alias for alias in contextual if alias not in direct]
+
+
+def _bfcl_context_window(text: str, start: int, end: int, radius: int = 48) -> str:
+    return text[max(0, start - radius) : min(len(text), end + radius)]
+
+
+def _bfcl_extract_candidate_values(text: str) -> List[_BFCLCandidateValue]:
+    candidates: List[_BFCLCandidateValue] = []
+    for match in _BFCL_EMAIL_RE.finditer(text):
+        candidates.append(_BFCLCandidateValue(match.group(0), "email", "email_pattern", match.start(), match.end(), _bfcl_context_window(text, match.start(), match.end()), 0.94))
+    for match in _BFCL_QUOTED_RE.finditer(text):
+        value = match.group(1).strip()
+        if value:
+            candidates.append(_BFCLCandidateValue(value, "string", "quoted_span", match.start(1), match.end(1), _bfcl_context_window(text, match.start(), match.end()), 0.82))
+    number_pattern = r"\b(?:\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b"
+    for match in re.finditer(number_pattern, text, re.IGNORECASE):
+        number = _bfcl_number_value(match.group(0))
+        if number is not None:
+            candidates.append(_BFCLCandidateValue(number, "number", "numeric_cue", match.start(), match.end(), _bfcl_context_window(text, match.start(), match.end()), 0.72))
+    preposition_pattern = r"\b(from|to|in|at|for|with)\s+(?:['\"]([^'\"]+)['\"]|([A-Z][A-Za-z0-9 .,'/-]*?))(?=\s+(?:and|with|for|to|from|at|on|please)\b|[.?!,;]|$)"
+    for match in re.finditer(preposition_pattern, text):
+        value = (match.group(2) or match.group(3) or "").strip(" .?!,;:'\"")
+        if value:
+            prep = match.group(1).lower()
+            candidates.append(_BFCLCandidateValue(value, "entity", f"preposition_{prep}_entity_cue", match.start(), match.end(), _bfcl_context_window(text, match.start(), match.end()), 0.74, prep))
+    lower = text.lower()
+    for value, source, confidence, pattern in (
+        (True, "boolean_positive_cue", 0.74, r"\b(?:enable|include|use|with|set|yes|true|on)\b"),
+        (False, "boolean_negative_cue", 0.74, r"\b(?:disable|exclude|without|no|false|off)\b"),
+    ):
+        for match in re.finditer(pattern, lower):
+            candidates.append(_BFCLCandidateValue(value, "boolean", source, match.start(), match.end(), _bfcl_context_window(text, match.start(), match.end()), confidence))
+    return candidates
+
+
+def _bfcl_enum_assignment_candidate(prop: Dict[str, Any], text: str) -> Optional[Tuple[Any, str, float, str]]:
+    enum_values = prop.get("enum") if isinstance(prop.get("enum"), list) else []
+    lower = text.lower()
+    for enum_value in enum_values:
+        enum_text = str(enum_value)
+        if not enum_text:
+            continue
+        if re.search(rf"(?<![a-z0-9]){re.escape(enum_text.lower())}(?![a-z0-9])", lower):
+            return enum_value, "enum_exact_mention", 0.94, "enum"
+        if _bfcl_normalized_phrase(enum_text) and _bfcl_normalized_phrase(enum_text) in _bfcl_normalized_phrase(text):
+            return enum_value, "enum_normalized_mention", 0.88, "enum"
+    return None
+
+
+def _bfcl_context_matches_arg(candidate: _BFCLCandidateValue, key: str, prop: Dict[str, Any]) -> bool:
+    context = _bfcl_normalized_phrase(candidate.local_context)
+    phrases = _bfcl_key_phrases(key)
+    aliases = _bfcl_alias_matches(key, prop)
+    alias_terms = [term for alias in aliases for term in _BFCL_ALIAS_GROUPS.get(alias, ())]
+    return any(phrase and phrase in context for phrase in phrases + alias_terms)
+
+
+def _bfcl_score_candidate_for_arg(candidate: _BFCLCandidateValue, key: str, prop: Dict[str, Any], used_spans: Dict[Tuple[int, int], str]) -> Tuple[float, str, str]:
+    arg_type = _bfcl_arg_type(prop) or "string"
+    aliases = _bfcl_alias_matches(key, prop)
+    score = candidate.confidence
+    reasons = [candidate.source]
+    alias_match = aliases[0] if aliases else ""
+    if (candidate.span_start, candidate.span_end) in used_spans:
+        score -= 0.65
+        reasons.append("consumed_span_penalty")
+    if arg_type in {"integer", "number"}:
+        if candidate.value_type != "number":
+            return 0.0, "type_mismatch", alias_match
+        if "number" in aliases or _bfcl_context_matches_arg(candidate, key, prop):
+            score += 0.18
+        return score, "+".join(reasons), alias_match or "number"
+    if arg_type == "boolean":
+        if candidate.value_type != "boolean":
+            return 0.0, "type_mismatch", alias_match
+        if _bfcl_context_matches_arg(candidate, key, prop):
+            score += 0.22
+        return score, "+".join(reasons), alias_match
+    if "email" in aliases:
+        if candidate.value_type != "email":
+            return 0.0, "email_alias_requires_email", "email"
+        return score + 0.2, "+".join(reasons + ["email_alias"]), "email"
+    if candidate.value_type == "email" and "email" not in aliases:
+        score -= 0.35
+        reasons.append("email_for_non_email_penalty")
+    if "origin" in aliases:
+        if candidate.preposition == "from":
+            score += 0.35
+            reasons.append("origin_from_preposition")
+        elif candidate.preposition in {"to", "in", "at"}:
+            score -= 0.25
+            reasons.append("origin_preposition_mismatch")
+    if "destination" in aliases:
+        if candidate.preposition == "to":
+            score += 0.35
+            reasons.append("destination_to_preposition")
+        elif candidate.preposition == "from":
+            score -= 0.35
+            reasons.append("destination_from_penalty")
+    if "location" in aliases:
+        if candidate.preposition in {"in", "at", "for", "to"}:
+            score += 0.22
+            reasons.append("location_preposition")
+        elif candidate.value_type in {"string", "entity"}:
+            score += 0.08
+            reasons.append("location_string")
+    if "person" in aliases and _bfcl_context_matches_arg(candidate, key, prop):
+        score += 0.25
+        reasons.append("person_local_context")
+    if "text" in aliases and _bfcl_context_matches_arg(candidate, key, prop):
+        score += 0.2
+        reasons.append("text_local_context")
+    if _bfcl_context_matches_arg(candidate, key, prop):
+        score += 0.16
+        reasons.append("arg_local_context")
+    if candidate.value_type not in {"string", "entity", "email"}:
+        score -= 0.25
+        reasons.append("string_type_penalty")
+    return score, "+".join(reasons), alias_match
+
+
+def _bfcl_array_assignment_candidate(key: str, prop: Dict[str, Any], text: str) -> Optional[Tuple[List[Any], str, float, str, str]]:
+    items = prop.get("items") if isinstance(prop.get("items"), dict) else {}
+    item_type = _bfcl_arg_type(items)
+    aliases = _bfcl_alias_matches(key, prop)
+    phrases = _bfcl_key_phrases(key)
+    alias_terms = [term for alias in aliases for term in _BFCL_ALIAS_GROUPS.get(alias, ())]
+    cue_terms = [term for term in phrases + alias_terms if term]
+    for cue in cue_terms:
+        match = re.search(rf"\b{re.escape(cue)}\b\s*(?:are|is|:|=|include|includes|as)?\s+(.+?)(?:[.?!;]|$)", text, re.IGNORECASE)
+        if not match:
+            continue
+        segment = match.group(1)
+        if item_type in {"integer", "number"}:
+            values = [_bfcl_number_value(token.group(0)) for token in re.finditer(r"\b(?:\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b", segment, re.IGNORECASE)]
+            values = [value for value in values if value is not None]
+        else:
+            quoted = [value.strip() for value in _BFCL_QUOTED_RE.findall(segment) if value.strip()]
+            values = quoted or [part.strip(" .,'\"") for part in re.split(r"\s+and\s+|,", segment) if part.strip(" .,'\"")]
+        if values:
+            alias = aliases[0] if aliases else cue
+            return values, "array_local_argument_cue", 0.82, alias, f"{match.start(1)}:{match.end(1)}"
+    return None
+
+
+def _bfcl_assign_required_value(key: str, prop: Dict[str, Any], text: str, candidates: List[_BFCLCandidateValue], used_spans: Dict[Tuple[int, int], str]) -> Tuple[Any, str, float, str, str, str]:
+    prop = prop if isinstance(prop, dict) else {}
+    arg_type = _bfcl_arg_type(prop)
+    enum_candidate = _bfcl_enum_assignment_candidate(prop, text)
+    if enum_candidate is not None:
+        value, source, score, alias = enum_candidate
+        return value, source, score, source, alias, ""
+    if arg_type == "array":
+        assigned = _bfcl_array_assignment_candidate(key, prop, text)
+        if assigned is not None:
+            value, source, score, alias, span = assigned
+            return value, source, score, source, alias, span
+        return None, "unresolved", 0.0, "no_array_local_cue", "", ""
+    best: Optional[Tuple[float, _BFCLCandidateValue, str, str]] = None
+    for candidate in candidates:
+        score, reason, alias = _bfcl_score_candidate_for_arg(candidate, key, prop, used_spans)
+        if score <= 0.0:
+            continue
+        if best is None or score > best[0]:
+            best = (score, candidate, reason, alias)
+    if best is None or best[0] < 0.64:
+        return None, "unresolved", 0.0, "no_viable_candidate", "", ""
+    score, candidate, reason, alias = best
+    value = candidate.value
+    if arg_type == "number" and isinstance(value, int):
+        value = float(value)
+    span_key = (candidate.span_start, candidate.span_end)
+    if span_key[0] >= 0 and candidate.value_type != "boolean":
+        used_spans[span_key] = key
+    return value, candidate.source, score, reason, alias, f"{candidate.span_start}:{candidate.span_end}"
+
+
 def _bfcl_string_candidate(text: str, key: str, prop: Dict[str, Any]) -> Tuple[Any, str, float]:
     quoted = [match.strip() for match in _BFCL_QUOTED_RE.findall(text) if match.strip()]
     key_lower = str(key or "").lower()
@@ -976,12 +1207,44 @@ def _bfcl_ground_serial_required_args(
     grounded_inputs = dict(inputs)
     source_by_arg: Dict[str, str] = {}
     confidence_by_arg: Dict[str, float] = {}
+    candidate_values_by_arg: Dict[str, List[Dict[str, Any]]] = {}
+    assignment_score_by_arg: Dict[str, float] = {}
+    assignment_reason_by_arg: Dict[str, str] = {}
+    consumed_candidate_span_by_arg: Dict[str, str] = {}
+    alias_match_by_arg: Dict[str, str] = {}
+    candidates = _bfcl_extract_candidate_values(text)
+    used_spans: Dict[Tuple[int, int], str] = {}
     for key in required:
+        prop = properties.get(key, {})
         if _bfcl_has_bound_value(grounded_inputs.get(key)):
             source_by_arg[key] = "existing_extractor"
             confidence_by_arg[key] = 0.8
+            assignment_score_by_arg[key] = 0.8
+            assignment_reason_by_arg[key] = "existing_extractor"
+            alias_match_by_arg[key] = ""
+            consumed_candidate_span_by_arg[key] = ""
             continue
-        value, source, confidence = _bfcl_ground_value_for_required_arg(key, properties.get(key, {}), text)
+        value, source, confidence, reason, alias_match, span = _bfcl_assign_required_value(
+            key,
+            prop if isinstance(prop, dict) else {},
+            text,
+            candidates,
+            used_spans,
+        )
+        candidate_values_by_arg[key] = [
+            {
+                "value": str(candidate.value),
+                "source": candidate.source,
+                "type": candidate.value_type,
+                "span": f"{candidate.span_start}:{candidate.span_end}",
+            }
+            for candidate in candidates
+            if _bfcl_score_candidate_for_arg(candidate, key, prop if isinstance(prop, dict) else {}, used_spans)[0] > 0.0
+        ][:5]
+        assignment_score_by_arg[key] = round(float(confidence), 4)
+        assignment_reason_by_arg[key] = reason
+        alias_match_by_arg[key] = alias_match
+        consumed_candidate_span_by_arg[key] = span
         if _bfcl_has_bound_value(value):
             grounded_inputs[key] = value
             source_by_arg[key] = source
@@ -993,12 +1256,17 @@ def _bfcl_ground_serial_required_args(
     ungrounded = [key for key in required if key not in grounded]
     diagnostics = {
         "serial_required_grounding_attempted": True,
-        "serial_required_grounding_policy_version": "bfcl_serial_required_grounding_v1",
+        "serial_required_grounding_policy_version": "bfcl_serial_required_grounding_v2",
         "required_args": required,
         "grounded_required_args": grounded,
         "ungrounded_required_args": ungrounded,
         "grounding_source_by_arg": source_by_arg,
         "grounding_confidence_by_arg": confidence_by_arg,
+        "candidate_values_by_arg": candidate_values_by_arg,
+        "assignment_score_by_arg": assignment_score_by_arg,
+        "assignment_reason_by_arg": assignment_reason_by_arg,
+        "consumed_candidate_span_by_arg": consumed_candidate_span_by_arg,
+        "alias_match_by_arg": alias_match_by_arg,
     }
     return grounded_inputs, diagnostics
 
@@ -1262,6 +1530,11 @@ def _configure_bfcl_step_metadata(
             "ungrounded_required_args",
             "grounding_source_by_arg",
             "grounding_confidence_by_arg",
+            "candidate_values_by_arg",
+            "assignment_score_by_arg",
+            "assignment_reason_by_arg",
+            "consumed_candidate_span_by_arg",
+            "alias_match_by_arg",
         ):
             if key in selection_diagnostics:
                 merged_metadata[key] = selection_diagnostics[key]

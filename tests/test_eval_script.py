@@ -2807,11 +2807,109 @@ def test_bfcl_serial_required_grounder_fills_runtime_visible_required_args() -> 
     assert inputs["travel_class"] == "business"
     assert inputs["days"] == 3
     assert inputs["include_breakfast"] is True
-    assert inputs["guests"] == ["Paris", "Alice", "Bob"]
+    assert inputs["guests"] == ["Alice", "Bob"]
     assert diagnostics["serial_required_grounding_attempted"] is True
-    assert diagnostics["serial_required_grounding_policy_version"] == "bfcl_serial_required_grounding_v1"
+    assert diagnostics["serial_required_grounding_policy_version"] == "bfcl_serial_required_grounding_v2"
+    assert diagnostics["alias_match_by_arg"]["guests"] in {"person", "list"}
+    assert diagnostics["consumed_candidate_span_by_arg"]["city"] != diagnostics["consumed_candidate_span_by_arg"]["guests"]
     assert set(diagnostics["grounded_required_args"]) == {"city", "travel_class", "days", "include_breakfast", "guests"}
     assert diagnostics["ungrounded_required_args"] == []
+
+
+def test_bfcl_serial_required_grounder_disambiguates_origin_destination_and_email() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_serial_grounder_aliases", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tool = module.ToolSpec(
+        tool_id="send_route",
+        description="Send route details",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["origin", "destination", "recipient_email"],
+                "properties": {
+                    "origin": {"type": "string", "description": "starting city"},
+                    "destination": {"type": "string", "description": "target city"},
+                    "recipient_email": {"type": "string", "description": "email contact"},
+                },
+            }
+        },
+    )
+    text = "Send the route from Boston to Seattle to ops@example.com."
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(tool, text, {})
+
+    assert inputs["origin"] == "Boston"
+    assert inputs["destination"] == "Seattle"
+    assert inputs["recipient_email"] == "ops@example.com"
+    assert diagnostics["alias_match_by_arg"]["origin"] == "origin"
+    assert diagnostics["alias_match_by_arg"]["destination"] == "destination"
+    assert diagnostics["alias_match_by_arg"]["recipient_email"] == "email"
+
+
+def test_bfcl_serial_required_grounder_prioritizes_enum_over_generic_quotes() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_serial_grounder_enum", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tool = module.ToolSpec(
+        tool_id="ticket",
+        description="Create ticket",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["priority", "title"],
+                "properties": {
+                    "priority": {"type": "string", "enum": ["low", "medium", "high"]},
+                    "title": {"type": "string"},
+                },
+            }
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(tool, 'Create a high priority ticket titled "Printer jam".', {})
+
+    assert inputs["priority"] == "high"
+    assert inputs["title"] == "Printer jam"
+    assert diagnostics["grounding_source_by_arg"]["priority"] == "enum_exact_mention"
+
+
+def test_bfcl_serial_required_grounder_avoids_scalar_span_reuse() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_serial_grounder_reuse", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tool = module.ToolSpec(
+        tool_id="profile",
+        description="Create profile",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["name", "nickname"],
+                "properties": {
+                    "name": {"type": "string", "description": "person name"},
+                    "nickname": {"type": "string", "description": "person nickname"},
+                },
+            }
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(tool, 'Create a profile for name "Alice".', {})
+
+    assert inputs["name"] == "Alice"
+    assert "nickname" not in inputs
+    assert diagnostics["ungrounded_required_args"] == ["nickname"]
+    assert diagnostics["assignment_reason_by_arg"]["nickname"] in {"no_viable_candidate", "consumed_span_penalty"}
 
 
 def test_bfcl_serial_required_grounder_does_not_invent_without_query_cue() -> None:
