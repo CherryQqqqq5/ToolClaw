@@ -8,19 +8,19 @@
     "expected_in_schema_top5": 8125,
     "expected_is_schema_top1": 8125,
     "selected_is_expected": 5120,
-    "selected_expected_success": 592,
+    "selected_expected_success": 322,
     "coverage_raw": 0.37869960382195295,
     "coverage_prepared": 0.37869960382195295,
     "coverage_runtime": 0.23863901188534142,
     "coverage_top5": 0.37869960382195295,
     "ranker_top1": 1.5869140625,
     "selection_accuracy": 1.0,
-    "arg_success_given_correct_tool": 0.115625,
+    "arg_success_given_correct_tool": 0.062890625,
     "drop_stage_counts": {
-      "selected_correct_success": 592,
-      "selected_correct_arg_or_shape_error": 4528,
+      "selected_correct_arg_or_shape_error": 4798,
       "bfcl_abstain_candidate_elision": 3005,
-      "no_expected_function": 13330
+      "no_expected_function": 13330,
+      "selected_correct_success": 322
     },
     "abstain_substage_counts": {
       "bfcl_abstain_total": 4355,
@@ -91,19 +91,19 @@
       "expected_in_schema_top5": 3855,
       "expected_is_schema_top1": 3855,
       "selected_is_expected": 1930,
-      "selected_expected_success": 337,
+      "selected_expected_success": 142,
       "coverage_raw": 0.3487109905020353,
       "coverage_prepared": 0.3487109905020353,
       "coverage_runtime": 0.17458163726820444,
       "coverage_top5": 0.3487109905020353,
       "ranker_top1": 1.9974093264248705,
       "selection_accuracy": 1.0,
-      "arg_success_given_correct_tool": 0.17461139896373057,
+      "arg_success_given_correct_tool": 0.07357512953367876,
       "drop_stage_counts": {
         "bfcl_abstain_candidate_elision": 1925,
-        "selected_correct_success": 337,
-        "selected_correct_arg_or_shape_error": 1593,
-        "no_expected_function": 7200
+        "selected_correct_arg_or_shape_error": 1788,
+        "no_expected_function": 7200,
+        "selected_correct_success": 142
       },
       "abstain_substage_counts": {
         "bfcl_abstain_total": 3265,
@@ -206,19 +206,19 @@
       "expected_in_schema_top5": 3200,
       "expected_is_schema_top1": 3200,
       "selected_is_expected": 2135,
-      "selected_expected_success": 230,
+      "selected_expected_success": 155,
       "coverage_raw": 0.7619047619047619,
       "coverage_prepared": 0.7619047619047619,
       "coverage_runtime": 0.5083333333333333,
       "coverage_top5": 0.7619047619047619,
       "ranker_top1": 1.4988290398126465,
       "selection_accuracy": 1.0,
-      "arg_success_given_correct_tool": 0.10772833723653395,
+      "arg_success_given_correct_tool": 0.07259953161592506,
       "drop_stage_counts": {
-        "selected_correct_success": 230,
-        "selected_correct_arg_or_shape_error": 1905,
+        "selected_correct_arg_or_shape_error": 1980,
         "bfcl_abstain_candidate_elision": 1065,
-        "no_expected_function": 1000
+        "no_expected_function": 1000,
+        "selected_correct_success": 155
       },
       "abstain_substage_counts": {
         "bfcl_abstain_total": 1070,
@@ -249,19 +249,19 @@
       "expected_in_schema_top5": 1625,
       "expected_is_schema_top1": 1625,
       "selected_is_expected": 1024,
-      "selected_expected_success": 155,
+      "selected_expected_success": 65,
       "coverage_raw": 0.37869960382195295,
       "coverage_prepared": 0.37869960382195295,
       "coverage_runtime": 0.23863901188534142,
       "coverage_top5": 0.37869960382195295,
       "ranker_top1": 1.5869140625,
       "selection_accuracy": 1.0,
-      "arg_success_given_correct_tool": 0.1513671875,
+      "arg_success_given_correct_tool": 0.0634765625,
       "drop_stage_counts": {
-        "selected_correct_success": 155,
+        "selected_correct_arg_or_shape_error": 959,
         "bfcl_abstain_candidate_elision": 601,
-        "selected_correct_arg_or_shape_error": 869,
-        "no_expected_function": 2666
+        "no_expected_function": 2666,
+        "selected_correct_success": 65
       },
       "abstain_substage_counts": {
         "bfcl_abstain_total": 871,
@@ -291,19 +291,19 @@
       "expected_in_schema_top5": 1625,
       "expected_is_schema_top1": 1625,
       "selected_is_expected": 1024,
-      "selected_expected_success": 155,
+      "selected_expected_success": 65,
       "coverage_raw": 0.37869960382195295,
       "coverage_prepared": 0.37869960382195295,
       "coverage_runtime": 0.23863901188534142,
       "coverage_top5": 0.37869960382195295,
       "ranker_top1": 1.5869140625,
       "selection_accuracy": 1.0,
-      "arg_success_given_correct_tool": 0.1513671875,
+      "arg_success_given_correct_tool": 0.0634765625,
       "drop_stage_counts": {
-        "selected_correct_success": 155,
+        "selected_correct_arg_or_shape_error": 959,
         "bfcl_abstain_candidate_elision": 601,
-        "selected_correct_arg_or_shape_error": 869,
-        "no_expected_function": 2666
+        "no_expected_function": 2666,
+        "selected_correct_success": 65
       },
       "abstain_substage_counts": {
         "bfcl_abstain_total": 871,
@@ -333,19 +333,19 @@
       "expected_in_schema_top5": 1625,
       "expected_is_schema_top1": 1625,
       "selected_is_expected": 1024,
-      "selected_expected_success": 154,
+      "selected_expected_success": 64,
       "coverage_raw": 0.37869960382195295,
       "coverage_prepared": 0.37869960382195295,
       "coverage_runtime": 0.23863901188534142,
       "coverage_top5": 0.37869960382195295,
       "ranker_top1": 1.5869140625,
       "selection_accuracy": 1.0,
-      "arg_success_given_correct_tool": 0.150390625,
+      "arg_success_given_correct_tool": 0.0625,
       "drop_stage_counts": {
-        "selected_correct_success": 154,
+        "selected_correct_arg_or_shape_error": 960,
         "bfcl_abstain_candidate_elision": 601,
-        "selected_correct_arg_or_shape_error": 870,
-        "no_expected_function": 2666
+        "no_expected_function": 2666,
+        "selected_correct_success": 64
       },
       "abstain_substage_counts": {
         "bfcl_abstain_total": 871,

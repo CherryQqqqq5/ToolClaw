@@ -1,0 +1,375 @@
+{
+  "run_id": "a2_planner_parallel_2",
+  "workflow_id": "wf_parallel_2",
+  "task_id": "parallel_2",
+  "phase": "phase2_workflow_intelligence",
+  "metadata": {
+    "model_name": "phase1_executor",
+    "mode": "toolclaw",
+    "start_time": "2026-04-25T02:37:31.539057+00:00",
+    "end_time": "2026-04-25T02:37:31.539325+00:00",
+    "benchmark": null,
+    "task_source": null,
+    "primary_failtax": "recovery",
+    "failtaxes": [
+      "recovery"
+    ],
+    "budget_profile": {},
+    "task_annotations": {
+      "primary_failtax": "recovery",
+      "failtaxes": [
+        "recovery"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "repair_then_retry",
+      "gold_tool": "calculate_resistance",
+      "state_slots": [
+        "query"
+      ],
+      "dependency_edges": [],
+      "bfcl_planner_selected_tools": [
+        "calculate_resistance"
+      ],
+      "bfcl_final_ranked_tools": [
+        [
+          "calculate_resistance"
+        ]
+      ],
+      "bfcl_rerank_override_applied": false,
+      "bfcl_rerank_override_reason": "planner_aligned_schema_top1",
+      "bfcl_rerank_diagnostics": [
+        {
+          "guard_policy_version": "strict_schema_top1_tie_drop_v1",
+          "planner_tool_id": "calculate_resistance",
+          "prepared_function_count": 1,
+          "runtime_candidate_count": 1,
+          "runtime_candidate_tool_ids": [
+            "calculate_resistance"
+          ],
+          "runtime_candidate_original_function_names": [
+            "calculate_resistance"
+          ],
+          "candidate_pool_preserved": true,
+          "candidate_pool_source": "bfcl_prepared_row_functions",
+          "planner_narrowing_applied": false,
+          "candidate_pool_exception": "",
+          "drop_reason": "",
+          "ranker_candidate_count": 1,
+          "ranker_candidate_tool_ids": [
+            "calculate_resistance"
+          ],
+          "ranker_candidate_original_function_names": [
+            "calculate_resistance"
+          ],
+          "schema_top_5": [
+            {
+              "tool_id": "calculate_resistance",
+              "bfcl_original_function_name": "calculate_resistance",
+              "score": 20.75,
+              "exact_match": true,
+              "required_argument_coverage": 1.0,
+              "schema_name_overlap_count": 3,
+              "overlap": [
+                "area",
+                "cross",
+                "length",
+                "resistance",
+                "resistivity",
+                "sectional",
+                "wire"
+              ]
+            }
+          ],
+          "schema_top_tool_id": "calculate_resistance",
+          "schema_top_score": 20.75,
+          "planner_score": 20.75,
+          "score_margin": 0.0,
+          "planner_in_schema_top2": true,
+          "selected_tool_id": "calculate_resistance",
+          "selected_reason": "planner_aligned_schema_top1",
+          "rerank_override_applied": false,
+          "rerank_override_reason": "planner_aligned_schema_top1",
+          "schema_guard_applied": false,
+          "planner_required_argument_coverage": 1.0,
+          "selected_required_argument_coverage": 1.0,
+          "planner_required_args_present": [
+            "length",
+            "area"
+          ],
+          "selected_required_args_present": [
+            "length",
+            "area"
+          ],
+          "planner_missing_required_args": [],
+          "selected_missing_required_args": []
+        }
+      ],
+      "planner_observability": {
+        "planner_bypass_applied": false,
+        "minimal_path_reason": "not_applied",
+        "selected_capability_order_initial": [
+          "cap_retrieve"
+        ],
+        "selected_capability_instance_order_final": [
+          "cap_retrieve"
+        ],
+        "selected_capability_order_final": [
+          "cap_retrieve"
+        ],
+        "graph_builder_used": true,
+        "candidate_capability_count": 1,
+        "bound_tool_order": [
+          "calculate_resistance"
+        ],
+        "graph_edge_order": [],
+        "unresolved_capabilities": [],
+        "benchmark_hints_used": [
+          "ideal_tool_calls",
+          "primary_failtax",
+          "state_slots"
+        ]
+      },
+      "chosen_tool": "calculate_resistance"
+    },
+    "budget_limits": {
+      "max_tool_calls": null,
+      "max_user_turns": null,
+      "max_repair_attempts": null,
+      "max_recovery_budget": null,
+      "budget_limit": null,
+      "time_limit": null
+    },
+    "budget_usage": {
+      "tool_calls": 1,
+      "user_turns": 0,
+      "repair_attempts": 0,
+      "recovery_budget_used": 0.0,
+      "remaining_budgets": {
+        "tool_calls": null,
+        "user_turns": null,
+        "repair_attempts": null,
+        "recovery_budget": null
+      }
+    },
+    "interaction_modules": [
+      "uncertainty_detector",
+      "query_policy",
+      "answer_patch_compiler"
+    ],
+    "run_manifest": {
+      "tool_runtime_backend": "bfcl_stub"
+    },
+    "reusable_context": {
+      "resolved_asset_ids": [],
+      "profile_loaded": false,
+      "reuse_mode": "none",
+      "reuse_application": "none",
+      "utility_gain_score": 0.0,
+      "selected_match": {}
+    }
+  },
+  "state_snapshots": [
+    {
+      "snapshot_id": "snap_01_start",
+      "timestamp": "2026-04-25T02:37:31.539136+00:00",
+      "active_step_id": "step_01",
+      "completed_steps": [],
+      "pending_steps": [],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "query": "Calculate the resistance of a wire with a length of 5m and cross sectional area 0.01m\u00b2 with resistivity of copper and aluminum",
+        "__tool_calls__": 0,
+        "__user_turns__": 0,
+        "__repair_attempts__": 0,
+        "__recovery_budget_spent__": 0.0,
+        "__remaining_budgets__": {
+          "tool_calls": null,
+          "user_turns": null,
+          "repair_attempts": null,
+          "recovery_budget": null
+        }
+      }
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-25T02:37:31.539096+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 1
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-25T02:37:31.539119+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": true,
+        "missing_assets": [],
+        "missing_required_inputs": [],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_01",
+      "timestamp": "2026-04-25T02:37:31.539193+00:00",
+      "step_id": "step_01",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "calculate_resistance",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "low"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_01",
+      "timestamp": "2026-04-25T02:37:31.539254+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "calculate_resistance",
+      "input_ref": null,
+      "tool_args": {
+        "length": 0,
+        "area": "0.01m",
+        "resistivity": "copper"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_01",
+      "timestamp": "2026-04-25T02:37:31.539271+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "calculate_resistance",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": {
+          "tool_id": "calculate_resistance",
+          "arguments": {
+            "length": 0,
+            "area": "0.01m",
+            "resistivity": "copper"
+          },
+          "schema": {
+            "type": "dict",
+            "properties": {
+              "length": {
+                "type": "integer",
+                "description": "The length of the wire in meters."
+              },
+              "area": {
+                "type": "float",
+                "description": "The cross-sectional area of the wire in square meters."
+              },
+              "resistivity": {
+                "type": "string",
+                "description": "Resistivity of the material (Default: 'copper'). Allowed values: 'copper', 'aluminum'"
+              }
+            },
+            "required": [
+              "length",
+              "area"
+            ]
+          },
+          "backend": "bfcl_stub"
+        }
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_checkpoint_step_01",
+      "timestamp": "2026-04-25T02:37:31.539309+00:00",
+      "step_id": "step_01",
+      "event_type": "checkpoint_created",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "checkpoint_id": "cp_step_01"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_success",
+      "timestamp": "2026-04-25T02:37:31.539318+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "reason": "success_criteria_satisfied"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 1,
+    "tool_calls": 1,
+    "user_queries": 0,
+    "probe_user_queries": 0,
+    "repair_user_queries": 0,
+    "probe_user_replies": 0,
+    "repair_user_replies": 0,
+    "repair_actions": 0,
+    "success": true,
+    "token_cost": null,
+    "latency_ms": null,
+    "clarification_precision": 0.0,
+    "clarification_recall": 0.0,
+    "unnecessary_question_rate": 0.0,
+    "patch_success_rate": 0.0,
+    "post_answer_retry_count": 0,
+    "recovery_budget_used": 0.0,
+    "budget_violation": false,
+    "budget_violation_reason": null,
+    "safe_abort": false,
+    "policy_compliance_success": false,
+    "state_repair_success": false
+  }
+}

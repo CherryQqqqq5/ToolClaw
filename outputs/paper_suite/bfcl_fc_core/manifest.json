@@ -3,10 +3,10 @@
   "claim_summary_path": "outputs/paper_suite/bfcl_fc_core/claim_summary.json",
   "comparison_raw_path": "outputs/paper_suite/bfcl_fc_core/comparison.raw.csv",
   "comparison_scored_path": "outputs/paper_suite/bfcl_fc_core/comparison.scored.csv",
-  "diagnostic_note": "d9d5f8d_rerun_diagnostic_note.md",
-  "generated_at": "2026-04-24T15:29:23.958789+00:00",
+  "diagnostic_note": "36751d0_rerun_diagnostic_note.md",
+  "generated_at": "2026-04-25T02:50:05.151302+00:00",
   "git_branch": "main",
-  "git_commit": "d9d5f8dc4bfb027022ab8c05ebe23df0f03c2402",
+  "git_commit": "36751d0f0febfc455105d8c41f491593166ab2a3",
   "git_dirty_at_run_start": false,
   "paper_role": "limitation_with_candidate_coverage_diagnostic",
   "representative_trace_dir": "representative_traces",
@@ -44,7 +44,5 @@
   "score_script": "scripts/score_bfcl_outputs.py",
   "status": "completed",
   "suite": "bfcl_fc_core",
-  "suite_command": "PYTHONPATH=src python3 scripts/run_paper_bench_suite.py bfcl_fc_core",
-  "suite_started_at": null,
-  "suite_started_at_note": "not recorded by runner; full rerun executed at commit d9d5f8dc4bfb027022ab8c05ebe23df0f03c2402"
+  "suite_command": "PYTHONPATH=src python3 scripts/run_paper_bench_suite.py bfcl_fc_core"
 }
