@@ -1868,6 +1868,174 @@ def _bfcl_selected_correct_repair_triage(by_tool_audit: Dict[str, Any]) -> Dict[
     }
 
 
+
+def _weather_count_bucket(row: Dict[str, Any]) -> str:
+    expected = int(row.get("expected_call_count", 0) or 0)
+    emitted = int(row.get("emitted_call_count", 0) or 0)
+    if expected == 0 and emitted == 0:
+        return "expected_zero_emitted_zero"
+    if expected == 0 and emitted == 1:
+        return "expected_zero_emitted_one"
+    if expected == 0 and emitted > 1:
+        return "expected_zero_emitted_multi"
+    if expected == 1 and emitted == 0:
+        return "expected_one_emitted_zero"
+    if expected == 1 and emitted == 1:
+        return "expected_one_emitted_one"
+    if expected == 1 and emitted > 1:
+        return "expected_one_emitted_multi"
+    if emitted == expected:
+        return "expected_other_count_aligned"
+    if emitted < expected:
+        return "expected_other_emitted_too_few"
+    return "expected_other_emitted_too_many"
+
+
+def _weather_count_sample(row: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "task_id": str(row.get("task_id") or ""),
+        "system": str(row.get("system") or ""),
+        "expected_call_count": int(row.get("expected_call_count", 0) or 0),
+        "emitted_call_count": int(row.get("emitted_call_count", 0) or 0),
+        "materialized_call_count": int(row.get("trace_metric_tool_calls", 0) or 0),
+        "trace_metric_tool_calls": int(row.get("trace_metric_tool_calls", 0) or 0),
+        "selected_correct_failure_bucket": str(row.get("selected_correct_failure_bucket") or ""),
+        "official_failure_bucket": str(row.get("official_failure_bucket") or ""),
+    }
+
+
+def _weather_recommendation(summary: Dict[str, Any]) -> str:
+    count_keys = [
+        "expected_zero_emitted_zero_count",
+        "expected_zero_emitted_one_count",
+        "expected_zero_emitted_multi_count",
+        "expected_one_emitted_zero_count",
+        "expected_one_emitted_one_count",
+        "expected_one_emitted_multi_count",
+    ]
+    dominant = max(count_keys, key=lambda key: int(summary.get(key, 0) or 0))
+    if dominant == "expected_zero_emitted_one_count":
+        return "repair_live_serial_no_call_irrelevance_over_emission"
+    if dominant == "expected_one_emitted_multi_count":
+        return "repair_serial_multi_call_canonicalization"
+    if int(summary.get("wrong_arg_value_after_count_aligned_count", 0) or 0) >= max(
+        int(summary.get("wrong_call_count_count", 0) or 0),
+        int(summary.get("missing_required_count", 0) or 0),
+    ):
+        return "repair_weather_argument_grounding"
+    return "inspect_count_bucket_distribution"
+
+
+def _bfcl_get_current_weather_live_serial_count_audit(audit: Dict[str, Any]) -> Dict[str, Any]:
+    rows = [
+        row
+        for row in audit.get("rows", [])
+        if isinstance(row, dict)
+        and row.get("selected_is_expected")
+        and str(row.get("tool_id") or row.get("selected_tool_id") or row.get("expected_function") or "") == "get_current_weather"
+        and str(row.get("case_type") or "") == "live:serial"
+    ]
+    bucket_counts = Counter(_weather_count_bucket(row) for row in rows)
+    failure_counts = Counter(str(row.get("selected_correct_failure_bucket") or "unknown") for row in rows)
+    trace_distribution = Counter(str(int(row.get("trace_metric_tool_calls", 0) or 0)) for row in rows)
+    emitted_distribution = Counter(str(int(row.get("emitted_call_count", 0) or 0)) for row in rows)
+    expected_distribution = Counter(str(int(row.get("expected_call_count", 0) or 0)) for row in rows)
+    materialized_distribution = Counter(str(int(row.get("trace_metric_tool_calls", 0) or 0)) for row in rows)
+    samples: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        bucket = _weather_count_bucket(row)
+        if len(samples[bucket]) < 5:
+            samples[bucket].append(_weather_count_sample(row))
+    summary = {
+        "selected_is_expected_count": len(rows),
+        "selected_correct_success_count": int(failure_counts.get("selected_correct_success", 0)),
+        "wrong_call_count_count": int(failure_counts.get("wrong_call_count", 0)),
+        "wrong_arg_value_count": int(failure_counts.get("wrong_arg_value", 0)),
+        "missing_required_count": int(failure_counts.get("missing_required", 0)),
+        "expected_zero_emitted_zero_count": int(bucket_counts.get("expected_zero_emitted_zero", 0)),
+        "expected_zero_emitted_one_count": int(bucket_counts.get("expected_zero_emitted_one", 0)),
+        "expected_zero_emitted_multi_count": int(bucket_counts.get("expected_zero_emitted_multi", 0)),
+        "expected_one_emitted_zero_count": int(bucket_counts.get("expected_one_emitted_zero", 0)),
+        "expected_one_emitted_one_count": int(bucket_counts.get("expected_one_emitted_one", 0)),
+        "expected_one_emitted_multi_count": int(bucket_counts.get("expected_one_emitted_multi", 0)),
+        "wrong_arg_value_after_count_aligned_count": sum(
+            1
+            for row in rows
+            if row.get("selected_correct_failure_bucket") == "wrong_arg_value"
+            and int(row.get("expected_call_count", 0) or 0) == int(row.get("emitted_call_count", 0) or 0)
+        ),
+        "trace_metric_tool_calls_distribution": dict(trace_distribution),
+        "emitted_call_count_distribution": dict(emitted_distribution),
+        "expected_call_count_distribution": dict(expected_distribution),
+        "materialized_call_count_distribution": dict(materialized_distribution),
+        "count_bucket_counts": dict(bucket_counts),
+        "selected_correct_failure_bucket_counts": dict(failure_counts),
+    }
+    summary["recommended_next_runtime_target"] = _weather_recommendation(summary)
+    return {
+        "audit_schema_version": "bfcl_get_current_weather_live_serial_count_audit_v1",
+        "gold_fields_added_after_execution": True,
+        "runtime_diagnostics_gold_free": audit.get("runtime_diagnostics_gold_free", True),
+        "tool_id": "get_current_weather",
+        "case_type": "live:serial",
+        "summary": summary,
+        "row_samples_by_count_bucket": dict(samples),
+    }
+
+
+def _write_bfcl_get_current_weather_live_serial_count_markdown(audit: Dict[str, Any], path: Path) -> None:
+    summary = audit.get("summary", {}) if isinstance(audit.get("summary"), dict) else {}
+    lines = [
+        "# BFCL get_current_weather live:serial Count Audit",
+        "",
+        "This report is gold-enriched after execution and targets selected-correct `get_current_weather::live:serial` rows only.",
+        "",
+        f"- audit_schema_version: `{audit.get('audit_schema_version')}`",
+        f"- runtime_diagnostics_gold_free: `{audit.get('runtime_diagnostics_gold_free')}`",
+        f"- recommended_next_runtime_target: `{summary.get('recommended_next_runtime_target')}`",
+        "",
+        "## Summary",
+        "",
+        "| metric | value |",
+        "|---|---:|",
+    ]
+    for key in [
+        "selected_is_expected_count",
+        "selected_correct_success_count",
+        "wrong_call_count_count",
+        "wrong_arg_value_count",
+        "missing_required_count",
+        "expected_zero_emitted_zero_count",
+        "expected_zero_emitted_one_count",
+        "expected_zero_emitted_multi_count",
+        "expected_one_emitted_zero_count",
+        "expected_one_emitted_one_count",
+        "expected_one_emitted_multi_count",
+        "wrong_arg_value_after_count_aligned_count",
+    ]:
+        lines.append(f"| {key} | {summary.get(key, 0)} |")
+    lines.extend(["", "## Count Distributions", "", "| distribution | values |", "|---|---|"])
+    for key in [
+        "expected_call_count_distribution",
+        "emitted_call_count_distribution",
+        "materialized_call_count_distribution",
+        "trace_metric_tool_calls_distribution",
+    ]:
+        lines.append(f"| {key} | `{json.dumps(summary.get(key, {}), sort_keys=True)}` |")
+    lines.extend(["", "## Interpretation", ""])
+    recommendation = str(summary.get("recommended_next_runtime_target") or "")
+    if recommendation == "repair_live_serial_no_call_irrelevance_over_emission":
+        lines.append("Dominant bucket is expected-zero/emitted-one. Next runtime repair should suppress live-serial no-call or irrelevance over-emission for selected weather, not generic multi-call collapse.")
+    elif recommendation == "repair_serial_multi_call_canonicalization":
+        lines.append("Dominant bucket is expected-one/emitted-multi. Next runtime repair should canonicalize serial multi-call output to one scorer-visible call.")
+    elif recommendation == "repair_weather_argument_grounding":
+        lines.append("Call count is mostly aligned and wrong-argument value dominates. Next runtime repair should target weather argument grounding.")
+    else:
+        lines.append("No single repair class dominates. Inspect the count distributions before changing runtime behavior.")
+    lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def _write_bfcl_selected_correct_repair_triage_markdown(triage: Dict[str, Any], path: Path) -> None:
     recommended = triage.get("recommended_target", {}) if isinstance(triage.get("recommended_target"), dict) else {}
     lines = [
@@ -2558,6 +2726,7 @@ def main() -> None:
     }
     selected_correct_failure_by_tool = _bfcl_selected_correct_failure_by_tool(selected_correct_failure_audit)
     selected_correct_repair_triage = _bfcl_selected_correct_repair_triage(selected_correct_failure_by_tool)
+    weather_live_serial_count_audit = _bfcl_get_current_weather_live_serial_count_audit(selected_correct_failure_audit)
 
     (outdir / "official_scoreboard.json").write_text(json.dumps(official_scoreboard, indent=2), encoding="utf-8")
     (outdir / "toolclaw_diagnostics.json").write_text(json.dumps(toolclaw_diagnostics, indent=2), encoding="utf-8")
@@ -2578,6 +2747,8 @@ def main() -> None:
     _write_bfcl_selected_correct_failure_by_tool_markdown(selected_correct_failure_by_tool, outdir / "bfcl_selected_correct_failure_by_tool.md")
     (outdir / "bfcl_selected_correct_repair_triage.json").write_text(json.dumps(selected_correct_repair_triage, indent=2), encoding="utf-8")
     _write_bfcl_selected_correct_repair_triage_markdown(selected_correct_repair_triage, outdir / "bfcl_selected_correct_repair_triage.md")
+    (outdir / "bfcl_get_current_weather_live_serial_count_audit.json").write_text(json.dumps(weather_live_serial_count_audit, indent=2), encoding="utf-8")
+    _write_bfcl_get_current_weather_live_serial_count_markdown(weather_live_serial_count_audit, outdir / "bfcl_get_current_weather_live_serial_count_audit.md")
 
     manifest["comparison_scored_path"] = _display_path(comparison_scored_path)
     manifest["official_scoreboard_path"] = _display_path(outdir / "official_scoreboard.json")
@@ -2591,6 +2762,7 @@ def main() -> None:
     manifest["bfcl_selected_correct_failure_summary_path"] = _display_path(outdir / "bfcl_selected_correct_failure_summary.json")
     manifest["bfcl_selected_correct_failure_by_tool_path"] = _display_path(outdir / "bfcl_selected_correct_failure_by_tool.json")
     manifest["bfcl_selected_correct_repair_triage_path"] = _display_path(outdir / "bfcl_selected_correct_repair_triage.json")
+    manifest["bfcl_get_current_weather_live_serial_count_audit_path"] = _display_path(outdir / "bfcl_get_current_weather_live_serial_count_audit.json")
     (outdir / "experiment_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     print(f"official_scoreboard: {outdir / 'official_scoreboard.json'}")
@@ -2601,6 +2773,7 @@ def main() -> None:
     print(f"bfcl_selected_correct_failure_audit: {outdir / 'bfcl_selected_correct_failure_audit.json'}")
     print(f"bfcl_selected_correct_failure_by_tool: {outdir / 'bfcl_selected_correct_failure_by_tool.json'}")
     print(f"bfcl_selected_correct_repair_triage: {outdir / 'bfcl_selected_correct_repair_triage.json'}")
+    print(f"bfcl_get_current_weather_live_serial_count_audit: {outdir / 'bfcl_get_current_weather_live_serial_count_audit.json'}")
 
 
 if __name__ == "__main__":

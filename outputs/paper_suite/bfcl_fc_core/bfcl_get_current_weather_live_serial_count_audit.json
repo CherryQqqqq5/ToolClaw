@@ -1,0 +1,150 @@
+{
+  "audit_schema_version": "bfcl_get_current_weather_live_serial_count_audit_v1",
+  "gold_fields_added_after_execution": true,
+  "runtime_diagnostics_gold_free": true,
+  "tool_id": "get_current_weather",
+  "case_type": "live:serial",
+  "summary": {
+    "selected_is_expected_count": 320,
+    "selected_correct_success_count": 0,
+    "wrong_call_count_count": 230,
+    "wrong_arg_value_count": 75,
+    "missing_required_count": 15,
+    "expected_zero_emitted_zero_count": 0,
+    "expected_zero_emitted_one_count": 230,
+    "expected_zero_emitted_multi_count": 0,
+    "expected_one_emitted_zero_count": 0,
+    "expected_one_emitted_one_count": 90,
+    "expected_one_emitted_multi_count": 0,
+    "wrong_arg_value_after_count_aligned_count": 75,
+    "trace_metric_tool_calls_distribution": {
+      "1": 320
+    },
+    "emitted_call_count_distribution": {
+      "1": 320
+    },
+    "expected_call_count_distribution": {
+      "0": 230,
+      "1": 90
+    },
+    "materialized_call_count_distribution": {
+      "1": 320
+    },
+    "count_bucket_counts": {
+      "expected_zero_emitted_one": 230,
+      "expected_one_emitted_one": 90
+    },
+    "selected_correct_failure_bucket_counts": {
+      "wrong_call_count": 230,
+      "wrong_arg_value": 75,
+      "missing_required": 15
+    },
+    "recommended_next_runtime_target": "repair_live_serial_no_call_irrelevance_over_emission"
+  },
+  "row_samples_by_count_bucket": {
+    "expected_zero_emitted_one": [
+      {
+        "task_id": "live_irrelevance_12-2-0",
+        "system": "a0_baseline",
+        "expected_call_count": 0,
+        "emitted_call_count": 1,
+        "materialized_call_count": 1,
+        "trace_metric_tool_calls": 1,
+        "selected_correct_failure_bucket": "wrong_call_count",
+        "official_failure_bucket": "official_success_or_safe_failure"
+      },
+      {
+        "task_id": "live_irrelevance_12-2-0",
+        "system": "a1_recovery",
+        "expected_call_count": 0,
+        "emitted_call_count": 1,
+        "materialized_call_count": 1,
+        "trace_metric_tool_calls": 1,
+        "selected_correct_failure_bucket": "wrong_call_count",
+        "official_failure_bucket": "official_success_or_safe_failure"
+      },
+      {
+        "task_id": "live_irrelevance_12-2-0",
+        "system": "a2_planner",
+        "expected_call_count": 0,
+        "emitted_call_count": 1,
+        "materialized_call_count": 1,
+        "trace_metric_tool_calls": 1,
+        "selected_correct_failure_bucket": "wrong_call_count",
+        "official_failure_bucket": "official_success_or_safe_failure"
+      },
+      {
+        "task_id": "live_irrelevance_12-2-0",
+        "system": "a3_interaction",
+        "expected_call_count": 0,
+        "emitted_call_count": 1,
+        "materialized_call_count": 1,
+        "trace_metric_tool_calls": 1,
+        "selected_correct_failure_bucket": "wrong_call_count",
+        "official_failure_bucket": "official_success_or_safe_failure"
+      },
+      {
+        "task_id": "live_irrelevance_12-2-0",
+        "system": "a4_reuse",
+        "expected_call_count": 0,
+        "emitted_call_count": 1,
+        "materialized_call_count": 1,
+        "trace_metric_tool_calls": 1,
+        "selected_correct_failure_bucket": "wrong_call_count",
+        "official_failure_bucket": "official_success_or_safe_failure"
+      }
+    ],
+    "expected_one_emitted_one": [
+      {
+        "task_id": "live_simple_4-3-0",
+        "system": "a0_baseline",
+        "expected_call_count": 1,
+        "emitted_call_count": 1,
+        "materialized_call_count": 1,
+        "trace_metric_tool_calls": 1,
+        "selected_correct_failure_bucket": "wrong_arg_value",
+        "official_failure_bucket": "value_error"
+      },
+      {
+        "task_id": "live_simple_4-3-0",
+        "system": "a1_recovery",
+        "expected_call_count": 1,
+        "emitted_call_count": 1,
+        "materialized_call_count": 1,
+        "trace_metric_tool_calls": 1,
+        "selected_correct_failure_bucket": "wrong_arg_value",
+        "official_failure_bucket": "value_error"
+      },
+      {
+        "task_id": "live_simple_4-3-0",
+        "system": "a2_planner",
+        "expected_call_count": 1,
+        "emitted_call_count": 1,
+        "materialized_call_count": 1,
+        "trace_metric_tool_calls": 1,
+        "selected_correct_failure_bucket": "wrong_arg_value",
+        "official_failure_bucket": "value_error"
+      },
+      {
+        "task_id": "live_simple_4-3-0",
+        "system": "a3_interaction",
+        "expected_call_count": 1,
+        "emitted_call_count": 1,
+        "materialized_call_count": 1,
+        "trace_metric_tool_calls": 1,
+        "selected_correct_failure_bucket": "wrong_arg_value",
+        "official_failure_bucket": "value_error"
+      },
+      {
+        "task_id": "live_simple_4-3-0",
+        "system": "a4_reuse",
+        "expected_call_count": 1,
+        "emitted_call_count": 1,
+        "materialized_call_count": 1,
+        "trace_metric_tool_calls": 1,
+        "selected_correct_failure_bucket": "wrong_arg_value",
+        "official_failure_bucket": "value_error"
+      }
+    ]
+  }
+}

@@ -2740,6 +2740,110 @@ def test_bfcl_selected_correct_repair_triage_ranks_failures_and_tracks(tmp_path:
     assert "## Deferred Tracks" in text
 
 
+
+def test_bfcl_get_current_weather_live_serial_count_audit_and_markdown(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_weather_count_audit_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    rows = [
+        {
+            "selected_is_expected": True,
+            "tool_id": "get_current_weather",
+            "case_type": "live:serial",
+            "task_id": "weather_no_call_overemit",
+            "system": "a2_planner",
+            "expected_call_count": 0,
+            "emitted_call_count": 1,
+            "trace_metric_tool_calls": 1,
+            "selected_correct_failure_bucket": "wrong_call_count",
+            "official_failure_bucket": "wrong_count",
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "get_current_weather",
+            "case_type": "live:serial",
+            "task_id": "weather_multi_emit",
+            "system": "a2_planner",
+            "expected_call_count": 1,
+            "emitted_call_count": 3,
+            "trace_metric_tool_calls": 3,
+            "selected_correct_failure_bucket": "wrong_call_count",
+            "official_failure_bucket": "wrong_count",
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "get_current_weather",
+            "case_type": "live:serial",
+            "task_id": "weather_wrong_value",
+            "system": "a2_planner",
+            "expected_call_count": 1,
+            "emitted_call_count": 1,
+            "trace_metric_tool_calls": 1,
+            "selected_correct_failure_bucket": "wrong_arg_value",
+            "official_failure_bucket": "value_error",
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "get_current_weather",
+            "case_type": "live:serial",
+            "task_id": "weather_missing_required",
+            "system": "a2_planner",
+            "expected_call_count": 1,
+            "emitted_call_count": 0,
+            "trace_metric_tool_calls": 0,
+            "selected_correct_failure_bucket": "missing_required",
+            "official_failure_bucket": "missing_required",
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "other_weather",
+            "case_type": "live:serial",
+            "expected_call_count": 0,
+            "emitted_call_count": 1,
+            "trace_metric_tool_calls": 1,
+            "selected_correct_failure_bucket": "wrong_call_count",
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "get_current_weather",
+            "case_type": "live:parallel",
+            "expected_call_count": 0,
+            "emitted_call_count": 1,
+            "trace_metric_tool_calls": 1,
+            "selected_correct_failure_bucket": "wrong_call_count",
+        },
+    ]
+    audit = {"runtime_diagnostics_gold_free": True, "rows": rows}
+
+    weather_audit = module._bfcl_get_current_weather_live_serial_count_audit(audit)
+    summary = weather_audit["summary"]
+
+    assert summary["selected_is_expected_count"] == 4
+    assert summary["wrong_call_count_count"] == 2
+    assert summary["wrong_arg_value_count"] == 1
+    assert summary["missing_required_count"] == 1
+    assert summary["expected_zero_emitted_one_count"] == 1
+    assert summary["expected_one_emitted_multi_count"] == 1
+    assert summary["expected_one_emitted_zero_count"] == 1
+    assert summary["expected_one_emitted_one_count"] == 1
+    assert summary["wrong_arg_value_after_count_aligned_count"] == 1
+    assert summary["recommended_next_runtime_target"] == "repair_live_serial_no_call_irrelevance_over_emission"
+    assert weather_audit["row_samples_by_count_bucket"]["expected_zero_emitted_one"][0]["task_id"] == "weather_no_call_overemit"
+
+    output = tmp_path / "weather_count.md"
+    module._write_bfcl_get_current_weather_live_serial_count_markdown(weather_audit, output)
+    text = output.read_text(encoding="utf-8")
+    assert "# BFCL get_current_weather live:serial Count Audit" in text
+    assert "expected_zero_emitted_one_count" in text
+    assert "repair_live_serial_no_call_irrelevance_over_emission" in text
+    assert "not generic multi-call collapse" in text
+
+
 def test_bfcl_guard_gates_separate_wrong_function_bucket_from_claim_readiness() -> None:
     spec = importlib.util.spec_from_file_location(
         "score_bfcl_outputs_guard_gate_names_module",

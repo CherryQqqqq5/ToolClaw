@@ -39,5 +39,6 @@
     "bfcl_missing_required_guarded_reduction"
   ],
   "bfcl_selected_correct_failure_by_tool_path": "outputs/paper_suite/bfcl_fc_core/bfcl_selected_correct_failure_by_tool.json",
-  "bfcl_selected_correct_repair_triage_path": "outputs/paper_suite/bfcl_fc_core/bfcl_selected_correct_repair_triage.json"
+  "bfcl_selected_correct_repair_triage_path": "outputs/paper_suite/bfcl_fc_core/bfcl_selected_correct_repair_triage.json",
+  "bfcl_get_current_weather_live_serial_count_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_get_current_weather_live_serial_count_audit.json"
 }
