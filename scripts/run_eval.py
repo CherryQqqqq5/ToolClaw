@@ -883,8 +883,8 @@ class _BFCLCandidateValue:
 
 _BFCL_ALIAS_GROUPS: Dict[str, Tuple[str, ...]] = {
     "location": ("city", "location", "loc", "country", "place", "address", "region", "venue"),
-    "origin": ("origin", "source", "departure", "depart", "pickup", "start", "from"),
-    "destination": ("destination", "target", "arrival", "dropoff", "to"),
+    "origin": ("origin", "source", "departure", "depart", "pickup", "start"),
+    "destination": ("destination", "target", "arrival", "dropoff"),
     "email": ("email", "recipient", "contact", "mail"),
     "date_time": ("date", "day", "time", "year", "month", "hour"),
     "number": ("num", "number", "count", "limit", "days", "quantity", "amount", "size", "total"),
@@ -892,6 +892,25 @@ _BFCL_ALIAS_GROUPS: Dict[str, Tuple[str, ...]] = {
     "text": ("query", "search", "text", "message", "keyword", "prompt", "title", "subject", "description"),
     "list": ("list", "items", "guests", "names", "users", "ids", "values"),
 }
+
+_BFCL_AMBIGUOUS_ALIAS_GROUPS = {"origin", "destination", "person", "text"}
+
+
+def _bfcl_term_in_text(term: str, text: str) -> bool:
+    if not term or not text:
+        return False
+    return bool(re.search(rf"(?<![a-z0-9]){re.escape(term)}s?(?![a-z0-9])", text))
+
+
+def _bfcl_alias_direct_match(alias: str, key: str) -> bool:
+    key_descriptor = _bfcl_normalized_phrase(key)
+    return any(_bfcl_term_in_text(term, key_descriptor) for term in _BFCL_ALIAS_GROUPS.get(alias, ()))
+
+
+def _bfcl_alias_descriptor_match(alias: str, prop: Dict[str, Any]) -> bool:
+    prop = prop if isinstance(prop, dict) else {}
+    descriptor = _bfcl_normalized_phrase(" ".join(str(prop.get(field) or "") for field in ("description", "title")))
+    return any(_bfcl_term_in_text(term, descriptor) for term in _BFCL_ALIAS_GROUPS.get(alias, ()))
 
 
 def _bfcl_arg_descriptor_text(key: str, prop: Dict[str, Any]) -> str:
@@ -980,68 +999,99 @@ def _bfcl_context_matches_arg(candidate: _BFCLCandidateValue, key: str, prop: Di
     return any(phrase and phrase in context for phrase in phrases + alias_terms)
 
 
-def _bfcl_score_candidate_for_arg(candidate: _BFCLCandidateValue, key: str, prop: Dict[str, Any], used_spans: Dict[Tuple[int, int], str]) -> Tuple[float, str, str]:
+def _bfcl_score_candidate_for_arg(candidate: _BFCLCandidateValue, key: str, prop: Dict[str, Any], used_spans: Dict[Tuple[int, int], str]) -> Tuple[float, str, str, str]:
     arg_type = _bfcl_arg_type(prop) or "string"
     aliases = _bfcl_alias_matches(key, prop)
     score = candidate.confidence
     reasons = [candidate.source]
     alias_match = aliases[0] if aliases else ""
+    local_match = _bfcl_context_matches_arg(candidate, key, prop)
+    direct_alias = bool(alias_match and _bfcl_alias_direct_match(alias_match, key))
+    descriptor_alias = bool(alias_match and _bfcl_alias_descriptor_match(alias_match, prop))
+    descriptor_match = "local_context" if local_match else ("schema_descriptor" if descriptor_alias else "")
     if (candidate.span_start, candidate.span_end) in used_spans:
         score -= 0.65
         reasons.append("consumed_span_penalty")
     if arg_type in {"integer", "number"}:
         if candidate.value_type != "number":
-            return 0.0, "type_mismatch", alias_match
-        if "number" in aliases or _bfcl_context_matches_arg(candidate, key, prop):
+            return 0.0, "type_mismatch", alias_match, descriptor_match
+        if "number" in aliases or local_match:
             score += 0.18
-        return score, "+".join(reasons), alias_match or "number"
+            descriptor_match = descriptor_match or "numeric_alias"
+        return score, "+".join(reasons), alias_match or "number", descriptor_match
     if arg_type == "boolean":
         if candidate.value_type != "boolean":
-            return 0.0, "type_mismatch", alias_match
-        if _bfcl_context_matches_arg(candidate, key, prop):
+            return 0.0, "type_mismatch", alias_match, descriptor_match
+        if local_match:
             score += 0.22
-        return score, "+".join(reasons), alias_match
+        elif not direct_alias and not descriptor_alias:
+            score -= 0.18
+            reasons.append("weak_boolean_context")
+        return score, "+".join(reasons), alias_match, descriptor_match
     if "email" in aliases:
         if candidate.value_type != "email":
-            return 0.0, "email_alias_requires_email", "email"
-        return score + 0.2, "+".join(reasons + ["email_alias"]), "email"
+            return 0.0, "email_alias_requires_email", "email", descriptor_match or "email_alias"
+        return score + 0.2, "+".join(reasons + ["email_alias"]), "email", descriptor_match or "email_alias"
     if candidate.value_type == "email" and "email" not in aliases:
         score -= 0.35
         reasons.append("email_for_non_email_penalty")
-    if "origin" in aliases:
+    if alias_match == "origin":
         if candidate.preposition == "from":
             score += 0.35
             reasons.append("origin_from_preposition")
+            descriptor_match = "preposition_from"
         elif candidate.preposition in {"to", "in", "at"}:
-            score -= 0.25
+            score -= 0.35
             reasons.append("origin_preposition_mismatch")
-    if "destination" in aliases:
+        elif candidate.source == "quoted_span" and not local_match:
+            score -= 0.45
+            reasons.append("ambiguous_origin_without_context")
+    if alias_match == "destination":
         if candidate.preposition == "to":
             score += 0.35
             reasons.append("destination_to_preposition")
+            descriptor_match = "preposition_to"
         elif candidate.preposition == "from":
-            score -= 0.35
+            score -= 0.4
             reasons.append("destination_from_penalty")
+        elif candidate.source == "quoted_span" and not local_match:
+            score -= 0.45
+            reasons.append("ambiguous_destination_without_context")
     if "location" in aliases:
         if candidate.preposition in {"in", "at", "for", "to"}:
             score += 0.22
             reasons.append("location_preposition")
+            descriptor_match = descriptor_match or f"preposition_{candidate.preposition}"
         elif candidate.value_type in {"string", "entity"}:
             score += 0.08
             reasons.append("location_string")
-    if "person" in aliases and _bfcl_context_matches_arg(candidate, key, prop):
-        score += 0.25
-        reasons.append("person_local_context")
-    if "text" in aliases and _bfcl_context_matches_arg(candidate, key, prop):
-        score += 0.2
-        reasons.append("text_local_context")
-    if _bfcl_context_matches_arg(candidate, key, prop):
+    if "person" in aliases:
+        if local_match:
+            score += 0.25
+            reasons.append("person_local_context")
+        elif candidate.source == "quoted_span":
+            score -= 0.35
+            reasons.append("ambiguous_person_without_context")
+    if "text" in aliases:
+        if local_match:
+            score += 0.2
+            reasons.append("text_local_context")
+        elif candidate.source == "quoted_span" and not descriptor_alias:
+            score -= 0.25
+            reasons.append("weak_text_without_context")
+    if local_match:
         score += 0.16
         reasons.append("arg_local_context")
+    if alias_match in _BFCL_AMBIGUOUS_ALIAS_GROUPS and not (local_match or descriptor_alias or candidate.preposition):
+        score -= 0.2
+        reasons.append("ambiguous_alias_low_evidence")
+    if not aliases and candidate.source == "quoted_span" and not local_match:
+        score -= 0.18
+        reasons.append("weak_quoted_context")
     if candidate.value_type not in {"string", "entity", "email"}:
         score -= 0.25
         reasons.append("string_type_penalty")
-    return score, "+".join(reasons), alias_match
+    return score, "+".join(reasons), alias_match, descriptor_match
 
 
 def _bfcl_array_assignment_candidate(key: str, prop: Dict[str, Any], text: str) -> Optional[Tuple[List[Any], str, float, str, str]]:
@@ -1068,36 +1118,40 @@ def _bfcl_array_assignment_candidate(key: str, prop: Dict[str, Any], text: str) 
     return None
 
 
-def _bfcl_assign_required_value(key: str, prop: Dict[str, Any], text: str, candidates: List[_BFCLCandidateValue], used_spans: Dict[Tuple[int, int], str]) -> Tuple[Any, str, float, str, str, str]:
+def _bfcl_assign_required_value(key: str, prop: Dict[str, Any], text: str, candidates: List[_BFCLCandidateValue], used_spans: Dict[Tuple[int, int], str]) -> Tuple[Any, str, float, str, str, str, str, str]:
     prop = prop if isinstance(prop, dict) else {}
     arg_type = _bfcl_arg_type(prop)
     enum_candidate = _bfcl_enum_assignment_candidate(prop, text)
     if enum_candidate is not None:
         value, source, score, alias = enum_candidate
-        return value, source, score, source, alias, ""
+        return value, source, score, source, alias, "", "enum", "accepted"
     if arg_type == "array":
         assigned = _bfcl_array_assignment_candidate(key, prop, text)
         if assigned is not None:
             value, source, score, alias, span = assigned
-            return value, source, score, source, alias, span
-        return None, "unresolved", 0.0, "no_array_local_cue", "", ""
-    best: Optional[Tuple[float, _BFCLCandidateValue, str, str]] = None
+            return value, source, score, source, alias, span, "local_array_cue", "accepted"
+        return None, "unresolved", 0.0, "no_array_local_cue", "", "", "", "no_viable_candidate"
+    best: Optional[Tuple[float, _BFCLCandidateValue, str, str, str]] = None
     for candidate in candidates:
-        score, reason, alias = _bfcl_score_candidate_for_arg(candidate, key, prop, used_spans)
+        score, reason, alias, descriptor_match = _bfcl_score_candidate_for_arg(candidate, key, prop, used_spans)
         if score <= 0.0:
             continue
         if best is None or score > best[0]:
-            best = (score, candidate, reason, alias)
-    if best is None or best[0] < 0.64:
-        return None, "unresolved", 0.0, "no_viable_candidate", "", ""
-    score, candidate, reason, alias = best
+            best = (score, candidate, reason, alias, descriptor_match)
+    if best is None:
+        return None, "unresolved", 0.0, "no_viable_candidate", "", "", "", "no_viable_candidate"
+    if best[0] < 0.64:
+        reason = best[2]
+        validation = "ambiguous_alias_blocked" if "ambiguous_" in reason or "weak_" in reason else "low_confidence_assignment_blocked"
+        return None, "unresolved", round(float(best[0]), 4), validation, best[3], "", best[4], validation
+    score, candidate, reason, alias, descriptor_match = best
     value = candidate.value
     if arg_type == "number" and isinstance(value, int):
         value = float(value)
     span_key = (candidate.span_start, candidate.span_end)
     if span_key[0] >= 0 and candidate.value_type != "boolean":
         used_spans[span_key] = key
-    return value, candidate.source, score, reason, alias, f"{candidate.span_start}:{candidate.span_end}"
+    return value, candidate.source, score, reason, alias, f"{candidate.span_start}:{candidate.span_end}", descriptor_match, "accepted"
 
 
 def _bfcl_string_candidate(text: str, key: str, prop: Dict[str, Any]) -> Tuple[Any, str, float]:
@@ -1212,6 +1266,10 @@ def _bfcl_ground_serial_required_args(
     assignment_reason_by_arg: Dict[str, str] = {}
     consumed_candidate_span_by_arg: Dict[str, str] = {}
     alias_match_by_arg: Dict[str, str] = {}
+    value_validation_by_arg: Dict[str, str] = {}
+    descriptor_match_by_arg: Dict[str, str] = {}
+    low_confidence_assignment_blocked_by_arg: Dict[str, bool] = {}
+    ambiguous_alias_blocked_by_arg: Dict[str, bool] = {}
     candidates = _bfcl_extract_candidate_values(text)
     used_spans: Dict[Tuple[int, int], str] = {}
     for key in required:
@@ -1223,8 +1281,12 @@ def _bfcl_ground_serial_required_args(
             assignment_reason_by_arg[key] = "existing_extractor"
             alias_match_by_arg[key] = ""
             consumed_candidate_span_by_arg[key] = ""
+            value_validation_by_arg[key] = "existing_extractor"
+            descriptor_match_by_arg[key] = "existing_extractor"
+            low_confidence_assignment_blocked_by_arg[key] = False
+            ambiguous_alias_blocked_by_arg[key] = False
             continue
-        value, source, confidence, reason, alias_match, span = _bfcl_assign_required_value(
+        value, source, confidence, reason, alias_match, span, descriptor_match, validation = _bfcl_assign_required_value(
             key,
             prop if isinstance(prop, dict) else {},
             text,
@@ -1245,6 +1307,10 @@ def _bfcl_ground_serial_required_args(
         assignment_reason_by_arg[key] = reason
         alias_match_by_arg[key] = alias_match
         consumed_candidate_span_by_arg[key] = span
+        value_validation_by_arg[key] = validation
+        descriptor_match_by_arg[key] = descriptor_match
+        low_confidence_assignment_blocked_by_arg[key] = validation == "low_confidence_assignment_blocked"
+        ambiguous_alias_blocked_by_arg[key] = validation == "ambiguous_alias_blocked"
         if _bfcl_has_bound_value(value):
             grounded_inputs[key] = value
             source_by_arg[key] = source
@@ -1267,6 +1333,10 @@ def _bfcl_ground_serial_required_args(
         "assignment_reason_by_arg": assignment_reason_by_arg,
         "consumed_candidate_span_by_arg": consumed_candidate_span_by_arg,
         "alias_match_by_arg": alias_match_by_arg,
+        "value_validation_by_arg": value_validation_by_arg,
+        "descriptor_match_by_arg": descriptor_match_by_arg,
+        "low_confidence_assignment_blocked_by_arg": low_confidence_assignment_blocked_by_arg,
+        "ambiguous_alias_blocked_by_arg": ambiguous_alias_blocked_by_arg,
     }
     return grounded_inputs, diagnostics
 
@@ -1535,6 +1605,10 @@ def _configure_bfcl_step_metadata(
             "assignment_reason_by_arg",
             "consumed_candidate_span_by_arg",
             "alias_match_by_arg",
+            "value_validation_by_arg",
+            "descriptor_match_by_arg",
+            "low_confidence_assignment_blocked_by_arg",
+            "ambiguous_alias_blocked_by_arg",
         ):
             if key in selection_diagnostics:
                 merged_metadata[key] = selection_diagnostics[key]

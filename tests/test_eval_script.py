@@ -2909,7 +2909,11 @@ def test_bfcl_serial_required_grounder_avoids_scalar_span_reuse() -> None:
     assert inputs["name"] == "Alice"
     assert "nickname" not in inputs
     assert diagnostics["ungrounded_required_args"] == ["nickname"]
-    assert diagnostics["assignment_reason_by_arg"]["nickname"] in {"no_viable_candidate", "consumed_span_penalty"}
+    assert diagnostics["assignment_reason_by_arg"]["nickname"] in {
+        "no_viable_candidate",
+        "consumed_span_penalty",
+        "low_confidence_assignment_blocked",
+    }
 
 
 def test_bfcl_serial_required_grounder_does_not_invent_without_query_cue() -> None:

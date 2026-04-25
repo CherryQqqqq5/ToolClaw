@@ -2411,3 +2411,174 @@ def test_bfcl_selected_correct_audit_splits_missing_required_subcauses(tmp_path:
     assert summary["missing_required_due_to_value_filtered"] == 1
     assert all(row["selected_correct_failure_bucket"] == "missing_required" for row in audit["rows"])
     assert audit["runtime_diagnostics_gold_free"] is True
+
+
+def _load_run_eval_grounding_module():
+    module_name = "run_eval_bfcl_serial_grounding_module"
+    spec = importlib.util.spec_from_file_location(
+        module_name,
+        ROOT_DIR / "scripts" / "run_eval.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _bfcl_grounding_tool(module, required: list[str], properties: dict) -> object:
+    return module.ToolSpec(
+        tool_id="test_tool",
+        description="Test BFCL tool",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": required,
+                "properties": properties,
+            }
+        },
+    )
+
+
+def test_bfcl_serial_assignment_disambiguates_city_and_user_name() -> None:
+    module = _load_run_eval_grounding_module()
+    tool = _bfcl_grounding_tool(
+        module,
+        ["city", "user_name"],
+        {
+            "city": {"type": "string", "description": "Destination city"},
+            "user_name": {"type": "string", "description": "Name of the user"},
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        tool,
+        'Book "Paris". The user name is "Alice".',
+        {},
+    )
+
+    assert inputs["city"] == "Paris"
+    assert inputs["user_name"] == "Alice"
+    assert diagnostics["consumed_candidate_span_by_arg"]["city"] != diagnostics["consumed_candidate_span_by_arg"]["user_name"]
+    assert diagnostics["value_validation_by_arg"]["city"] == "accepted"
+    assert diagnostics["value_validation_by_arg"]["user_name"] == "accepted"
+
+
+def test_bfcl_serial_assignment_uses_prepositions_for_source_and_target() -> None:
+    module = _load_run_eval_grounding_module()
+    tool = _bfcl_grounding_tool(
+        module,
+        ["source", "target"],
+        {
+            "source": {"type": "string", "description": "Source folder"},
+            "target": {"type": "string", "description": "Target folder"},
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        tool,
+        'Move the file from "downloads" to "backup".',
+        {},
+    )
+
+    assert inputs["source"] == "downloads"
+    assert inputs["target"] == "backup"
+    assert diagnostics["descriptor_match_by_arg"]["source"] == "preposition_from"
+    assert diagnostics["descriptor_match_by_arg"]["target"] == "preposition_to"
+
+
+def test_bfcl_serial_assignment_blocks_ambiguous_target_quoted_span() -> None:
+    module = _load_run_eval_grounding_module()
+    tool = _bfcl_grounding_tool(
+        module,
+        ["target"],
+        {"target": {"type": "string", "description": "Target entity"}},
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        tool,
+        'Process "Paris" for user "Alice".',
+        {},
+    )
+
+    assert "target" not in inputs
+    assert diagnostics["ungrounded_required_args"] == ["target"]
+    assert diagnostics["ambiguous_alias_blocked_by_arg"]["target"] is True
+    assert diagnostics["value_validation_by_arg"]["target"] == "ambiguous_alias_blocked"
+
+
+def test_bfcl_serial_assignment_does_not_treat_no_later_than_as_boolean_false() -> None:
+    module = _load_run_eval_grounding_module()
+    tool = _bfcl_grounding_tool(
+        module,
+        ["include_archived"],
+        {"include_archived": {"type": "boolean", "description": "Whether to include archived records"}},
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        tool,
+        "Find events no later than five days from now.",
+        {},
+    )
+
+    assert "include_archived" not in inputs
+    assert diagnostics["ungrounded_required_args"] == ["include_archived"]
+    assert diagnostics["low_confidence_assignment_blocked_by_arg"]["include_archived"] is False
+
+
+def test_bfcl_serial_assignment_uses_schema_descriptor_for_destination() -> None:
+    module = _load_run_eval_grounding_module()
+    tool = _bfcl_grounding_tool(
+        module,
+        ["code"],
+        {"code": {"type": "string", "description": "Destination city for the booking"}},
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        tool,
+        "Send the package to Paris.",
+        {},
+    )
+
+    assert inputs["code"] == "Paris"
+    assert diagnostics["alias_match_by_arg"]["code"] in {"location", "destination"}
+    assert diagnostics["descriptor_match_by_arg"]["code"] in {"schema_descriptor", "preposition_to"}
+
+
+def test_bfcl_serial_assignment_array_uses_local_list_cue_only() -> None:
+    module = _load_run_eval_grounding_module()
+    tool = _bfcl_grounding_tool(
+        module,
+        ["city", "guests"],
+        {
+            "city": {"type": "string", "description": "Destination city"},
+            "guests": {"type": "array", "items": {"type": "string"}, "description": "Guest names"},
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        tool,
+        'Book "Paris". Guests are "Alice" and "Bob".',
+        {},
+    )
+
+    assert inputs["city"] == "Paris"
+    assert inputs["guests"] == ["Alice", "Bob"]
+    assert "Paris" not in inputs["guests"]
+    assert diagnostics["value_validation_by_arg"]["guests"] == "accepted"
+
+
+def test_bfcl_serial_assignment_diagnostics_are_gold_free() -> None:
+    module = _load_run_eval_grounding_module()
+    tool = _bfcl_grounding_tool(
+        module,
+        ["target"],
+        {"target": {"type": "string", "description": "Target entity"}},
+    )
+
+    _inputs, diagnostics = module._bfcl_ground_serial_required_args(tool, 'Process "Paris".', {})
+
+    forbidden = {"expected_function", "expected_args", "official_failure_bucket", "expected_call_count", "gold_order"}
+    assert forbidden.isdisjoint(diagnostics)
+    assert "value_validation_by_arg" in diagnostics
+    assert "descriptor_match_by_arg" in diagnostics
