@@ -1127,6 +1127,85 @@ def _argument_mismatches(
     }
 
 
+def _bfcl_arg_name_from_label(label: str) -> str:
+    raw = str(label or "")
+    if "." in raw:
+        raw = raw.split(".", 1)[1]
+    return raw.split(".", 1)[0].split("[", 1)[0]
+
+
+def _missing_required_subcauses(
+    *,
+    missing_required_args: List[str],
+    diagnostic: Dict[str, Any],
+    emitted_calls: List[Dict[str, Any]],
+    trace_metric_tool_calls: int,
+) -> Dict[str, Any]:
+    if not missing_required_args:
+        return {
+            "missing_required_due_to_no_query_cue": False,
+            "missing_required_due_to_schema_alias_mismatch": False,
+            "missing_required_due_to_grounder_not_attempted": False,
+            "missing_required_due_to_value_filtered": False,
+            "missing_required_due_to_final_answer_serializer_drop": False,
+            "missing_required_no_query_cue_args": [],
+            "missing_required_schema_alias_mismatch_args": [],
+            "missing_required_value_filtered_args": [],
+            "missing_required_serializer_drop_args": [],
+        }
+    required_args = {str(item) for item in diagnostic.get("required_args", []) if str(item)}
+    grounded_args = {str(item) for item in diagnostic.get("grounded_required_args", []) if str(item)}
+    ungrounded_args = {str(item) for item in diagnostic.get("ungrounded_required_args", []) if str(item)}
+    source_by_arg = diagnostic.get("grounding_source_by_arg", {}) if isinstance(diagnostic.get("grounding_source_by_arg"), dict) else {}
+    attempted = bool(diagnostic.get("serial_required_grounding_attempted"))
+    if not attempted:
+        return {
+            "missing_required_due_to_no_query_cue": False,
+            "missing_required_due_to_schema_alias_mismatch": False,
+            "missing_required_due_to_grounder_not_attempted": True,
+            "missing_required_due_to_value_filtered": False,
+            "missing_required_due_to_final_answer_serializer_drop": False,
+            "missing_required_no_query_cue_args": [],
+            "missing_required_schema_alias_mismatch_args": [],
+            "missing_required_value_filtered_args": [],
+            "missing_required_serializer_drop_args": [],
+        }
+    emitted_arg_keys = set()
+    for call in emitted_calls:
+        args = call.get("arguments", {}) if isinstance(call, dict) else {}
+        if isinstance(args, dict):
+            emitted_arg_keys.update(str(key) for key in args.keys())
+
+    no_query_cue: List[str] = []
+    schema_alias_mismatch: List[str] = []
+    value_filtered: List[str] = []
+    serializer_drop: List[str] = []
+    for label in missing_required_args:
+        arg = _bfcl_arg_name_from_label(label)
+        source = str(source_by_arg.get(arg) or "")
+        if required_args and arg not in required_args:
+            schema_alias_mismatch.append(label)
+        elif arg in grounded_args and arg not in emitted_arg_keys:
+            serializer_drop.append(label)
+        elif arg in ungrounded_args or source == "unresolved":
+            no_query_cue.append(label)
+        elif trace_metric_tool_calls > 0 and not emitted_calls:
+            serializer_drop.append(label)
+        else:
+            value_filtered.append(label)
+    return {
+        "missing_required_due_to_no_query_cue": bool(no_query_cue),
+        "missing_required_due_to_schema_alias_mismatch": bool(schema_alias_mismatch),
+        "missing_required_due_to_grounder_not_attempted": bool(missing_required_args and not attempted),
+        "missing_required_due_to_value_filtered": bool(value_filtered),
+        "missing_required_due_to_final_answer_serializer_drop": bool(serializer_drop),
+        "missing_required_no_query_cue_args": no_query_cue,
+        "missing_required_schema_alias_mismatch_args": schema_alias_mismatch,
+        "missing_required_value_filtered_args": value_filtered,
+        "missing_required_serializer_drop_args": serializer_drop,
+    }
+
+
 def _call_order_mismatch(expected_calls: List[Dict[str, Any]], emitted_calls: List[Dict[str, Any]]) -> bool:
     if len(expected_calls) != len(emitted_calls):
         return False
@@ -1260,6 +1339,13 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
     else:
         selected_correct_failure_bucket = "other_selected_correct_failure"
 
+    missing_required_subcauses = _missing_required_subcauses(
+        missing_required_args=mismatches["missing_required_args"],
+        diagnostic=diagnostic if isinstance(diagnostic, dict) else {},
+        emitted_calls=emitted_calls,
+        trace_metric_tool_calls=trace_metric_tool_calls,
+    )
+
     return {
         "row_id": str(coverage.get("row_id") or ""),
         "run_index": int(row.get("run_index", 0) or 0),
@@ -1277,6 +1363,7 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "wrong_type_args": mismatches["wrong_type_args"],
         "wrong_value_args": mismatches["wrong_value_args"],
         "nested_structure_mismatches": mismatches["nested_structure_mismatches"],
+        **missing_required_subcauses,
         "wrong_call_count": wrong_call_count,
         "wrong_call_order": wrong_call_order,
         "wrong_call_count_missing_calls": shape["wrong_call_count_missing_calls"],
@@ -1351,6 +1438,11 @@ def _selected_correct_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, 
         "selected_top1_but_trace_has_call_not_in_final_answer": sum(1 for row in selected_rows if row.get("selected_top1_but_trace_has_call_not_in_final_answer")),
         "selected_top1_but_final_answer_parser_drops_call": sum(1 for row in selected_rows if row.get("selected_top1_but_final_answer_parser_drops_call")),
         "selected_top1_but_serial_call_missing_args_and_suppressed": sum(1 for row in selected_rows if row.get("selected_top1_but_serial_call_missing_args_and_suppressed")),
+        "missing_required_due_to_no_query_cue": sum(1 for row in selected_rows if row.get("missing_required_due_to_no_query_cue")),
+        "missing_required_due_to_schema_alias_mismatch": sum(1 for row in selected_rows if row.get("missing_required_due_to_schema_alias_mismatch")),
+        "missing_required_due_to_grounder_not_attempted": sum(1 for row in selected_rows if row.get("missing_required_due_to_grounder_not_attempted")),
+        "missing_required_due_to_value_filtered": sum(1 for row in selected_rows if row.get("missing_required_due_to_value_filtered")),
+        "missing_required_due_to_final_answer_serializer_drop": sum(1 for row in selected_rows if row.get("missing_required_due_to_final_answer_serializer_drop")),
         "call_count_delta_counts": dict(call_count_deltas),
         "selected_correct_failure_bucket_counts": dict(bucket_counts),
     }
@@ -1428,6 +1520,11 @@ def _write_bfcl_selected_correct_failure_markdown(audit: Dict[str, Any], path: P
         "parallel_order_only_mismatch",
         "trace_missing_or_unparseable_given_selected_is_expected",
         "other_selected_correct_failure_given_selected_is_expected",
+        "missing_required_due_to_no_query_cue",
+        "missing_required_due_to_schema_alias_mismatch",
+        "missing_required_due_to_grounder_not_attempted",
+        "missing_required_due_to_value_filtered",
+        "missing_required_due_to_final_answer_serializer_drop",
     ]:
         lines.append(f"| {key} | {summary.get(key, 0)} |")
     lines.extend(["", "## Failure Buckets", "", "| bucket | count |", "|---|---:|"])

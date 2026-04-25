@@ -813,6 +813,196 @@ def _bfcl_has_bound_value(value: Any) -> bool:
     return value not in (None, "", {})
 
 
+_BFCL_QUOTED_RE = re.compile(r"""['\"]([^'\"]+)['\"]""")
+_BFCL_EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
+_BFCL_NUMBER_WORDS: Dict[str, int] = {
+    "zero": 0,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+}
+
+
+def _bfcl_schema_properties(parameters: Dict[str, Any]) -> Dict[str, Any]:
+    properties = parameters.get("properties") if isinstance(parameters, dict) else {}
+    return dict(properties) if isinstance(properties, dict) else {}
+
+
+def _bfcl_arg_type(prop: Any) -> str:
+    if not isinstance(prop, dict):
+        return ""
+    raw = prop.get("type")
+    if isinstance(raw, list):
+        return next((str(item).strip().lower() for item in raw if str(item).strip().lower() != "null"), "")
+    return str(raw or "").strip().lower()
+
+
+def _bfcl_normalized_phrase(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+
+def _bfcl_key_phrases(key: str) -> List[str]:
+    raw = str(key or "").strip()
+    if not raw:
+        return []
+    spaced = re.sub(r"(?<!^)(?=[A-Z])", " ", raw).replace("_", " ").replace("-", " ")
+    phrases = [spaced.lower().strip()]
+    collapsed = re.sub(r"\s+", "", phrases[0])
+    if collapsed and collapsed != phrases[0]:
+        phrases.append(collapsed)
+    return [phrase for phrase in phrases if phrase]
+
+
+def _bfcl_number_value(token: str) -> Optional[int]:
+    raw = str(token or "").strip().lower()
+    if raw.isdigit():
+        return int(raw)
+    return _BFCL_NUMBER_WORDS.get(raw)
+
+
+def _bfcl_string_candidate(text: str, key: str, prop: Dict[str, Any]) -> Tuple[Any, str, float]:
+    quoted = [match.strip() for match in _BFCL_QUOTED_RE.findall(text) if match.strip()]
+    key_lower = str(key or "").lower()
+    if "email" in key_lower:
+        emails = _BFCL_EMAIL_RE.findall(text)
+        if emails:
+            return emails[0], "email_pattern", 0.86
+    if quoted:
+        return quoted[0], "quoted_span", 0.88
+    phrases = _bfcl_key_phrases(key)
+    for phrase in phrases:
+        match = re.search(
+            rf"\b{re.escape(phrase)}\b\s*(?:is|=|:|as|to|for)?\s+([A-Za-z0-9][A-Za-z0-9 .,'/_-]*?)(?:\s+(?:and|with|for|to|from|at|on|please)\b|[.?!,;]|$)",
+            text,
+            re.IGNORECASE,
+        )
+        if match:
+            value = match.group(1).strip(" .?!,;:'\"")
+            if value:
+                return value, "argument_name_cue", 0.72
+    if any(token in key_lower for token in ("city", "location", "loc", "country", "destination", "address", "place")):
+        for prep in ("in", "for", "to", "from", "at", "with"):
+            match = re.search(
+                rf"\b{prep}\s+([A-Z][A-Za-z0-9 .,'/-]*?)(?:\s+(?:and|with|for|to|from|at|on)\b|[.?!,;]|$)",
+                text,
+            )
+            if match:
+                value = match.group(1).strip(" .?!,;:'\"")
+                if value:
+                    return value, f"preposition_{prep}_entity_cue", 0.62
+    return None, "", 0.0
+
+
+def _bfcl_ground_value_for_required_arg(key: str, prop: Dict[str, Any], text: str) -> Tuple[Any, str, float]:
+    prop = prop if isinstance(prop, dict) else {}
+    lower = text.lower()
+    arg_type = _bfcl_arg_type(prop)
+    enum_values = prop.get("enum") if isinstance(prop.get("enum"), list) else []
+    for enum_value in enum_values:
+        enum_text = str(enum_value)
+        if not enum_text:
+            continue
+        if re.search(rf"(?<![a-z0-9]){re.escape(enum_text.lower())}(?![a-z0-9])", lower):
+            return enum_value, "enum_exact_mention", 0.9
+        if _bfcl_normalized_phrase(enum_text) and _bfcl_normalized_phrase(enum_text) in _bfcl_normalized_phrase(text):
+            return enum_value, "enum_normalized_mention", 0.84
+    if arg_type in {"integer", "number"}:
+        for phrase in _bfcl_key_phrases(key):
+            match = re.search(rf"\b{re.escape(phrase)}\b[^0-9a-z]*(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b", lower)
+            if match:
+                number = _bfcl_number_value(match.group(1))
+                if number is not None:
+                    return (float(number) if arg_type == "number" else number), "argument_name_numeric_cue", 0.82
+        match = re.search(r"\b(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b", lower)
+        if match:
+            number = _bfcl_number_value(match.group(1))
+            if number is not None:
+                return (float(number) if arg_type == "number" else number), "numeric_cue", 0.58
+        return None, "", 0.0
+    if arg_type == "boolean":
+        for phrase in _bfcl_key_phrases(key):
+            positive_phrase = phrase
+            if phrase.startswith("include ") or phrase.startswith("enable ") or phrase.startswith("use "):
+                if re.search(rf"\b{re.escape(phrase)}\b", lower):
+                    return True, "boolean_positive_key_phrase", 0.84
+                positive_phrase = phrase.split(" ", 1)[1] if " " in phrase else phrase
+            if re.search(rf"\b(?:enable|include|use|with|set)\s+{re.escape(positive_phrase)}\b", lower) or re.search(rf"\b{re.escape(phrase)}\s+(?:true|yes|on)\b", lower):
+                return True, "boolean_positive_cue", 0.82
+            if re.search(rf"\b(?:disable|exclude|without|no)\s+{re.escape(positive_phrase)}\b", lower) or re.search(rf"\b{re.escape(phrase)}\s+(?:false|no|off)\b", lower):
+                return False, "boolean_negative_cue", 0.82
+        if "yes" in lower or "true" in lower:
+            return True, "boolean_generic_positive", 0.45
+        if "no" in lower or "false" in lower:
+            return False, "boolean_generic_negative", 0.45
+        return None, "", 0.0
+    if arg_type == "array":
+        items = prop.get("items") if isinstance(prop.get("items"), dict) else {}
+        item_type = _bfcl_arg_type(items)
+        if item_type in {"integer", "number"}:
+            numbers = [_bfcl_number_value(match.group(0)) for match in re.finditer(r"\b(?:\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b", lower)]
+            values = [value for value in numbers if value is not None]
+            if values:
+                return values, "array_numeric_cues", 0.7
+        quoted = [match.strip() for match in _BFCL_QUOTED_RE.findall(text) if match.strip()]
+        if quoted:
+            return quoted, "array_quoted_spans", 0.78
+        for phrase in _bfcl_key_phrases(key):
+            match = re.search(rf"\b{re.escape(phrase)}\b\s*(?:are|is|:|=)?\s+([A-Za-z0-9 .,'/_-]+?)(?:[.?!;]|$)", text, re.IGNORECASE)
+            if match:
+                parts = [part.strip(" .,'\"") for part in re.split(r"\s+and\s+|,", match.group(1)) if part.strip(" .,'\"")]
+                if parts:
+                    return parts, "array_argument_name_cue", 0.68
+        return None, "", 0.0
+    return _bfcl_string_candidate(text, key, prop)
+
+
+def _bfcl_ground_serial_required_args(
+    tool: Optional[ToolSpec],
+    text: str,
+    inputs: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    parameters = _bfcl_tool_parameters(tool)
+    properties = _bfcl_schema_properties(parameters)
+    required = _bfcl_required_input_keys(tool)
+    grounded_inputs = dict(inputs)
+    source_by_arg: Dict[str, str] = {}
+    confidence_by_arg: Dict[str, float] = {}
+    for key in required:
+        if _bfcl_has_bound_value(grounded_inputs.get(key)):
+            source_by_arg[key] = "existing_extractor"
+            confidence_by_arg[key] = 0.8
+            continue
+        value, source, confidence = _bfcl_ground_value_for_required_arg(key, properties.get(key, {}), text)
+        if _bfcl_has_bound_value(value):
+            grounded_inputs[key] = value
+            source_by_arg[key] = source
+            confidence_by_arg[key] = confidence
+        else:
+            source_by_arg[key] = "unresolved"
+            confidence_by_arg[key] = 0.0
+    grounded = [key for key in required if _bfcl_has_bound_value(grounded_inputs.get(key))]
+    ungrounded = [key for key in required if key not in grounded]
+    diagnostics = {
+        "serial_required_grounding_attempted": True,
+        "serial_required_grounding_policy_version": "bfcl_serial_required_grounding_v1",
+        "required_args": required,
+        "grounded_required_args": grounded,
+        "ungrounded_required_args": ungrounded,
+        "grounding_source_by_arg": source_by_arg,
+        "grounding_confidence_by_arg": confidence_by_arg,
+    }
+    return grounded_inputs, diagnostics
+
+
 def _bfcl_grounding_metadata(
     *,
     tool: Optional[ToolSpec],
@@ -1065,6 +1255,13 @@ def _configure_bfcl_step_metadata(
             "serial_selected_top1_materialization_blocked",
             "serial_materialization_block_reason",
             "serial_partial_call_emitted_due_to_missing_args",
+            "serial_required_grounding_attempted",
+            "serial_required_grounding_policy_version",
+            "required_args",
+            "grounded_required_args",
+            "ungrounded_required_args",
+            "grounding_source_by_arg",
+            "grounding_confidence_by_arg",
         ):
             if key in selection_diagnostics:
                 merged_metadata[key] = selection_diagnostics[key]
@@ -1083,6 +1280,22 @@ def _configure_bfcl_step_metadata(
         if isinstance(merged_metadata.get("grounding_confidence"), dict)
         else {}
     )
+    source_by_arg = (
+        dict(selection_diagnostics.get("grounding_source_by_arg", {}))
+        if isinstance(selection_diagnostics, dict) and isinstance(selection_diagnostics.get("grounding_source_by_arg"), dict)
+        else {}
+    )
+    confidence_by_arg = (
+        dict(selection_diagnostics.get("grounding_confidence_by_arg", {}))
+        if isinstance(selection_diagnostics, dict) and isinstance(selection_diagnostics.get("grounding_confidence_by_arg"), dict)
+        else {}
+    )
+    for key, source in source_by_arg.items():
+        if _nonempty_metadata_value(source):
+            existing_sources[str(key)] = {"source": source, "confidence": float(confidence_by_arg.get(key, 0.0) or 0.0), "query_text": text}
+    for key, confidence in confidence_by_arg.items():
+        if isinstance(confidence, (int, float)):
+            existing_confidence[str(key)] = float(confidence)
     merged_sources: Dict[str, Any] = {}
     merged_confidence: Dict[str, float] = {}
     computed_sources = grounding_metadata.get("grounding_sources", {})
@@ -1383,6 +1596,8 @@ def _bfcl_seed_specs(
     inputs = _bfcl_build_step_inputs(tool, query)
     diagnostics = _merge_bfcl_abstain_policy_diagnostics(diagnostics, abstain_policy_diagnostics)
     if call_pattern == "serial" and str(metadata.get("bfcl_group") or "").strip().lower() != "multi_turn":
+        inputs, grounding_diagnostics = _bfcl_ground_serial_required_args(tool, query, inputs)
+        diagnostics.update(grounding_diagnostics)
         diagnostics = _bfcl_mark_serial_materialization_diagnostics(diagnostics, inputs=inputs)
     return [{"tool": tool, "inputs": inputs, "text": query, "selection_diagnostics": diagnostics}]
 
@@ -1634,6 +1849,13 @@ def _adapt_bfcl_workflow(
             else {}
         ) or _bfcl_build_step_inputs(selected_tool, text, enable_grounding=enable_grounding)
         if call_pattern == "serial" and str(metadata.get("bfcl_group") or "").strip().lower() != "multi_turn":
+            if enable_grounding:
+                step.inputs, grounding_diagnostics = _bfcl_ground_serial_required_args(
+                    selected_tool,
+                    text,
+                    dict(step.inputs),
+                )
+                selection_diagnostics.update(grounding_diagnostics)
             selection_diagnostics = _bfcl_mark_serial_materialization_diagnostics(
                 selection_diagnostics,
                 inputs=dict(step.inputs),

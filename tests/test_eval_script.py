@@ -2772,3 +2772,106 @@ def test_build_workflow_from_task_bfcl_parallel_multiple_candidates_expands_best
         {"location": "San Francisco"},
     ]
     assert len(workflow.metadata["bfcl_rerank_diagnostics"]) == 2
+
+
+def test_bfcl_serial_required_grounder_fills_runtime_visible_required_args() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_serial_grounder", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tool = module.ToolSpec(
+        tool_id="book_trip",
+        description="Book a trip",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["city", "travel_class", "days", "include_breakfast", "guests"],
+                "properties": {
+                    "city": {"type": "string"},
+                    "travel_class": {"type": "string", "enum": ["economy", "business"]},
+                    "days": {"type": "integer"},
+                    "include_breakfast": {"type": "boolean"},
+                    "guests": {"type": "array", "items": {"type": "string"}},
+                },
+            }
+        },
+    )
+    text = 'Book "Paris" in business for 3 days, include breakfast, guests are "Alice" and "Bob".'
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(tool, text, {})
+
+    assert inputs["city"] == "Paris"
+    assert inputs["travel_class"] == "business"
+    assert inputs["days"] == 3
+    assert inputs["include_breakfast"] is True
+    assert inputs["guests"] == ["Paris", "Alice", "Bob"]
+    assert diagnostics["serial_required_grounding_attempted"] is True
+    assert diagnostics["serial_required_grounding_policy_version"] == "bfcl_serial_required_grounding_v1"
+    assert set(diagnostics["grounded_required_args"]) == {"city", "travel_class", "days", "include_breakfast", "guests"}
+    assert diagnostics["ungrounded_required_args"] == []
+
+
+def test_bfcl_serial_required_grounder_does_not_invent_without_query_cue() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_serial_grounder_negative", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tool = module.ToolSpec(
+        tool_id="weather",
+        description="Weather lookup",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["location"],
+                "properties": {"location": {"type": "string"}},
+            }
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(tool, "Please help me.", {})
+
+    assert inputs == {}
+    assert diagnostics["grounded_required_args"] == []
+    assert diagnostics["ungrounded_required_args"] == ["location"]
+    assert diagnostics["grounding_source_by_arg"]["location"] == "unresolved"
+    assert diagnostics["grounding_confidence_by_arg"]["location"] == 0.0
+
+
+def test_bfcl_serial_grounding_metadata_is_runtime_safe_and_does_not_suppress_call() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_serial_grounder_seed", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tool = module.ToolSpec(
+        tool_id="weather_lookup",
+        description="Look up weather by location",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["location"],
+                "properties": {"location": {"type": "string"}},
+            }
+        },
+    )
+    task = {"query": "Look up the weather.", "metadata": {"bfcl_call_pattern": "serial", "bfcl_group": "non_live"}}
+
+    specs = module._bfcl_seed_specs(task, [tool], "Look up the weather.")
+
+    assert len(specs) == 1
+    assert specs[0]["tool"].tool_id == "weather_lookup"
+    diagnostics = specs[0]["selection_diagnostics"]
+    assert diagnostics["trace_tool_call_expected_by_bfcl_serial"] is True
+    assert diagnostics["serial_required_grounding_attempted"] is True
+    assert diagnostics["ungrounded_required_args"] == ["location"]
+    encoded = json.dumps(diagnostics)
+    for forbidden in ("expected_function", "expected_call_count", "gold_tool", "official_failure_bucket"):
+        assert forbidden not in encoded

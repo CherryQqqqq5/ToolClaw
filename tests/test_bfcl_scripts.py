@@ -2285,3 +2285,129 @@ def test_bfcl_guard_gates_separate_wrong_function_bucket_from_claim_readiness() 
     assert gates["wrong_function_bucket_non_regression"] is True
     assert gates["exact_function_guard_claim_ready"] is False
     assert gates["wrong_function_non_regression_ready"] is False
+
+
+def test_bfcl_selected_correct_audit_splits_missing_required_subcauses(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_missing_required_subcauses_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    def row_for(task_id: str, diagnostic: dict, expected_arg: str = "city") -> dict:
+        trace_path = tmp_path / f"{task_id}.json"
+        trace_path.write_text(
+            json.dumps(
+                {
+                    "metadata": {"task_annotations": {"bfcl_rerank_diagnostics": [diagnostic]}},
+                    "events": [{"event_type": "tool_call", "tool_id": "weather", "tool_args": {}}],
+                    "metrics": {"tool_calls": 1},
+                }
+            ),
+            encoding="utf-8",
+        )
+        return {
+            "run_index": "1",
+            "task_id": task_id,
+            "system": "a2_planner",
+            "bfcl_group": "non_live",
+            "bfcl_call_pattern": "serial",
+            "gold_tool": "weather",
+            "chosen_tool": "weather",
+            "candidate_tools": json.dumps(
+                [
+                    {
+                        "tool_id": "weather",
+                        "metadata": {"bfcl_original_function_name": "weather"},
+                        "parameters": {
+                            "type": "dict",
+                            "required": ["city"],
+                            "properties": {"city": {"type": "string"}},
+                        },
+                    }
+                ]
+            ),
+            "expected_call_structure": json.dumps(
+                {"pattern": "serial", "calls": [{"tool_name": "weather", "arguments": {expected_arg: "Paris"}}]}
+            ),
+            "trace_path": str(trace_path),
+            "official_bfcl_eval_unsupported_reasons": json.dumps(["missing_required"]),
+            "official_bfcl_eval_success": 0.0,
+        }
+
+    base_diag = {
+        "runtime_candidate_tool_ids": ["weather"],
+        "runtime_candidate_original_function_names": ["weather"],
+        "ranker_candidate_tool_ids": ["weather"],
+        "ranker_candidate_original_function_names": ["weather"],
+        "schema_top_5": [{"tool_id": "weather", "bfcl_original_function_name": "weather"}],
+        "selected_tool_id": "weather",
+        "selected_reason": "schema_top1_no_planner",
+        "trace_tool_call_expected_by_bfcl_serial": True,
+    }
+    rows = [
+        row_for("grounder_not_attempted", dict(base_diag)),
+        row_for(
+            "no_query_cue",
+            {
+                **base_diag,
+                "serial_required_grounding_attempted": True,
+                "required_args": ["city"],
+                "grounded_required_args": [],
+                "ungrounded_required_args": ["city"],
+                "grounding_source_by_arg": {"city": "unresolved"},
+                "grounding_confidence_by_arg": {"city": 0.0},
+            },
+        ),
+        row_for(
+            "serializer_drop",
+            {
+                **base_diag,
+                "serial_required_grounding_attempted": True,
+                "required_args": ["city"],
+                "grounded_required_args": ["city"],
+                "ungrounded_required_args": [],
+                "grounding_source_by_arg": {"city": "quoted_span"},
+                "grounding_confidence_by_arg": {"city": 0.88},
+            },
+        ),
+        row_for(
+            "schema_alias",
+            {
+                **base_diag,
+                "serial_required_grounding_attempted": True,
+                "required_args": ["city"],
+                "grounded_required_args": [],
+                "ungrounded_required_args": ["city"],
+                "grounding_source_by_arg": {"city": "unresolved"},
+                "grounding_confidence_by_arg": {"city": 0.0},
+            },
+            expected_arg="location",
+        ),
+        row_for(
+            "value_filtered",
+            {
+                **base_diag,
+                "serial_required_grounding_attempted": True,
+                "required_args": ["city"],
+                "grounded_required_args": [],
+                "ungrounded_required_args": [],
+                "grounding_source_by_arg": {"city": "value_filtered"},
+                "grounding_confidence_by_arg": {"city": 0.4},
+            },
+        ),
+    ]
+
+    audit = module._bfcl_selected_correct_failure_audit(rows)
+    summary = audit["summary"]
+
+    assert summary["missing_required_given_selected_is_expected"] == 5
+    assert summary["missing_required_due_to_grounder_not_attempted"] == 1
+    assert summary["missing_required_due_to_no_query_cue"] == 1
+    assert summary["missing_required_due_to_final_answer_serializer_drop"] == 1
+    assert summary["missing_required_due_to_schema_alias_mismatch"] == 1
+    assert summary["missing_required_due_to_value_filtered"] == 1
+    assert all(row["selected_correct_failure_bucket"] == "missing_required" for row in audit["rows"])
+    assert audit["runtime_diagnostics_gold_free"] is True
