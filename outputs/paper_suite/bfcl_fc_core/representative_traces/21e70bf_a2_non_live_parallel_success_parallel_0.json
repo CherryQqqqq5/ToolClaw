@@ -1,0 +1,602 @@
+{
+  "run_id": "a2_planner_parallel_0",
+  "workflow_id": "wf_parallel_0",
+  "task_id": "parallel_0",
+  "phase": "phase2_workflow_intelligence",
+  "metadata": {
+    "model_name": "phase1_executor",
+    "mode": "toolclaw",
+    "start_time": "2026-04-25T09:04:31.261406+00:00",
+    "end_time": "2026-04-25T09:04:31.261997+00:00",
+    "benchmark": null,
+    "task_source": null,
+    "primary_failtax": "recovery",
+    "failtaxes": [
+      "recovery"
+    ],
+    "budget_profile": {},
+    "task_annotations": {
+      "primary_failtax": "recovery",
+      "failtaxes": [
+        "recovery"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "repair_then_retry",
+      "gold_tool": "spotify.play",
+      "state_slots": [
+        "query"
+      ],
+      "dependency_edges": [],
+      "bfcl_planner_selected_tools": [
+        "",
+        ""
+      ],
+      "bfcl_final_ranked_tools": [
+        [
+          "spotify.play"
+        ],
+        [
+          "spotify.play"
+        ]
+      ],
+      "bfcl_rerank_override_applied": false,
+      "bfcl_rerank_override_reason": "schema_top1_no_planner",
+      "bfcl_rerank_diagnostics": [
+        {
+          "guard_policy_version": "strict_schema_top1_tie_drop_v1",
+          "planner_tool_id": "",
+          "prepared_function_count": 1,
+          "runtime_candidate_count": 1,
+          "runtime_candidate_tool_ids": [
+            "spotify.play"
+          ],
+          "runtime_candidate_original_function_names": [
+            "spotify.play"
+          ],
+          "candidate_pool_preserved": true,
+          "candidate_pool_source": "bfcl_prepared_row_functions",
+          "planner_narrowing_applied": false,
+          "candidate_pool_exception": "",
+          "drop_reason": "",
+          "ranker_candidate_count": 1,
+          "ranker_candidate_tool_ids": [
+            "spotify.play"
+          ],
+          "ranker_candidate_original_function_names": [
+            "spotify.play"
+          ],
+          "schema_top_5": [
+            {
+              "tool_id": "spotify.play",
+              "bfcl_original_function_name": "spotify.play",
+              "score": 11.0,
+              "exact_match": true,
+              "required_argument_coverage": 1.0,
+              "schema_name_overlap_count": 0,
+              "overlap": [
+                "play",
+                "spotify"
+              ]
+            }
+          ],
+          "schema_top_tool_id": "spotify.play",
+          "schema_top_score": 11.0,
+          "planner_score": null,
+          "score_margin": null,
+          "planner_in_schema_top2": false,
+          "selected_tool_id": "spotify.play",
+          "selected_reason": "schema_top1_no_planner",
+          "rerank_override_applied": false,
+          "rerank_override_reason": "schema_top1_no_planner",
+          "schema_guard_applied": false,
+          "planner_required_argument_coverage": null,
+          "selected_required_argument_coverage": 1.0,
+          "planner_required_args_present": [],
+          "selected_required_args_present": [
+            "artist",
+            "duration"
+          ],
+          "planner_missing_required_args": [],
+          "selected_missing_required_args": [],
+          "operation_cues_present": false,
+          "irrelevance_abstain_allowed": false,
+          "abstain_blocked_by_serial_schema_top1": false,
+          "bfcl_call_pattern": "parallel",
+          "explicit_no_call_signal": false,
+          "abstain_policy_version": "bfcl_abstain_policy_v2",
+          "serial_positive_call_forced": false,
+          "parallel_materialization_policy_version": "bfcl_non_live_parallel_clause_materialization_v1",
+          "parallel_argument_sets_extracted": true,
+          "parallel_argument_set_count": 2,
+          "parallel_clause_materialized_count": 2,
+          "parallel_clause_drop_count": 0,
+          "parallel_collapsed_to_serial": false,
+          "parallel_clause_drop_reasons": []
+        },
+        {
+          "guard_policy_version": "strict_schema_top1_tie_drop_v1",
+          "planner_tool_id": "",
+          "prepared_function_count": 1,
+          "runtime_candidate_count": 1,
+          "runtime_candidate_tool_ids": [
+            "spotify.play"
+          ],
+          "runtime_candidate_original_function_names": [
+            "spotify.play"
+          ],
+          "candidate_pool_preserved": true,
+          "candidate_pool_source": "bfcl_prepared_row_functions",
+          "planner_narrowing_applied": false,
+          "candidate_pool_exception": "",
+          "drop_reason": "",
+          "ranker_candidate_count": 1,
+          "ranker_candidate_tool_ids": [
+            "spotify.play"
+          ],
+          "ranker_candidate_original_function_names": [
+            "spotify.play"
+          ],
+          "schema_top_5": [
+            {
+              "tool_id": "spotify.play",
+              "bfcl_original_function_name": "spotify.play",
+              "score": 11.0,
+              "exact_match": true,
+              "required_argument_coverage": 1.0,
+              "schema_name_overlap_count": 0,
+              "overlap": [
+                "play",
+                "spotify"
+              ]
+            }
+          ],
+          "schema_top_tool_id": "spotify.play",
+          "schema_top_score": 11.0,
+          "planner_score": null,
+          "score_margin": null,
+          "planner_in_schema_top2": false,
+          "selected_tool_id": "spotify.play",
+          "selected_reason": "schema_top1_no_planner",
+          "rerank_override_applied": false,
+          "rerank_override_reason": "schema_top1_no_planner",
+          "schema_guard_applied": false,
+          "planner_required_argument_coverage": null,
+          "selected_required_argument_coverage": 1.0,
+          "planner_required_args_present": [],
+          "selected_required_args_present": [
+            "artist",
+            "duration"
+          ],
+          "planner_missing_required_args": [],
+          "selected_missing_required_args": [],
+          "operation_cues_present": false,
+          "irrelevance_abstain_allowed": false,
+          "abstain_blocked_by_serial_schema_top1": false,
+          "bfcl_call_pattern": "parallel",
+          "explicit_no_call_signal": false,
+          "abstain_policy_version": "bfcl_abstain_policy_v2",
+          "serial_positive_call_forced": false,
+          "parallel_materialization_policy_version": "bfcl_non_live_parallel_clause_materialization_v1",
+          "parallel_argument_sets_extracted": true,
+          "parallel_argument_set_count": 2,
+          "parallel_clause_materialized_count": 2,
+          "parallel_clause_drop_count": 0,
+          "parallel_collapsed_to_serial": false,
+          "parallel_clause_drop_reasons": []
+        }
+      ],
+      "planner_observability": {
+        "planner_bypass_applied": false,
+        "minimal_path_reason": "not_applied",
+        "selected_capability_order_initial": [
+          "cap_retrieve"
+        ],
+        "selected_capability_instance_order_final": [
+          "cap_retrieve"
+        ],
+        "selected_capability_order_final": [
+          "cap_retrieve"
+        ],
+        "graph_builder_used": true,
+        "candidate_capability_count": 1,
+        "bound_tool_order": [
+          "spotify.play"
+        ],
+        "graph_edge_order": [],
+        "unresolved_capabilities": [],
+        "benchmark_hints_used": [
+          "ideal_tool_calls",
+          "primary_failtax",
+          "state_slots"
+        ]
+      },
+      "chosen_tool": "spotify.play"
+    },
+    "budget_limits": {
+      "max_tool_calls": null,
+      "max_user_turns": null,
+      "max_repair_attempts": null,
+      "max_recovery_budget": null,
+      "budget_limit": null,
+      "time_limit": null
+    },
+    "budget_usage": {
+      "tool_calls": 2,
+      "user_turns": 0,
+      "repair_attempts": 0,
+      "recovery_budget_used": 0.0,
+      "remaining_budgets": {
+        "tool_calls": null,
+        "user_turns": null,
+        "repair_attempts": null,
+        "recovery_budget": null
+      }
+    },
+    "interaction_modules": [
+      "uncertainty_detector",
+      "query_policy",
+      "answer_patch_compiler"
+    ],
+    "run_manifest": {
+      "tool_runtime_backend": "bfcl_stub"
+    },
+    "reusable_context": {
+      "resolved_asset_ids": [],
+      "profile_loaded": false,
+      "reuse_mode": "none",
+      "reuse_application": "none",
+      "utility_gain_score": 0.0,
+      "selected_match": {}
+    }
+  },
+  "state_snapshots": [
+    {
+      "snapshot_id": "snap_01_start",
+      "timestamp": "2026-04-25T09:04:31.261525+00:00",
+      "active_step_id": "step_01",
+      "completed_steps": [],
+      "pending_steps": [
+        "step_02"
+      ],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "query": "Play songs from the artists Taylor Swift and Maroon 5, with a play time of 20 minutes and 15 minutes respectively, on Spotify.",
+        "__tool_calls__": 0,
+        "__user_turns__": 0,
+        "__repair_attempts__": 0,
+        "__recovery_budget_spent__": 0.0,
+        "__remaining_budgets__": {
+          "tool_calls": null,
+          "user_turns": null,
+          "repair_attempts": null,
+          "recovery_budget": null
+        }
+      }
+    },
+    {
+      "snapshot_id": "snap_02_start",
+      "timestamp": "2026-04-25T09:04:31.261773+00:00",
+      "active_step_id": "step_02",
+      "completed_steps": [
+        "step_01"
+      ],
+      "pending_steps": [],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "query": "Play songs from the artists Taylor Swift and Maroon 5, with a play time of 20 minutes and 15 minutes respectively, on Spotify.",
+        "__tool_calls__": 1,
+        "__user_turns__": 0,
+        "__repair_attempts__": 0,
+        "__recovery_budget_spent__": 0.0,
+        "__remaining_budgets__": {
+          "tool_calls": null,
+          "user_turns": null,
+          "repair_attempts": null,
+          "recovery_budget": null
+        },
+        "bfcl_result_01": {
+          "tool_id": "spotify.play",
+          "arguments": {
+            "artist": "Taylor Swift",
+            "duration": 20
+          },
+          "schema": {
+            "type": "dict",
+            "properties": {
+              "artist": {
+                "type": "string",
+                "description": "The artist whose songs you want to play."
+              },
+              "duration": {
+                "type": "integer",
+                "description": "The duration for which the songs should be played, in minutes."
+              }
+            },
+            "required": [
+              "artist",
+              "duration"
+            ]
+          },
+          "backend": "bfcl_stub"
+        },
+        "__budget_spent__": 0.01,
+        "__time_spent_ms__": 100.0
+      }
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-25T09:04:31.261462+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 2
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-25T09:04:31.261503+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": true,
+        "missing_assets": [],
+        "missing_required_inputs": [],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_01",
+      "timestamp": "2026-04-25T09:04:31.261602+00:00",
+      "step_id": "step_01",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "spotify.play",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "low"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_01",
+      "timestamp": "2026-04-25T09:04:31.261682+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "spotify.play",
+      "input_ref": null,
+      "tool_args": {
+        "artist": "Taylor Swift",
+        "duration": 20
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_01",
+      "timestamp": "2026-04-25T09:04:31.261703+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "spotify.play",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": {
+          "tool_id": "spotify.play",
+          "arguments": {
+            "artist": "Taylor Swift",
+            "duration": 20
+          },
+          "schema": {
+            "type": "dict",
+            "properties": {
+              "artist": {
+                "type": "string",
+                "description": "The artist whose songs you want to play."
+              },
+              "duration": {
+                "type": "integer",
+                "description": "The duration for which the songs should be played, in minutes."
+              }
+            },
+            "required": [
+              "artist",
+              "duration"
+            ]
+          },
+          "backend": "bfcl_stub"
+        }
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_checkpoint_step_01",
+      "timestamp": "2026-04-25T09:04:31.261754+00:00",
+      "step_id": "step_01",
+      "event_type": "checkpoint_created",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "checkpoint_id": "cp_step_01"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_02",
+      "timestamp": "2026-04-25T09:04:31.261836+00:00",
+      "step_id": "step_02",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "spotify.play",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "low"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_02",
+      "timestamp": "2026-04-25T09:04:31.261909+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "spotify.play",
+      "input_ref": null,
+      "tool_args": {
+        "artist": "Maroon 5",
+        "duration": 15
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_02",
+      "timestamp": "2026-04-25T09:04:31.261929+00:00",
+      "step_id": "step_02",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "spotify.play",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": {
+          "tool_id": "spotify.play",
+          "arguments": {
+            "artist": "Maroon 5",
+            "duration": 15
+          },
+          "schema": {
+            "type": "dict",
+            "properties": {
+              "artist": {
+                "type": "string",
+                "description": "The artist whose songs you want to play."
+              },
+              "duration": {
+                "type": "integer",
+                "description": "The duration for which the songs should be played, in minutes."
+              }
+            },
+            "required": [
+              "artist",
+              "duration"
+            ]
+          },
+          "backend": "bfcl_stub"
+        }
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_checkpoint_step_02",
+      "timestamp": "2026-04-25T09:04:31.261977+00:00",
+      "step_id": "step_02",
+      "event_type": "checkpoint_created",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "checkpoint_id": "cp_step_02"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_success",
+      "timestamp": "2026-04-25T09:04:31.261988+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "reason": "success_criteria_satisfied"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 2,
+    "tool_calls": 2,
+    "user_queries": 0,
+    "probe_user_queries": 0,
+    "repair_user_queries": 0,
+    "probe_user_replies": 0,
+    "repair_user_replies": 0,
+    "repair_actions": 0,
+    "success": true,
+    "token_cost": null,
+    "latency_ms": null,
+    "clarification_precision": 0.0,
+    "clarification_recall": 0.0,
+    "unnecessary_question_rate": 0.0,
+    "patch_success_rate": 0.0,
+    "post_answer_retry_count": 0,
+    "recovery_budget_used": 0.0,
+    "budget_violation": false,
+    "budget_violation_reason": null,
+    "safe_abort": false,
+    "policy_compliance_success": false,
+    "state_repair_success": false
+  }
+}

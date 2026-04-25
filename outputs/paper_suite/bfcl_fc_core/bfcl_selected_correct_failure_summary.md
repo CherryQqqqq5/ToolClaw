@@ -10,22 +10,22 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 | metric | value |
 |---|---:|
 | selected_is_expected_count | 5120 |
-| success_given_selected_is_expected | 422 |
-| success_rate_given_selected_is_expected | 0.082421875 |
-| missing_required_given_selected_is_expected | 1705 |
-| wrong_arg_value_given_selected_is_expected | 958 |
-| wrong_arg_type_given_selected_is_expected | 159 |
+| success_given_selected_is_expected | 407 |
+| success_rate_given_selected_is_expected | 0.0794921875 |
+| missing_required_given_selected_is_expected | 1702 |
+| wrong_arg_value_given_selected_is_expected | 959 |
+| wrong_arg_type_given_selected_is_expected | 161 |
 | wrong_arg_structure_given_selected_is_expected | 91 |
 | wrong_call_count_given_selected_is_expected | 855 |
 | wrong_call_order_given_selected_is_expected | 0 |
-| parallel_shape_error_given_selected_is_expected | 930 |
+| parallel_shape_error_given_selected_is_expected | 945 |
 | multi_turn_state_error_given_selected_is_expected | 0 |
-| wrong_call_count_missing_calls | 901 |
-| wrong_call_count_extra_calls | 904 |
-| wrong_call_count_zero_emitted | 448 |
-| wrong_call_count_single_for_multiple | 395 |
+| wrong_call_count_missing_calls | 872 |
+| wrong_call_count_extra_calls | 948 |
+| wrong_call_count_zero_emitted | 481 |
+| wrong_call_count_single_for_multiple | 335 |
 | wrong_call_count_multiple_for_single | 0 |
-| parallel_expected_but_serial_emitted | 395 |
+| parallel_expected_but_serial_emitted | 335 |
 | serial_expected_but_parallel_emitted | 0 |
 | parallel_grouping_mismatch | 0 |
 | parallel_call_count_correct_but_grouping_wrong | 0 |
@@ -34,7 +34,7 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 | other_selected_correct_failure_given_selected_is_expected | 0 |
 | missing_required_due_to_no_query_cue | 1100 |
 | missing_required_due_to_schema_alias_mismatch | 870 |
-| missing_required_due_to_grounder_not_attempted | 50 |
+| missing_required_due_to_grounder_not_attempted | 47 |
 | missing_required_due_to_value_filtered | 45 |
 | missing_required_due_to_final_answer_serializer_drop | 0 |
 
@@ -42,20 +42,20 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 
 | bucket | count |
 |---|---:|
-| missing_required | 1705 |
-| parallel_shape_error | 930 |
-| selected_correct_success | 422 |
+| missing_required | 1702 |
+| parallel_shape_error | 945 |
+| selected_correct_success | 407 |
 | wrong_arg_structure | 91 |
-| wrong_arg_type | 159 |
-| wrong_arg_value | 958 |
+| wrong_arg_type | 161 |
+| wrong_arg_value | 959 |
 | wrong_call_count | 855 |
 
 ## By Case Type
 
 | case_type | selected expected | success | top bucket |
 |---|---:|---:|---|
-| live:parallel | 60 | 10 | wrong_arg_value |
+| live:parallel | 60 | 0 | parallel_shape_error |
 | live:serial | 1930 | 147 | wrong_call_count |
 | multi_turn:serial | 0 | 0 | none |
-| non_live:parallel | 995 | 15 | parallel_shape_error |
+| non_live:parallel | 995 | 10 | parallel_shape_error |
 | non_live:serial | 2135 | 250 | missing_required |
