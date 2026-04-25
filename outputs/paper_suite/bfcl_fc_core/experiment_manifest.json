@@ -1,6 +1,6 @@
 {
   "benchmark": "bfcl",
-  "generated_at": "2026-04-25T09:08:35.700751+00:00",
+  "generated_at": "2026-04-25T11:28:58.995684+00:00",
   "track": "fc_core",
   "source": "data/bfcl_formal/bfcl_v4.fc_core.aligned.jsonl",
   "source_manifest": "data/bfcl_formal/manifest.json",
@@ -37,17 +37,5 @@
     "planner_binding_headline",
     "bfcl_exact_function_guard",
     "bfcl_missing_required_guarded_reduction"
-  ],
-  "git_commit": "21e70bf919aba027b6826066dc6f4e87fbcda04f",
-  "git_branch": "main",
-  "git_dirty_at_run_start": false,
-  "git_dirty_after_artifact_generation": true,
-  "suite_command": "PYTHONPATH=src python3 scripts/run_paper_bench_suite.py bfcl_fc_core",
-  "diagnostic_note": "outputs/paper_suite/bfcl_fc_core/21e70bf_rerun_diagnostic_note.md",
-  "representative_trace_dir": "outputs/paper_suite/bfcl_fc_core/representative_traces",
-  "bfcl_claim_state": "case_d_limitation_no_claim_upgrade",
-  "canonical_claim_report": "claim_summary.json",
-  "scorer_git_commit": "3f74bbec8731ffe5b22145c323c66ad8d4d59c9a",
-  "scorer_command": "PYTHONPATH=src python3 scripts/score_bfcl_outputs.py --outdir outputs/paper_suite/bfcl_fc_core --official-eval true --toolclaw-diagnostics true",
-  "bridge_rescore_diagnostic_note": "outputs/paper_suite/bfcl_fc_core/3f74bbe_bridge_rescore_diagnostic_note.md"
+  ]
 }

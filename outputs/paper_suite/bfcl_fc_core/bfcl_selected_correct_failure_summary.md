@@ -12,20 +12,20 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 | selected_is_expected_count | 5120 |
 | success_given_selected_is_expected | 407 |
 | success_rate_given_selected_is_expected | 0.0794921875 |
-| missing_required_given_selected_is_expected | 1702 |
-| wrong_arg_value_given_selected_is_expected | 959 |
-| wrong_arg_type_given_selected_is_expected | 161 |
-| wrong_arg_structure_given_selected_is_expected | 91 |
+| missing_required_given_selected_is_expected | 1810 |
+| wrong_arg_value_given_selected_is_expected | 945 |
+| wrong_arg_type_given_selected_is_expected | 155 |
+| wrong_arg_structure_given_selected_is_expected | 85 |
 | wrong_call_count_given_selected_is_expected | 855 |
 | wrong_call_order_given_selected_is_expected | 0 |
-| parallel_shape_error_given_selected_is_expected | 945 |
+| parallel_shape_error_given_selected_is_expected | 863 |
 | multi_turn_state_error_given_selected_is_expected | 0 |
-| wrong_call_count_missing_calls | 872 |
-| wrong_call_count_extra_calls | 948 |
-| wrong_call_count_zero_emitted | 481 |
-| wrong_call_count_single_for_multiple | 335 |
+| wrong_call_count_missing_calls | 721 |
+| wrong_call_count_extra_calls | 1017 |
+| wrong_call_count_zero_emitted | 103 |
+| wrong_call_count_single_for_multiple | 508 |
 | wrong_call_count_multiple_for_single | 0 |
-| parallel_expected_but_serial_emitted | 335 |
+| parallel_expected_but_serial_emitted | 508 |
 | serial_expected_but_parallel_emitted | 0 |
 | parallel_grouping_mismatch | 0 |
 | parallel_call_count_correct_but_grouping_wrong | 0 |
@@ -34,7 +34,7 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 | other_selected_correct_failure_given_selected_is_expected | 0 |
 | missing_required_due_to_no_query_cue | 1100 |
 | missing_required_due_to_schema_alias_mismatch | 870 |
-| missing_required_due_to_grounder_not_attempted | 47 |
+| missing_required_due_to_grounder_not_attempted | 155 |
 | missing_required_due_to_value_filtered | 45 |
 | missing_required_due_to_final_answer_serializer_drop | 0 |
 
@@ -42,12 +42,12 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 
 | bucket | count |
 |---|---:|
-| missing_required | 1702 |
-| parallel_shape_error | 945 |
+| missing_required | 1810 |
+| parallel_shape_error | 863 |
 | selected_correct_success | 407 |
-| wrong_arg_structure | 91 |
-| wrong_arg_type | 161 |
-| wrong_arg_value | 959 |
+| wrong_arg_structure | 85 |
+| wrong_arg_type | 155 |
+| wrong_arg_value | 945 |
 | wrong_call_count | 855 |
 
 ## By Case Type

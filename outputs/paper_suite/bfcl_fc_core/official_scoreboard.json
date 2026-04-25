@@ -6,23 +6,23 @@
     "a0_baseline": {
       "num_rows": 4291.0,
       "official_bfcl_eval_success": 0.2528548123980424,
-      "official_bfcl_eval_tool_selection_correctness": 0.615668453351977,
+      "official_bfcl_eval_tool_selection_correctness": 0.6525246640254797,
       "official_bfcl_eval_argument_correctness": 0.2528548123980424,
-      "official_bfcl_eval_structure_correctness": 0.6021906315544162
+      "official_bfcl_eval_structure_correctness": 0.612910743416453
     },
     "a1_recovery": {
       "num_rows": 4291.0,
       "official_bfcl_eval_success": 0.2528548123980424,
-      "official_bfcl_eval_tool_selection_correctness": 0.6160180222170434,
+      "official_bfcl_eval_tool_selection_correctness": 0.6525246640254797,
       "official_bfcl_eval_argument_correctness": 0.2528548123980424,
-      "official_bfcl_eval_structure_correctness": 0.6024236774644605
+      "official_bfcl_eval_structure_correctness": 0.612910743416453
     },
     "a2_planner": {
       "num_rows": 4291.0,
       "official_bfcl_eval_success": 0.247494756467024,
-      "official_bfcl_eval_tool_selection_correctness": 0.6157655558144954,
+      "official_bfcl_eval_tool_selection_correctness": 0.6375825370931407,
       "official_bfcl_eval_argument_correctness": 0.247494756467024,
-      "official_bfcl_eval_structure_correctness": 0.6026567233745048
+      "official_bfcl_eval_structure_correctness": 0.6103472384059659
     },
     "a3_interaction": {
       "num_rows": 4291.0,

@@ -9,30 +9,28 @@
     "a2_success_not_above_a1",
     "a2_not_better_on_two_headline_submetrics"
   ],
-  "headline_metric_improvements": [
-    "official_bfcl_eval_structure_correctness"
-  ],
+  "headline_metric_improvements": [],
   "official_bfcl_eval": {
     "a0_baseline": {
       "num_rows": 4291.0,
       "official_bfcl_eval_success": 0.2528548123980424,
-      "official_bfcl_eval_tool_selection_correctness": 0.615668453351977,
+      "official_bfcl_eval_tool_selection_correctness": 0.6525246640254797,
       "official_bfcl_eval_argument_correctness": 0.2528548123980424,
-      "official_bfcl_eval_structure_correctness": 0.6021906315544162
+      "official_bfcl_eval_structure_correctness": 0.612910743416453
     },
     "a1_recovery": {
       "num_rows": 4291.0,
       "official_bfcl_eval_success": 0.2528548123980424,
-      "official_bfcl_eval_tool_selection_correctness": 0.6160180222170434,
+      "official_bfcl_eval_tool_selection_correctness": 0.6525246640254797,
       "official_bfcl_eval_argument_correctness": 0.2528548123980424,
-      "official_bfcl_eval_structure_correctness": 0.6024236774644605
+      "official_bfcl_eval_structure_correctness": 0.612910743416453
     },
     "a2_planner": {
       "num_rows": 4291.0,
       "official_bfcl_eval_success": 0.247494756467024,
-      "official_bfcl_eval_tool_selection_correctness": 0.6157655558144954,
+      "official_bfcl_eval_tool_selection_correctness": 0.6375825370931407,
       "official_bfcl_eval_argument_correctness": 0.247494756467024,
-      "official_bfcl_eval_structure_correctness": 0.6026567233745048
+      "official_bfcl_eval_structure_correctness": 0.6103472384059659
     },
     "a3_interaction": {
       "num_rows": 4291.0,
@@ -52,50 +50,50 @@
   "toolclaw_diagnostics": {
     "a0_baseline": {
       "num_rows": 4291.0,
-      "toolclaw_diagnostics_binder_selection_match": 0.7134164269296626,
-      "toolclaw_diagnostics_tool_sequence_match": 0.40549988347704496,
-      "toolclaw_diagnostics_parameter_fill_ratio": 0.49518205324544173,
+      "toolclaw_diagnostics_binder_selection_match": 0.7502726376031652,
+      "toolclaw_diagnostics_tool_sequence_match": 0.4157539035189932,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.4358149948396977,
       "toolclaw_diagnostics_policy_format_compliance": 1.0,
       "toolclaw_diagnostics_repair_overhead": 0.0,
-      "toolclaw_diagnostics_missing_required_arg_rate": 0.05392293948574536,
-      "toolclaw_diagnostics_preflight_interception_rate": 0.0755068748543463,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.005624174629068593,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.009787928221859706,
       "toolclaw_diagnostics_repair_success_rate": 0.0,
       "toolclaw_diagnostics_repair_applied_count": 0.0,
       "toolclaw_diagnostics_repair_success_count": 0.0,
-      "toolclaw_diagnostics_exec_verified": 0.9219296201351667,
-      "toolclaw_diagnostics_avg_tool_calls": 0.7431834071312049,
+      "toolclaw_diagnostics_exec_verified": 0.9876485667676532,
+      "toolclaw_diagnostics_avg_tool_calls": 0.894663248659986,
       "toolclaw_diagnostics_avg_user_queries": 0.0
     },
     "a1_recovery": {
       "num_rows": 4291.0,
-      "toolclaw_diagnostics_binder_selection_match": 0.713765995794729,
-      "toolclaw_diagnostics_tool_sequence_match": 0.40573292938708927,
-      "toolclaw_diagnostics_parameter_fill_ratio": 0.4947936433953679,
+      "toolclaw_diagnostics_binder_selection_match": 0.7502726376031652,
+      "toolclaw_diagnostics_tool_sequence_match": 0.4157539035189932,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.4358149948396977,
       "toolclaw_diagnostics_policy_format_compliance": 1.0,
-      "toolclaw_diagnostics_repair_overhead": 0.0009321836401771149,
-      "toolclaw_diagnostics_missing_required_arg_rate": 0.05392293948574536,
-      "toolclaw_diagnostics_preflight_interception_rate": 0.0755068748543463,
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.005624174629068593,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.009787928221859706,
       "toolclaw_diagnostics_repair_success_rate": 0.0,
-      "toolclaw_diagnostics_repair_applied_count": 0.0009321836401771149,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
       "toolclaw_diagnostics_repair_success_count": 0.0,
-      "toolclaw_diagnostics_exec_verified": 0.9219296201351667,
-      "toolclaw_diagnostics_avg_tool_calls": 0.744115590771382,
+      "toolclaw_diagnostics_exec_verified": 0.9876485667676532,
+      "toolclaw_diagnostics_avg_tool_calls": 0.894663248659986,
       "toolclaw_diagnostics_avg_user_queries": 0.0
     },
     "a2_planner": {
       "num_rows": 4291.0,
-      "toolclaw_diagnostics_binder_selection_match": 0.713513529392181,
-      "toolclaw_diagnostics_tool_sequence_match": 0.4059659752971335,
-      "toolclaw_diagnostics_parameter_fill_ratio": 0.49487853869116977,
+      "toolclaw_diagnostics_binder_selection_match": 0.7353305106708262,
+      "toolclaw_diagnostics_tool_sequence_match": 0.41342344441855045,
+      "toolclaw_diagnostics_parameter_fill_ratio": 0.46640744933101025,
       "toolclaw_diagnostics_policy_format_compliance": 1.0,
-      "toolclaw_diagnostics_repair_overhead": 0.0009321836401771149,
-      "toolclaw_diagnostics_missing_required_arg_rate": 0.05248582304047231,
-      "toolclaw_diagnostics_preflight_interception_rate": 0.07387555348403635,
+      "toolclaw_diagnostics_repair_overhead": 0.0,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.03003573370620679,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.040783034257748776,
       "toolclaw_diagnostics_repair_success_rate": 0.0,
-      "toolclaw_diagnostics_repair_applied_count": 0.0009321836401771149,
+      "toolclaw_diagnostics_repair_applied_count": 0.0,
       "toolclaw_diagnostics_repair_success_count": 0.0,
-      "toolclaw_diagnostics_exec_verified": 0.9184339314845025,
-      "toolclaw_diagnostics_avg_tool_calls": 0.7438825448613376,
+      "toolclaw_diagnostics_exec_verified": 0.9450011652295502,
+      "toolclaw_diagnostics_avg_tool_calls": 0.8459566534607318,
       "toolclaw_diagnostics_avg_user_queries": 0.0
     },
     "a3_interaction": {
@@ -104,15 +102,15 @@
       "toolclaw_diagnostics_tool_sequence_match": 0.41528781169890466,
       "toolclaw_diagnostics_parameter_fill_ratio": 0.42650730765389355,
       "toolclaw_diagnostics_policy_format_compliance": 1.0,
-      "toolclaw_diagnostics_repair_overhead": 0.109531577720811,
-      "toolclaw_diagnostics_missing_required_arg_rate": 0.04643693863427026,
-      "toolclaw_diagnostics_preflight_interception_rate": 0.07387555348403635,
+      "toolclaw_diagnostics_repair_overhead": 0.02703332556513633,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.02607589528470442,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.040783034257748776,
       "toolclaw_diagnostics_repair_success_rate": 0.0,
-      "toolclaw_diagnostics_repair_applied_count": 0.109531577720811,
+      "toolclaw_diagnostics_repair_applied_count": 0.02703332556513633,
       "toolclaw_diagnostics_repair_success_count": 0.0,
-      "toolclaw_diagnostics_exec_verified": 0.9244931251456537,
+      "toolclaw_diagnostics_exec_verified": 0.9519925425308786,
       "toolclaw_diagnostics_avg_tool_calls": 0.9032859473316244,
-      "toolclaw_diagnostics_avg_user_queries": 0.08948962945700303
+      "toolclaw_diagnostics_avg_user_queries": 0.05499883477044978
     },
     "a4_reuse": {
       "num_rows": 4291.0,
@@ -120,15 +118,15 @@
       "toolclaw_diagnostics_tool_sequence_match": 0.41528781169890466,
       "toolclaw_diagnostics_parameter_fill_ratio": 0.42650730765389355,
       "toolclaw_diagnostics_policy_format_compliance": 1.0,
-      "toolclaw_diagnostics_repair_overhead": 0.109531577720811,
-      "toolclaw_diagnostics_missing_required_arg_rate": 0.04643693863427026,
-      "toolclaw_diagnostics_preflight_interception_rate": 0.07387555348403635,
+      "toolclaw_diagnostics_repair_overhead": 0.02703332556513633,
+      "toolclaw_diagnostics_missing_required_arg_rate": 0.02607589528470442,
+      "toolclaw_diagnostics_preflight_interception_rate": 0.040783034257748776,
       "toolclaw_diagnostics_repair_success_rate": 0.0,
-      "toolclaw_diagnostics_repair_applied_count": 0.109531577720811,
+      "toolclaw_diagnostics_repair_applied_count": 0.02703332556513633,
       "toolclaw_diagnostics_repair_success_count": 0.0,
-      "toolclaw_diagnostics_exec_verified": 0.9244931251456537,
+      "toolclaw_diagnostics_exec_verified": 0.9519925425308786,
       "toolclaw_diagnostics_avg_tool_calls": 0.9032859473316244,
-      "toolclaw_diagnostics_avg_user_queries": 0.08948962945700303
+      "toolclaw_diagnostics_avg_user_queries": 0.05499883477044978
     }
   },
   "unsupported_strata": [],
@@ -141,9 +139,9 @@
         "official_success_or_safe_failure": 1381,
         "value_error": 860,
         "wrong_func_name": 153,
-        "other_official_failure": 237,
+        "other_official_failure": 288,
         "missing_required": 408,
-        "wrong_count": 452,
+        "wrong_count": 401,
         "multi_turn_mismatch": 730,
         "multi_turn_other": 70
       },
@@ -151,9 +149,9 @@
         "official_success_or_safe_failure": 1381,
         "value_error": 860,
         "wrong_func_name": 153,
-        "other_official_failure": 239,
+        "other_official_failure": 288,
         "missing_required": 408,
-        "wrong_count": 450,
+        "wrong_count": 401,
         "multi_turn_mismatch": 746,
         "multi_turn_other": 54
       },
@@ -161,9 +159,9 @@
         "official_success_or_safe_failure": 1358,
         "value_error": 860,
         "wrong_func_name": 153,
-        "other_official_failure": 268,
+        "other_official_failure": 303,
         "missing_required": 408,
-        "wrong_count": 444,
+        "wrong_count": 409,
         "multi_turn_mismatch": 752,
         "multi_turn_other": 48
       },
@@ -191,7 +189,7 @@
     "full_suite_gates": {
       "a2_wrong_func_name_le_a0": true,
       "a2_missing_required_lt_a0": false,
-      "a2_tool_selection_ge_a0": true,
+      "a2_tool_selection_ge_a0": false,
       "a2_success_ge_a0": false
     },
     "wrong_function_bucket_non_regression": true,
@@ -260,23 +258,23 @@
         "a0_baseline": {
           "num_rows": 4291.0,
           "official_bfcl_eval_success": 0.2528548123980424,
-          "official_bfcl_eval_tool_selection_correctness": 0.615668453351977,
+          "official_bfcl_eval_tool_selection_correctness": 0.6525246640254797,
           "official_bfcl_eval_argument_correctness": 0.2528548123980424,
-          "official_bfcl_eval_structure_correctness": 0.6021906315544162
+          "official_bfcl_eval_structure_correctness": 0.612910743416453
         },
         "a1_recovery": {
           "num_rows": 4291.0,
           "official_bfcl_eval_success": 0.2528548123980424,
-          "official_bfcl_eval_tool_selection_correctness": 0.6160180222170434,
+          "official_bfcl_eval_tool_selection_correctness": 0.6525246640254797,
           "official_bfcl_eval_argument_correctness": 0.2528548123980424,
-          "official_bfcl_eval_structure_correctness": 0.6024236774644605
+          "official_bfcl_eval_structure_correctness": 0.612910743416453
         },
         "a2_planner": {
           "num_rows": 4291.0,
           "official_bfcl_eval_success": 0.247494756467024,
-          "official_bfcl_eval_tool_selection_correctness": 0.6157655558144954,
+          "official_bfcl_eval_tool_selection_correctness": 0.6375825370931407,
           "official_bfcl_eval_argument_correctness": 0.247494756467024,
-          "official_bfcl_eval_structure_correctness": 0.6026567233745048
+          "official_bfcl_eval_structure_correctness": 0.6103472384059659
         },
         "a3_interaction": {
           "num_rows": 4291.0,
@@ -304,7 +302,7 @@
       "gates": {
         "a2_wrong_func_name_le_a0": true,
         "a2_missing_required_lt_a0": false,
-        "a2_tool_selection_ge_a0": true,
+        "a2_tool_selection_ge_a0": false,
         "a2_success_ge_a0": false
       },
       "interpretation": "Guarded BFCL adapter evidence is supporting only if wrong-function, missing-required, tool-selection, and success non-regression gates all pass."
@@ -358,5 +356,6 @@
       },
       "interpretation": "This claim is supporting only if full-suite gates and the pre-registered baseline-missing-required slice gates both pass."
     }
-  ]
+  ],
+  "paper_role": "limitation_with_candidate_coverage_diagnostic"
 }
