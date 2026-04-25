@@ -2329,6 +2329,176 @@ def test_bfcl_selected_correct_audit_classifies_trace_parser_drop(tmp_path: Path
     assert audit_row["selected_top1_but_final_answer_parser_drops_call"] is True
 
 
+
+def test_bfcl_parallel_bridge_audit_classifies_emission_stages(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_parallel_bridge_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    def make_row(
+        task_id: str,
+        *,
+        expected_calls: list[dict] | None = None,
+        emitted_calls: list[dict] | None = None,
+        extra_events: list[dict] | None = None,
+        metrics: dict | None = None,
+        reasons: list[str] | None = None,
+        success: float = 0.0,
+        argument_set_count: int = 2,
+        materialized_count: int = 2,
+    ) -> dict:
+        expected_calls = expected_calls or [
+            {"tool_name": "weather", "arguments": {"city": "Paris"}},
+            {"tool_name": "weather", "arguments": {"city": "Berlin"}},
+        ]
+        emitted_calls = emitted_calls or []
+        runtime_diagnostic = {
+            "runtime_candidate_tool_ids": ["weather"],
+            "runtime_candidate_original_function_names": ["weather"],
+            "ranker_candidate_tool_ids": ["weather"],
+            "ranker_candidate_original_function_names": ["weather"],
+            "schema_top_5": [{"tool_id": "weather", "bfcl_original_function_name": "weather"}],
+            "selected_tool_id": "weather",
+            "selected_reason": "schema_top1_no_planner",
+            "parallel_materialization_policy_version": "bfcl_non_live_parallel_clause_materialization_v1",
+            "parallel_argument_sets_extracted": argument_set_count > 0,
+            "parallel_argument_set_count": argument_set_count,
+            "parallel_clause_materialized_count": materialized_count,
+            "parallel_clause_drop_count": max(argument_set_count - materialized_count, 0),
+            "parallel_collapsed_to_serial": False,
+            "parallel_clause_drop_reasons": [],
+        }
+        events = list(extra_events or [])
+        events.extend(
+            {
+                "event_type": "tool_call",
+                "tool_id": call["tool_name"],
+                "tool_args": call.get("arguments", {}),
+            }
+            for call in emitted_calls
+        )
+        trace_path = tmp_path / f"{task_id}.json"
+        trace_path.write_text(
+            json.dumps(
+                {
+                    "metadata": {"task_annotations": {"bfcl_rerank_diagnostics": [runtime_diagnostic]}},
+                    "events": events,
+                    "metrics": metrics if metrics is not None else {"total_steps": materialized_count, "tool_calls": len(emitted_calls)},
+                }
+            ),
+            encoding="utf-8",
+        )
+        return {
+            "run_index": "1",
+            "task_id": task_id,
+            "system": "a2_planner",
+            "bfcl_group": "non_live",
+            "bfcl_call_pattern": "parallel",
+            "gold_tool": "weather",
+            "chosen_tool": "weather",
+            "candidate_tools": json.dumps([
+                {
+                    "tool_id": "weather",
+                    "metadata": {"bfcl_original_function_name": "weather"},
+                    "parameters": {"type": "dict", "required": ["city"], "properties": {"city": {"type": "string"}}},
+                }
+            ]),
+            "expected_call_structure": json.dumps({"pattern": "parallel", "calls": expected_calls}),
+            "trace_path": str(trace_path),
+            "official_bfcl_eval_unsupported_reasons": json.dumps(reasons or []),
+            "official_bfcl_eval_success": success,
+        }
+
+    rows = [
+        make_row(
+            "preflight_blocked",
+            extra_events=[
+                {"event_type": "plan_generated", "output": {"steps": 2}},
+                {"event_type": "preflight_check", "step_id": "step_01", "output": {"status": "failed", "reason": "missing_required_input", "missing_required_inputs": ["height"]}},
+                {"event_type": "stop", "output": {"status": "blocked", "reason": "awaiting_user_interaction"}},
+            ],
+            metrics={"total_steps": 2, "tool_calls": 0},
+            reasons=["wrong_count"],
+        ),
+        make_row(
+            "not_executed",
+            extra_events=[{"event_type": "plan_generated", "output": {"steps": 2}}],
+            metrics={"total_steps": 2, "tool_calls": 0},
+            reasons=["wrong_count"],
+        ),
+        make_row(
+            "trace_to_answer_drop",
+            metrics={"total_steps": 2, "tool_calls": 2},
+            reasons=["wrong_count"],
+        ),
+        make_row(
+            "wrong_count",
+            emitted_calls=[{"tool_name": "weather", "arguments": {"city": "Paris"}}],
+            reasons=["wrong_count"],
+        ),
+        make_row(
+            "wrong_grouping",
+            emitted_calls=[
+                {"tool_name": "weather", "arguments": {"city": "Paris"}},
+                {"tool_name": "weather", "arguments": {"city": "Berlin"}},
+            ],
+            reasons=["wrong_count"],
+        ),
+        make_row(
+            "wrong_args",
+            emitted_calls=[
+                {"tool_name": "weather", "arguments": {"city": "London"}},
+                {"tool_name": "weather", "arguments": {"city": "Berlin"}},
+            ],
+            reasons=["value_error"],
+        ),
+        make_row(
+            "success",
+            emitted_calls=[
+                {"tool_name": "weather", "arguments": {"city": "Paris"}},
+                {"tool_name": "weather", "arguments": {"city": "Berlin"}},
+            ],
+            success=1.0,
+        ),
+        make_row(
+            "no_workflow_steps",
+            extra_events=[{"event_type": "plan_generated", "output": {"steps": 0}}],
+            metrics={"total_steps": 0, "tool_calls": 0},
+            reasons=["wrong_count"],
+        ),
+    ]
+
+    audit = module._bfcl_selected_correct_failure_audit(rows)
+    by_task = {row["task_id"]: row for row in audit["rows"]}
+    assert by_task["preflight_blocked"]["parallel_bridge_drop_stage"] == "parallel_workflow_steps_built_but_preflight_blocked"
+    assert by_task["preflight_blocked"]["parallel_preflight_blocked_step_count"] == 1
+    assert by_task["preflight_blocked"]["parallel_preflight_missing_required_inputs"] == ["height"]
+    assert by_task["not_executed"]["parallel_bridge_drop_stage"] == "parallel_workflow_steps_built_but_not_executed"
+    assert by_task["trace_to_answer_drop"]["parallel_bridge_drop_stage"] == "parallel_tool_calls_in_trace_but_not_in_emitted_answer"
+    assert by_task["wrong_count"]["parallel_bridge_drop_stage"] == "parallel_emitted_calls_wrong_count"
+    assert by_task["wrong_grouping"]["parallel_bridge_drop_stage"] == "parallel_emitted_calls_but_wrong_official_grouping"
+    assert by_task["wrong_args"]["parallel_bridge_drop_stage"] == "parallel_emitted_calls_wrong_args"
+    assert by_task["success"]["parallel_bridge_drop_stage"] == "parallel_emitted_calls_success"
+    assert by_task["no_workflow_steps"]["parallel_bridge_drop_stage"] == "parallel_sets_extracted_but_no_workflow_steps"
+
+    summary = audit["summary"]
+    assert summary["parallel_workflow_steps_built_but_preflight_blocked"] == 1
+    assert summary["parallel_workflow_steps_built_but_not_executed"] == 1
+    assert summary["parallel_tool_calls_in_trace_but_not_in_emitted_answer"] == 1
+    assert summary["parallel_emitted_calls_wrong_count"] == 1
+    assert summary["parallel_emitted_calls_but_wrong_official_grouping"] == 1
+    assert summary["parallel_emitted_calls_wrong_args"] == 1
+    assert summary["parallel_emitted_calls_success"] == 1
+    assert summary["parallel_sets_extracted_but_no_workflow_steps"] == 1
+    assert summary["materialized_gt0_trace0"] == 3
+    assert summary["trace_gt0_emitted0"] == 1
+    assert summary["emitted_gt0_wrong_count"] == 1
+    assert summary["emitted_count_correct_wrong_grouping"] == 1
+
 def test_bfcl_guard_gates_separate_wrong_function_bucket_from_claim_readiness() -> None:
     spec = importlib.util.spec_from_file_location(
         "score_bfcl_outputs_guard_gate_names_module",

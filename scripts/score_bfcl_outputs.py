@@ -1251,6 +1251,132 @@ def _call_shape_breakdown(
     }
 
 
+def _trace_parallel_bridge_features(trace_payload: Dict[str, Any] | None) -> Dict[str, Any]:
+    events = trace_payload.get("events", []) if isinstance(trace_payload, dict) else []
+    if not isinstance(events, list):
+        events = []
+    workflow_step_count = 0
+    trace_tool_call_event_count = 0
+    preflight_blocked_steps: set[str] = set()
+    preflight_missing_required_inputs: set[str] = set()
+    stop_reason = ""
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        event_type = str(event.get("event_type") or "")
+        if event_type == "tool_call":
+            trace_tool_call_event_count += 1
+        if event_type == "plan_generated":
+            output = event.get("output", {}) if isinstance(event.get("output"), dict) else {}
+            try:
+                workflow_step_count = max(workflow_step_count, int(output.get("steps", 0) or 0))
+            except (TypeError, ValueError):
+                pass
+        if event_type == "preflight_check":
+            output = event.get("output", {}) if isinstance(event.get("output"), dict) else {}
+            missing = output.get("missing_required_inputs", [])
+            if isinstance(missing, list):
+                preflight_missing_required_inputs.update(str(item) for item in missing if str(item))
+            status = str(output.get("status") or "").lower()
+            reason = str(output.get("reason") or "").lower()
+            ok_value = output.get("ok")
+            blocked = bool(
+                missing
+                or status == "failed"
+                or reason == "missing_required_input"
+                or ok_value is False
+            )
+            if blocked:
+                step_id = str(event.get("step_id") or "").strip()
+                if step_id:
+                    preflight_blocked_steps.add(step_id)
+        if event_type == "stop":
+            output = event.get("output", {}) if isinstance(event.get("output"), dict) else {}
+            stop_reason = str(output.get("reason") or output.get("status") or stop_reason or "")
+    metrics = trace_payload.get("metrics", {}) if isinstance(trace_payload, dict) else {}
+    if isinstance(metrics, dict):
+        try:
+            workflow_step_count = max(workflow_step_count, int(metrics.get("total_steps", 0) or 0))
+        except (TypeError, ValueError):
+            pass
+    return {
+        "parallel_workflow_step_count": workflow_step_count,
+        "parallel_trace_tool_call_event_count": trace_tool_call_event_count,
+        "parallel_preflight_blocked_step_count": len(preflight_blocked_steps),
+        "parallel_preflight_missing_required_inputs": sorted(preflight_missing_required_inputs),
+        "parallel_stop_reason": stop_reason,
+    }
+
+
+def _parallel_bridge_breakdown(
+    *,
+    selected_is_expected: bool,
+    is_parallel_case: bool,
+    official_success: bool,
+    failure_bucket: str,
+    expected_call_count: int,
+    emitted_call_count: int,
+    trace_metric_tool_calls: int,
+    shape: Dict[str, Any],
+    mismatches: Dict[str, List[str]],
+    parallel_argument_set_count: int,
+    parallel_clause_materialized_count: int,
+    trace_features: Dict[str, Any],
+) -> Dict[str, Any]:
+    workflow_step_count = int(trace_features.get("parallel_workflow_step_count") or 0)
+    trace_tool_call_event_count = int(trace_features.get("parallel_trace_tool_call_event_count") or 0)
+    preflight_blocked_count = int(trace_features.get("parallel_preflight_blocked_step_count") or 0)
+    trace_call_count = max(trace_metric_tool_calls, trace_tool_call_event_count)
+    trace_matches_emitted = trace_call_count == emitted_call_count
+    emitted_matches_expected = emitted_call_count == expected_call_count
+    stage = ""
+    reason = ""
+    if selected_is_expected and is_parallel_case:
+        if parallel_argument_set_count > 0 and workflow_step_count == 0:
+            stage = "parallel_sets_extracted_but_no_workflow_steps"
+            reason = "argument_sets_extracted_without_plan_steps"
+        elif parallel_clause_materialized_count > 0 and trace_call_count == 0 and preflight_blocked_count > 0:
+            stage = "parallel_workflow_steps_built_but_preflight_blocked"
+            reason = "preflight_missing_required_inputs"
+        elif parallel_clause_materialized_count > 0 and trace_call_count == 0:
+            stage = "parallel_workflow_steps_built_but_not_executed"
+            reason = "no_tool_call_events_after_materialized_steps"
+        elif trace_call_count > 0 and emitted_call_count == 0:
+            stage = "parallel_tool_calls_in_trace_but_not_in_emitted_answer"
+            reason = "trace_to_bfcl_answer_extraction_drop"
+        elif emitted_call_count > 0 and emitted_call_count != expected_call_count:
+            stage = "parallel_emitted_calls_wrong_count"
+            reason = "emitted_call_count_differs_from_expected"
+        elif emitted_matches_expected and official_success:
+            stage = "parallel_emitted_calls_success"
+            reason = "official_success"
+        elif emitted_matches_expected and str(failure_bucket) == "wrong_count":
+            stage = "parallel_emitted_calls_but_wrong_official_grouping"
+            reason = "official_wrong_count_with_matching_call_count"
+        elif emitted_matches_expected and (
+            mismatches.get("missing_required_args")
+            or mismatches.get("wrong_type_args")
+            or mismatches.get("wrong_value_args")
+            or mismatches.get("nested_structure_mismatches")
+            or str(failure_bucket) in {"missing_required", "value_error", "other_official_failure"}
+        ):
+            stage = "parallel_emitted_calls_wrong_args"
+            reason = "argument_mismatch_after_parallel_emission"
+        elif bool(shape.get("parallel_or_multiple_shape_mismatch")):
+            stage = "parallel_emitted_calls_wrong_count"
+            reason = "parallel_shape_mismatch"
+        else:
+            stage = "parallel_bridge_not_applicable"
+            reason = "no_parallel_bridge_drop_detected"
+    return {
+        **trace_features,
+        "parallel_bridge_drop_stage": stage,
+        "parallel_bridge_drop_reason": reason,
+        "parallel_trace_calls_match_emitted_calls": trace_matches_emitted,
+        "parallel_emitted_calls_match_expected_count": emitted_matches_expected,
+    }
+
+
 def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
     coverage = _bfcl_candidate_coverage_row(row)
     expected_calls = _expected_calls_from_row(row)
@@ -1280,6 +1406,7 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
                 trace_metric_tool_calls = int(metrics.get("tool_calls", 0) or 0)
             except (TypeError, ValueError):
                 trace_metric_tool_calls = 0
+    trace_features = _trace_parallel_bridge_features(trace_payload)
     zero_emitted = bool(expected_call_count > 0 and emitted_call_count == 0)
     candidate_pool_exception = str(coverage.get("candidate_pool_exception") or "")
     selected_required_coverage = diagnostic.get("selected_required_argument_coverage") if isinstance(diagnostic, dict) else None
@@ -1288,6 +1415,8 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
     except (TypeError, ValueError):
         selected_required_coverage_value = 0.0
     is_parallel_case = call_pattern == "parallel" or "parallel" in case_type
+    parallel_argument_set_count = int(diagnostic.get("parallel_argument_set_count") or 0)
+    parallel_clause_materialized_count = int(diagnostic.get("parallel_clause_materialized_count") or 0)
     is_serial_case = call_pattern == "serial" and "multi_turn" not in case_type
     trace_tool_call_expected_by_bfcl_serial = bool(diagnostic.get("trace_tool_call_expected_by_bfcl_serial"))
     serial_selected_top1_materialization_blocked = bool(
@@ -1345,6 +1474,20 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
         emitted_calls=emitted_calls,
         trace_metric_tool_calls=trace_metric_tool_calls,
     )
+    parallel_bridge = _parallel_bridge_breakdown(
+        selected_is_expected=selected_is_expected,
+        is_parallel_case=is_parallel_case,
+        official_success=official_success,
+        failure_bucket=failure_bucket,
+        expected_call_count=expected_call_count,
+        emitted_call_count=emitted_call_count,
+        trace_metric_tool_calls=trace_metric_tool_calls,
+        shape=shape,
+        mismatches=mismatches,
+        parallel_argument_set_count=parallel_argument_set_count,
+        parallel_clause_materialized_count=parallel_clause_materialized_count,
+        trace_features=trace_features,
+    )
 
     return {
         "row_id": str(coverage.get("row_id") or ""),
@@ -1391,11 +1534,12 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
         ),
         "parallel_materialization_policy_version": str(diagnostic.get("parallel_materialization_policy_version") or ""),
         "parallel_argument_sets_extracted": bool(diagnostic.get("parallel_argument_sets_extracted")),
-        "parallel_argument_set_count": int(diagnostic.get("parallel_argument_set_count") or 0),
-        "parallel_clause_materialized_count": int(diagnostic.get("parallel_clause_materialized_count") or 0),
+        "parallel_argument_set_count": parallel_argument_set_count,
+        "parallel_clause_materialized_count": parallel_clause_materialized_count,
         "parallel_clause_drop_count": int(diagnostic.get("parallel_clause_drop_count") or 0),
         "parallel_collapsed_to_serial": bool(diagnostic.get("parallel_collapsed_to_serial")),
         "parallel_clause_drop_reasons": list(diagnostic.get("parallel_clause_drop_reasons") or []) if isinstance(diagnostic.get("parallel_clause_drop_reasons"), list) else [],
+        **parallel_bridge,
         "trace_tool_call_expected_by_bfcl_serial": trace_tool_call_expected_by_bfcl_serial,
         "serial_selected_top1_materialization_blocked": serial_selected_top1_materialization_blocked,
         "serial_materialization_block_reason": str(diagnostic.get("serial_materialization_block_reason") or ""),
@@ -1411,6 +1555,7 @@ def _selected_correct_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, 
     bucket_counts = Counter(str(row.get("selected_correct_failure_bucket") or "unknown") for row in selected_rows)
     success_count = int(bucket_counts.get("selected_correct_success", 0))
     call_count_deltas = Counter(str(int(row.get("call_count_delta", 0) or 0)) for row in selected_rows)
+    parallel_bridge_rows = [row for row in selected_rows if row.get("parallel_bridge_drop_stage")]
     return {
         "total_rows": len(rows),
         "selected_is_expected_count": selected_count,
@@ -1450,6 +1595,19 @@ def _selected_correct_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, 
         "parallel_clause_materialized_count": sum(int(row.get("parallel_clause_materialized_count") or 0) for row in selected_rows),
         "parallel_clause_drop_count": sum(int(row.get("parallel_clause_drop_count") or 0) for row in selected_rows),
         "parallel_collapsed_to_serial": sum(1 for row in selected_rows if row.get("parallel_collapsed_to_serial")),
+        "parallel_bridge_drop_stage_counts": dict(Counter(str(row.get("parallel_bridge_drop_stage") or "") for row in parallel_bridge_rows)),
+        "materialized_gt0_trace0": sum(1 for row in selected_rows if int(row.get("parallel_clause_materialized_count") or 0) > 0 and int(row.get("trace_metric_tool_calls") or 0) == 0),
+        "trace_gt0_emitted0": sum(1 for row in parallel_bridge_rows if int(row.get("trace_metric_tool_calls") or 0) > 0 and int(row.get("emitted_call_count") or 0) == 0),
+        "emitted_gt0_wrong_count": sum(1 for row in parallel_bridge_rows if int(row.get("emitted_call_count") or 0) > 0 and row.get("wrong_call_count")),
+        "emitted_count_correct_wrong_grouping": sum(1 for row in selected_rows if row.get("parallel_bridge_drop_stage") == "parallel_emitted_calls_but_wrong_official_grouping"),
+        "parallel_sets_extracted_but_no_workflow_steps": sum(1 for row in selected_rows if row.get("parallel_bridge_drop_stage") == "parallel_sets_extracted_but_no_workflow_steps"),
+        "parallel_workflow_steps_built_but_preflight_blocked": sum(1 for row in selected_rows if row.get("parallel_bridge_drop_stage") == "parallel_workflow_steps_built_but_preflight_blocked"),
+        "parallel_workflow_steps_built_but_not_executed": sum(1 for row in selected_rows if row.get("parallel_bridge_drop_stage") == "parallel_workflow_steps_built_but_not_executed"),
+        "parallel_tool_calls_in_trace_but_not_in_emitted_answer": sum(1 for row in selected_rows if row.get("parallel_bridge_drop_stage") == "parallel_tool_calls_in_trace_but_not_in_emitted_answer"),
+        "parallel_emitted_calls_but_wrong_official_grouping": sum(1 for row in selected_rows if row.get("parallel_bridge_drop_stage") == "parallel_emitted_calls_but_wrong_official_grouping"),
+        "parallel_emitted_calls_wrong_count": sum(1 for row in selected_rows if row.get("parallel_bridge_drop_stage") == "parallel_emitted_calls_wrong_count"),
+        "parallel_emitted_calls_wrong_args": sum(1 for row in selected_rows if row.get("parallel_bridge_drop_stage") == "parallel_emitted_calls_wrong_args"),
+        "parallel_emitted_calls_success": sum(1 for row in selected_rows if row.get("parallel_bridge_drop_stage") == "parallel_emitted_calls_success"),
         "missing_required_due_to_no_query_cue": sum(1 for row in selected_rows if row.get("missing_required_due_to_no_query_cue")),
         "missing_required_due_to_schema_alias_mismatch": sum(1 for row in selected_rows if row.get("missing_required_due_to_schema_alias_mismatch")),
         "missing_required_due_to_grounder_not_attempted": sum(1 for row in selected_rows if row.get("missing_required_due_to_grounder_not_attempted")),
