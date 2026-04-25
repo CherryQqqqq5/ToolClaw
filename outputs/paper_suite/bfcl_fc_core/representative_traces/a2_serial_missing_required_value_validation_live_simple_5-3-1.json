@@ -1,0 +1,424 @@
+{
+  "run_id": "a2_planner_live_simple_5-3-1",
+  "workflow_id": "wf_live_simple_5-3-1",
+  "task_id": "live_simple_5-3-1",
+  "phase": "phase2_workflow_intelligence",
+  "metadata": {
+    "model_name": "phase1_executor",
+    "mode": "toolclaw",
+    "start_time": "2026-04-25T05:52:05.720225+00:00",
+    "end_time": "2026-04-25T05:52:05.720381+00:00",
+    "benchmark": null,
+    "task_source": null,
+    "primary_failtax": "recovery",
+    "failtaxes": [
+      "recovery"
+    ],
+    "budget_profile": {},
+    "task_annotations": {
+      "primary_failtax": "recovery",
+      "failtaxes": [
+        "recovery"
+      ],
+      "failure_step": "step_02",
+      "expected_recovery_path": "repair_then_retry",
+      "gold_tool": "get_current_weather",
+      "state_slots": [
+        "query"
+      ],
+      "dependency_edges": [],
+      "bfcl_planner_selected_tools": [
+        ""
+      ],
+      "bfcl_final_ranked_tools": [
+        [
+          "get_current_weather"
+        ]
+      ],
+      "bfcl_rerank_override_applied": false,
+      "bfcl_rerank_override_reason": "schema_top1_no_planner",
+      "planner_canonicalized_to_bfcl_seed": true,
+      "bfcl_protocol_fallback_reason": "serial_exact_call_protocol",
+      "bfcl_canonicalized_step_count_before": 1,
+      "bfcl_canonicalized_step_count_after": 1,
+      "bfcl_rerank_diagnostics": [
+        {
+          "guard_policy_version": "strict_schema_top1_tie_drop_v1",
+          "planner_tool_id": "",
+          "prepared_function_count": 1,
+          "runtime_candidate_count": 1,
+          "runtime_candidate_tool_ids": [
+            "get_current_weather"
+          ],
+          "runtime_candidate_original_function_names": [
+            "get_current_weather"
+          ],
+          "candidate_pool_preserved": true,
+          "candidate_pool_source": "bfcl_prepared_row_functions",
+          "planner_narrowing_applied": false,
+          "candidate_pool_exception": "",
+          "drop_reason": "",
+          "ranker_candidate_count": 1,
+          "ranker_candidate_tool_ids": [
+            "get_current_weather"
+          ],
+          "ranker_candidate_original_function_names": [
+            "get_current_weather"
+          ],
+          "schema_top_5": [
+            {
+              "tool_id": "get_current_weather",
+              "bfcl_original_function_name": "get_current_weather",
+              "score": 1.25,
+              "exact_match": false,
+              "required_argument_coverage": 0.0,
+              "schema_name_overlap_count": 1,
+              "overlap": [
+                "fahrenheit"
+              ]
+            }
+          ],
+          "schema_top_tool_id": "get_current_weather",
+          "schema_top_score": 1.25,
+          "planner_score": null,
+          "score_margin": null,
+          "planner_in_schema_top2": false,
+          "selected_tool_id": "get_current_weather",
+          "selected_reason": "schema_top1_no_planner",
+          "rerank_override_applied": false,
+          "rerank_override_reason": "schema_top1_no_planner",
+          "schema_guard_applied": false,
+          "planner_required_argument_coverage": null,
+          "selected_required_argument_coverage": 0.0,
+          "planner_required_args_present": [],
+          "selected_required_args_present": [],
+          "planner_missing_required_args": [],
+          "selected_missing_required_args": [
+            "location"
+          ],
+          "operation_cues_present": false,
+          "bfcl_call_pattern": "serial",
+          "abstain_policy_version": "bfcl_abstain_policy_v2",
+          "abstain_blocked_by_serial_schema_top1": false,
+          "explicit_no_call_signal": false,
+          "irrelevance_abstain_allowed": false,
+          "serial_positive_call_forced": false,
+          "serial_required_grounding_attempted": true,
+          "serial_required_grounding_policy_version": "bfcl_serial_required_grounding_v2",
+          "required_args": [
+            "location"
+          ],
+          "grounded_required_args": [],
+          "ungrounded_required_args": [
+            "location"
+          ],
+          "grounding_source_by_arg": {
+            "location": "unresolved"
+          },
+          "grounding_confidence_by_arg": {
+            "location": 0.0
+          },
+          "candidate_values_by_arg": {
+            "location": []
+          },
+          "assignment_score_by_arg": {
+            "location": 0.0
+          },
+          "assignment_reason_by_arg": {
+            "location": "no_viable_candidate"
+          },
+          "consumed_candidate_span_by_arg": {
+            "location": ""
+          },
+          "alias_match_by_arg": {
+            "location": ""
+          },
+          "value_validation_by_arg": {
+            "location": "no_viable_candidate"
+          },
+          "descriptor_match_by_arg": {
+            "location": ""
+          },
+          "low_confidence_assignment_blocked_by_arg": {
+            "location": false
+          },
+          "ambiguous_alias_blocked_by_arg": {
+            "location": false
+          },
+          "trace_tool_call_expected_by_bfcl_serial": true,
+          "serial_selected_top1_materialized": true,
+          "serial_selected_top1_materialization_blocked": false,
+          "serial_materialization_block_reason": "",
+          "serial_partial_call_emitted_due_to_missing_args": true,
+          "serial_materialized_input_keys": [
+            "unit"
+          ]
+        }
+      ],
+      "planner_observability": {
+        "planner_bypass_applied": true,
+        "minimal_path_reason": "ideal_tool_calls_one",
+        "selected_capability_order_initial": [
+          "cap_retrieve"
+        ],
+        "selected_capability_instance_order_final": [
+          "cap_retrieve"
+        ],
+        "selected_capability_order_final": [
+          "cap_retrieve"
+        ],
+        "graph_builder_used": false,
+        "candidate_capability_count": 1,
+        "bound_tool_order": [
+          "get_current_weather"
+        ],
+        "graph_edge_order": [],
+        "unresolved_capabilities": [],
+        "benchmark_hints_used": [
+          "ideal_tool_calls",
+          "primary_failtax",
+          "state_slots"
+        ]
+      },
+      "chosen_tool": "get_current_weather"
+    },
+    "budget_limits": {
+      "max_tool_calls": null,
+      "max_user_turns": null,
+      "max_repair_attempts": null,
+      "max_recovery_budget": null,
+      "budget_limit": null,
+      "time_limit": null
+    },
+    "budget_usage": {
+      "tool_calls": 1,
+      "user_turns": 0,
+      "repair_attempts": 0,
+      "recovery_budget_used": 0.0,
+      "remaining_budgets": {
+        "tool_calls": null,
+        "user_turns": null,
+        "repair_attempts": null,
+        "recovery_budget": null
+      }
+    },
+    "interaction_modules": [
+      "uncertainty_detector",
+      "query_policy",
+      "answer_patch_compiler"
+    ],
+    "run_manifest": {
+      "tool_runtime_backend": "bfcl_stub"
+    },
+    "reusable_context": {
+      "resolved_asset_ids": [],
+      "profile_loaded": false,
+      "reuse_mode": "none",
+      "reuse_application": "none",
+      "utility_gain_score": 0.0,
+      "selected_match": {}
+    }
+  },
+  "state_snapshots": [
+    {
+      "snapshot_id": "snap_01_start",
+      "timestamp": "2026-04-25T05:52:05.720271+00:00",
+      "active_step_id": "step_01",
+      "completed_steps": [],
+      "pending_steps": [],
+      "failed_steps": [],
+      "missing_assets": [],
+      "policy_state": {
+        "approval_pending": false,
+        "risk_level": "medium",
+        "budget_remaining": null
+      },
+      "state_values": {
+        "query": "Qual a temperatura atual em Divin\u00f3polis, MG? fahrenheit",
+        "__tool_calls__": 0,
+        "__user_turns__": 0,
+        "__repair_attempts__": 0,
+        "__recovery_budget_spent__": 0.0,
+        "__remaining_budgets__": {
+          "tool_calls": null,
+          "user_turns": null,
+          "repair_attempts": null,
+          "recovery_budget": null
+        }
+      }
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_000",
+      "timestamp": "2026-04-25T05:52:05.720248+00:00",
+      "step_id": null,
+      "event_type": "plan_generated",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "steps": 1
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_preflight_000",
+      "timestamp": "2026-04-25T05:52:05.720262+00:00",
+      "step_id": null,
+      "event_type": "preflight_check",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "ok": false,
+        "missing_assets": [],
+        "missing_required_inputs": [
+          "step_01.location"
+        ],
+        "warnings": []
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_policy_before_step_01",
+      "timestamp": "2026-04-25T05:52:05.720310+00:00",
+      "step_id": "step_01",
+      "event_type": "policy_check",
+      "actor": "policy_engine",
+      "tool_id": "get_current_weather",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "allow": true,
+        "reason": "allowed"
+      },
+      "message": null,
+      "metadata": {
+        "events": [
+          {
+            "type": "allow",
+            "risk_level": "low"
+          }
+        ]
+      }
+    },
+    {
+      "event_id": "evt_call_step_01",
+      "timestamp": "2026-04-25T05:52:05.720338+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_call",
+      "actor": "executor",
+      "tool_id": "get_current_weather",
+      "input_ref": null,
+      "tool_args": {
+        "unit": "fahrenheit"
+      },
+      "output": null,
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_result_step_01",
+      "timestamp": "2026-04-25T05:52:05.720348+00:00",
+      "step_id": "step_01",
+      "event_type": "tool_result",
+      "actor": "environment",
+      "tool_id": "get_current_weather",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "payload": {
+          "tool_id": "get_current_weather",
+          "arguments": {
+            "unit": "fahrenheit"
+          },
+          "schema": {
+            "type": "dict",
+            "required": [
+              "location"
+            ],
+            "properties": {
+              "location": {
+                "type": "string",
+                "description": "The location for which to get the weather, in the format of 'City, State (abbr)', such as 'San Francisco, CA' if State for the city exists. 'City, Country' if State for the city doesn't exist."
+              },
+              "unit": {
+                "type": "string",
+                "description": "The unit of temperature for the weather report.",
+                "enum": [
+                  "celsius",
+                  "fahrenheit"
+                ],
+                "default": "fahrenheit"
+              }
+            }
+          },
+          "backend": "bfcl_stub"
+        }
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_checkpoint_step_01",
+      "timestamp": "2026-04-25T05:52:05.720371+00:00",
+      "step_id": "step_01",
+      "event_type": "checkpoint_created",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "checkpoint_id": "cp_step_01"
+      },
+      "message": null,
+      "metadata": {}
+    },
+    {
+      "event_id": "evt_stop_success",
+      "timestamp": "2026-04-25T05:52:05.720376+00:00",
+      "step_id": null,
+      "event_type": "stop",
+      "actor": "executor",
+      "tool_id": null,
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "status": "success",
+        "reason": "success_criteria_satisfied"
+      },
+      "message": null,
+      "metadata": {}
+    }
+  ],
+  "metrics": {
+    "total_steps": 1,
+    "tool_calls": 1,
+    "user_queries": 0,
+    "probe_user_queries": 0,
+    "repair_user_queries": 0,
+    "probe_user_replies": 0,
+    "repair_user_replies": 0,
+    "repair_actions": 0,
+    "success": true,
+    "token_cost": null,
+    "latency_ms": null,
+    "clarification_precision": 0.0,
+    "clarification_recall": 0.0,
+    "unnecessary_question_rate": 0.0,
+    "patch_success_rate": 0.0,
+    "post_answer_retry_count": 0,
+    "recovery_budget_used": 0.0,
+    "budget_violation": false,
+    "budget_violation_reason": null,
+    "safe_abort": false,
+    "policy_compliance_success": false,
+    "state_repair_success": false
+  }
+}

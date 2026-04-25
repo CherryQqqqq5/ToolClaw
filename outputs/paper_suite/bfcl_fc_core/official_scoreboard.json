@@ -5,37 +5,37 @@
   "per_system": {
     "a0_baseline": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.2542530878583081,
+      "official_bfcl_eval_success": 0.2535539501281753,
       "official_bfcl_eval_tool_selection_correctness": 0.6181251456536938,
-      "official_bfcl_eval_argument_correctness": 0.2542530878583081,
+      "official_bfcl_eval_argument_correctness": 0.2535539501281753,
       "official_bfcl_eval_structure_correctness": 0.6042880447448147
     },
     "a1_recovery": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.2542530878583081,
+      "official_bfcl_eval_success": 0.2535539501281753,
       "official_bfcl_eval_tool_selection_correctness": 0.6184747145187602,
-      "official_bfcl_eval_argument_correctness": 0.2542530878583081,
+      "official_bfcl_eval_argument_correctness": 0.2535539501281753,
       "official_bfcl_eval_structure_correctness": 0.604521090654859
     },
     "a2_planner": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.24889303192728968,
+      "official_bfcl_eval_success": 0.24819389419715684,
       "official_bfcl_eval_tool_selection_correctness": 0.6182610891012196,
-      "official_bfcl_eval_argument_correctness": 0.24889303192728968,
+      "official_bfcl_eval_argument_correctness": 0.24819389419715684,
       "official_bfcl_eval_structure_correctness": 0.604521090654859
     },
     "a3_interaction": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.24935912374737823,
+      "official_bfcl_eval_success": 0.2486599860172454,
       "official_bfcl_eval_tool_selection_correctness": 0.6519323390041172,
-      "official_bfcl_eval_argument_correctness": 0.24935912374737823,
+      "official_bfcl_eval_argument_correctness": 0.2486599860172454,
       "official_bfcl_eval_structure_correctness": 0.612910743416453
     },
     "a4_reuse": {
       "num_rows": 4291.0,
-      "official_bfcl_eval_success": 0.24935912374737823,
+      "official_bfcl_eval_success": 0.2486599860172454,
       "official_bfcl_eval_tool_selection_correctness": 0.6519323390041172,
-      "official_bfcl_eval_argument_correctness": 0.24935912374737823,
+      "official_bfcl_eval_argument_correctness": 0.2486599860172454,
       "official_bfcl_eval_structure_correctness": 0.612910743416453
     }
   },
