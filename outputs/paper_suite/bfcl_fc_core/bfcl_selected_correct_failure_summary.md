@@ -50,6 +50,21 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 | wrong_arg_value | 945 |
 | wrong_call_count | 855 |
 
+## Parallel Count Alignment
+
+| bucket | count |
+|---|---:|
+| count_aligned | 192 |
+| extracted_too_few_argument_sets | 479 |
+| extracted_too_many_argument_sets | 0 |
+| emitted_less_than_materialized | 6 |
+| emitted_more_than_expected | 142 |
+| materialized_count_matches_emitted_but_not_expected | 0 |
+| single_extracted_for_multi_expected | 236 |
+| multi_extracted_for_single_expected | 0 |
+| materialized_less_than_extracted | 0 |
+| parallel_count_alignment_unclassified | 0 |
+
 ## By Case Type
 
 | case_type | selected expected | success | top bucket |

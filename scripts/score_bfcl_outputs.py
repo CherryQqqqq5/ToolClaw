@@ -1547,12 +1547,19 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
         parallel_clause_materialized_count=parallel_clause_materialized_count,
     )
 
+    selected_tool_id = str(diagnostic.get("selected_tool_id") or row.get("chosen_tool") or "").strip()
+    expected_function = str(row.get("gold_tool") or "").strip()
+    tool_id = selected_tool_id or (expected_function if selected_is_expected else "")
+
     return {
         "row_id": str(coverage.get("row_id") or ""),
         "run_index": int(row.get("run_index", 0) or 0),
         "task_id": str(row.get("task_id") or ""),
         "system": str(row.get("system") or ""),
         "case_type": case_type,
+        "tool_id": tool_id,
+        "selected_tool_id": selected_tool_id,
+        "expected_function": expected_function,
         "official_dataset_category": str(row.get("official_dataset_category") or ""),
         "selected_is_expected": selected_is_expected,
         "official_success": official_success,
@@ -1686,6 +1693,129 @@ def _selected_correct_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, 
         "call_count_delta_counts": dict(call_count_deltas),
         "selected_correct_failure_bucket_counts": dict(bucket_counts),
     }
+
+
+
+def _by_tool_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    selected_rows = [row for row in rows if row.get("selected_is_expected")]
+    bucket_counts = Counter(str(row.get("selected_correct_failure_bucket") or "unknown") for row in selected_rows)
+    success_count = int(bucket_counts.get("selected_correct_success", 0))
+    missing_subcause_keys = [
+        "missing_required_due_to_no_query_cue",
+        "missing_required_due_to_schema_alias_mismatch",
+        "missing_required_due_to_grounder_not_attempted",
+        "missing_required_due_to_value_filtered",
+        "missing_required_due_to_final_answer_serializer_drop",
+    ]
+    parallel_bucket_counts = Counter(
+        str(row.get("parallel_count_alignment_bucket") or "")
+        for row in selected_rows
+        if row.get("parallel_count_alignment_bucket")
+    )
+    return {
+        "selected_is_expected_count": len(selected_rows),
+        "selected_correct_success_count": success_count,
+        "selected_correct_success_rate": _ratio(success_count, len(selected_rows)),
+        "failure_bucket_counts": dict(bucket_counts),
+        "missing_required_count": int(bucket_counts.get("missing_required", 0)),
+        "wrong_arg_value_count": int(bucket_counts.get("wrong_arg_value", 0)),
+        "wrong_arg_type_count": int(bucket_counts.get("wrong_arg_type", 0)),
+        "wrong_arg_structure_count": int(bucket_counts.get("wrong_arg_structure", 0)),
+        "wrong_call_count_count": int(bucket_counts.get("wrong_call_count", 0)),
+        "parallel_shape_error_count": int(bucket_counts.get("parallel_shape_error", 0)),
+        "call_shape_error_count": int(bucket_counts.get("wrong_call_count", 0)) + int(bucket_counts.get("parallel_shape_error", 0)),
+        "missing_required_subcause_counts": {
+            key: sum(1 for row in selected_rows if row.get(key)) for key in missing_subcause_keys
+        },
+        "parallel_count_alignment_bucket_counts": dict(parallel_bucket_counts),
+    }
+
+
+def _bfcl_selected_correct_failure_by_tool(audit: Dict[str, Any]) -> Dict[str, Any]:
+    rows = [row for row in audit.get("rows", []) if isinstance(row, dict)]
+    selected_rows = [row for row in rows if row.get("selected_is_expected")]
+    by_tool: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    by_case: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    by_tool_case: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for row in selected_rows:
+        tool_id = str(row.get("tool_id") or row.get("selected_tool_id") or row.get("expected_function") or "unknown")
+        case_type = str(row.get("case_type") or "unknown")
+        by_tool[tool_id].append(row)
+        by_case[case_type].append(row)
+        by_tool_case[f"{tool_id}::{case_type}"].append(row)
+    return {
+        "audit_schema_version": "bfcl_selected_correct_failure_by_tool_v1",
+        "gold_fields_added_after_execution": True,
+        "runtime_diagnostics_gold_free": audit.get("runtime_diagnostics_gold_free", True),
+        "summary": _by_tool_summary_for_rows(selected_rows),
+        "by_tool": {key: _by_tool_summary_for_rows(value) for key, value in sorted(by_tool.items())},
+        "by_case_type": {key: _by_tool_summary_for_rows(value) for key, value in sorted(by_case.items())},
+        "by_tool_case_type": {key: _by_tool_summary_for_rows(value) for key, value in sorted(by_tool_case.items())},
+    }
+
+
+def _top_tool_items(mapping: Dict[str, Any], score_key: str, *, limit: int = 20) -> List[tuple[str, Dict[str, Any]]]:
+    items = [(str(key), value) for key, value in mapping.items() if isinstance(value, dict)]
+    return sorted(
+        items,
+        key=lambda item: (
+            int(item[1].get(score_key, 0) or 0),
+            int(item[1].get("selected_is_expected_count", 0) or 0),
+            item[0],
+        ),
+        reverse=True,
+    )[:limit]
+
+
+def _write_bfcl_selected_correct_failure_by_tool_markdown(audit: Dict[str, Any], path: Path) -> None:
+    by_tool = audit.get("by_tool", {}) if isinstance(audit.get("by_tool"), dict) else {}
+    by_tool_case = audit.get("by_tool_case_type", {}) if isinstance(audit.get("by_tool_case_type"), dict) else {}
+    lines = [
+        "# BFCL Selected-Correct Failure By Tool",
+        "",
+        "This report is gold-enriched after execution. Runtime diagnostics remain gold-free.",
+        "",
+        f"- audit_schema_version: `{audit.get('audit_schema_version')}`",
+        f"- runtime_diagnostics_gold_free: `{audit.get('runtime_diagnostics_gold_free')}`",
+        "",
+    ]
+
+    def add_table(title: str, mapping: Dict[str, Any], score_key: str, label: str) -> None:
+        lines.extend([f"## {title}", "", f"| tool | selected expected | success | {label} | missing_required | wrong_arg_value | wrong_call_count | parallel_shape_error |", "|---|---:|---:|---:|---:|---:|---:|---:|"])
+        for tool, summary in _top_tool_items(mapping, score_key):
+            lines.append(
+                f"| {tool} | {summary.get('selected_is_expected_count', 0)} | "
+                f"{summary.get('selected_correct_success_count', 0)} | {summary.get(score_key, 0)} | "
+                f"{summary.get('missing_required_count', 0)} | {summary.get('wrong_arg_value_count', 0)} | "
+                f"{summary.get('wrong_call_count_count', 0)} | {summary.get('parallel_shape_error_count', 0)} |"
+            )
+        lines.append("")
+
+    add_table("Top Tools By Selected-Correct Failures", by_tool, "selected_is_expected_count", "selected_correct_rows")
+    add_table("Top Tools By Missing Required", by_tool, "missing_required_count", "missing_required")
+    add_table("Top Tools By Wrong Arg Value", by_tool, "wrong_arg_value_count", "wrong_arg_value")
+    add_table("Top Tools By Parallel Or Call Shape", by_tool, "call_shape_error_count", "call_shape_error")
+    add_table("Top Tool/Case Offenders", by_tool_case, "selected_is_expected_count", "selected_correct_rows")
+
+    lines.extend(["## Parallel Count Alignment Buckets", "", "| tool | bucket | count |", "|---|---|---:|"])
+    for tool, summary in _top_tool_items(by_tool, "call_shape_error_count"):
+        buckets = summary.get("parallel_count_alignment_bucket_counts") or {}
+        if not isinstance(buckets, dict):
+            continue
+        for bucket, count in sorted(buckets.items(), key=lambda item: (-int(item[1] or 0), str(item[0]))):
+            lines.append(f"| {tool} | {bucket} | {count} |")
+    lines.append("")
+
+    lines.extend(["## Missing Required Subcauses", "", "| tool | subcause | count |", "|---|---|---:|"])
+    for tool, summary in _top_tool_items(by_tool, "missing_required_count"):
+        subcauses = summary.get("missing_required_subcause_counts") or {}
+        if not isinstance(subcauses, dict):
+            continue
+        for subcause, count in sorted(subcauses.items(), key=lambda item: (-int(item[1] or 0), str(item[0]))):
+            if int(count or 0) > 0:
+                lines.append(f"| {tool} | {subcause} | {count} |")
+    lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def _bfcl_selected_correct_failure_audit(scored_rows: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -2266,6 +2396,7 @@ def main() -> None:
         "by_system": selected_correct_failure_audit.get("by_system", {}),
         "by_official_dataset_category": selected_correct_failure_audit.get("by_official_dataset_category", {}),
     }
+    selected_correct_failure_by_tool = _bfcl_selected_correct_failure_by_tool(selected_correct_failure_audit)
 
     (outdir / "official_scoreboard.json").write_text(json.dumps(official_scoreboard, indent=2), encoding="utf-8")
     (outdir / "toolclaw_diagnostics.json").write_text(json.dumps(toolclaw_diagnostics, indent=2), encoding="utf-8")
@@ -2282,6 +2413,8 @@ def main() -> None:
     _write_bfcl_selected_correct_failure_markdown(selected_correct_failure_audit, outdir / "bfcl_selected_correct_failure_audit.md")
     (outdir / "bfcl_selected_correct_failure_summary.json").write_text(json.dumps(selected_correct_failure_summary, indent=2), encoding="utf-8")
     _write_bfcl_selected_correct_failure_markdown(selected_correct_failure_audit, outdir / "bfcl_selected_correct_failure_summary.md")
+    (outdir / "bfcl_selected_correct_failure_by_tool.json").write_text(json.dumps(selected_correct_failure_by_tool, indent=2), encoding="utf-8")
+    _write_bfcl_selected_correct_failure_by_tool_markdown(selected_correct_failure_by_tool, outdir / "bfcl_selected_correct_failure_by_tool.md")
 
     manifest["comparison_scored_path"] = _display_path(comparison_scored_path)
     manifest["official_scoreboard_path"] = _display_path(outdir / "official_scoreboard.json")
@@ -2293,6 +2426,7 @@ def main() -> None:
     manifest["bfcl_candidate_coverage_summary_path"] = _display_path(outdir / "bfcl_candidate_coverage_summary.json")
     manifest["bfcl_selected_correct_failure_audit_path"] = _display_path(outdir / "bfcl_selected_correct_failure_audit.json")
     manifest["bfcl_selected_correct_failure_summary_path"] = _display_path(outdir / "bfcl_selected_correct_failure_summary.json")
+    manifest["bfcl_selected_correct_failure_by_tool_path"] = _display_path(outdir / "bfcl_selected_correct_failure_by_tool.json")
     (outdir / "experiment_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     print(f"official_scoreboard: {outdir / 'official_scoreboard.json'}")
@@ -2301,6 +2435,7 @@ def main() -> None:
     print(f"bfcl_function_selection_audit: {outdir / 'bfcl_function_selection_audit.json'}")
     print(f"bfcl_candidate_coverage_audit: {outdir / 'bfcl_candidate_coverage_audit.json'}")
     print(f"bfcl_selected_correct_failure_audit: {outdir / 'bfcl_selected_correct_failure_audit.json'}")
+    print(f"bfcl_selected_correct_failure_by_tool: {outdir / 'bfcl_selected_correct_failure_by_tool.json'}")
 
 
 if __name__ == "__main__":

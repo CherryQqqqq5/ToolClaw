@@ -2578,6 +2578,100 @@ def test_bfcl_selected_correct_markdown_includes_parallel_count_alignment(tmp_pa
     assert "| extracted_too_few_argument_sets | 4 |" in text
     assert "| materialized_count_matches_emitted_but_not_expected | 0 |" in text
 
+
+def test_bfcl_selected_correct_by_tool_aggregates_failures_and_markdown(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_by_tool_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    rows = [
+        {
+            "selected_is_expected": True,
+            "tool_id": "weather.lookup",
+            "selected_tool_id": "weather.lookup",
+            "expected_function": "weather.lookup",
+            "case_type": "non_live:serial",
+            "selected_correct_failure_bucket": "selected_correct_success",
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "weather.lookup",
+            "selected_tool_id": "weather.lookup",
+            "expected_function": "weather.lookup",
+            "case_type": "non_live:serial",
+            "selected_correct_failure_bucket": "missing_required",
+            "missing_required_due_to_schema_alias_mismatch": True,
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "weather.lookup",
+            "selected_tool_id": "weather.lookup",
+            "expected_function": "weather.lookup",
+            "case_type": "non_live:parallel",
+            "selected_correct_failure_bucket": "parallel_shape_error",
+            "parallel_count_alignment_bucket": "extracted_too_few_argument_sets",
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "email.send",
+            "selected_tool_id": "email.send",
+            "expected_function": "email.send",
+            "case_type": "non_live:serial",
+            "selected_correct_failure_bucket": "wrong_arg_value",
+        },
+        {
+            "selected_is_expected": True,
+            "selected_tool_id": "",
+            "expected_function": "fallback.tool",
+            "case_type": "live:serial",
+            "selected_correct_failure_bucket": "wrong_call_count",
+        },
+        {
+            "selected_is_expected": False,
+            "tool_id": "ignored.tool",
+            "case_type": "non_live:serial",
+            "selected_correct_failure_bucket": "not_selected_expected",
+        },
+    ]
+    audit = {
+        "runtime_diagnostics_gold_free": True,
+        "rows": rows,
+    }
+
+    by_tool = module._bfcl_selected_correct_failure_by_tool(audit)
+
+    weather = by_tool["by_tool"]["weather.lookup"]
+    assert weather["selected_is_expected_count"] == 3
+    assert weather["selected_correct_success_count"] == 1
+    assert weather["missing_required_count"] == 1
+    assert weather["parallel_shape_error_count"] == 1
+    assert weather["call_shape_error_count"] == 1
+    assert weather["missing_required_subcause_counts"]["missing_required_due_to_schema_alias_mismatch"] == 1
+    assert weather["parallel_count_alignment_bucket_counts"]["extracted_too_few_argument_sets"] == 1
+
+    assert by_tool["by_tool"]["email.send"]["wrong_arg_value_count"] == 1
+    assert by_tool["by_tool"]["fallback.tool"]["wrong_call_count_count"] == 1
+    assert "ignored.tool" not in by_tool["by_tool"]
+    assert by_tool["by_tool_case_type"]["weather.lookup::non_live:serial"]["selected_is_expected_count"] == 2
+    assert by_tool["by_tool_case_type"]["weather.lookup::non_live:parallel"]["parallel_shape_error_count"] == 1
+
+    output = tmp_path / "by_tool.md"
+    module._write_bfcl_selected_correct_failure_by_tool_markdown(by_tool, output)
+    text = output.read_text(encoding="utf-8")
+    assert "## Top Tools By Selected-Correct Failures" in text
+    assert "## Top Tools By Missing Required" in text
+    assert "## Top Tools By Wrong Arg Value" in text
+    assert "## Top Tools By Parallel Or Call Shape" in text
+    assert "## Top Tool/Case Offenders" in text
+    assert "weather.lookup" in text
+    assert "extracted_too_few_argument_sets" in text
+    assert "missing_required_due_to_schema_alias_mismatch" in text
+
+
 def test_bfcl_guard_gates_separate_wrong_function_bucket_from_claim_readiness() -> None:
     spec = importlib.util.spec_from_file_location(
         "score_bfcl_outputs_guard_gate_names_module",

@@ -37,5 +37,6 @@
     "planner_binding_headline",
     "bfcl_exact_function_guard",
     "bfcl_missing_required_guarded_reduction"
-  ]
+  ],
+  "bfcl_selected_correct_failure_by_tool_path": "outputs/paper_suite/bfcl_fc_core/bfcl_selected_correct_failure_by_tool.json"
 }
