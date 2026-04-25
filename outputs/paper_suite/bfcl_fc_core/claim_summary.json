@@ -358,6 +358,5 @@
       },
       "interpretation": "This claim is supporting only if full-suite gates and the pre-registered baseline-missing-required slice gates both pass."
     }
-  ],
-  "paper_role": "limitation_with_candidate_coverage_diagnostic"
+  ]
 }

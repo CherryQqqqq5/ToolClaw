@@ -46,5 +46,8 @@
   "diagnostic_note": "outputs/paper_suite/bfcl_fc_core/21e70bf_rerun_diagnostic_note.md",
   "representative_trace_dir": "outputs/paper_suite/bfcl_fc_core/representative_traces",
   "bfcl_claim_state": "case_d_limitation_no_claim_upgrade",
-  "canonical_claim_report": "claim_summary.json"
+  "canonical_claim_report": "claim_summary.json",
+  "scorer_git_commit": "3f74bbec8731ffe5b22145c323c66ad8d4d59c9a",
+  "scorer_command": "PYTHONPATH=src python3 scripts/score_bfcl_outputs.py --outdir outputs/paper_suite/bfcl_fc_core --official-eval true --toolclaw-diagnostics true",
+  "bridge_rescore_diagnostic_note": "outputs/paper_suite/bfcl_fc_core/3f74bbe_bridge_rescore_diagnostic_note.md"
 }
