@@ -1767,6 +1767,166 @@ def _top_tool_items(mapping: Dict[str, Any], score_key: str, *, limit: int = 20)
     )[:limit]
 
 
+
+def _selected_correct_failure_count(summary: Dict[str, Any]) -> int:
+    return max(
+        int(summary.get("selected_is_expected_count", 0) or 0)
+        - int(summary.get("selected_correct_success_count", 0) or 0),
+        0,
+    )
+
+
+def _dominant_failure_bucket(summary: Dict[str, Any]) -> str:
+    buckets = summary.get("failure_bucket_counts") or {}
+    if not isinstance(buckets, dict):
+        return "none"
+    failure_items = [
+        (str(bucket), int(count or 0))
+        for bucket, count in buckets.items()
+        if str(bucket) != "selected_correct_success" and int(count or 0) > 0
+    ]
+    if not failure_items:
+        return "none"
+    return sorted(failure_items, key=lambda item: (-item[1], item[0]))[0][0]
+
+
+def _repair_track_for_tool_case(case_type: str, dominant_bucket: str) -> str:
+    case_type = str(case_type or "")
+    if "multi_turn" in case_type:
+        return "defer_multi_turn"
+    if "parallel" in case_type and dominant_bucket in {"wrong_call_count", "parallel_shape_error"}:
+        return "parallel_argument_set_repair"
+    if "serial" in case_type and dominant_bucket == "wrong_call_count":
+        return "serial_call_count_canonicalization"
+    if dominant_bucket in {"missing_required", "wrong_arg_value", "wrong_arg_type", "wrong_arg_structure"}:
+        return "schema_alias_argument_repair"
+    return "defer_or_inspect"
+
+
+def _triage_entry(key: str, summary: Dict[str, Any]) -> Dict[str, Any]:
+    tool_id, sep, case_type = str(key).partition("::")
+    if not sep:
+        tool_id = str(key)
+        case_type = ""
+    dominant_bucket = _dominant_failure_bucket(summary)
+    failure_count = _selected_correct_failure_count(summary)
+    return {
+        "tool_case": str(key),
+        "tool_id": tool_id,
+        "case_type": case_type,
+        "selected_is_expected_count": int(summary.get("selected_is_expected_count", 0) or 0),
+        "selected_correct_success_count": int(summary.get("selected_correct_success_count", 0) or 0),
+        "selected_correct_failure_count": failure_count,
+        "selected_correct_success_rate": float(summary.get("selected_correct_success_rate", 0.0) or 0.0),
+        "dominant_failure_bucket": dominant_bucket,
+        "recommended_track": _repair_track_for_tool_case(case_type, dominant_bucket),
+        "missing_required_count": int(summary.get("missing_required_count", 0) or 0),
+        "wrong_arg_value_count": int(summary.get("wrong_arg_value_count", 0) or 0),
+        "wrong_arg_type_count": int(summary.get("wrong_arg_type_count", 0) or 0),
+        "wrong_arg_structure_count": int(summary.get("wrong_arg_structure_count", 0) or 0),
+        "wrong_call_count_count": int(summary.get("wrong_call_count_count", 0) or 0),
+        "parallel_shape_error_count": int(summary.get("parallel_shape_error_count", 0) or 0),
+        "missing_required_subcause_counts": dict(summary.get("missing_required_subcause_counts") or {}),
+        "parallel_count_alignment_bucket_counts": dict(summary.get("parallel_count_alignment_bucket_counts") or {}),
+    }
+
+
+def _bfcl_selected_correct_repair_triage(by_tool_audit: Dict[str, Any]) -> Dict[str, Any]:
+    by_tool_case = by_tool_audit.get("by_tool_case_type", {}) if isinstance(by_tool_audit.get("by_tool_case_type"), dict) else {}
+    entries = [
+        _triage_entry(str(key), value)
+        for key, value in by_tool_case.items()
+        if isinstance(value, dict)
+    ]
+    entries = sorted(
+        entries,
+        key=lambda item: (
+            -int(item.get("selected_correct_failure_count", 0) or 0),
+            str(item.get("tool_case") or ""),
+        ),
+    )
+    plausible_tracks = {
+        "serial_call_count_canonicalization",
+        "schema_alias_argument_repair",
+        "parallel_argument_set_repair",
+    }
+    recommended = next((entry for entry in entries if entry.get("recommended_track") in plausible_tracks), None)
+    return {
+        "audit_schema_version": "bfcl_selected_correct_repair_triage_v1",
+        "source_audit_schema_version": by_tool_audit.get("audit_schema_version"),
+        "selection_rule": "rank by selected_is_expected_count - selected_correct_success_count, then choose the top non-deferred tool::case_type with a plausible targeted repair bucket",
+        "claim_status_changed": False,
+        "recommended_target": recommended or {},
+        "top_tool_case_offenders": entries[:25],
+        "secondary_targets": entries[1:10] if entries else [],
+        "deferred_tracks": [
+            "multi_turn",
+            "no_expected_function",
+            "broad_tool_selection",
+            "claim_or_docs_update",
+        ],
+    }
+
+
+def _write_bfcl_selected_correct_repair_triage_markdown(triage: Dict[str, Any], path: Path) -> None:
+    recommended = triage.get("recommended_target", {}) if isinstance(triage.get("recommended_target"), dict) else {}
+    lines = [
+        "# BFCL Selected-Correct Repair Triage",
+        "",
+        "This scorer-side report chooses a narrow next runtime target from by-tool selected-correct failures. It does not change BFCL claim status.",
+        "",
+        f"- audit_schema_version: `{triage.get('audit_schema_version')}`",
+        f"- claim_status_changed: `{triage.get('claim_status_changed')}`",
+        f"- selection_rule: {triage.get('selection_rule')}",
+        "",
+        "## Recommended Target",
+        "",
+        "| field | value |",
+        "|---|---|",
+    ]
+    for key in [
+        "tool_case",
+        "tool_id",
+        "case_type",
+        "selected_correct_failure_count",
+        "selected_is_expected_count",
+        "selected_correct_success_count",
+        "dominant_failure_bucket",
+        "recommended_track",
+        "missing_required_count",
+        "wrong_arg_value_count",
+        "wrong_call_count_count",
+        "parallel_shape_error_count",
+    ]:
+        lines.append(f"| {key} | {recommended.get(key, '')} |")
+    lines.extend([
+        "",
+        "## Top Tool/Case Offenders",
+        "",
+        "| rank | tool_case | failures | selected expected | success | dominant bucket | track | missing_required | wrong_arg_value | wrong_call_count | parallel_shape_error |",
+        "|---:|---|---:|---:|---:|---|---|---:|---:|---:|---:|",
+    ])
+    for index, entry in enumerate(triage.get("top_tool_case_offenders", [])[:25], start=1):
+        if not isinstance(entry, dict):
+            continue
+        lines.append(
+            f"| {index} | {entry.get('tool_case', '')} | {entry.get('selected_correct_failure_count', 0)} | "
+            f"{entry.get('selected_is_expected_count', 0)} | {entry.get('selected_correct_success_count', 0)} | "
+            f"{entry.get('dominant_failure_bucket', '')} | {entry.get('recommended_track', '')} | "
+            f"{entry.get('missing_required_count', 0)} | {entry.get('wrong_arg_value_count', 0)} | "
+            f"{entry.get('wrong_call_count_count', 0)} | {entry.get('parallel_shape_error_count', 0)} |"
+        )
+    lines.extend([
+        "",
+        "## Deferred Tracks",
+        "",
+    ])
+    for item in triage.get("deferred_tracks", []):
+        lines.append(f"- {item}")
+    lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def _write_bfcl_selected_correct_failure_by_tool_markdown(audit: Dict[str, Any], path: Path) -> None:
     by_tool = audit.get("by_tool", {}) if isinstance(audit.get("by_tool"), dict) else {}
     by_tool_case = audit.get("by_tool_case_type", {}) if isinstance(audit.get("by_tool_case_type"), dict) else {}
@@ -2397,6 +2557,7 @@ def main() -> None:
         "by_official_dataset_category": selected_correct_failure_audit.get("by_official_dataset_category", {}),
     }
     selected_correct_failure_by_tool = _bfcl_selected_correct_failure_by_tool(selected_correct_failure_audit)
+    selected_correct_repair_triage = _bfcl_selected_correct_repair_triage(selected_correct_failure_by_tool)
 
     (outdir / "official_scoreboard.json").write_text(json.dumps(official_scoreboard, indent=2), encoding="utf-8")
     (outdir / "toolclaw_diagnostics.json").write_text(json.dumps(toolclaw_diagnostics, indent=2), encoding="utf-8")
@@ -2415,6 +2576,8 @@ def main() -> None:
     _write_bfcl_selected_correct_failure_markdown(selected_correct_failure_audit, outdir / "bfcl_selected_correct_failure_summary.md")
     (outdir / "bfcl_selected_correct_failure_by_tool.json").write_text(json.dumps(selected_correct_failure_by_tool, indent=2), encoding="utf-8")
     _write_bfcl_selected_correct_failure_by_tool_markdown(selected_correct_failure_by_tool, outdir / "bfcl_selected_correct_failure_by_tool.md")
+    (outdir / "bfcl_selected_correct_repair_triage.json").write_text(json.dumps(selected_correct_repair_triage, indent=2), encoding="utf-8")
+    _write_bfcl_selected_correct_repair_triage_markdown(selected_correct_repair_triage, outdir / "bfcl_selected_correct_repair_triage.md")
 
     manifest["comparison_scored_path"] = _display_path(comparison_scored_path)
     manifest["official_scoreboard_path"] = _display_path(outdir / "official_scoreboard.json")
@@ -2427,6 +2590,7 @@ def main() -> None:
     manifest["bfcl_selected_correct_failure_audit_path"] = _display_path(outdir / "bfcl_selected_correct_failure_audit.json")
     manifest["bfcl_selected_correct_failure_summary_path"] = _display_path(outdir / "bfcl_selected_correct_failure_summary.json")
     manifest["bfcl_selected_correct_failure_by_tool_path"] = _display_path(outdir / "bfcl_selected_correct_failure_by_tool.json")
+    manifest["bfcl_selected_correct_repair_triage_path"] = _display_path(outdir / "bfcl_selected_correct_repair_triage.json")
     (outdir / "experiment_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     print(f"official_scoreboard: {outdir / 'official_scoreboard.json'}")
@@ -2436,6 +2600,7 @@ def main() -> None:
     print(f"bfcl_candidate_coverage_audit: {outdir / 'bfcl_candidate_coverage_audit.json'}")
     print(f"bfcl_selected_correct_failure_audit: {outdir / 'bfcl_selected_correct_failure_audit.json'}")
     print(f"bfcl_selected_correct_failure_by_tool: {outdir / 'bfcl_selected_correct_failure_by_tool.json'}")
+    print(f"bfcl_selected_correct_repair_triage: {outdir / 'bfcl_selected_correct_repair_triage.json'}")
 
 
 if __name__ == "__main__":

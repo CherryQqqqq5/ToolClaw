@@ -2672,6 +2672,74 @@ def test_bfcl_selected_correct_by_tool_aggregates_failures_and_markdown(tmp_path
     assert "missing_required_due_to_schema_alias_mismatch" in text
 
 
+
+def test_bfcl_selected_correct_repair_triage_ranks_failures_and_tracks(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_repair_triage_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    by_tool_audit = {
+        "audit_schema_version": "bfcl_selected_correct_failure_by_tool_v1",
+        "by_tool_case_type": {
+            "raw_selected_but_successful::live:serial": {
+                "selected_is_expected_count": 100,
+                "selected_correct_success_count": 100,
+                "failure_bucket_counts": {"selected_correct_success": 100},
+            },
+            "weather.lookup::live:serial": {
+                "selected_is_expected_count": 20,
+                "selected_correct_success_count": 0,
+                "selected_correct_success_rate": 0.0,
+                "failure_bucket_counts": {"wrong_call_count": 15, "wrong_arg_value": 5},
+                "wrong_call_count_count": 15,
+                "wrong_arg_value_count": 5,
+            },
+            "weather.lookup::non_live:parallel": {
+                "selected_is_expected_count": 10,
+                "selected_correct_success_count": 2,
+                "selected_correct_success_rate": 0.2,
+                "failure_bucket_counts": {"parallel_shape_error": 8, "selected_correct_success": 2},
+                "parallel_shape_error_count": 8,
+                "parallel_count_alignment_bucket_counts": {"single_extracted_for_multi_expected": 8},
+            },
+            "movie.find::live:serial": {
+                "selected_is_expected_count": 15,
+                "selected_correct_success_count": 1,
+                "selected_correct_success_rate": 1 / 15,
+                "failure_bucket_counts": {"missing_required": 14, "selected_correct_success": 1},
+                "missing_required_count": 14,
+                "missing_required_subcause_counts": {"missing_required_due_to_schema_alias_mismatch": 14},
+            },
+        },
+    }
+
+    triage = module._bfcl_selected_correct_repair_triage(by_tool_audit)
+
+    assert triage["recommended_target"]["tool_case"] == "weather.lookup::live:serial"
+    assert triage["recommended_target"]["selected_correct_failure_count"] == 20
+    assert triage["recommended_target"]["dominant_failure_bucket"] == "wrong_call_count"
+    assert triage["recommended_target"]["recommended_track"] == "serial_call_count_canonicalization"
+    assert triage["top_tool_case_offenders"][0]["tool_case"] == "weather.lookup::live:serial"
+    assert triage["top_tool_case_offenders"][1]["tool_case"] == "movie.find::live:serial"
+    assert triage["top_tool_case_offenders"][1]["recommended_track"] == "schema_alias_argument_repair"
+    assert triage["top_tool_case_offenders"][2]["tool_case"] == "weather.lookup::non_live:parallel"
+    assert triage["top_tool_case_offenders"][2]["recommended_track"] == "parallel_argument_set_repair"
+    assert all(item["tool_case"] != "raw_selected_but_successful::live:serial" for item in triage["top_tool_case_offenders"][:3])
+
+    output = tmp_path / "triage.md"
+    module._write_bfcl_selected_correct_repair_triage_markdown(triage, output)
+    text = output.read_text(encoding="utf-8")
+    assert "## Recommended Target" in text
+    assert "weather.lookup::live:serial" in text
+    assert "serial_call_count_canonicalization" in text
+    assert "## Top Tool/Case Offenders" in text
+    assert "## Deferred Tracks" in text
+
+
 def test_bfcl_guard_gates_separate_wrong_function_bucket_from_claim_readiness() -> None:
     spec = importlib.util.spec_from_file_location(
         "score_bfcl_outputs_guard_gate_names_module",
