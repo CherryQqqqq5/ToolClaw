@@ -10,12 +10,12 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 | metric | value |
 |---|---:|
 | selected_is_expected_count | 5120 |
-| success_given_selected_is_expected | 342 |
-| success_rate_given_selected_is_expected | 0.066796875 |
-| missing_required_given_selected_is_expected | 1880 |
-| wrong_arg_value_given_selected_is_expected | 908 |
-| wrong_arg_type_given_selected_is_expected | 119 |
-| wrong_arg_structure_given_selected_is_expected | 86 |
+| success_given_selected_is_expected | 432 |
+| success_rate_given_selected_is_expected | 0.084375 |
+| missing_required_given_selected_is_expected | 1640 |
+| wrong_arg_value_given_selected_is_expected | 963 |
+| wrong_arg_type_given_selected_is_expected | 199 |
+| wrong_arg_structure_given_selected_is_expected | 101 |
 | wrong_call_count_given_selected_is_expected | 855 |
 | wrong_call_order_given_selected_is_expected | 0 |
 | parallel_shape_error_given_selected_is_expected | 930 |
@@ -32,7 +32,7 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 | parallel_order_only_mismatch | 0 |
 | trace_missing_or_unparseable_given_selected_is_expected | 0 |
 | other_selected_correct_failure_given_selected_is_expected | 0 |
-| missing_required_due_to_no_query_cue | 1380 |
+| missing_required_due_to_no_query_cue | 1025 |
 | missing_required_due_to_schema_alias_mismatch | 870 |
 | missing_required_due_to_grounder_not_attempted | 50 |
 | missing_required_due_to_value_filtered | 45 |
@@ -42,12 +42,12 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 
 | bucket | count |
 |---|---:|
-| missing_required | 1880 |
+| missing_required | 1640 |
 | parallel_shape_error | 930 |
-| selected_correct_success | 342 |
-| wrong_arg_structure | 86 |
-| wrong_arg_type | 119 |
-| wrong_arg_value | 908 |
+| selected_correct_success | 432 |
+| wrong_arg_structure | 101 |
+| wrong_arg_type | 199 |
+| wrong_arg_value | 963 |
 | wrong_call_count | 855 |
 
 ## By Case Type
@@ -55,7 +55,7 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 | case_type | selected expected | success | top bucket |
 |---|---:|---:|---|
 | live:parallel | 60 | 10 | wrong_arg_value |
-| live:serial | 1930 | 142 | wrong_call_count |
+| live:serial | 1930 | 147 | wrong_call_count |
 | multi_turn:serial | 0 | 0 | none |
 | non_live:parallel | 995 | 15 | parallel_shape_error |
-| non_live:serial | 2135 | 175 | missing_required |
+| non_live:serial | 2135 | 260 | missing_required |

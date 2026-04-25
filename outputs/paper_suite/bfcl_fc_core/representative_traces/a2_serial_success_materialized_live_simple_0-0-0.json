@@ -6,8 +6,8 @@
   "metadata": {
     "model_name": "phase1_executor",
     "mode": "toolclaw",
-    "start_time": "2026-04-25T03:21:10.168894+00:00",
-    "end_time": "2026-04-25T03:21:10.169151+00:00",
+    "start_time": "2026-04-25T04:16:56.225805+00:00",
+    "end_time": "2026-04-25T04:16:56.226144+00:00",
     "benchmark": null,
     "task_source": null,
     "primary_failtax": "recovery",
@@ -98,15 +98,15 @@
           ],
           "planner_missing_required_args": [],
           "selected_missing_required_args": [],
-          "abstain_policy_version": "bfcl_abstain_policy_v2",
-          "operation_cues_present": true,
-          "bfcl_call_pattern": "serial",
           "serial_positive_call_forced": false,
-          "explicit_no_call_signal": false,
           "abstain_blocked_by_serial_schema_top1": false,
+          "explicit_no_call_signal": false,
+          "bfcl_call_pattern": "serial",
+          "operation_cues_present": true,
+          "abstain_policy_version": "bfcl_abstain_policy_v2",
           "irrelevance_abstain_allowed": false,
           "serial_required_grounding_attempted": true,
-          "serial_required_grounding_policy_version": "bfcl_serial_required_grounding_v1",
+          "serial_required_grounding_policy_version": "bfcl_serial_required_grounding_v2",
           "required_args": [
             "user_id"
           ],
@@ -119,6 +119,19 @@
           },
           "grounding_confidence_by_arg": {
             "user_id": 0.8
+          },
+          "candidate_values_by_arg": {},
+          "assignment_score_by_arg": {
+            "user_id": 0.8
+          },
+          "assignment_reason_by_arg": {
+            "user_id": "existing_extractor"
+          },
+          "consumed_candidate_span_by_arg": {
+            "user_id": ""
+          },
+          "alias_match_by_arg": {
+            "user_id": ""
           },
           "trace_tool_call_expected_by_bfcl_serial": true,
           "serial_selected_top1_materialized": true,
@@ -198,7 +211,7 @@
   "state_snapshots": [
     {
       "snapshot_id": "snap_01_start",
-      "timestamp": "2026-04-25T03:21:10.168975+00:00",
+      "timestamp": "2026-04-25T04:16:56.225906+00:00",
       "active_step_id": "step_01",
       "completed_steps": [],
       "pending_steps": [],
@@ -227,7 +240,7 @@
   "events": [
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-25T03:21:10.168938+00:00",
+      "timestamp": "2026-04-25T04:16:56.225855+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -242,7 +255,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-25T03:21:10.168960+00:00",
+      "timestamp": "2026-04-25T04:16:56.225885+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -260,7 +273,7 @@
     },
     {
       "event_id": "evt_policy_before_step_01",
-      "timestamp": "2026-04-25T03:21:10.169033+00:00",
+      "timestamp": "2026-04-25T04:16:56.225987+00:00",
       "step_id": "step_01",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -283,7 +296,7 @@
     },
     {
       "event_id": "evt_call_step_01",
-      "timestamp": "2026-04-25T03:21:10.169081+00:00",
+      "timestamp": "2026-04-25T04:16:56.226051+00:00",
       "step_id": "step_01",
       "event_type": "tool_call",
       "actor": "executor",
@@ -299,7 +312,7 @@
     },
     {
       "event_id": "evt_result_step_01",
-      "timestamp": "2026-04-25T03:21:10.169097+00:00",
+      "timestamp": "2026-04-25T04:16:56.226073+00:00",
       "step_id": "step_01",
       "event_type": "tool_result",
       "actor": "environment",
@@ -339,7 +352,7 @@
     },
     {
       "event_id": "evt_checkpoint_step_01",
-      "timestamp": "2026-04-25T03:21:10.169136+00:00",
+      "timestamp": "2026-04-25T04:16:56.226124+00:00",
       "step_id": "step_01",
       "event_type": "checkpoint_created",
       "actor": "executor",
@@ -354,7 +367,7 @@
     },
     {
       "event_id": "evt_stop_success",
-      "timestamp": "2026-04-25T03:21:10.169144+00:00",
+      "timestamp": "2026-04-25T04:16:56.226135+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",

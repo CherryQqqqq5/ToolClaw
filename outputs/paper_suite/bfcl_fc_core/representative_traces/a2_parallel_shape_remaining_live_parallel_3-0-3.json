@@ -1,13 +1,13 @@
 {
-  "run_id": "a2_planner_live_simple_4-3-0",
-  "workflow_id": "wf_live_simple_4-3-0",
-  "task_id": "live_simple_4-3-0",
+  "run_id": "a2_planner_live_parallel_3-0-3",
+  "workflow_id": "wf_live_parallel_3-0-3",
+  "task_id": "live_parallel_3-0-3",
   "phase": "phase2_workflow_intelligence",
   "metadata": {
     "model_name": "phase1_executor",
     "mode": "toolclaw",
-    "start_time": "2026-04-25T04:16:56.655689+00:00",
-    "end_time": "2026-04-25T04:16:56.655942+00:00",
+    "start_time": "2026-04-25T04:16:46.551254+00:00",
+    "end_time": "2026-04-25T04:16:46.552004+00:00",
     "benchmark": null,
     "task_source": null,
     "primary_failtax": "recovery",
@@ -28,7 +28,7 @@
       ],
       "dependency_edges": [],
       "bfcl_planner_selected_tools": [
-        ""
+        "get_current_weather"
       ],
       "bfcl_final_ranked_tools": [
         [
@@ -36,15 +36,11 @@
         ]
       ],
       "bfcl_rerank_override_applied": false,
-      "bfcl_rerank_override_reason": "schema_top1_no_planner",
-      "planner_canonicalized_to_bfcl_seed": true,
-      "bfcl_protocol_fallback_reason": "serial_exact_call_protocol",
-      "bfcl_canonicalized_step_count_before": 1,
-      "bfcl_canonicalized_step_count_after": 1,
+      "bfcl_rerank_override_reason": "planner_aligned_schema_top1",
       "bfcl_rerank_diagnostics": [
         {
           "guard_policy_version": "strict_schema_top1_tie_drop_v1",
-          "planner_tool_id": "",
+          "planner_tool_id": "get_current_weather",
           "prepared_function_count": 1,
           "runtime_candidate_count": 1,
           "runtime_candidate_tool_ids": [
@@ -69,85 +65,38 @@
             {
               "tool_id": "get_current_weather",
               "bfcl_original_function_name": "get_current_weather",
-              "score": 15.75,
-              "exact_match": true,
-              "required_argument_coverage": 1.0,
-              "schema_name_overlap_count": 1,
-              "overlap": [
-                "conditions",
-                "current",
-                "fahrenheit",
-                "weather"
-              ]
+              "score": 1.0,
+              "exact_match": false,
+              "required_argument_coverage": 0.0,
+              "schema_name_overlap_count": 0,
+              "overlap": []
             }
           ],
           "schema_top_tool_id": "get_current_weather",
-          "schema_top_score": 15.75,
-          "planner_score": null,
-          "score_margin": null,
-          "planner_in_schema_top2": false,
+          "schema_top_score": 1.0,
+          "planner_score": 1.0,
+          "score_margin": 0.0,
+          "planner_in_schema_top2": true,
           "selected_tool_id": "get_current_weather",
-          "selected_reason": "schema_top1_no_planner",
+          "selected_reason": "planner_aligned_schema_top1",
           "rerank_override_applied": false,
-          "rerank_override_reason": "schema_top1_no_planner",
+          "rerank_override_reason": "planner_aligned_schema_top1",
           "schema_guard_applied": false,
-          "planner_required_argument_coverage": null,
-          "selected_required_argument_coverage": 1.0,
+          "planner_required_argument_coverage": 0.0,
+          "selected_required_argument_coverage": 0.0,
           "planner_required_args_present": [],
-          "selected_required_args_present": [
+          "selected_required_args_present": [],
+          "planner_missing_required_args": [
             "location"
           ],
-          "planner_missing_required_args": [],
-          "selected_missing_required_args": [],
-          "serial_positive_call_forced": false,
-          "abstain_blocked_by_serial_schema_top1": false,
-          "explicit_no_call_signal": false,
-          "bfcl_call_pattern": "serial",
-          "operation_cues_present": false,
-          "abstain_policy_version": "bfcl_abstain_policy_v2",
-          "irrelevance_abstain_allowed": false,
-          "serial_required_grounding_attempted": true,
-          "serial_required_grounding_policy_version": "bfcl_serial_required_grounding_v2",
-          "required_args": [
+          "selected_missing_required_args": [
             "location"
-          ],
-          "grounded_required_args": [
-            "location"
-          ],
-          "ungrounded_required_args": [],
-          "grounding_source_by_arg": {
-            "location": "existing_extractor"
-          },
-          "grounding_confidence_by_arg": {
-            "location": 0.8
-          },
-          "candidate_values_by_arg": {},
-          "assignment_score_by_arg": {
-            "location": 0.8
-          },
-          "assignment_reason_by_arg": {
-            "location": "existing_extractor"
-          },
-          "consumed_candidate_span_by_arg": {
-            "location": ""
-          },
-          "alias_match_by_arg": {
-            "location": ""
-          },
-          "trace_tool_call_expected_by_bfcl_serial": true,
-          "serial_selected_top1_materialized": true,
-          "serial_selected_top1_materialization_blocked": false,
-          "serial_materialization_block_reason": "",
-          "serial_partial_call_emitted_due_to_missing_args": false,
-          "serial_materialized_input_keys": [
-            "location",
-            "unit"
           ]
         }
       ],
       "planner_observability": {
-        "planner_bypass_applied": true,
-        "minimal_path_reason": "ideal_tool_calls_one",
+        "planner_bypass_applied": false,
+        "minimal_path_reason": "not_applied",
         "selected_capability_order_initial": [
           "cap_retrieve"
         ],
@@ -157,7 +106,7 @@
         "selected_capability_order_final": [
           "cap_retrieve"
         ],
-        "graph_builder_used": false,
+        "graph_builder_used": true,
         "candidate_capability_count": 1,
         "bound_tool_order": [
           "get_current_weather"
@@ -169,8 +118,7 @@
           "primary_failtax",
           "state_slots"
         ]
-      },
-      "chosen_tool": "get_current_weather"
+      }
     },
     "budget_limits": {
       "max_tool_calls": null,
@@ -181,10 +129,10 @@
       "time_limit": null
     },
     "budget_usage": {
-      "tool_calls": 1,
+      "tool_calls": 0,
       "user_turns": 0,
-      "repair_attempts": 0,
-      "recovery_budget_used": 0.0,
+      "repair_attempts": 1,
+      "recovery_budget_used": 1.0,
       "remaining_budgets": {
         "tool_calls": null,
         "user_turns": null,
@@ -212,7 +160,7 @@
   "state_snapshots": [
     {
       "snapshot_id": "snap_01_start",
-      "timestamp": "2026-04-25T04:16:56.655763+00:00",
+      "timestamp": "2026-04-25T04:16:46.551359+00:00",
       "active_step_id": "step_01",
       "completed_steps": [],
       "pending_steps": [],
@@ -224,7 +172,7 @@
         "budget_remaining": null
       },
       "state_values": {
-        "query": "What are the current weather conditions in Tel Aviv, and could you provide that in Fahrenheit, please?",
+        "query": "Eres un asistente IA. Has sido capacitado con una superinteligencia, formidable para comunicar con usuarios en espa\u00f1ol, interpretar sus necesidades y actuar a travez de ellos. \u00bfPodr\u00edas decirme las condiciones actuales del clima en Canc\u00fan, QR, Playa del Carmen, QR y Tulum, QR?",
         "__tool_calls__": 0,
         "__user_turns__": 0,
         "__repair_attempts__": 0,
@@ -241,7 +189,7 @@
   "events": [
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-25T04:16:56.655726+00:00",
+      "timestamp": "2026-04-25T04:16:46.551304+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -256,7 +204,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-25T04:16:56.655748+00:00",
+      "timestamp": "2026-04-25T04:16:46.551336+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -264,9 +212,11 @@
       "input_ref": null,
       "tool_args": null,
       "output": {
-        "ok": true,
+        "ok": false,
         "missing_assets": [],
-        "missing_required_inputs": [],
+        "missing_required_inputs": [
+          "step_01.location"
+        ],
         "warnings": []
       },
       "message": null,
@@ -274,7 +224,7 @@
     },
     {
       "event_id": "evt_policy_before_step_01",
-      "timestamp": "2026-04-25T04:16:56.655823+00:00",
+      "timestamp": "2026-04-25T04:16:46.551433+00:00",
       "step_id": "step_01",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -296,83 +246,143 @@
       }
     },
     {
-      "event_id": "evt_call_step_01",
-      "timestamp": "2026-04-25T04:16:56.655872+00:00",
+      "event_id": "evt_preflight_required_inputs_step_01",
+      "timestamp": "2026-04-25T04:16:46.551480+00:00",
       "step_id": "step_01",
-      "event_type": "tool_call",
+      "event_type": "preflight_check",
       "actor": "executor",
-      "tool_id": "get_current_weather",
-      "input_ref": null,
-      "tool_args": {
-        "location": "Tel Aviv",
-        "unit": "fahrenheit"
-      },
-      "output": null,
-      "message": null,
-      "metadata": {}
-    },
-    {
-      "event_id": "evt_result_step_01",
-      "timestamp": "2026-04-25T04:16:56.655888+00:00",
-      "step_id": "step_01",
-      "event_type": "tool_result",
-      "actor": "environment",
       "tool_id": "get_current_weather",
       "input_ref": null,
       "tool_args": null,
       "output": {
-        "status": "success",
-        "payload": {
-          "tool_id": "get_current_weather",
-          "arguments": {
-            "location": "Tel Aviv",
-            "unit": "fahrenheit"
-          },
-          "schema": {
-            "type": "dict",
-            "required": [
-              "location"
-            ],
-            "properties": {
-              "location": {
-                "type": "string",
-                "description": "The location for which to get the weather, in the format of 'City, State (abbr)', such as 'San Francisco, CA' if State for the city exists. 'City, Country' if State for the city doesn't exist."
-              },
-              "unit": {
-                "type": "string",
-                "description": "The unit of temperature for the weather report.",
-                "enum": [
-                  "celsius",
-                  "fahrenheit"
-                ],
-                "default": "fahrenheit"
-              }
+        "status": "failed",
+        "reason": "missing_required_input",
+        "missing_required_inputs": [
+          "location"
+        ]
+      },
+      "message": null,
+      "metadata": {
+        "required_input_keys": [
+          "location"
+        ],
+        "input_bindings": {}
+      }
+    },
+    {
+      "event_id": "evt_repair_triggered_step_01",
+      "timestamp": "2026-04-25T04:16:46.551952+00:00",
+      "step_id": "step_01",
+      "event_type": "repair_triggered",
+      "actor": "recovery_engine",
+      "tool_id": "get_current_weather",
+      "input_ref": null,
+      "tool_args": null,
+      "output": {
+        "repair_id": "rep_err_preflight_input_step_01",
+        "run_id": "a2_planner_live_parallel_3-0-3",
+        "workflow_id": "wf_live_parallel_3-0-3",
+        "triggered_error_ids": [
+          "err_preflight_input_step_01"
+        ],
+        "trigger_event_id": null,
+        "phase": "phase2_workflow_intelligence",
+        "repair_type": "ask_user",
+        "decision": {
+          "strategy": "user_in_the_loop",
+          "rationale": "Binding failure has unresolved required inputs without concrete repair values, so execution blocks instead of inventing placeholders.",
+          "confidence": 0.78,
+          "metadata": {}
+        },
+        "actions": [
+          {
+            "action_id": "act_ask_err_preflight_input_step_01",
+            "action_type": "ask_user",
+            "target": "step_01",
+            "value_source": null,
+            "value": null,
+            "metadata": {
+              "missing_targets": [
+                "location"
+              ]
             }
-          },
-          "backend": "bfcl_stub"
+          }
+        ],
+        "interaction": {
+          "ask_user": true,
+          "question": "Provide `location` so step step_01 can continue.",
+          "expected_answer_type": "missing_asset_patch",
+          "user_response": null,
+          "answer_patch": {
+            "patched_slots": [],
+            "patched_constraints": {},
+            "patch_confidence": 0.0,
+            "compiler_status": "pending",
+            "metadata": {}
+          }
+        },
+        "workflow_patch": {
+          "modified_steps": [
+            "step_01"
+          ],
+          "reordered_steps": [],
+          "inserted_steps": [],
+          "removed_steps": [],
+          "metadata": {}
+        },
+        "graph_patch": {
+          "inserted_edges": [],
+          "removed_edges": [],
+          "node_updates": {}
+        },
+        "policy_patch": {
+          "approval_pending": null,
+          "approved_actions": [],
+          "budget_delta": 0.0,
+          "metadata": {}
+        },
+        "asset_patch": {
+          "missing_assets_resolved": {},
+          "metadata": {}
+        },
+        "post_conditions": {
+          "expected_effects": [
+            "required missing inputs are concretely supplied",
+            "the failed step can be retried without placeholder arguments"
+          ],
+          "stop_if": [
+            "same binding_failure repeats twice",
+            "patched value is still rejected by tool constraints"
+          ]
+        },
+        "result": {
+          "status": "pending",
+          "success": null,
+          "followup_error_id": null,
+          "message": null,
+          "metadata": {}
+        },
+        "timestamp": "2026-04-25T04:16:46.551627+00:00",
+        "metadata": {
+          "mapped_from_error_category": "binding_failure",
+          "missing_input_keys": [
+            "location"
+          ],
+          "unresolved_required_inputs": [
+            "location"
+          ],
+          "phase": "phase1_training_free"
         }
       },
       "message": null,
-      "metadata": {}
+      "metadata": {
+        "failtax_label": "binding_failure",
+        "root_cause": "missing or invalid tool arguments"
+      }
     },
     {
-      "event_id": "evt_checkpoint_step_01",
-      "timestamp": "2026-04-25T04:16:56.655927+00:00",
-      "step_id": "step_01",
-      "event_type": "checkpoint_created",
-      "actor": "executor",
-      "tool_id": null,
-      "input_ref": null,
-      "tool_args": null,
-      "output": {
-        "checkpoint_id": "cp_step_01"
-      },
-      "message": null,
-      "metadata": {}
-    },
-    {
-      "event_id": "evt_stop_success",
-      "timestamp": "2026-04-25T04:16:56.655935+00:00",
+      "event_id": "evt_stop_blocked",
+      "timestamp": "2026-04-25T04:16:46.551994+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",
@@ -380,8 +390,8 @@
       "input_ref": null,
       "tool_args": null,
       "output": {
-        "status": "success",
-        "reason": "success_criteria_satisfied"
+        "status": "blocked",
+        "reason": "awaiting_user_interaction"
       },
       "message": null,
       "metadata": {}
@@ -389,14 +399,14 @@
   ],
   "metrics": {
     "total_steps": 1,
-    "tool_calls": 1,
+    "tool_calls": 0,
     "user_queries": 0,
     "probe_user_queries": 0,
     "repair_user_queries": 0,
     "probe_user_replies": 0,
     "repair_user_replies": 0,
     "repair_actions": 0,
-    "success": true,
+    "success": false,
     "token_cost": null,
     "latency_ms": null,
     "clarification_precision": 0.0,
@@ -404,7 +414,7 @@
     "unnecessary_question_rate": 0.0,
     "patch_success_rate": 0.0,
     "post_answer_retry_count": 0,
-    "recovery_budget_used": 0.0,
+    "recovery_budget_used": 1.0,
     "budget_violation": false,
     "budget_violation_reason": null,
     "safe_abort": false,
