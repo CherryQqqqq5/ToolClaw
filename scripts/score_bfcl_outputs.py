@@ -1192,6 +1192,15 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
         failure_bucket=failure_bucket,
     )
     diagnostic = _first_bfcl_selection_diagnostic(row)
+    trace_payload = _trace_payload(row)
+    trace_metric_tool_calls = 0
+    if isinstance(trace_payload, dict):
+        metrics = trace_payload.get("metrics", {})
+        if isinstance(metrics, dict):
+            try:
+                trace_metric_tool_calls = int(metrics.get("tool_calls", 0) or 0)
+            except (TypeError, ValueError):
+                trace_metric_tool_calls = 0
     zero_emitted = bool(expected_call_count > 0 and emitted_call_count == 0)
     candidate_pool_exception = str(coverage.get("candidate_pool_exception") or "")
     selected_required_coverage = diagnostic.get("selected_required_argument_coverage") if isinstance(diagnostic, dict) else None
@@ -1200,6 +1209,21 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
     except (TypeError, ValueError):
         selected_required_coverage_value = 0.0
     is_parallel_case = call_pattern == "parallel" or "parallel" in case_type
+    is_serial_case = call_pattern == "serial" and "multi_turn" not in case_type
+    trace_tool_call_expected_by_bfcl_serial = bool(diagnostic.get("trace_tool_call_expected_by_bfcl_serial"))
+    serial_selected_top1_materialization_blocked = bool(
+        diagnostic.get("serial_selected_top1_materialization_blocked")
+    )
+    selected_top1_but_no_emitted_call = bool(
+        zero_emitted
+        and selected_is_expected
+        and is_serial_case
+        and trace_tool_call_expected_by_bfcl_serial
+        and candidate_pool_exception != "bfcl_abstain"
+    )
+    selected_top1_but_final_answer_parser_drops_call = bool(
+        selected_is_expected and emitted_call_count == 0 and trace_metric_tool_calls > 0
+    )
     wrong_call_count = bool(shape["wrong_call_count"])
     wrong_call_order = bool(shape["wrong_call_order"])
     parallel_shape_error = bool(shape["parallel_or_multiple_shape_mismatch"])
@@ -1272,6 +1296,16 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "zero_emitted_due_to_call_shape_canonicalizer": bool(zero_emitted and selected_is_expected and not is_parallel_case),
         "zero_emitted_due_to_parallel_clause_drop": bool(zero_emitted and selected_is_expected and is_parallel_case),
         "zero_emitted_due_to_no_grounded_args": bool(zero_emitted and selected_is_expected and selected_required_coverage_value == 0.0),
+        "selected_top1_but_no_emitted_call": selected_top1_but_no_emitted_call,
+        "selected_top1_but_trace_has_call_not_in_final_answer": selected_top1_but_final_answer_parser_drops_call,
+        "selected_top1_but_final_answer_parser_drops_call": selected_top1_but_final_answer_parser_drops_call,
+        "selected_top1_but_serial_call_missing_args_and_suppressed": bool(
+            selected_top1_but_no_emitted_call and selected_required_coverage_value == 0.0
+        ),
+        "trace_tool_call_expected_by_bfcl_serial": trace_tool_call_expected_by_bfcl_serial,
+        "serial_selected_top1_materialization_blocked": serial_selected_top1_materialization_blocked,
+        "serial_materialization_block_reason": str(diagnostic.get("serial_materialization_block_reason") or ""),
+        "trace_metric_tool_calls": trace_metric_tool_calls,
         "trace_status": trace_status,
         "selected_correct_failure_bucket": selected_correct_failure_bucket,
     }
@@ -1313,6 +1347,10 @@ def _selected_correct_summary_for_rows(rows: List[Dict[str, Any]]) -> Dict[str, 
         "zero_emitted_due_to_call_shape_canonicalizer": sum(1 for row in selected_rows if row.get("zero_emitted_due_to_call_shape_canonicalizer")),
         "zero_emitted_due_to_parallel_clause_drop": sum(1 for row in selected_rows if row.get("zero_emitted_due_to_parallel_clause_drop")),
         "zero_emitted_due_to_no_grounded_args": sum(1 for row in selected_rows if row.get("zero_emitted_due_to_no_grounded_args")),
+        "selected_top1_but_no_emitted_call": sum(1 for row in selected_rows if row.get("selected_top1_but_no_emitted_call")),
+        "selected_top1_but_trace_has_call_not_in_final_answer": sum(1 for row in selected_rows if row.get("selected_top1_but_trace_has_call_not_in_final_answer")),
+        "selected_top1_but_final_answer_parser_drops_call": sum(1 for row in selected_rows if row.get("selected_top1_but_final_answer_parser_drops_call")),
+        "selected_top1_but_serial_call_missing_args_and_suppressed": sum(1 for row in selected_rows if row.get("selected_top1_but_serial_call_missing_args_and_suppressed")),
         "call_count_delta_counts": dict(call_count_deltas),
         "selected_correct_failure_bucket_counts": dict(bucket_counts),
     }
@@ -1475,13 +1513,15 @@ def _bfcl_guard_claim_gates(scored_rows: List[Dict[str, Any]], official_scoreboa
         "a2_guarded_wrong_func_name_rate_le_a0": float(a2_slice.get("wrong_func_name_rate", 0.0)) <= float(a0_slice.get("wrong_func_name_rate", 0.0)),
         "a2_guarded_success_rate_ge_a0": float(a2_slice.get("success_rate", 0.0)) >= float(a0_slice.get("success_rate", 0.0)),
     }
-    wrong_function_non_regression_ready = (
-        bool(full_suite_gates.get("a2_wrong_func_name_le_a0", False))
+    wrong_function_bucket_non_regression = bool(full_suite_gates.get("a2_wrong_func_name_le_a0", False))
+    exact_function_guard_claim_ready = (
+        wrong_function_bucket_non_regression
         and bool(full_suite_gates.get("a2_tool_selection_ge_a0", False))
         and bool(full_suite_gates.get("a2_success_ge_a0", False))
     )
+    wrong_function_non_regression_ready = exact_function_guard_claim_ready
     missing_required_reduction_ready = bool(full_suite_gates.get("a2_missing_required_lt_a0", False))
-    full_suite_supporting_ready = wrong_function_non_regression_ready and missing_required_reduction_ready
+    full_suite_supporting_ready = exact_function_guard_claim_ready and missing_required_reduction_ready
     baseline_missing_required_slice_ready = all(baseline_slice_gates.values())
     return {
         "guard_policy_version": "strict_schema_top1_tie_drop_v1",
@@ -1489,6 +1529,8 @@ def _bfcl_guard_claim_gates(scored_rows: List[Dict[str, Any]], official_scoreboa
         "a4_interpreted_as_guarded_execution_variant_only": True,
         "failure_bucket_counts_by_system": {system: dict(counts) for system, counts in sorted(bucket_counts.items())},
         "full_suite_gates": full_suite_gates,
+        "wrong_function_bucket_non_regression": wrong_function_bucket_non_regression,
+        "exact_function_guard_claim_ready": exact_function_guard_claim_ready,
         "wrong_function_non_regression_ready": wrong_function_non_regression_ready,
         "missing_required_reduction_ready": missing_required_reduction_ready,
         "full_suite_supporting_ready": full_suite_supporting_ready,
@@ -1672,7 +1714,7 @@ def _claim_summary(
     exact_guard_diagnostic_ready = bool(
         paper_safe
         and not exact_guard_ready
-        and guard_claim_gates.get("wrong_function_non_regression_ready")
+        and guard_claim_gates.get("exact_function_guard_claim_ready")
     )
     missing_required_ready = bool(paper_safe and guard_claim_gates.get("missing_required_guarded_reduction_ready"))
     return {

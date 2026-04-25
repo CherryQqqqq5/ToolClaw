@@ -2640,6 +2640,65 @@ def test_build_workflow_from_task_bfcl_non_live_serial_irrelevance_label_with_sc
     assert diagnostics["candidate_pool_exception"] == ""
 
 
+
+
+def test_build_workflow_from_task_bfcl_serial_materialization_disables_preflight_for_partial_args(tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_serial_materialization", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_serial_partial_materialization",
+            "query": "Please call obscure_tool now.",
+            "candidate_tools": [
+                {
+                    "tool_id": "obscure_tool",
+                    "description": "Perform the requested obscure operation.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["foo", "bar"],
+                        "properties": {"foo": {"type": "string"}, "bar": {"type": "string"}},
+                    },
+                }
+            ],
+            "metadata": {"benchmark": "bfcl", "bfcl_group": "non_live", "bfcl_call_pattern": "serial"},
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert workflow.metadata.get("bfcl_abstained") is not True
+    assert len(workflow.execution_plan) == 1
+    step = workflow.execution_plan[0]
+    assert step.tool_id == "obscure_tool"
+    assert step.metadata["trace_tool_call_expected_by_bfcl_serial"] is True
+    assert step.metadata["serial_selected_top1_materialized"] is True
+    assert step.metadata["disable_schema_preflight"] is True
+    assert step.metadata["serial_partial_call_emitted_due_to_missing_args"] is True
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"][0]
+    assert diagnostics["trace_tool_call_expected_by_bfcl_serial"] is True
+    assert diagnostics["serial_selected_top1_materialized"] is True
+    assert "expected_call_count" not in json.dumps(diagnostics)
+
+    from toolclaw.execution.executor import SequentialExecutor
+
+    trace_path = tmp_path / "trace.json"
+    outcome = SequentialExecutor().run_until_blocked(
+        workflow=workflow,
+        run_id="bfcl_serial_partial_materialization",
+        output_path=str(trace_path),
+        backup_tool_map={},
+    )
+    assert outcome.blocked is False
+    trace_payload = json.loads(trace_path.read_text(encoding="utf-8"))
+    tool_calls = [event for event in trace_payload["events"] if event.get("event_type") == "tool_call"]
+    assert len(tool_calls) == 1
+    assert tool_calls[0]["tool_id"] == "obscure_tool"
+
 def test_build_workflow_from_task_bfcl_explicit_no_call_still_abstains() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_explicit_no_call", module_path)

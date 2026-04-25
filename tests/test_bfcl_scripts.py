@@ -2158,3 +2158,130 @@ def test_bfcl_candidate_coverage_summary_counts_serial_abstain_blocked_rows() ->
     assert summary["abstain_substage_counts"]["abstain_blocked_by_serial_schema_top1"] == 1
     assert summary["abstain_substage_counts"]["serial_positive_call_forced"] == 1
     assert summary["abstain_substage_counts"]["irrelevance_abstain_allowed"] == 0
+
+
+def test_bfcl_selected_correct_audit_classifies_serial_post_selection_no_call(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_serial_post_selection_no_call_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    trace_path = tmp_path / "zero_trace.json"
+    runtime_diagnostic = {
+        "runtime_candidate_tool_ids": ["weather"],
+        "runtime_candidate_original_function_names": ["weather"],
+        "ranker_candidate_tool_ids": ["weather"],
+        "ranker_candidate_original_function_names": ["weather"],
+        "schema_top_5": [{"tool_id": "weather", "bfcl_original_function_name": "weather"}],
+        "selected_tool_id": "weather",
+        "selected_reason": "schema_top1_no_planner",
+        "trace_tool_call_expected_by_bfcl_serial": True,
+        "serial_selected_top1_materialized": True,
+        "serial_selected_top1_materialization_blocked": False,
+        "serial_materialization_block_reason": "",
+        "selected_required_argument_coverage": 0.0,
+    }
+    trace_path.write_text(
+        json.dumps({"metadata": {"task_annotations": {"bfcl_rerank_diagnostics": [runtime_diagnostic]}}, "events": [], "metrics": {"tool_calls": 0}}),
+        encoding="utf-8",
+    )
+    row = {
+        "run_index": "1",
+        "task_id": "serial_no_call",
+        "system": "a2_planner",
+        "bfcl_group": "non_live",
+        "bfcl_call_pattern": "serial",
+        "gold_tool": "weather",
+        "chosen_tool": "weather",
+        "candidate_tools": json.dumps([{"tool_id": "weather", "metadata": {"bfcl_original_function_name": "weather"}}]),
+        "expected_call_structure": json.dumps({"pattern": "serial", "calls": [{"tool_name": "weather", "arguments": {"city": "Paris"}}]}),
+        "trace_path": str(trace_path),
+        "official_bfcl_eval_unsupported_reasons": json.dumps(["wrong_count"]),
+        "official_bfcl_eval_success": 0.0,
+    }
+
+    audit = module._bfcl_selected_correct_failure_audit([row])
+    audit_row = audit["rows"][0]
+    summary = audit["summary"]
+    assert audit_row["selected_top1_but_no_emitted_call"] is True
+    assert audit_row["selected_top1_but_serial_call_missing_args_and_suppressed"] is True
+    assert summary["selected_top1_but_no_emitted_call"] == 1
+    assert summary["selected_top1_but_serial_call_missing_args_and_suppressed"] == 1
+
+
+def test_bfcl_selected_correct_audit_classifies_trace_parser_drop(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_trace_parser_drop_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    trace_path = tmp_path / "parser_drop_trace.json"
+    runtime_diagnostic = {
+        "runtime_candidate_tool_ids": ["weather"],
+        "runtime_candidate_original_function_names": ["weather"],
+        "ranker_candidate_tool_ids": ["weather"],
+        "ranker_candidate_original_function_names": ["weather"],
+        "schema_top_5": [{"tool_id": "weather", "bfcl_original_function_name": "weather"}],
+        "selected_tool_id": "weather",
+        "selected_reason": "schema_top1_no_planner",
+        "trace_tool_call_expected_by_bfcl_serial": True,
+    }
+    trace_path.write_text(
+        json.dumps({"metadata": {"task_annotations": {"bfcl_rerank_diagnostics": [runtime_diagnostic]}}, "events": [], "metrics": {"tool_calls": 1}}),
+        encoding="utf-8",
+    )
+    row = {
+        "run_index": "1",
+        "task_id": "parser_drop",
+        "system": "a2_planner",
+        "bfcl_group": "non_live",
+        "bfcl_call_pattern": "serial",
+        "gold_tool": "weather",
+        "chosen_tool": "weather",
+        "candidate_tools": json.dumps([{"tool_id": "weather", "metadata": {"bfcl_original_function_name": "weather"}}]),
+        "expected_call_structure": json.dumps({"pattern": "serial", "calls": [{"tool_name": "weather", "arguments": {"city": "Paris"}}]}),
+        "trace_path": str(trace_path),
+        "official_bfcl_eval_unsupported_reasons": json.dumps(["wrong_count"]),
+        "official_bfcl_eval_success": 0.0,
+    }
+
+    audit_row = module._bfcl_selected_correct_failure_audit([row])["rows"][0]
+    assert audit_row["selected_top1_but_trace_has_call_not_in_final_answer"] is True
+    assert audit_row["selected_top1_but_final_answer_parser_drops_call"] is True
+
+
+def test_bfcl_guard_gates_separate_wrong_function_bucket_from_claim_readiness() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_guard_gate_names_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    rows = [
+        {"system": "a0_baseline", "official_bfcl_eval_unsupported_reasons": json.dumps(["wrong_func_name"])},
+        {"system": "a2_planner", "official_bfcl_eval_unsupported_reasons": json.dumps(["wrong_func_name"])},
+    ]
+    scoreboard = {
+        "per_system": {
+            "a0_baseline": {
+                "official_bfcl_eval_tool_selection_correctness": 0.6,
+                "official_bfcl_eval_success": 0.5,
+            },
+            "a2_planner": {
+                "official_bfcl_eval_tool_selection_correctness": 0.6,
+                "official_bfcl_eval_success": 0.4,
+            },
+        }
+    }
+    gates = module._bfcl_guard_claim_gates(rows, scoreboard)
+    assert gates["wrong_function_bucket_non_regression"] is True
+    assert gates["exact_function_guard_claim_ready"] is False
+    assert gates["wrong_function_non_regression_ready"] is False

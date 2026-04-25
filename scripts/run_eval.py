@@ -614,6 +614,22 @@ def _merge_bfcl_abstain_policy_diagnostics(
     return merged
 
 
+def _bfcl_mark_serial_materialization_diagnostics(
+    selection_diagnostics: Dict[str, Any],
+    *,
+    inputs: Dict[str, Any],
+) -> Dict[str, Any]:
+    diagnostics = dict(selection_diagnostics)
+    missing_required = [str(item) for item in diagnostics.get("selected_missing_required_args", []) if str(item)]
+    diagnostics["trace_tool_call_expected_by_bfcl_serial"] = True
+    diagnostics["serial_selected_top1_materialized"] = True
+    diagnostics["serial_selected_top1_materialization_blocked"] = False
+    diagnostics["serial_materialization_block_reason"] = ""
+    diagnostics["serial_partial_call_emitted_due_to_missing_args"] = bool(missing_required)
+    diagnostics["serial_materialized_input_keys"] = sorted(str(key) for key in inputs.keys())
+    return diagnostics
+
+
 def _bfcl_rank_summary(item: Dict[str, Any]) -> Dict[str, Any]:
     tool = item.get("tool") if isinstance(item.get("tool"), dict) else {}
     metadata = tool.get("metadata", {}) if isinstance(tool, dict) else {}
@@ -1043,6 +1059,15 @@ def _configure_bfcl_step_metadata(
     merged_metadata["bfcl_benchmark"] = True
     if selection_diagnostics:
         merged_metadata["bfcl_function_selection_diagnostics"] = dict(selection_diagnostics)
+        for key in (
+            "trace_tool_call_expected_by_bfcl_serial",
+            "serial_selected_top1_materialized",
+            "serial_selected_top1_materialization_blocked",
+            "serial_materialization_block_reason",
+            "serial_partial_call_emitted_due_to_missing_args",
+        ):
+            if key in selection_diagnostics:
+                merged_metadata[key] = selection_diagnostics[key]
     merged_metadata.setdefault("implicit_state_fallback_slots", [])
     merged_metadata.setdefault("required_state_slots", [])
     merged_metadata.setdefault("state_bindings", {})
@@ -1086,6 +1111,14 @@ def _configure_bfcl_step_metadata(
         for key in grounding_metadata.get("unresolved_required_inputs", [])
         if key in current_required_set
     ]
+    if merged_metadata.get("trace_tool_call_expected_by_bfcl_serial") is True:
+        # BFCL exact-call scoring should see the selected function call even
+        # when argument grounding is incomplete; the scorer can then bucket the
+        # failure as missing/incorrect args instead of zero emitted calls.
+        merged_metadata["disable_schema_preflight"] = True
+        merged_metadata["serial_partial_call_emitted_due_to_missing_args"] = bool(
+            merged_metadata.get("unresolved_required_inputs")
+        )
     if not _nonempty_metadata_value(merged_metadata.get("input_bindings")):
         merged_metadata["input_bindings"] = grounding_metadata.get("input_bindings", {})
     step.metadata = merged_metadata
@@ -1347,8 +1380,11 @@ def _bfcl_seed_specs(
     tool, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, query)
     if tool is None:
         return []
+    inputs = _bfcl_build_step_inputs(tool, query)
     diagnostics = _merge_bfcl_abstain_policy_diagnostics(diagnostics, abstain_policy_diagnostics)
-    return [{"tool": tool, "inputs": _bfcl_build_step_inputs(tool, query), "text": query, "selection_diagnostics": diagnostics}]
+    if call_pattern == "serial" and str(metadata.get("bfcl_group") or "").strip().lower() != "multi_turn":
+        diagnostics = _bfcl_mark_serial_materialization_diagnostics(diagnostics, inputs=inputs)
+    return [{"tool": tool, "inputs": inputs, "text": query, "selection_diagnostics": diagnostics}]
 
 
 def _build_seed_workflow(
@@ -1580,8 +1616,8 @@ def _adapt_bfcl_workflow(
             text,
             preferred_tool_id=preferred_tool_id,
         )
-        _record_bfcl_choice(workflow, selection_diagnostics)
         if selected_tool is None:
+            _record_bfcl_choice(workflow, selection_diagnostics)
             continue
         capability_id = _bfcl_capability_id(selected_tool)
         required_input_keys = set(_bfcl_required_input_keys(selected_tool))
@@ -1597,6 +1633,12 @@ def _adapt_bfcl_workflow(
             if enable_grounding
             else {}
         ) or _bfcl_build_step_inputs(selected_tool, text, enable_grounding=enable_grounding)
+        if call_pattern == "serial" and str(metadata.get("bfcl_group") or "").strip().lower() != "multi_turn":
+            selection_diagnostics = _bfcl_mark_serial_materialization_diagnostics(
+                selection_diagnostics,
+                inputs=dict(step.inputs),
+            )
+        _record_bfcl_choice(workflow, selection_diagnostics)
         if "query" not in required_input_keys:
             step.inputs.pop("query", None)
         if "target_path" not in required_input_keys:
