@@ -544,9 +544,17 @@ def _bfcl_abstain_decision(
     abstain_blocked_by_serial_schema_top1 = False
     serial_positive_call_forced = False
     irrelevance_abstain_allowed = False
+    live_serial_irrelevance_no_call_abstain = False
+    bfcl_group = str(((task.get("metadata") or {}) if isinstance(task.get("metadata"), dict) else {}).get("bfcl_group") or task.get("bfcl_group") or "").strip().lower()
+    live_serial_irrelevance_case = bfcl_group in {"live", "live_irrelevance"} and serial_case and irrelevance_signal
     if not candidate_tools:
         should_abstain = True
         reason = "no_candidate_tools"
+    elif live_serial_irrelevance_case:
+        should_abstain = True
+        reason = "live_serial_irrelevance_no_call"
+        irrelevance_abstain_allowed = True
+        live_serial_irrelevance_no_call_abstain = True
     elif irrelevance_signal:
         irrelevance_abstain_allowed = bool(explicit_no_call_signal or no_viable_schema_top1 or not operation_cues)
         if serial_case and top1_viable and operation_cues and not explicit_no_call_signal:
@@ -566,8 +574,9 @@ def _bfcl_abstain_decision(
         "should_abstain": should_abstain,
         "reason": reason,
         "diagnostics": {
-            "abstain_policy_version": "bfcl_abstain_policy_v2",
+            "abstain_policy_version": "bfcl_abstain_policy_v3",
             "abstain_reason": reason,
+            "live_serial_irrelevance_no_call_abstain": live_serial_irrelevance_no_call_abstain,
             "abstain_due_to_irrelevance_classifier": reason == "irrelevance_classifier",
             "abstain_due_to_no_viable_schema_top1": reason == "no_viable_schema_top1",
             "abstain_due_to_no_groundable_required_args": reason == "no_groundable_required_args",

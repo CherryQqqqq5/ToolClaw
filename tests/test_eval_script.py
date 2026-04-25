@@ -2565,7 +2565,7 @@ def test_build_workflow_from_task_bfcl_abstain_records_candidate_pool_exception(
     assert diagnostics["planner_narrowing_applied"] is False
 
 
-def test_build_workflow_from_task_bfcl_live_serial_irrelevance_label_with_schema_top1_forces_call() -> None:
+def test_build_workflow_from_task_bfcl_live_serial_irrelevance_label_with_schema_top1_abstains() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_live_serial_force_call", module_path)
     assert spec is not None and spec.loader is not None
@@ -2594,13 +2594,21 @@ def test_build_workflow_from_task_bfcl_live_serial_irrelevance_label_with_schema
         spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
     )
 
-    assert workflow.metadata.get("bfcl_abstained") is not True
-    assert [step.tool_id for step in workflow.execution_plan] == ["get_current_weather"]
+    assert workflow.metadata["bfcl_abstained"] is True
+    assert workflow.execution_plan == []
+    assert workflow.tool_bindings == []
+    assert workflow.context.candidate_tools == []
     diagnostics = workflow.metadata["bfcl_rerank_diagnostics"][0]
-    assert diagnostics["serial_positive_call_forced"] is True
-    assert diagnostics["abstain_blocked_by_serial_schema_top1"] is True
-    assert diagnostics["candidate_pool_exception"] == ""
+    assert diagnostics["abstain_policy_version"] == "bfcl_abstain_policy_v3"
+    assert diagnostics["abstain_reason"] == "live_serial_irrelevance_no_call"
+    assert diagnostics["live_serial_irrelevance_no_call_abstain"] is True
+    assert diagnostics["operation_cues_present"] is True
+    assert diagnostics["schema_top_tool_id"] == "get_current_weather"
+    assert diagnostics["explicit_no_call_signal"] is False
+    assert diagnostics["candidate_pool_exception"] == "bfcl_abstain"
     assert "expected_call_count" not in json.dumps(diagnostics)
+    assert "official_failure_bucket" not in json.dumps(diagnostics)
+    assert "expected_function" not in json.dumps(diagnostics)
 
 
 def test_build_workflow_from_task_bfcl_non_live_serial_irrelevance_label_with_schema_top1_forces_call() -> None:
