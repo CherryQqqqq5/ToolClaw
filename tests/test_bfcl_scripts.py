@@ -2487,6 +2487,103 @@ def test_bfcl_serial_assignment_uses_prepositions_for_source_and_target() -> Non
     assert diagnostics["descriptor_match_by_arg"]["target"] == "preposition_to"
 
 
+def test_bfcl_serial_assignment_exact_from_to_parameter_names_prefer_prepositions() -> None:
+    module = _load_run_eval_grounding_module()
+    tool = _bfcl_grounding_tool(
+        module,
+        ["from", "to"],
+        {
+            "from": {"type": "string", "description": "Starting folder"},
+            "to": {"type": "string", "description": "Ending folder"},
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        tool,
+        'Copy the file from "downloads" to "backup".',
+        {},
+    )
+
+    assert inputs["from"] == "downloads"
+    assert inputs["to"] == "backup"
+    assert diagnostics["high_evidence_assignment_allowed_by_arg"]["from"] is True
+    assert diagnostics["high_evidence_assignment_reason_by_arg"]["from"] == "parameter_from_preposition"
+    assert diagnostics["high_evidence_assignment_allowed_by_arg"]["to"] is True
+    assert diagnostics["high_evidence_assignment_reason_by_arg"]["to"] == "parameter_to_preposition"
+
+
+def test_bfcl_serial_assignment_descriptor_preposition_relaxes_non_obvious_keys() -> None:
+    module = _load_run_eval_grounding_module()
+    tool = _bfcl_grounding_tool(
+        module,
+        ["folder_a", "folder_b"],
+        {
+            "folder_a": {"type": "string", "description": "Origin source folder"},
+            "folder_b": {"type": "string", "description": "Destination target folder"},
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        tool,
+        'Move records from "archive" to "warehouse".',
+        {},
+    )
+
+    assert inputs["folder_a"] == "archive"
+    assert inputs["folder_b"] == "warehouse"
+    assert diagnostics["high_evidence_assignment_reason_by_arg"]["folder_a"] == "descriptor_from_preposition"
+    assert diagnostics["high_evidence_assignment_reason_by_arg"]["folder_b"] == "descriptor_to_preposition"
+
+
+def test_bfcl_serial_assignment_strong_type_cues_survive_validation() -> None:
+    module = _load_run_eval_grounding_module()
+    tool = _bfcl_grounding_tool(
+        module,
+        ["mode", "recipient_email", "count"],
+        {
+            "mode": {"type": "string", "enum": ["fast", "safe"]},
+            "recipient_email": {"type": "string", "description": "Recipient email address"},
+            "count": {"type": "integer", "description": "Number of retries"},
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        tool,
+        "Use safe mode, send to ops@example.com, and retry 3 times.",
+        {},
+    )
+
+    assert inputs["mode"] == "safe"
+    assert inputs["recipient_email"] == "ops@example.com"
+    assert inputs["count"] == 3
+    assert diagnostics["high_evidence_assignment_reason_by_arg"]["mode"] == "enum_exact_mention"
+    assert diagnostics["high_evidence_assignment_reason_by_arg"]["recipient_email"] == "email_type_cue"
+    assert diagnostics["high_evidence_assignment_reason_by_arg"]["count"] == "numeric_type_cue"
+
+
+def test_bfcl_serial_assignment_keeps_weak_person_text_quoted_span_blocked() -> None:
+    module = _load_run_eval_grounding_module()
+    tool = _bfcl_grounding_tool(
+        module,
+        ["user_name", "payload"],
+        {
+            "user_name": {"type": "string", "description": "Name of the user"},
+            "payload": {"type": "string", "description": "Opaque request payload"},
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        tool,
+        'Book "Paris" for tomorrow.',
+        {},
+    )
+
+    assert "user_name" not in inputs
+    assert "payload" not in inputs
+    assert diagnostics["ambiguous_alias_blocked_by_arg"]["user_name"] is True
+    assert diagnostics["value_validation_by_arg"]["payload"] in {"ambiguous_alias_blocked", "low_confidence_assignment_blocked"}
+
+
 def test_bfcl_serial_assignment_blocks_ambiguous_target_quoted_span() -> None:
     module = _load_run_eval_grounding_module()
     tool = _bfcl_grounding_tool(
@@ -2582,3 +2679,6 @@ def test_bfcl_serial_assignment_diagnostics_are_gold_free() -> None:
     assert forbidden.isdisjoint(diagnostics)
     assert "value_validation_by_arg" in diagnostics
     assert "descriptor_match_by_arg" in diagnostics
+    assert "high_evidence_assignment_allowed_by_arg" in diagnostics
+    assert "high_evidence_assignment_reason_by_arg" in diagnostics
+    assert diagnostics["validation_relaxation_policy_version"] == "bfcl_serial_high_evidence_assignment_v1"
