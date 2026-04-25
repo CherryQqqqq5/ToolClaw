@@ -1322,24 +1322,26 @@ def _parallel_count_alignment_breakdown(
     materialized_count_delta = parallel_clause_materialized_count - expected_call_count
     emitted_vs_materialized_delta = emitted_call_count - parallel_clause_materialized_count
     trace_vs_materialized_delta = trace_metric_tool_calls - parallel_clause_materialized_count
+    emitted_count_delta = emitted_call_count - expected_call_count
+    materialized_vs_emitted_delta = parallel_clause_materialized_count - emitted_call_count
     bucket = ""
     if selected_is_expected and is_parallel_case:
         if expected_call_count > 1 and parallel_argument_set_count == 1:
             bucket = "single_extracted_for_multi_expected"
         elif expected_call_count == 1 and parallel_argument_set_count > 1:
             bucket = "multi_extracted_for_single_expected"
+        elif emitted_call_count > expected_call_count:
+            bucket = "emitted_more_than_expected"
+        elif parallel_clause_materialized_count < parallel_argument_set_count:
+            bucket = "materialized_less_than_extracted"
+        elif emitted_call_count < parallel_clause_materialized_count:
+            bucket = "emitted_less_than_materialized"
         elif parallel_argument_set_count < expected_call_count:
             bucket = "extracted_too_few_argument_sets"
         elif parallel_argument_set_count > expected_call_count:
             bucket = "extracted_too_many_argument_sets"
         elif parallel_clause_materialized_count == emitted_call_count and emitted_call_count != expected_call_count:
             bucket = "materialized_count_matches_emitted_but_not_expected"
-        elif parallel_clause_materialized_count < parallel_argument_set_count:
-            bucket = "materialized_less_than_extracted"
-        elif emitted_call_count < parallel_clause_materialized_count:
-            bucket = "emitted_less_than_materialized"
-        elif emitted_call_count > expected_call_count:
-            bucket = "emitted_more_than_expected"
         elif expected_call_count == parallel_clause_materialized_count == emitted_call_count:
             bucket = "count_aligned"
         else:
@@ -1349,6 +1351,8 @@ def _parallel_count_alignment_breakdown(
         "materialized_count_delta": materialized_count_delta,
         "emitted_vs_materialized_delta": emitted_vs_materialized_delta,
         "trace_vs_materialized_delta": trace_vs_materialized_delta,
+        "emitted_count_delta": emitted_count_delta,
+        "materialized_vs_emitted_delta": materialized_vs_emitted_delta,
         "parallel_count_alignment_bucket": bucket,
     }
 
@@ -1766,6 +1770,23 @@ def _write_bfcl_selected_correct_failure_markdown(audit: Dict[str, Any], path: P
     lines.extend(["", "## Failure Buckets", "", "| bucket | count |", "|---|---:|"])
     for bucket, count in sorted((summary.get("selected_correct_failure_bucket_counts") or {}).items()):
         lines.append(f"| {bucket} | {count} |")
+
+    alignment_counts = summary.get("parallel_count_alignment_bucket_counts") or {}
+    lines.extend(["", "## Parallel Count Alignment", "", "| bucket | count |", "|---|---:|"])
+    for bucket in [
+        "count_aligned",
+        "extracted_too_few_argument_sets",
+        "extracted_too_many_argument_sets",
+        "emitted_less_than_materialized",
+        "emitted_more_than_expected",
+        "materialized_count_matches_emitted_but_not_expected",
+        "single_extracted_for_multi_expected",
+        "multi_extracted_for_single_expected",
+        "materialized_less_than_extracted",
+        "parallel_count_alignment_unclassified",
+    ]:
+        lines.append(f"| {bucket} | {alignment_counts.get(bucket, 0)} |")
+
     lines.extend(["", "## By Case Type", "", "| case_type | selected expected | success | top bucket |", "|---|---:|---:|---|"])
     for case_type, case_summary in audit.get("by_case_type", {}).items():
         buckets = case_summary.get("selected_correct_failure_bucket_counts") or {}

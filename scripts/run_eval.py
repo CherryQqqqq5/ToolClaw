@@ -1700,6 +1700,7 @@ def _configure_bfcl_step_metadata(
             "parallel_clause_drop_reasons",
             "trace_tool_call_expected_by_bfcl_parallel",
             "parallel_partial_call_emitted_due_to_missing_args",
+            "parallel_partial_call_bypass_applied",
             "parallel_preflight_bypass_policy_version",
         ):
             if key in selection_diagnostics:
@@ -1992,7 +1993,9 @@ def _bfcl_parallel_materialization_diagnostics(
     updated["parallel_clause_drop_count"] = max(int(argument_set_count) - int(materialized_count), 0)
     updated["parallel_collapsed_to_serial"] = bool(collapsed_to_serial)
     updated["parallel_clause_drop_reasons"] = list(drop_reasons or [])
-    if allow_preflight_bypass and argument_set_count > 0 and materialized_count > 0:
+    bypass_applied = bool(allow_preflight_bypass and materialized_count > 1 and not collapsed_to_serial)
+    updated["parallel_partial_call_bypass_applied"] = bypass_applied
+    if bypass_applied:
         updated["trace_tool_call_expected_by_bfcl_parallel"] = True
         updated["parallel_partial_call_emitted_due_to_missing_args"] = False
         updated["parallel_preflight_bypass_policy_version"] = "bfcl_parallel_partial_call_materialization_v1"
@@ -2274,7 +2277,7 @@ def _adapt_bfcl_workflow(
             query,
             abstain_policy_diagnostics=abstain_decision.get("diagnostics") if isinstance(abstain_decision.get("diagnostics"), dict) else None,
         )
-        if len(parallel_specs) > 1:
+        if parallel_specs:
             if not enable_grounding:
                 parallel_specs = [
                     {

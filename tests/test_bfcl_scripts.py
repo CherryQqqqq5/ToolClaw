@@ -2530,17 +2530,53 @@ def test_bfcl_parallel_count_alignment_buckets() -> None:
     assert bucket(expected=3, emitted=1, trace=1, argument_sets=1, materialized=1)["parallel_count_alignment_bucket"] == "single_extracted_for_multi_expected"
     assert bucket(expected=1, emitted=2, trace=2, argument_sets=2, materialized=2)["parallel_count_alignment_bucket"] == "multi_extracted_for_single_expected"
     assert bucket(expected=3, emitted=2, trace=2, argument_sets=2, materialized=2)["parallel_count_alignment_bucket"] == "extracted_too_few_argument_sets"
-    assert bucket(expected=2, emitted=3, trace=3, argument_sets=3, materialized=3)["parallel_count_alignment_bucket"] == "extracted_too_many_argument_sets"
+    assert bucket(expected=2, emitted=2, trace=2, argument_sets=3, materialized=2)["parallel_count_alignment_bucket"] == "materialized_less_than_extracted"
+    assert bucket(expected=2, emitted=3, trace=3, argument_sets=3, materialized=3)["parallel_count_alignment_bucket"] == "emitted_more_than_expected"
     assert bucket(expected=3, emitted=1, trace=1, argument_sets=3, materialized=2)["parallel_count_alignment_bucket"] == "materialized_less_than_extracted"
     assert bucket(expected=3, emitted=2, trace=2, argument_sets=3, materialized=3)["parallel_count_alignment_bucket"] == "emitted_less_than_materialized"
     assert bucket(expected=2, emitted=3, trace=3, argument_sets=2, materialized=2)["parallel_count_alignment_bucket"] == "emitted_more_than_expected"
-    mismatch = bucket(expected=2, emitted=3, trace=3, argument_sets=2, materialized=3)
-    assert mismatch["parallel_count_alignment_bucket"] == "materialized_count_matches_emitted_but_not_expected"
+    mismatch = bucket(expected=2, emitted=2, trace=2, argument_sets=2, materialized=3)
+    assert mismatch["parallel_count_alignment_bucket"] == "emitted_less_than_materialized"
     assert mismatch["argument_set_count_delta"] == 0
     assert mismatch["materialized_count_delta"] == 1
-    assert mismatch["emitted_vs_materialized_delta"] == 0
-    assert mismatch["trace_vs_materialized_delta"] == 0
+    assert mismatch["emitted_vs_materialized_delta"] == -1
+    assert mismatch["trace_vs_materialized_delta"] == -1
+    assert mismatch["emitted_count_delta"] == 0
+    assert mismatch["materialized_vs_emitted_delta"] == 1
     assert bucket(expected=2, emitted=2, trace=2, argument_sets=2, materialized=2)["parallel_count_alignment_bucket"] == "count_aligned"
+
+
+def test_bfcl_selected_correct_markdown_includes_parallel_count_alignment(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_parallel_count_markdown_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    output = tmp_path / "summary.md"
+    module._write_bfcl_selected_correct_failure_markdown(
+        {
+            "audit_schema_version": "test",
+            "runtime_diagnostics_gold_free": True,
+            "summary": {
+                "parallel_count_alignment_bucket_counts": {
+                    "count_aligned": 2,
+                    "emitted_more_than_expected": 3,
+                    "extracted_too_few_argument_sets": 4,
+                }
+            },
+            "by_case_type": {},
+        },
+        output,
+    )
+    text = output.read_text(encoding="utf-8")
+    assert "## Parallel Count Alignment" in text
+    assert "| count_aligned | 2 |" in text
+    assert "| emitted_more_than_expected | 3 |" in text
+    assert "| extracted_too_few_argument_sets | 4 |" in text
+    assert "| materialized_count_matches_emitted_but_not_expected | 0 |" in text
 
 def test_bfcl_guard_gates_separate_wrong_function_bucket_from_claim_readiness() -> None:
     spec = importlib.util.spec_from_file_location(
