@@ -1119,6 +1119,69 @@ def test_bfcl_runtime_extracts_parallel_location_argument_sets() -> None:
     ]
 
 
+def test_bfcl_runtime_extracts_parallel_numeric_id_argument_sets() -> None:
+    arg_sets = extract_parallel_argument_sets(
+        "records.fetch",
+        {
+            "type": "dict",
+            "required": ["record_id"],
+            "properties": {"record_id": {"type": "integer", "description": "record identifier"}},
+        },
+        "Fetch record IDs 101, 202, and 303.",
+    )
+
+    assert arg_sets == [
+        {"record_id": 101},
+        {"record_id": 202},
+        {"record_id": 303},
+    ]
+
+
+def test_bfcl_runtime_extracts_parallel_email_argument_sets() -> None:
+    arg_sets = extract_parallel_argument_sets(
+        "mailer.send",
+        {
+            "type": "dict",
+            "required": ["recipient_email"],
+            "properties": {"recipient_email": {"type": "string", "description": "recipient email address"}},
+        },
+        "Send the notification to alice@example.com and bob@example.com.",
+    )
+
+    assert arg_sets == [
+        {"recipient_email": "alice@example.com"},
+        {"recipient_email": "bob@example.com"},
+    ]
+
+
+def test_bfcl_runtime_extracts_parallel_quoted_string_argument_sets() -> None:
+    arg_sets = extract_parallel_argument_sets(
+        "archive.item",
+        {
+            "type": "dict",
+            "required": ["item_name"],
+            "properties": {"item_name": {"type": "string", "description": "item name"}},
+        },
+        'Archive "alpha" and "beta".',
+    )
+
+    assert arg_sets == [{"item_name": "alpha"}, {"item_name": "beta"}]
+
+
+def test_bfcl_runtime_parallel_extraction_requires_observable_parallel_cue() -> None:
+    arg_sets = extract_parallel_argument_sets(
+        "archive.item",
+        {
+            "type": "dict",
+            "required": ["item_name"],
+            "properties": {"item_name": {"type": "string", "description": "item name"}},
+        },
+        "Archive alpha today.",
+    )
+
+    assert arg_sets == []
+
+
 def test_bfcl_runtime_prefers_general_search_for_general_information_query() -> None:
     selected = select_candidate_tool(
         "what is Imjin war",
@@ -2118,6 +2181,11 @@ def test_bfcl_selected_correct_summary_splits_zero_emitted_sources() -> None:
             "wrong_call_count_zero_emitted": True,
             "zero_emitted_after_schema_selection": True,
             "zero_emitted_due_to_parallel_clause_drop": True,
+            "parallel_argument_sets_extracted": True,
+            "parallel_argument_set_count": 3,
+            "parallel_clause_materialized_count": 2,
+            "parallel_clause_drop_count": 1,
+            "parallel_collapsed_to_serial": True,
             "call_count_delta": -2,
         },
     ]
@@ -2129,6 +2197,11 @@ def test_bfcl_selected_correct_summary_splits_zero_emitted_sources() -> None:
     assert summary["zero_emitted_due_to_call_shape_canonicalizer"] == 1
     assert summary["zero_emitted_due_to_parallel_clause_drop"] == 1
     assert summary["zero_emitted_due_to_no_grounded_args"] == 1
+    assert summary["parallel_argument_sets_extracted"] == 1
+    assert summary["parallel_argument_set_count"] == 3
+    assert summary["parallel_clause_materialized_count"] == 2
+    assert summary["parallel_clause_drop_count"] == 1
+    assert summary["parallel_collapsed_to_serial"] == 1
 
 
 def test_bfcl_candidate_coverage_summary_counts_serial_abstain_blocked_rows() -> None:

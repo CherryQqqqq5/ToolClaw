@@ -1691,6 +1691,13 @@ def _configure_bfcl_step_metadata(
             "ambiguous_alias_blocked_by_arg",
             "high_evidence_assignment_allowed_by_arg",
             "high_evidence_assignment_reason_by_arg",
+            "parallel_materialization_policy_version",
+            "parallel_argument_sets_extracted",
+            "parallel_argument_set_count",
+            "parallel_clause_materialized_count",
+            "parallel_clause_drop_count",
+            "parallel_collapsed_to_serial",
+            "parallel_clause_drop_reasons",
         ):
             if key in selection_diagnostics:
                 merged_metadata[key] = selection_diagnostics[key]
@@ -1956,6 +1963,25 @@ def _split_parallel_clauses(text: str) -> List[str]:
     return clauses if len(clauses) > 1 else [text]
 
 
+def _bfcl_parallel_materialization_diagnostics(
+    diagnostics: Dict[str, Any],
+    *,
+    argument_set_count: int,
+    materialized_count: int,
+    drop_reasons: Optional[List[str]] = None,
+    collapsed_to_serial: bool = False,
+) -> Dict[str, Any]:
+    updated = dict(diagnostics or {})
+    updated["parallel_materialization_policy_version"] = "bfcl_non_live_parallel_clause_materialization_v1"
+    updated["parallel_argument_sets_extracted"] = argument_set_count > 0
+    updated["parallel_argument_set_count"] = int(argument_set_count)
+    updated["parallel_clause_materialized_count"] = int(materialized_count)
+    updated["parallel_clause_drop_count"] = max(int(argument_set_count) - int(materialized_count), 0)
+    updated["parallel_collapsed_to_serial"] = bool(collapsed_to_serial)
+    updated["parallel_clause_drop_reasons"] = list(drop_reasons or [])
+    return updated
+
+
 def _bfcl_seed_specs(
     task: Dict[str, Any],
     candidate_tools: List[ToolSpec],
@@ -1968,6 +1994,7 @@ def _bfcl_seed_specs(
     query = str(task.get("query") or user_goal)
     milestones = [str(item).strip() for item in task.get("milestones", []) if str(item).strip()]
     if call_pattern == "parallel":
+        bfcl_group = str(metadata.get("bfcl_group") or "").strip().lower()
         selected_parallel_tool, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, query)
         if selected_parallel_tool is not None:
             arg_sets = extract_parallel_argument_sets(
@@ -1975,19 +2002,26 @@ def _bfcl_seed_specs(
                 _bfcl_tool_parameters(selected_parallel_tool),
                 query,
             )
-            if len(arg_sets) > 1:
+            if (bfcl_group == "non_live" and arg_sets) or len(arg_sets) > 1:
                 diagnostics = _merge_bfcl_abstain_policy_diagnostics(diagnostics, abstain_policy_diagnostics)
+                diagnostics = _bfcl_parallel_materialization_diagnostics(
+                    diagnostics,
+                    argument_set_count=len(arg_sets),
+                    materialized_count=len(arg_sets),
+                    collapsed_to_serial=len(arg_sets) == 1,
+                )
                 return [
                     {
                         "tool": selected_parallel_tool,
-                        "inputs": arg_set,
+                        "inputs": dict(arg_set),
                         "text": query,
                         "selection_diagnostics": dict(diagnostics),
                     }
                     for arg_set in arg_sets
                 ]
         step_specs: List[Dict[str, Any]] = []
-        for clause in _split_parallel_clauses(query):
+        split_clauses = _split_parallel_clauses(query)
+        for clause in split_clauses:
             tool, diagnostics = _bfcl_schema_ranked_choice(candidate_tools, clause)
             if tool is None:
                 continue
@@ -2000,7 +2034,21 @@ def _bfcl_seed_specs(
                     "selection_diagnostics": diagnostics,
                 }
             )
-        if len(step_specs) > 1:
+        if len(step_specs) > 1 or (bfcl_group == "non_live" and step_specs):
+            drop_reasons = []
+            if selected_parallel_tool is not None:
+                drop_reasons.append("no_extractable_parallel_argument_sets")
+            if len(step_specs) < len(split_clauses):
+                drop_reasons.append("clause_schema_selection_failed")
+            shared_count = len(step_specs)
+            for spec in step_specs:
+                spec["selection_diagnostics"] = _bfcl_parallel_materialization_diagnostics(
+                    spec.get("selection_diagnostics") if isinstance(spec.get("selection_diagnostics"), dict) else {},
+                    argument_set_count=len(split_clauses),
+                    materialized_count=shared_count,
+                    drop_reasons=drop_reasons,
+                    collapsed_to_serial=shared_count == 1,
+                )
             return step_specs
     if metadata.get("bfcl_group") == "multi_turn" and milestones:
         step_specs = []

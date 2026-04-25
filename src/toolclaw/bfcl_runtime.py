@@ -425,6 +425,54 @@ def select_candidate_tool(
     return dict(best["tool"])
 
 
+def _parallel_has_parallel_cue(text: str) -> bool:
+    raw = str(text or "")
+    return bool(
+        re.search(r"\b(?:and|also)\b|[,;]|、|，", raw, re.IGNORECASE)
+        or len(_EMAIL_PATTERN.findall(raw)) > 1
+        or len(_quoted_strings(raw)) > 1
+    )
+
+
+def _parallel_property_text(key: str, prop: Mapping[str, Any]) -> str:
+    values = [key]
+    for field in ("description", "title"):
+        value = prop.get(field) if isinstance(prop, Mapping) else None
+        if value:
+            values.append(str(value))
+    return " ".join(values).lower()
+
+
+def _parallel_preferred_key(
+    schema: Mapping[str, Mapping[str, Any]],
+    required: Sequence[str],
+    types: set[str],
+    hints: set[str],
+) -> str:
+    ordered_keys = [key for key in required if key in schema] + [key for key in schema if key not in required]
+    for key in ordered_keys:
+        prop = schema.get(key, {}) if isinstance(schema.get(key), Mapping) else {}
+        prop_type = str(prop.get("type") or "").strip().lower()
+        if prop_type not in types:
+            continue
+        descriptor = _parallel_property_text(key, prop)
+        if any(hint in descriptor for hint in hints):
+            return key
+    return ""
+
+
+def _dedupe_preserve_order(values: Sequence[Any]) -> List[Any]:
+    seen: set[str] = set()
+    deduped: List[Any] = []
+    for value in values:
+        marker = str(value)
+        if marker in seen:
+            continue
+        seen.add(marker)
+        deduped.append(value)
+    return deduped
+
+
 def extract_parallel_argument_sets(tool_id: str, parameters: Mapping[str, Any], text: str) -> List[Dict[str, Any]]:
     schema = _schema_properties(parameters)
     lower = text.lower()
@@ -453,6 +501,44 @@ def extract_parallel_argument_sets(tool_id: str, parameters: Mapping[str, Any], 
                 for d_time in times[:2]
             ]
     required = _schema_required_keys(parameters)
+    has_parallel_cue = _parallel_has_parallel_cue(text)
+
+    email_key = _parallel_preferred_key(
+        schema,
+        required,
+        {"string"},
+        {"email", "e-mail", "recipient", "receiver", "contact"},
+    )
+    if email_key:
+        emails = _dedupe_preserve_order(_EMAIL_PATTERN.findall(text))
+        if len(emails) > 1:
+            return [{email_key: email} for email in emails]
+
+    numeric_key = _parallel_preferred_key(
+        schema,
+        required,
+        {"integer", "number"},
+        {"id", "identifier", "ids"},
+    )
+    if numeric_key and has_parallel_cue:
+        prop = schema.get(numeric_key, {}) if isinstance(schema.get(numeric_key), Mapping) else {}
+        prop_type = str(prop.get("type") or "").strip().lower()
+        values = _dedupe_preserve_order([int(value) for value in _INTEGER_PATTERN.findall(text)])
+        if len(values) > 1:
+            if prop_type == "number":
+                return [{numeric_key: float(value)} for value in values]
+            return [{numeric_key: value} for value in values]
+
+    quoted_string_key = _parallel_preferred_key(
+        schema,
+        required,
+        {"string"},
+        {"name", "names", "item", "items", "value", "values", "query", "text", "message"},
+    )
+    quoted_values = _dedupe_preserve_order(_quoted_strings(text))
+    if quoted_string_key and len(quoted_values) > 1:
+        return [{quoted_string_key: value} for value in quoted_values]
+
     preferred_string_keys = [
         key
         for key in ["location", "loc", "city", "where_to", *required]
@@ -507,11 +593,17 @@ def _parallel_string_candidates(text: str) -> List[str]:
             break
     if not source:
         source = raw
-    parts = [
-        part.strip(" .?!,;:'\"")
-        for part in re.split(r"\s+and\s+also\s+(?:for\s+)?|\s+and\s+(?:also\s+)?(?:for\s+)?|、|，", source, flags=re.IGNORECASE)
-        if part.strip(" .?!,;:'\"")
-    ]
+    parts: List[str] = []
+    for segment in re.split(r"\s+and\s+also\s+(?:for\s+)?|\s+and\s+(?:also\s+)?(?:for\s+)?|、|，", source, flags=re.IGNORECASE):
+        segment = segment.strip(" .?!,;:'\"")
+        if not segment:
+            continue
+        comma_parts = [part.strip(" .?!,;:'\"") for part in segment.split(",") if part.strip(" .?!,;:'\"")]
+        looks_like_city_state = len(comma_parts) == 2 and bool(re.fullmatch(r"[A-Z]{2}", comma_parts[1]))
+        if len(comma_parts) > 1 and not looks_like_city_state:
+            parts.extend(comma_parts)
+        else:
+            parts.append(segment)
     return [_clean_parallel_location_candidate(part) for part in parts if _clean_parallel_location_candidate(part)]
 
 

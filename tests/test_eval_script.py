@@ -2774,6 +2774,128 @@ def test_build_workflow_from_task_bfcl_parallel_multiple_candidates_expands_best
     assert len(workflow.metadata["bfcl_rerank_diagnostics"]) == 2
 
 
+def test_build_workflow_from_task_bfcl_non_live_parallel_numeric_ids_emit_per_id() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_parallel_numeric_ids", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_non_live_parallel_numeric_ids",
+            "query": "Fetch record IDs 101, 202, and 303.",
+            "candidate_tools": [
+                {
+                    "tool_id": "records.fetch",
+                    "description": "Fetch a record by identifier.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["record_id"],
+                        "properties": {"record_id": {"type": "integer", "description": "record identifier"}},
+                    },
+                }
+            ],
+            "metadata": {"benchmark": "bfcl", "bfcl_group": "non_live", "bfcl_call_pattern": "parallel"},
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert [step.inputs for step in workflow.execution_plan] == [
+        {"record_id": 101},
+        {"record_id": 202},
+        {"record_id": 303},
+    ]
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"]
+    assert len(diagnostics) == 3
+    assert all(item["parallel_materialization_policy_version"] == "bfcl_non_live_parallel_clause_materialization_v1" for item in diagnostics)
+    assert all(item["parallel_argument_set_count"] == 3 for item in diagnostics)
+    assert all(item["parallel_clause_materialized_count"] == 3 for item in diagnostics)
+    assert "expected_call_count" not in json.dumps(diagnostics)
+
+
+def test_build_workflow_from_task_bfcl_non_live_parallel_emails_emit_per_email() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_parallel_emails", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_non_live_parallel_emails",
+            "query": "Send the notification to alice@example.com and bob@example.com.",
+            "candidate_tools": [
+                {
+                    "tool_id": "mailer.send",
+                    "description": "Send an email notification.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["recipient_email"],
+                        "properties": {"recipient_email": {"type": "string", "description": "recipient email address"}},
+                    },
+                }
+            ],
+            "metadata": {"benchmark": "bfcl", "bfcl_group": "non_live", "bfcl_call_pattern": "parallel"},
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert [step.inputs for step in workflow.execution_plan] == [
+        {"recipient_email": "alice@example.com"},
+        {"recipient_email": "bob@example.com"},
+    ]
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"]
+    assert all(item["parallel_clause_drop_count"] == 0 for item in diagnostics)
+    assert "official_failure" not in json.dumps(diagnostics)
+
+
+def test_build_workflow_from_task_bfcl_non_live_parallel_partial_args_do_not_suppress_clauses() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_parallel_partial", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_non_live_parallel_partial",
+            "query": "Send the notification to alice@example.com and bob@example.com.",
+            "candidate_tools": [
+                {
+                    "tool_id": "mailer.send",
+                    "description": "Send an email notification.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["recipient_email", "subject"],
+                        "properties": {
+                            "recipient_email": {"type": "string", "description": "recipient email address"},
+                            "subject": {"type": "string"},
+                        },
+                    },
+                }
+            ],
+            "metadata": {"benchmark": "bfcl", "bfcl_group": "non_live", "bfcl_call_pattern": "parallel"},
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert len(workflow.execution_plan) == 2
+    assert [step.inputs for step in workflow.execution_plan] == [
+        {"recipient_email": "alice@example.com"},
+        {"recipient_email": "bob@example.com"},
+    ]
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"]
+    assert all(item["parallel_argument_sets_extracted"] is True for item in diagnostics)
+    assert all(item["parallel_collapsed_to_serial"] is False for item in diagnostics)
+
+
 def test_bfcl_serial_required_grounder_fills_runtime_visible_required_args() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_serial_grounder", module_path)
