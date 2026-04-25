@@ -6,8 +6,8 @@
   "metadata": {
     "model_name": "phase1_executor",
     "mode": "toolclaw",
-    "start_time": "2026-04-25T02:32:04.338910+00:00",
-    "end_time": "2026-04-25T02:32:04.339161+00:00",
+    "start_time": "2026-04-25T03:21:10.168894+00:00",
+    "end_time": "2026-04-25T03:21:10.169151+00:00",
     "benchmark": null,
     "task_source": null,
     "primary_failtax": "recovery",
@@ -98,13 +98,28 @@
           ],
           "planner_missing_required_args": [],
           "selected_missing_required_args": [],
-          "operation_cues_present": true,
-          "irrelevance_abstain_allowed": false,
-          "abstain_blocked_by_serial_schema_top1": false,
-          "serial_positive_call_forced": false,
-          "bfcl_call_pattern": "serial",
-          "explicit_no_call_signal": false,
           "abstain_policy_version": "bfcl_abstain_policy_v2",
+          "operation_cues_present": true,
+          "bfcl_call_pattern": "serial",
+          "serial_positive_call_forced": false,
+          "explicit_no_call_signal": false,
+          "abstain_blocked_by_serial_schema_top1": false,
+          "irrelevance_abstain_allowed": false,
+          "serial_required_grounding_attempted": true,
+          "serial_required_grounding_policy_version": "bfcl_serial_required_grounding_v1",
+          "required_args": [
+            "user_id"
+          ],
+          "grounded_required_args": [
+            "user_id"
+          ],
+          "ungrounded_required_args": [],
+          "grounding_source_by_arg": {
+            "user_id": "existing_extractor"
+          },
+          "grounding_confidence_by_arg": {
+            "user_id": 0.8
+          },
           "trace_tool_call_expected_by_bfcl_serial": true,
           "serial_selected_top1_materialized": true,
           "serial_selected_top1_materialization_blocked": false,
@@ -183,7 +198,7 @@
   "state_snapshots": [
     {
       "snapshot_id": "snap_01_start",
-      "timestamp": "2026-04-25T02:32:04.338985+00:00",
+      "timestamp": "2026-04-25T03:21:10.168975+00:00",
       "active_step_id": "step_01",
       "completed_steps": [],
       "pending_steps": [],
@@ -212,7 +227,7 @@
   "events": [
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-25T02:32:04.338948+00:00",
+      "timestamp": "2026-04-25T03:21:10.168938+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -227,7 +242,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-25T02:32:04.338970+00:00",
+      "timestamp": "2026-04-25T03:21:10.168960+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -245,7 +260,7 @@
     },
     {
       "event_id": "evt_policy_before_step_01",
-      "timestamp": "2026-04-25T02:32:04.339043+00:00",
+      "timestamp": "2026-04-25T03:21:10.169033+00:00",
       "step_id": "step_01",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -268,7 +283,7 @@
     },
     {
       "event_id": "evt_call_step_01",
-      "timestamp": "2026-04-25T02:32:04.339091+00:00",
+      "timestamp": "2026-04-25T03:21:10.169081+00:00",
       "step_id": "step_01",
       "event_type": "tool_call",
       "actor": "executor",
@@ -284,7 +299,7 @@
     },
     {
       "event_id": "evt_result_step_01",
-      "timestamp": "2026-04-25T02:32:04.339107+00:00",
+      "timestamp": "2026-04-25T03:21:10.169097+00:00",
       "step_id": "step_01",
       "event_type": "tool_result",
       "actor": "environment",
@@ -324,7 +339,7 @@
     },
     {
       "event_id": "evt_checkpoint_step_01",
-      "timestamp": "2026-04-25T02:32:04.339145+00:00",
+      "timestamp": "2026-04-25T03:21:10.169136+00:00",
       "step_id": "step_01",
       "event_type": "checkpoint_created",
       "actor": "executor",
@@ -339,7 +354,7 @@
     },
     {
       "event_id": "evt_stop_success",
-      "timestamp": "2026-04-25T02:32:04.339154+00:00",
+      "timestamp": "2026-04-25T03:21:10.169144+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",

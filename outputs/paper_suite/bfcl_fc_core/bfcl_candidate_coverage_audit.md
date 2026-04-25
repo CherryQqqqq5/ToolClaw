@@ -16,14 +16,14 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 | expected_in_schema_top5 | 8125 |
 | expected_is_schema_top1 | 8125 |
 | selected_is_expected | 5120 |
-| selected_expected_success | 322 |
+| selected_expected_success | 342 |
 | coverage_raw | 0.37869960382195295 |
 | coverage_prepared | 0.37869960382195295 |
 | coverage_runtime | 0.23863901188534142 |
 | coverage_top5 | 0.37869960382195295 |
 | ranker_top1 | 1.5869140625 |
 | selection_accuracy | 1.0 |
-| arg_success_given_correct_tool | 0.062890625 |
+| arg_success_given_correct_tool | 0.066796875 |
 
 ## Drop Stages
 
@@ -31,8 +31,8 @@ This report is gold-enriched after execution. Runtime diagnostics remain gold-fr
 |---|---:|
 | bfcl_abstain_candidate_elision | 3005 |
 | no_expected_function | 13330 |
-| selected_correct_arg_or_shape_error | 4798 |
-| selected_correct_success | 322 |
+| selected_correct_arg_or_shape_error | 4778 |
+| selected_correct_success | 342 |
 
 ## By Case Type
 

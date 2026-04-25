@@ -2,6 +2,7 @@
   "benchmark": "bfcl",
   "bfcl_candidate_coverage_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_candidate_coverage_audit.json",
   "bfcl_candidate_coverage_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_candidate_coverage_summary.json",
+  "bfcl_claim_state": "case_d_limitation_no_claim_upgrade",
   "bfcl_failure_slice_summary_path": "outputs/paper_suite/bfcl_fc_core/bfcl_failure_slice_summary.json",
   "bfcl_function_selection_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_function_selection_audit.json",
   "bfcl_selected_correct_failure_audit_path": "outputs/paper_suite/bfcl_fc_core/bfcl_selected_correct_failure_audit.json",
@@ -15,7 +16,7 @@
   "claim_summary_path": "outputs/paper_suite/bfcl_fc_core/claim_summary.json",
   "comparison_path": "outputs/paper_suite/bfcl_fc_core/comparison.raw.csv",
   "comparison_scored_path": "outputs/paper_suite/bfcl_fc_core/comparison.scored.csv",
-  "diagnostic_note": "36751d0_rerun_diagnostic_note.md",
+  "diagnostic_note": "5a39ca9_rerun_diagnostic_note.md",
   "experiment_metadata": {
     "mode": "planner",
     "official_eval_requested": true,
@@ -23,9 +24,10 @@
     "runner_script": "scripts/run_bfcl_bench.py",
     "toolclaw_diagnostics_requested": true
   },
-  "generated_at": "2026-04-25T02:40:46.693326+00:00",
+  "generated_at": "2026-04-25T03:29:41.231584+00:00",
   "git_branch": "main",
-  "git_commit": "36751d0f0febfc455105d8c41f491593166ab2a3",
+  "git_commit": "5a39ca9f8edbeec4cafd0bc63df2c1fe67e065a3",
+  "git_dirty_after_artifact_generation": true,
   "git_dirty_at_run_start": false,
   "normalized_taskset": "outputs/paper_suite/bfcl_fc_core/prepared/bfcl.normalized.json",
   "num_runs": 1,
@@ -36,6 +38,7 @@
   "source_manifest": "data/bfcl_formal/manifest.json",
   "suite": "bfcl_fc_core",
   "suite_command": "PYTHONPATH=src python3 scripts/run_paper_bench_suite.py bfcl_fc_core",
+  "suite_started_at": "2026-04-25T03:29:41Z",
   "systems": [
     "a0_baseline",
     "a1_recovery",

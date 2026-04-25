@@ -6,8 +6,8 @@
   "metadata": {
     "model_name": "phase1_executor",
     "mode": "toolclaw",
-    "start_time": "2026-04-25T02:37:31.539057+00:00",
-    "end_time": "2026-04-25T02:37:31.539325+00:00",
+    "start_time": "2026-04-25T03:26:28.265463+00:00",
+    "end_time": "2026-04-25T03:26:28.265815+00:00",
     "benchmark": null,
     "task_source": null,
     "primary_failtax": "recovery",
@@ -171,7 +171,7 @@
   "state_snapshots": [
     {
       "snapshot_id": "snap_01_start",
-      "timestamp": "2026-04-25T02:37:31.539136+00:00",
+      "timestamp": "2026-04-25T03:26:28.265568+00:00",
       "active_step_id": "step_01",
       "completed_steps": [],
       "pending_steps": [],
@@ -200,7 +200,7 @@
   "events": [
     {
       "event_id": "evt_000",
-      "timestamp": "2026-04-25T02:37:31.539096+00:00",
+      "timestamp": "2026-04-25T03:26:28.265515+00:00",
       "step_id": null,
       "event_type": "plan_generated",
       "actor": "executor",
@@ -215,7 +215,7 @@
     },
     {
       "event_id": "evt_preflight_000",
-      "timestamp": "2026-04-25T02:37:31.539119+00:00",
+      "timestamp": "2026-04-25T03:26:28.265546+00:00",
       "step_id": null,
       "event_type": "preflight_check",
       "actor": "executor",
@@ -233,7 +233,7 @@
     },
     {
       "event_id": "evt_policy_before_step_01",
-      "timestamp": "2026-04-25T02:37:31.539193+00:00",
+      "timestamp": "2026-04-25T03:26:28.265641+00:00",
       "step_id": "step_01",
       "event_type": "policy_check",
       "actor": "policy_engine",
@@ -256,7 +256,7 @@
     },
     {
       "event_id": "evt_call_step_01",
-      "timestamp": "2026-04-25T02:37:31.539254+00:00",
+      "timestamp": "2026-04-25T03:26:28.265722+00:00",
       "step_id": "step_01",
       "event_type": "tool_call",
       "actor": "executor",
@@ -273,7 +273,7 @@
     },
     {
       "event_id": "evt_result_step_01",
-      "timestamp": "2026-04-25T02:37:31.539271+00:00",
+      "timestamp": "2026-04-25T03:26:28.265744+00:00",
       "step_id": "step_01",
       "event_type": "tool_result",
       "actor": "environment",
@@ -318,7 +318,7 @@
     },
     {
       "event_id": "evt_checkpoint_step_01",
-      "timestamp": "2026-04-25T02:37:31.539309+00:00",
+      "timestamp": "2026-04-25T03:26:28.265795+00:00",
       "step_id": "step_01",
       "event_type": "checkpoint_created",
       "actor": "executor",
@@ -333,7 +333,7 @@
     },
     {
       "event_id": "evt_stop_success",
-      "timestamp": "2026-04-25T02:37:31.539318+00:00",
+      "timestamp": "2026-04-25T03:26:28.265806+00:00",
       "step_id": null,
       "event_type": "stop",
       "actor": "executor",
