@@ -454,7 +454,7 @@ def _bfcl_has_operation_cues(text: str) -> bool:
     return bool(_BFCL_OPERATION_CUE_RE.search(str(text or "")))
 
 
-def _bfcl_irrelevance_signal(task: Dict[str, Any]) -> bool:
+def _bfcl_runtime_irrelevance_label_signal(task: Dict[str, Any]) -> bool:
     metadata = task.get("metadata", {}) if isinstance(task.get("metadata"), dict) else {}
     pieces = [
         str(task.get("task_id") or ""),
@@ -466,7 +466,11 @@ def _bfcl_irrelevance_signal(task: Dict[str, Any]) -> bool:
         str(metadata.get("scenario") or ""),
     ]
     joined = " ".join(pieces).lower()
-    return "irrelevance" in joined or "no_call" in joined or task.get("ideal_tool_calls") == 0
+    return "irrelevance" in joined or "no_call" in joined
+
+
+def _bfcl_irrelevance_signal(task: Dict[str, Any]) -> bool:
+    return _bfcl_runtime_irrelevance_label_signal(task)
 
 
 _BFCL_EXPLICIT_NO_CALL_RE = re.compile(
@@ -531,6 +535,7 @@ def _bfcl_abstain_decision(
     viability = _bfcl_schema_viability_diagnostics(candidate_tools, text)
     irrelevance_signal = _bfcl_irrelevance_signal(task)
     explicit_no_call_signal = _bfcl_explicit_no_call_signal(text)
+    runtime_no_call_signal = bool(irrelevance_signal or explicit_no_call_signal)
     call_pattern = _bfcl_call_pattern(task)
     serial_case = call_pattern == "serial"
     top1_viable = _bfcl_top1_is_viable(viability)
@@ -546,7 +551,7 @@ def _bfcl_abstain_decision(
     irrelevance_abstain_allowed = False
     live_serial_irrelevance_no_call_abstain = False
     bfcl_group = str(((task.get("metadata") or {}) if isinstance(task.get("metadata"), dict) else {}).get("bfcl_group") or task.get("bfcl_group") or "").strip().lower()
-    live_serial_irrelevance_case = bfcl_group in {"live", "live_irrelevance"} and serial_case and irrelevance_signal
+    live_serial_irrelevance_case = bfcl_group in {"live", "live_irrelevance"} and serial_case and runtime_no_call_signal
     if not candidate_tools:
         should_abstain = True
         reason = "no_candidate_tools"
@@ -601,6 +606,8 @@ def _bfcl_abstain_decision(
 
 _BFCL_ABSTAIN_POLICY_DIAGNOSTIC_KEYS = {
     "abstain_policy_version",
+    "abstain_reason",
+    "live_serial_irrelevance_no_call_abstain",
     "abstain_blocked_by_serial_schema_top1",
     "serial_positive_call_forced",
     "irrelevance_abstain_allowed",

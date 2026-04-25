@@ -2611,6 +2611,50 @@ def test_build_workflow_from_task_bfcl_live_serial_irrelevance_label_with_schema
     assert "expected_function" not in json.dumps(diagnostics)
 
 
+def test_build_workflow_from_task_bfcl_live_serial_ideal_zero_without_irrelevance_label_forces_call() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_live_serial_ideal_zero", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "bfcl_live_serial_weather_positive_schema_top1",
+            "query": "Tell me the current weather in Boston, MA.",
+            "ideal_tool_calls": 0,
+            "candidate_tools": [
+                {
+                    "tool_id": "get_current_weather",
+                    "description": "Gets current weather conditions for a location.",
+                    "parameters": {
+                        "type": "dict",
+                        "required": ["location"],
+                        "properties": {"location": {"type": "string"}},
+                    },
+                }
+            ],
+            "metadata": {"benchmark": "bfcl", "bfcl_group": "live", "bfcl_call_pattern": "serial"},
+        },
+        mode="planner",
+        spec=module.SYSTEM_SPECS["fc_grounding_recovery"],
+    )
+
+    assert workflow.metadata.get("bfcl_abstained") is not True
+    assert [step.tool_id for step in workflow.execution_plan] == ["get_current_weather"]
+    diagnostics = workflow.metadata["bfcl_rerank_diagnostics"][0]
+    assert diagnostics["abstain_policy_version"] == "bfcl_abstain_policy_v3"
+    assert diagnostics["abstain_reason"] == "not_applied"
+    assert diagnostics["live_serial_irrelevance_no_call_abstain"] is False
+    assert diagnostics["operation_cues_present"] is True
+    assert diagnostics["schema_top_tool_id"] == "get_current_weather"
+    assert diagnostics["candidate_pool_exception"] == ""
+    assert "expected_call_count" not in json.dumps(diagnostics)
+    assert "official_failure_bucket" not in json.dumps(diagnostics)
+    assert "expected_function" not in json.dumps(diagnostics)
+
+
 def test_build_workflow_from_task_bfcl_non_live_serial_irrelevance_label_with_schema_top1_forces_call() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_non_live_serial_force_call", module_path)
