@@ -23,6 +23,7 @@ SCENARIO_EXPORT_CANDIDATES = (
     "scenario.json",
     "metadata.json",
     "scenario_metadata.json",
+    "execution_context.json",
 )
 
 

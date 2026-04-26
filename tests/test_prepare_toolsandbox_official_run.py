@@ -143,3 +143,77 @@ def test_prepare_toolsandbox_official_run_backfills_ground_truth_when_export_is_
     assert row["has_ground_truth_tools"] is True
     assert row["metadata"]["scenario_export_present"] is False
     assert row["metadata"]["ground_truth_backfill_source"] == "vendored_scenario_source"
+
+
+def test_prepare_toolsandbox_official_run_uses_execution_context_tool_allow_list(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    run_dir = data_root / "agent_demo_user_demo_2026_04_04_00_00_00"
+    scenario_name = "custom_execution_context_only"
+    scenario_dir = run_dir / "trajectories" / scenario_name
+    scenario_dir.mkdir(parents=True)
+
+    (run_dir / "result_summary.json").write_text(
+        json.dumps(
+            {
+                "per_scenario_results": [
+                    {
+                        "name": scenario_name,
+                        "categories": ["SINGLE_TOOL_CALL", "SINGLE_USER_TURN"],
+                        "similarity": 0.75,
+                        "turn_count": 3,
+                        "milestone_mapping": {"0": [1, 1.0]},
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (scenario_dir / "conversation.json").write_text(
+        json.dumps(
+            [
+                {"role": "system", "content": "Use tools carefully."},
+                {"role": "user", "content": "Add Ada Lovelace to my contacts."},
+                {"role": "assistant", "content": "Done."},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (scenario_dir / "execution_context.json").write_text(
+        json.dumps(
+            {
+                "tool_allow_list": ["add_contact", "end_conversation"],
+                "tool_augmentation_list": ["THREE_DISTRACTION_TOOLS"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    out_path = tmp_path / "official.aligned.jsonl"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/prepare_toolsandbox_official_run.py",
+            "--run-dir",
+            "latest",
+            "--data-root",
+            str(data_root),
+            "--out",
+            str(out_path),
+        ],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = [json.loads(line) for line in out_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["query"] == "Add Ada Lovelace to my contacts."
+    assert row["tool_allow_list"] == ["add_contact", "end_conversation"]
+    assert row["candidate_tools"] == ["add_contact", "end_conversation"]
+    assert row["milestones"] == ["milestone_0"]
+    assert row["has_ground_truth_tools"] is True
+    assert row["metadata"]["scenario_export_present"] is True
