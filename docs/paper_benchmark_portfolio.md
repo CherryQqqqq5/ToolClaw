@@ -6,10 +6,17 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
 
 ## Current mapping
 
-- `toolsandbox_official`
-  - role: headline benchmark for stateful, conversational, on-policy workflow intelligence
-  - current claim: `interaction_headline`
-  - reason: the archived official run already makes interaction/stateful control visible, while `a2_planner = a1_recovery` keeps planner lift non-headline here
+- `toolsandbox_official_core_reproducible_strict`
+  - role: current headline source for stateful, conversational, on-policy workflow intelligence on the reproducible ToolSandbox core subset
+  - current claims: `interaction_headline`, `strict_layer_monotonicity`
+  - result bundle: `outputs/paper_suite/toolsandbox_official_core_reproducible_strict`
+  - reason: the 405-row executed core frozen export supersedes the legacy 88-row frozen export for future ToolSandbox headline experiments. The strict ladder has `0 / 4860` adjacent primary-success regressions, with strict success `s0=0.659259`, `s1=0.703704`, `s2=0.703704`, `s3=0.706173`, and `s4=0.706173`.
+  - boundary: this is a core reproducible subset, not the external/API ToolSandbox suite; planner overlay and reuse overlay are conservative non-regression layers here, not independent broad-lift claims.
+
+- `toolsandbox_legacy_frozen88`
+  - role: historical legacy frozen official-run subset
+  - current claim: historical consistency only
+  - reason: the 88-row export is retained for provenance but no longer carries the current ToolSandbox core headline source
 
 - `toolsandbox_interaction_causality_formal`
   - role: boundary / caveat suite
@@ -74,13 +81,29 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
 
 ## Current evidence boundary
 
-- ToolSandbox official should stay the main headline benchmark.
+- `toolsandbox_official_core_reproducible_strict` is the current ToolSandbox core headline source; the legacy 88-row frozen export is historical evidence only.
 - ToolSandbox semantic-usefulness should be treated as a targeted mechanism claim anchored to `toolsandbox_semantic_repair_official_v1`, not a whole-benchmark headline claim.
-- Planner should not be sold as a ToolSandbox official headline lift. The dedicated `toolsandbox_planner_sensitive_v2_f2` bundle remains the canonical mechanism evidence across all four V2 structural families, and `toolsandbox_planner_sensitive_v2_heldout` adds a robustness check with positive separation in 3/4 held-out families under paraphrase, tool renaming, shuffled candidates, and distractor stress. BFCL exact function-calling transfer remains a limitation. The guarded BFCL adapter can only become narrow supporting evidence after full-suite non-regression gates and the pre-registered baseline-missing-required slice gates pass.
-- Reuse should stay pending and scoped to exact/matched-signature cost reduction until a committed persistent-reuse v2 formal bundle demonstrates cost/headroom gains.
+- Planner overlay should not be sold as an independent ToolSandbox core headline lift. The dedicated `toolsandbox_planner_sensitive_v2_f2` bundle remains the canonical mechanism evidence across all four V2 structural families, and `toolsandbox_planner_sensitive_v2_heldout` adds a robustness check with positive separation in 3/4 held-out families under paraphrase, tool renaming, shuffled candidates, and distractor stress. BFCL exact function-calling transfer remains a limitation. The guarded BFCL adapter can only become narrow supporting evidence after full-suite non-regression gates and the pre-registered baseline-missing-required slice gates pass.
+- Reuse should stay pending and scoped to exact/matched-signature cost reduction until a committed persistent-reuse V3 formal bundle demonstrates warm/cold/sham cost/headroom gains.
 - ToolGym is best treated as a later supplementary stress test, not the main paper anchor.
 - WebArena, WorkArena, and OSWorld are strong benchmarks, but they move the paper toward browser or computer-use agents rather than workflow intelligence over tool calling.
 
+
+
+## Strict ladder formal boundary on 2026-04-26
+
+The strict `s0-s4` ladder is the paper-facing conservative-overlay ladder for the 405-row ToolSandbox core reproducible frozen export. It is separate from the atomic `a0-a4` mechanism-diagnostic systems.
+
+Current strict formal result:
+
+- source: `data/toolsandbox.official_core_reproducible.frozen.json`
+- result bundle: `outputs/paper_suite/toolsandbox_official_core_reproducible_strict`
+- samples/runs/scored rows: `405 / 3 / 6075`
+- adjacent primary-success regressions: `0 / 4860`
+- strict success: `s0=0.659259`, `s1=0.703704`, `s2=0.703704`, `s3=0.706173`, `s4=0.706173`
+- adjacent wins/losses/ties: `54/0/1161`, `0/0/1215`, `3/0/1212`, `0/0/1215`
+
+Allowed interpretation: the paper-facing strict ladder is primary-success non-regressive on the ToolSandbox core reproducible subset. Do not use this result as planner-overlay broad lift, reuse cost-reduction, or layer-by-layer cost improvement evidence. Planner-sensitive F2/held-out and reuse persistent V3 remain the separate mechanism and cost protocols.
 
 ## BFCL guarded exact-function adapter boundary on 2026-04-24
 

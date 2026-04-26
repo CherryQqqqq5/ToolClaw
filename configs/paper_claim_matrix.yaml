@@ -1,22 +1,97 @@
 {
-  "updated_at": "2026-04-24",
+  "updated_at": "2026-04-26",
   "claims": {
     "interaction_headline": {
       "status": "supported_current_evidence",
       "claim_strength": "headline",
-      "benchmark_suite": "toolsandbox_official",
-      "claim": "ToolSandbox official carries the headline claim for interaction and stateful workflow intelligence.",
+      "benchmark_suite": "toolsandbox_official_core_reproducible_strict",
+      "claim": "The 405-scenario ToolSandbox core reproducible frozen export carries the paper-facing headline for stateful workflow execution through the strict ToolClaw ladder: recovery, planner overlay, interaction overlay, and reuse overlay preserve or improve primary strict success at every adjacent layer. This is a core reproducible subset headline, not a full RapidAPI/external ToolSandbox suite claim.",
       "metrics": {
         "primary": [
-          "mean_success_rate",
-          "pass_at_k"
+          "strict_scored_success",
+          "adjacent_strict_success_regression_count",
+          "paired_wins_losses_ties"
         ],
         "supporting": [
-          "interaction_contract_satisfied",
-          "success_rate@multiple_user_turn",
-          "success_rate@insufficient_information"
+          "result_summary_coverage",
+          "milestone_signal_coverage",
+          "reference_summary_coverage",
+          "runtime_visibility_audit"
         ]
+      },
+      "formal_summary": {
+        "suite": "toolsandbox_official_core_reproducible_strict",
+        "source_task_count": 405,
+        "num_runs": 3,
+        "scored_rows": 6075,
+        "adjacent_comparisons": 4860,
+        "adjacent_regressions": 0,
+        "strict_success": {
+          "s0_baseline": 0.659259,
+          "s1_recovery": 0.703704,
+          "s2_planner_overlay": 0.703704,
+          "s3_interaction_overlay": 0.706173,
+          "s4_reuse_overlay": 0.706173
+        },
+        "boundary": "core reproducible subset; RapidAPI/external ToolSandbox scenarios remain excluded and tracked separately"
       }
+    },
+    "strict_layer_monotonicity": {
+      "status": "supported_current_evidence",
+      "claim_strength": "mechanism_supporting",
+      "benchmark_suite": "toolsandbox_official_core_reproducible_strict",
+      "claim": "On the 405-scenario ToolSandbox core reproducible frozen export, the paper-facing ToolClaw strict ladder is primary-success non-regressive: each adjacent overlay layer preserves or improves strict success relative to the previous layer.",
+      "metrics": {
+        "primary": [
+          "adjacent_strict_success_regression_count",
+          "paired_wins_losses_ties",
+          "strict_scored_success"
+        ],
+        "supporting": [
+          "runtime_visibility_audit",
+          "planner_overlay_rejected_changes",
+          "full_trajectory_messages_runtime_visible_false",
+          "result_summary_coverage",
+          "milestone_signal_coverage"
+        ]
+      },
+      "formal_summary": {
+        "source_task_count": 405,
+        "num_runs": 3,
+        "scored_rows": 6075,
+        "adjacent_comparisons": 4860,
+        "adjacent_regressions": 0,
+        "strict_success": {
+          "s0_baseline": 0.659259,
+          "s1_recovery": 0.703704,
+          "s2_planner_overlay": 0.703704,
+          "s3_interaction_overlay": 0.706173,
+          "s4_reuse_overlay": 0.706173
+        },
+        "paired_adjacent_wins_losses_ties": {
+          "s1_recovery_ge_s0_baseline": [
+            54,
+            0,
+            1161
+          ],
+          "s2_planner_overlay_ge_s1_recovery": [
+            0,
+            0,
+            1215
+          ],
+          "s3_interaction_overlay_ge_s2_planner_overlay": [
+            3,
+            0,
+            1212
+          ],
+          "s4_reuse_overlay_ge_s3_interaction_overlay": [
+            0,
+            0,
+            1215
+          ]
+        }
+      },
+      "boundary": "This is a primary-success non-regression claim. It does not claim that planner or reuse independently lifts broad ToolSandbox core success, and it does not claim monotonic improvement for cost, tool-call, or user-turn metrics."
     },
     "interaction_semantic_usefulness_mechanism": {
       "status": "supported_current_evidence",
