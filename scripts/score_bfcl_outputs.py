@@ -2152,6 +2152,215 @@ def _write_bfcl_cmd_controller_live_serial_argument_markdown(audit: Dict[str, An
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+
+def _movie_arg_labels(row: Dict[str, Any]) -> List[str]:
+    labels: List[str] = []
+    for field in [
+        "missing_required_args",
+        "wrong_value_args",
+        "wrong_type_args",
+        "nested_structure_mismatches",
+        "missing_required_value_filtered_args",
+    ]:
+        for label in row.get(field, []) or []:
+            labels.append(_bfcl_arg_name_from_label(str(label)))
+    return [label for label in labels if label]
+
+
+def _movie_arg_category(arg: str) -> str:
+    lowered = str(arg or "").lower()
+    if any(token in lowered for token in ["title", "movie", "film", "name"]):
+        return "title"
+    if any(token in lowered for token in ["genre", "category", "type"]):
+        return "genre"
+    if any(token in lowered for token in ["year", "date", "release"]):
+        return "year"
+    if any(token in lowered for token in ["actor", "actress", "director", "person", "cast", "star"]):
+        return "person"
+    if any(token in lowered for token in ["limit", "count", "number", "top", "max"]):
+        return "limit"
+    if any(token in lowered for token in ["rating", "language", "sort", "order", "country"]):
+        return "enum_like"
+    return "other"
+
+
+def _movie_argument_sample(row: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "task_id": str(row.get("task_id") or ""),
+        "system": str(row.get("system") or ""),
+        "split": _stable_dev_heldout_split(str(row.get("task_id") or "")),
+        "tool_id": str(row.get("tool_id") or row.get("selected_tool_id") or row.get("expected_function") or ""),
+        "case_type": str(row.get("case_type") or ""),
+        "failure_bucket": str(row.get("selected_correct_failure_bucket") or ""),
+        "official_failure_bucket": str(row.get("official_failure_bucket") or ""),
+        "query_text": str(row.get("query_text") or ""),
+        "missing_required_args": list(row.get("missing_required_args") or []),
+        "wrong_value_args": list(row.get("wrong_value_args") or []),
+        "wrong_type_args": list(row.get("wrong_type_args") or []),
+        "nested_structure_mismatches": list(row.get("nested_structure_mismatches") or []),
+        "missing_required_value_filtered_args": list(row.get("missing_required_value_filtered_args") or []),
+        "expected_arguments": list(row.get("expected_call_arguments") or [])[:1],
+        "emitted_arguments": list(row.get("emitted_call_arguments") or [])[:1],
+    }
+
+
+def _movie_argument_summary(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    failure_counts = Counter(str(row.get("selected_correct_failure_bucket") or "unknown") for row in rows)
+    split_counts = Counter(_stable_dev_heldout_split(str(row.get("task_id") or "")) for row in rows)
+    argument_failure_counts = Counter()
+    missing_arg_counts = Counter()
+    wrong_value_arg_counts = Counter()
+    wrong_type_arg_counts = Counter()
+    wrong_structure_arg_counts = Counter()
+    value_filtered_arg_counts = Counter()
+    category_counts = Counter()
+    samples: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        for label in row.get("missing_required_args", []) or []:
+            arg = _bfcl_arg_name_from_label(str(label))
+            missing_arg_counts[arg] += 1
+        for label in row.get("wrong_value_args", []) or []:
+            arg = _bfcl_arg_name_from_label(str(label))
+            wrong_value_arg_counts[arg] += 1
+        for label in row.get("wrong_type_args", []) or []:
+            arg = _bfcl_arg_name_from_label(str(label))
+            wrong_type_arg_counts[arg] += 1
+        for label in row.get("nested_structure_mismatches", []) or []:
+            arg = _bfcl_arg_name_from_label(str(label))
+            wrong_structure_arg_counts[arg] += 1
+        for label in row.get("missing_required_value_filtered_args", []) or []:
+            arg = _bfcl_arg_name_from_label(str(label))
+            value_filtered_arg_counts[arg] += 1
+        labels = _movie_arg_labels(row) or ["__none__"]
+        for label in labels:
+            argument_failure_counts[label] += 1
+            category_counts[_movie_arg_category(label)] += 1
+        sample_key = str(row.get("selected_correct_failure_bucket") or "unknown")
+        if len(samples[sample_key]) < 5:
+            samples[sample_key].append(_movie_argument_sample(row))
+    return {
+        "selected_is_expected_count": len(rows),
+        "selected_correct_success_count": int(failure_counts.get("selected_correct_success", 0)),
+        "selected_correct_success_rate": (float(failure_counts.get("selected_correct_success", 0)) / len(rows)) if rows else 0.0,
+        "failure_bucket_counts": dict(failure_counts),
+        "argument_failure_counts": dict(argument_failure_counts),
+        "missing_required_arg_counts": dict(missing_arg_counts),
+        "wrong_value_arg_counts": dict(wrong_value_arg_counts),
+        "wrong_type_arg_counts": dict(wrong_type_arg_counts),
+        "wrong_structure_arg_counts": dict(wrong_structure_arg_counts),
+        "missing_required_value_filtered_arg_counts": dict(value_filtered_arg_counts),
+        "semantic_failure_category_counts": dict(category_counts),
+        "title_extraction_error_count": int(category_counts.get("title", 0)),
+        "genre_extraction_error_count": int(category_counts.get("genre", 0)),
+        "year_extraction_error_count": int(category_counts.get("year", 0)),
+        "person_name_extraction_error_count": int(category_counts.get("person", 0)),
+        "limit_or_count_error_count": int(category_counts.get("limit", 0)),
+        "enum_like_arg_failure_count": int(category_counts.get("enum_like", 0)),
+        "value_filtered_count": int(sum(value_filtered_arg_counts.values())),
+        "split_counts": dict(split_counts),
+        "row_samples_by_failure_bucket": dict(samples),
+    }
+
+
+def _bfcl_movies_findmovies_live_serial_argument_audit(audit: Dict[str, Any]) -> Dict[str, Any]:
+    rows = [row for row in audit.get("rows", []) if isinstance(row, dict)]
+    target_rows = [
+        row
+        for row in rows
+        if row.get("selected_is_expected")
+        and str(row.get("case_type") or "") == "live:serial"
+        and str(row.get("tool_id") or row.get("selected_tool_id") or row.get("expected_function") or "") == "Movies_3_FindMovies"
+    ]
+    by_split: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for row in target_rows:
+        by_split[_stable_dev_heldout_split(str(row.get("task_id") or ""))].append(row)
+    return {
+        "audit_schema_version": "bfcl_movies_findmovies_live_serial_argument_audit_v1",
+        "gold_fields_added_after_execution": True,
+        "runtime_diagnostics_gold_free": audit.get("runtime_diagnostics_gold_free", True),
+        "tool_id": "Movies_3_FindMovies",
+        "case_type": "live:serial",
+        "split_policy": "sha256_task_id_even_dev_odd_heldout_v1",
+        "summary": _movie_argument_summary(target_rows),
+        "by_split": {key: _movie_argument_summary(value) for key, value in sorted(by_split.items())},
+    }
+
+
+def _write_bfcl_movies_findmovies_live_serial_argument_markdown(audit: Dict[str, Any], path: Path) -> None:
+    summary = audit.get("summary", {}) if isinstance(audit.get("summary"), dict) else {}
+    failures = summary.get("failure_bucket_counts") or {}
+    lines = [
+        "# BFCL Movies_3_FindMovies live:serial Argument Audit",
+        "",
+        "This report is scorer-only and gold-enriched after execution. It targets selected-correct `Movies_3_FindMovies::live:serial` rows.",
+        "",
+        f"- audit_schema_version: `{audit.get('audit_schema_version')}`",
+        f"- runtime_diagnostics_gold_free: `{audit.get('runtime_diagnostics_gold_free')}`",
+        f"- split_policy: `{audit.get('split_policy')}`",
+        "",
+        "## Summary",
+        "",
+        "| metric | value |",
+        "|---|---:|",
+    ]
+    for key in ["selected_is_expected_count", "selected_correct_success_count", "selected_correct_success_rate"]:
+        lines.append(f"| {key} | {summary.get(key, 0)} |")
+    for key in ["missing_required", "wrong_arg_value", "wrong_arg_type", "wrong_arg_structure", "selected_correct_success"]:
+        lines.append(f"| failure_bucket:{key} | {int(failures.get(key, 0) or 0)} |")
+    for key in [
+        "title_extraction_error_count",
+        "genre_extraction_error_count",
+        "year_extraction_error_count",
+        "person_name_extraction_error_count",
+        "limit_or_count_error_count",
+        "enum_like_arg_failure_count",
+        "value_filtered_count",
+    ]:
+        lines.append(f"| {key} | {int(summary.get(key, 0) or 0)} |")
+    lines.extend([
+        "",
+        "## Argument Failure Modes",
+        "",
+        "| category | counts |",
+        "|---|---|",
+        f"| all_argument_failures | `{json.dumps(summary.get('argument_failure_counts') or {}, sort_keys=True)}` |",
+        f"| missing_required_args | `{json.dumps(summary.get('missing_required_arg_counts') or {}, sort_keys=True)}` |",
+        f"| wrong_value_args | `{json.dumps(summary.get('wrong_value_arg_counts') or {}, sort_keys=True)}` |",
+        f"| wrong_type_args | `{json.dumps(summary.get('wrong_type_arg_counts') or {}, sort_keys=True)}` |",
+        f"| wrong_structure_args | `{json.dumps(summary.get('wrong_structure_arg_counts') or {}, sort_keys=True)}` |",
+        f"| value_filtered_args | `{json.dumps(summary.get('missing_required_value_filtered_arg_counts') or {}, sort_keys=True)}` |",
+        f"| semantic_categories | `{json.dumps(summary.get('semantic_failure_category_counts') or {}, sort_keys=True)}` |",
+        "",
+        "## Dev/Held-Out",
+        "",
+        "| split | selected | failure_buckets | argument_failures | semantic_categories |",
+        "|---|---:|---|---|---|",
+    ])
+    for split, split_summary in sorted((audit.get("by_split") or {}).items()):
+        lines.append(
+            f"| {split} | {int(split_summary.get('selected_is_expected_count', 0) or 0)} | "
+            f"`{json.dumps(split_summary.get('failure_bucket_counts') or {}, sort_keys=True)}` | "
+            f"`{json.dumps(split_summary.get('argument_failure_counts') or {}, sort_keys=True)}` | "
+            f"`{json.dumps(split_summary.get('semantic_failure_category_counts') or {}, sort_keys=True)}` |"
+        )
+    lines.extend(["", "## Representative Samples", ""])
+    samples = summary.get("row_samples_by_failure_bucket") or {}
+    for bucket in ["missing_required", "wrong_arg_value", "wrong_arg_type", "wrong_arg_structure", "selected_correct_success"]:
+        bucket_samples = samples.get(bucket) or []
+        if not bucket_samples:
+            continue
+        lines.extend([f"### {bucket}", "", "| task_id | system | split | query | expected_args | emitted_args |", "|---|---|---|---|---|---|"])
+        for sample in bucket_samples[:5]:
+            query = str(sample.get("query_text") or "").replace("|", "\\|")
+            expected = json.dumps(sample.get("expected_arguments") or [], sort_keys=True)
+            emitted = json.dumps(sample.get("emitted_arguments") or [], sort_keys=True)
+            lines.append(
+                f"| {sample.get('task_id')} | {sample.get('system')} | {sample.get('split')} | {query} | `{expected}` | `{emitted}` |"
+            )
+        lines.append("")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def _weather_count_bucket(row: Dict[str, Any]) -> str:
     expected = int(row.get("expected_call_count", 0) or 0)
     emitted = int(row.get("emitted_call_count", 0) or 0)
@@ -3013,6 +3222,7 @@ def main() -> None:
     weather_live_serial_count_audit = _bfcl_get_current_weather_live_serial_count_audit(selected_correct_failure_audit)
     weather_location_argument_audit = _bfcl_weather_location_argument_audit(selected_correct_failure_audit)
     cmd_controller_argument_audit = _bfcl_cmd_controller_live_serial_argument_audit(selected_correct_failure_audit)
+    movies_findmovies_argument_audit = _bfcl_movies_findmovies_live_serial_argument_audit(selected_correct_failure_audit)
 
     (outdir / "official_scoreboard.json").write_text(json.dumps(official_scoreboard, indent=2), encoding="utf-8")
     (outdir / "toolclaw_diagnostics.json").write_text(json.dumps(toolclaw_diagnostics, indent=2), encoding="utf-8")
@@ -3039,6 +3249,8 @@ def main() -> None:
     _write_bfcl_weather_location_argument_markdown(weather_location_argument_audit, outdir / "bfcl_weather_location_argument_audit.md")
     (outdir / "bfcl_cmd_controller_live_serial_argument_audit.json").write_text(json.dumps(cmd_controller_argument_audit, indent=2), encoding="utf-8")
     _write_bfcl_cmd_controller_live_serial_argument_markdown(cmd_controller_argument_audit, outdir / "bfcl_cmd_controller_live_serial_argument_audit.md")
+    (outdir / "bfcl_movies_findmovies_live_serial_argument_audit.json").write_text(json.dumps(movies_findmovies_argument_audit, indent=2), encoding="utf-8")
+    _write_bfcl_movies_findmovies_live_serial_argument_markdown(movies_findmovies_argument_audit, outdir / "bfcl_movies_findmovies_live_serial_argument_audit.md")
 
     manifest["comparison_scored_path"] = _display_path(comparison_scored_path)
     manifest["official_scoreboard_path"] = _display_path(outdir / "official_scoreboard.json")
@@ -3055,6 +3267,7 @@ def main() -> None:
     manifest["bfcl_get_current_weather_live_serial_count_audit_path"] = _display_path(outdir / "bfcl_get_current_weather_live_serial_count_audit.json")
     manifest["bfcl_weather_location_argument_audit_path"] = _display_path(outdir / "bfcl_weather_location_argument_audit.json")
     manifest["bfcl_cmd_controller_live_serial_argument_audit_path"] = _display_path(outdir / "bfcl_cmd_controller_live_serial_argument_audit.json")
+    manifest["bfcl_movies_findmovies_live_serial_argument_audit_path"] = _display_path(outdir / "bfcl_movies_findmovies_live_serial_argument_audit.json")
     (outdir / "experiment_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     print(f"official_scoreboard: {outdir / 'official_scoreboard.json'}")
@@ -3068,6 +3281,7 @@ def main() -> None:
     print(f"bfcl_get_current_weather_live_serial_count_audit: {outdir / 'bfcl_get_current_weather_live_serial_count_audit.json'}")
     print(f"bfcl_weather_location_argument_audit: {outdir / 'bfcl_weather_location_argument_audit.json'}")
     print(f"bfcl_cmd_controller_live_serial_argument_audit: {outdir / 'bfcl_cmd_controller_live_serial_argument_audit.json'}")
+    print(f"bfcl_movies_findmovies_live_serial_argument_audit: {outdir / 'bfcl_movies_findmovies_live_serial_argument_audit.json'}")
 
 
 if __name__ == "__main__":

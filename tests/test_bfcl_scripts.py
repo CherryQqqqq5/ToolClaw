@@ -3011,6 +3011,144 @@ def test_bfcl_cmd_controller_live_serial_argument_audit_and_markdown(tmp_path: P
     assert "wrong_arg_type" in text
 
 
+
+def test_bfcl_movies_findmovies_live_serial_argument_audit_and_markdown(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_movies_argument_audit_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    rows = [
+        {
+            "selected_is_expected": True,
+            "tool_id": "Movies_3_FindMovies",
+            "case_type": "live:serial",
+            "task_id": "movie_missing_title",
+            "system": "a2_planner",
+            "selected_correct_failure_bucket": "missing_required",
+            "missing_required_args": ["call_1.title"],
+            "missing_required_value_filtered_args": ["call_1.genre"],
+            "query_text": "Find comedies like Inception",
+            "expected_call_arguments": [{"title": "Inception", "genre": "comedy"}],
+            "emitted_call_arguments": [{"genre": "comedy"}],
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "Movies_3_FindMovies",
+            "case_type": "live:serial",
+            "task_id": "movie_wrong_year",
+            "system": "a2_planner",
+            "selected_correct_failure_bucket": "wrong_arg_value",
+            "wrong_value_args": ["call_1.release_year"],
+            "query_text": "Find movies released in 1999",
+            "expected_call_arguments": [{"release_year": 1999}],
+            "emitted_call_arguments": [{"release_year": 2000}],
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "Movies_3_FindMovies",
+            "case_type": "live:serial",
+            "task_id": "movie_wrong_type_limit",
+            "system": "a2_planner",
+            "selected_correct_failure_bucket": "wrong_arg_type",
+            "wrong_type_args": ["call_1.limit"],
+            "query_text": "Find the top five action movies",
+            "expected_call_arguments": [{"limit": 5}],
+            "emitted_call_arguments": [{"limit": "five"}],
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "Movies_3_FindMovies",
+            "case_type": "live:serial",
+            "task_id": "movie_wrong_structure_director",
+            "system": "a2_planner",
+            "selected_correct_failure_bucket": "wrong_arg_structure",
+            "nested_structure_mismatches": ["call_1.director"],
+            "query_text": "Find films directed by Greta Gerwig",
+            "expected_call_arguments": [{"director": "Greta Gerwig"}],
+            "emitted_call_arguments": [{"director": ["Greta Gerwig"]}],
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "Movies_3_FindMovies",
+            "case_type": "non_live:serial",
+            "task_id": "ignored_case",
+            "selected_correct_failure_bucket": "wrong_arg_value",
+            "wrong_value_args": ["call_1.title"],
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "Movies_1_FindMovies",
+            "case_type": "live:serial",
+            "task_id": "ignored_tool",
+            "selected_correct_failure_bucket": "missing_required",
+            "missing_required_args": ["call_1.title"],
+        },
+    ]
+    audit = {"runtime_diagnostics_gold_free": True, "rows": rows}
+
+    movies_audit = module._bfcl_movies_findmovies_live_serial_argument_audit(audit)
+    summary = movies_audit["summary"]
+
+    assert movies_audit["runtime_diagnostics_gold_free"] is True
+    assert summary["selected_is_expected_count"] == 4
+    assert summary["selected_correct_success_count"] == 0
+    assert summary["failure_bucket_counts"] == {
+        "missing_required": 1,
+        "wrong_arg_value": 1,
+        "wrong_arg_type": 1,
+        "wrong_arg_structure": 1,
+    }
+    assert summary["missing_required_arg_counts"] == {"title": 1}
+    assert summary["wrong_value_arg_counts"] == {"release_year": 1}
+    assert summary["wrong_type_arg_counts"] == {"limit": 1}
+    assert summary["wrong_structure_arg_counts"] == {"director": 1}
+    assert summary["missing_required_value_filtered_arg_counts"] == {"genre": 1}
+    assert summary["argument_failure_counts"] == {
+        "title": 1,
+        "genre": 1,
+        "release_year": 1,
+        "limit": 1,
+        "director": 1,
+    }
+    assert summary["semantic_failure_category_counts"] == {
+        "title": 1,
+        "genre": 1,
+        "year": 1,
+        "limit": 1,
+        "person": 1,
+    }
+    assert summary["title_extraction_error_count"] == 1
+    assert summary["genre_extraction_error_count"] == 1
+    assert summary["year_extraction_error_count"] == 1
+    assert summary["person_name_extraction_error_count"] == 1
+    assert summary["limit_or_count_error_count"] == 1
+    assert summary["value_filtered_count"] == 1
+    assert sum(summary["split_counts"].values()) == 4
+    assert set(movies_audit["by_split"]).issubset({"dev", "heldout"})
+    sample = summary["row_samples_by_failure_bucket"]["missing_required"][0]
+    assert sample["expected_arguments"] == [{"title": "Inception", "genre": "comedy"}]
+    assert sample["emitted_arguments"] == [{"genre": "comedy"}]
+    assert sample["query_text"].startswith("Find comedies")
+
+    output = tmp_path / "movies_findmovies.md"
+    module._write_bfcl_movies_findmovies_live_serial_argument_markdown(movies_audit, output)
+    text = output.read_text(encoding="utf-8")
+    assert "# BFCL Movies_3_FindMovies live:serial Argument Audit" in text
+    assert "## Summary" in text
+    assert "## Argument Failure Modes" in text
+    assert "## Dev/Held-Out" in text
+    assert "## Representative Samples" in text
+    assert "missing_required" in text
+    assert "wrong_arg_value" in text
+    assert "wrong_arg_type" in text
+    assert "wrong_arg_structure" in text
+    assert "semantic_categories" in text
+
+
 def test_bfcl_guard_gates_separate_wrong_function_bucket_from_claim_readiness() -> None:
     spec = importlib.util.spec_from_file_location(
         "score_bfcl_outputs_guard_gate_names_module",
