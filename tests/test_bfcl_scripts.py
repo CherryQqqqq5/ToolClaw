@@ -2916,6 +2916,101 @@ def test_bfcl_weather_location_argument_audit_splits_tools_and_holdout(tmp_path:
     assert "Dev/Held-Out" in text
 
 
+
+def test_bfcl_cmd_controller_live_serial_argument_audit_and_markdown(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_cmd_controller_argument_audit_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    rows = [
+        {
+            "selected_is_expected": True,
+            "tool_id": "cmd_controller.execute",
+            "case_type": "live:serial",
+            "task_id": "cmd_missing",
+            "system": "a2_planner",
+            "selected_correct_failure_bucket": "missing_required",
+            "missing_required_args": ["call_1.command"],
+            "query_text": "close firefox using taskkill command",
+            "expected_call_arguments": [{"command": "taskkill /F /IM firefox.exe", "unit": ""}],
+            "emitted_call_arguments": [{}],
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "cmd_controller.execute",
+            "case_type": "live:serial",
+            "task_id": "cmd_wrong_value",
+            "system": "a2_planner",
+            "selected_correct_failure_bucket": "wrong_arg_value",
+            "wrong_value_args": ["call_1.command"],
+            "query_text": "open huggingface using start command and link https://huggingface.co",
+            "expected_call_arguments": [{"command": "start https://huggingface.co", "unit": ""}],
+            "emitted_call_arguments": [{"command": "and"}],
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "cmd_controller.execute",
+            "case_type": "live:serial",
+            "task_id": "cmd_wrong_type",
+            "system": "a2_planner",
+            "selected_correct_failure_bucket": "wrong_arg_type",
+            "wrong_type_args": ["call_1.command"],
+            "query_text": "remove timer.exe using taskkill command",
+            "expected_call_arguments": [{"command": "taskkill /F /IM timer.exe", "unit": ""}],
+            "emitted_call_arguments": [{"command": True}],
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "requests.get",
+            "case_type": "live:serial",
+            "task_id": "ignored_tool",
+            "selected_correct_failure_bucket": "wrong_arg_structure",
+            "wrong_value_args": ["call_1.url"],
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "cmd_controller.execute",
+            "case_type": "non_live:serial",
+            "task_id": "ignored_case",
+            "selected_correct_failure_bucket": "wrong_arg_value",
+            "wrong_value_args": ["call_1.command"],
+        },
+    ]
+    audit = {"runtime_diagnostics_gold_free": True, "rows": rows}
+
+    cmd_audit = module._bfcl_cmd_controller_live_serial_argument_audit(audit)
+    summary = cmd_audit["summary"]
+
+    assert cmd_audit["runtime_diagnostics_gold_free"] is True
+    assert summary["selected_is_expected_count"] == 3
+    assert summary["selected_correct_success_count"] == 0
+    assert summary["failure_bucket_counts"] == {"missing_required": 1, "wrong_arg_value": 1, "wrong_arg_type": 1}
+    assert summary["argument_failure_counts"] == {"command": 3}
+    assert summary["missing_required_arg_counts"] == {"command": 1}
+    assert summary["wrong_value_arg_counts"] == {"command": 1}
+    assert summary["wrong_type_arg_counts"] == {"command": 1}
+    assert sum(summary["split_counts"].values()) == 3
+    assert set(cmd_audit["by_split"]).issubset({"dev", "heldout"})
+    sample = summary["row_samples_by_failure_bucket"]["wrong_arg_value"][0]
+    assert sample["expected_arguments"] == [{"command": "start https://huggingface.co", "unit": ""}]
+    assert sample["emitted_arguments"] == [{"command": "and"}]
+    assert sample["query_text"].startswith("open huggingface")
+
+    output = tmp_path / "cmd_controller.md"
+    module._write_bfcl_cmd_controller_live_serial_argument_markdown(cmd_audit, output)
+    text = output.read_text(encoding="utf-8")
+    assert "# BFCL cmd_controller.execute live:serial Argument Audit" in text
+    assert "## Command Arg Failure Modes" in text
+    assert "## Representative Samples" in text
+    assert "missing_required" in text
+    assert "wrong_arg_value" in text
+    assert "wrong_arg_type" in text
+
+
 def test_bfcl_guard_gates_separate_wrong_function_bucket_from_claim_readiness() -> None:
     spec = importlib.util.spec_from_file_location(
         "score_bfcl_outputs_guard_gate_names_module",
