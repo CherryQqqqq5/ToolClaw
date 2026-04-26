@@ -66,6 +66,7 @@ from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
 from toolclaw.main import ToolClawRuntime
 from toolclaw.planner.capability_intents import CAPABILITY_PROFILES_BY_ID, infer_capability_from_text
 from toolclaw.planner.htgp import PlanningRequest, build_default_planner
+from toolclaw.planner.overlay import apply_planner_overlay, apply_reuse_overlay_noop
 from toolclaw.registry import AssetRegistry, FileAssetRegistry, InMemoryAssetRegistry
 from toolclaw.schemas.workflow import CapabilityEdge, RiskLevel, TaskConstraints, ToolSpec, Workflow, WorkflowEdge
 
@@ -214,6 +215,48 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
         allow_repair=True,
         allow_fallback=True,
         allow_suffix_replan=False,
+    ),
+    "s0_baseline": SystemSpec(
+        system_id="s0_baseline",
+        workflow_mode="demo",
+        execution_mode="executor",
+        allow_repair=False,
+        allow_fallback=False,
+    ),
+    "s1_recovery": SystemSpec(
+        system_id="s1_recovery",
+        workflow_mode="demo",
+        execution_mode="executor",
+        allow_repair=True,
+        allow_fallback=True,
+    ),
+    "s2_planner_overlay": SystemSpec(
+        system_id="s2_planner_overlay",
+        workflow_mode="planner_overlay",
+        execution_mode="executor",
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=True,
+    ),
+    "s3_interaction_overlay": SystemSpec(
+        system_id="s3_interaction_overlay",
+        workflow_mode="planner_overlay",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=True,
+    ),
+    "s4_reuse_overlay": SystemSpec(
+        system_id="s4_reuse_overlay",
+        workflow_mode="planner_overlay",
+        execution_mode="interaction",
+        compile_on_success=False,
+        use_reuse=False,
+        allow_repair=True,
+        allow_fallback=True,
+        allow_suffix_replan=True,
     ),
     "tc_full": SystemSpec(
         system_id="tc_full",
@@ -3063,6 +3106,27 @@ def build_workflow_from_task(
     candidate_tools = _build_tool_specs(raw_tools)
     raw_query = str(task.get("query") or "").strip()
     planner_goal = _planner_goal_from_task(task, raw_query or Workflow.demo().task.user_goal)
+    if mode == "planner_overlay":
+        base_workflow = build_workflow_from_task(task, mode="demo", spec=spec)
+        planner_workflow = build_workflow_from_task(task, mode="planner", spec=spec)
+        workflow = apply_planner_overlay(
+            base_workflow,
+            planner_workflow,
+            {
+                "system_id": spec.system_id if spec is not None else "",
+                "task_id": canonical_task_id(task),
+            },
+        )
+        if spec is not None and spec.system_id == "s4_reuse_overlay":
+            workflow = apply_reuse_overlay_noop(
+                workflow,
+                {
+                    "system_id": spec.system_id,
+                    "task_id": canonical_task_id(task),
+                    "exact_reuse_policy": "no_runtime_path_change_v1",
+                },
+            )
+        return workflow
     if mode == "planner":
         planner = build_default_planner()
         demo = Workflow.demo()
@@ -4075,7 +4139,7 @@ def execute_system(
             reused_artifact=False,
         )
 
-    seed_workflow = build_workflow_from_task(task, mode="planner", spec=spec)
+    seed_workflow = build_workflow_from_task(task, mode=spec.workflow_mode, spec=spec)
     benchmark = str(seed_workflow.metadata.get("benchmark") or "").strip().lower()
     approval_declared = bool(seed_workflow.task.constraints.requires_user_approval) or any(
         isinstance(edge, dict) and str(edge.get("type") or "").strip().lower() == "approval"

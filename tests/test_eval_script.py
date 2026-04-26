@@ -3508,3 +3508,129 @@ def test_bfcl_serial_grounding_metadata_is_runtime_safe_and_does_not_suppress_ca
     encoded = json.dumps(diagnostics)
     for forbidden in ("expected_function", "expected_call_count", "gold_tool", "official_failure_bucket"):
         assert forbidden not in encoded
+
+
+def test_strict_overlay_system_specs_preserve_atomic_specs() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_strict_specs", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    assert module.SYSTEM_SPECS["a2_planner"].workflow_mode == "planner"
+    assert module.SYSTEM_SPECS["s2_planner_overlay"].workflow_mode == "planner_overlay"
+    assert module.SYSTEM_SPECS["s2_planner_overlay"].allow_repair is True
+    assert module.SYSTEM_SPECS["s2_planner_overlay"].allow_fallback is True
+    assert module.SYSTEM_SPECS["s2_planner_overlay"].allow_suffix_replan is True
+
+    s3 = module.SYSTEM_SPECS["s3_interaction_overlay"]
+    assert s3.workflow_mode == "planner_overlay"
+    assert s3.execution_mode == "interaction"
+    assert s3.allow_repair is True
+    assert s3.allow_fallback is True
+    assert s3.allow_suffix_replan is True
+    assert s3.use_reuse is False
+
+    s4 = module.SYSTEM_SPECS["s4_reuse_overlay"]
+    assert s4.workflow_mode == "planner_overlay"
+    assert s4.execution_mode == "interaction"
+    assert s4.use_reuse is False
+    assert s4.allow_suffix_replan is True
+
+
+def test_execute_system_strict_interaction_uses_overlay_seed(monkeypatch, tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_strict_interaction_seed", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = Workflow.demo()
+    workflow.metadata["benchmark"] = "toolsandbox"
+    build_calls: list[str] = []
+    shell_calls: list[dict[str, object]] = []
+
+    def fake_build_workflow_from_task(task, mode="demo", spec=None, **kwargs):
+        build_calls.append(mode)
+        return workflow
+
+    class _FakeShell:
+        def run(self, **kwargs):
+            shell_calls.append(kwargs)
+            assert kwargs["seed_workflow"] is workflow
+            Path(kwargs["output_path"]).write_text(
+                json.dumps({"events": [], "metrics": {"success": True}, "metadata": {}}),
+                encoding="utf-8",
+            )
+            return SimpleNamespace(workflow=workflow)
+
+    monkeypatch.setattr(module, "build_workflow_from_task", fake_build_workflow_from_task)
+    monkeypatch.setattr(module, "build_shell", lambda runtime, task: _FakeShell())
+    monkeypatch.setattr(
+        module,
+        "row_from_trace",
+        lambda **kwargs: SimpleNamespace(system=kwargs["system"], task_id=kwargs["task"]["task_id"]),
+    )
+
+    row = module.execute_system(
+        spec=module.SYSTEM_SPECS["s3_interaction_overlay"],
+        task={"task_id": "strict_interaction_seed_001", "query": "check weather"},
+        task_index=1,
+        traces_dir=tmp_path,
+        runtime=SimpleNamespace(executor=SimpleNamespace(run_until_blocked=lambda **kwargs: None)),
+    )
+
+    assert build_calls == ["planner_overlay"]
+    assert shell_calls and shell_calls[0]["use_reuse"] is False
+    assert row.system == "s3_interaction_overlay"
+
+
+def test_execute_system_strict_reuse_overlay_does_not_use_replacement_reuse(monkeypatch, tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_strict_reuse_seed", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = Workflow.demo()
+    workflow.metadata["benchmark"] = "toolsandbox"
+    shell_calls: list[dict[str, object]] = []
+
+    def forbidden_run_task_with_reuse(_request):
+        raise AssertionError("strict reuse overlay must not call replacement reuse path")
+
+    class _FakeShell:
+        def run(self, **kwargs):
+            shell_calls.append(kwargs)
+            Path(kwargs["output_path"]).write_text(
+                json.dumps({"events": [], "metrics": {"success": True}, "metadata": {}}),
+                encoding="utf-8",
+            )
+            return SimpleNamespace(workflow=workflow)
+
+    monkeypatch.setattr(module, "build_workflow_from_task", lambda *args, **kwargs: workflow)
+    monkeypatch.setattr(module, "build_shell", lambda runtime, task: _FakeShell())
+    monkeypatch.setattr(
+        module,
+        "row_from_trace",
+        lambda **kwargs: {"system": kwargs["system"], "task_id": kwargs["task"]["task_id"]},
+    )
+
+    runtime = SimpleNamespace(
+        executor=SimpleNamespace(run_until_blocked=lambda **kwargs: None),
+        run_task_with_reuse=forbidden_run_task_with_reuse,
+    )
+    row = module.execute_system(
+        spec=module.SYSTEM_SPECS["s4_reuse_overlay"],
+        task={"task_id": "strict_reuse_seed_001", "query": "retrieve and write"},
+        task_index=1,
+        traces_dir=tmp_path,
+        runtime=runtime,
+    )
+
+    assert shell_calls and shell_calls[0]["use_reuse"] is False
+    assert shell_calls[0]["seed_workflow"] is workflow
+    assert row["system"] == "s4_reuse_overlay"

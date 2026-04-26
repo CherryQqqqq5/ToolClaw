@@ -1025,3 +1025,59 @@ def test_run_toolsandbox_bench_script_accepts_official_run_dir(tmp_path: Path) -
     per_system = json.loads((outdir / "per_system_summary.json").read_text(encoding="utf-8"))
     assert float(per_system["a0_baseline"]["used_result_summary"]) >= 1.0
     assert float(per_system["a0_baseline"]["reference_result_summary_available"]) >= 1.0
+
+
+def test_strict_layer_monotonicity_audit_reports_adjacent_regressions(tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_toolsandbox_bench.py"
+    spec = importlib.util.spec_from_file_location("run_toolsandbox_bench_module_strict_audit", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    rows = [
+        {
+            "run_index": 1,
+            "task_id": "task_ok",
+            "system": "s1_recovery",
+            "strict_scored_success": True,
+            "stop_reason": "success",
+            "trace_path": "s1.json",
+            "chosen_tool": "tool_a",
+        },
+        {
+            "run_index": 1,
+            "task_id": "task_ok",
+            "system": "s2_planner_overlay",
+            "strict_scored_success": True,
+            "stop_reason": "success",
+            "trace_path": "s2.json",
+            "chosen_tool": "tool_a",
+        },
+        {
+            "run_index": 1,
+            "task_id": "task_regress",
+            "system": "s1_recovery",
+            "strict_scored_success": True,
+            "stop_reason": "success",
+            "trace_path": "s1_regress.json",
+            "chosen_tool": "tool_a",
+        },
+        {
+            "run_index": 1,
+            "task_id": "task_regress",
+            "system": "s2_planner_overlay",
+            "strict_scored_success": False,
+            "stop_reason": "blocked",
+            "trace_path": "s2_regress.json",
+            "chosen_tool": "tool_b",
+        },
+    ]
+
+    audit = module._write_strict_layer_monotonicity_audit(tmp_path, rows)
+
+    assert audit["regression_count"] == 1
+    assert audit["pair_summaries"]["s2_planner_overlay_ge_s1_recovery"]["losses"] == 1
+    assert audit["regressions"][0]["task_id"] == "task_regress"
+    assert (tmp_path / "strict_layer_monotonicity_audit.json").exists()
+    assert "task_regress" in (tmp_path / "strict_layer_monotonicity_audit.md").read_text(encoding="utf-8")

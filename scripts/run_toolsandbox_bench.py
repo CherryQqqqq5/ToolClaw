@@ -833,6 +833,120 @@ def _maybe_write_planner_sensitive_outputs(outdir: Path, source: Path, enabled: 
     )
 
 
+STRICT_LAYER_PAIRS = [
+    ("s0_baseline", "s1_recovery"),
+    ("s1_recovery", "s2_planner_overlay"),
+    ("s2_planner_overlay", "s3_interaction_overlay"),
+    ("s3_interaction_overlay", "s4_reuse_overlay"),
+]
+
+
+def _scored_success(row: Dict[str, Any]) -> bool:
+    value = row.get("strict_scored_success", row.get("success", False))
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes"}
+
+
+def _write_strict_layer_monotonicity_audit(outdir: Path, rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    systems_present = {str(row.get("system") or "") for row in rows}
+    active_pairs = [pair for pair in STRICT_LAYER_PAIRS if pair[0] in systems_present and pair[1] in systems_present]
+    audit: Dict[str, Any] = {
+        "audit_version": "strict_superset_ladder_v1",
+        "success_metric": "strict_scored_success",
+        "systems_present": sorted(systems_present),
+        "active_pairs": [f"{upper}>={lower}" for lower, upper in active_pairs],
+        "total_adjacent_comparisons": 0,
+        "regression_count": 0,
+        "pair_summaries": {},
+        "regressions": [],
+    }
+    if not active_pairs:
+        return audit
+
+    grouped: Dict[tuple[str, str], Dict[str, Dict[str, Any]]] = {}
+    for row in rows:
+        key = (str(row.get("run_index") or ""), str(row.get("task_id") or ""))
+        grouped.setdefault(key, {})[str(row.get("system") or "")] = row
+
+    for lower, upper in active_pairs:
+        pair_key = f"{upper}_ge_{lower}"
+        summary = {"comparisons": 0, "wins": 0, "losses": 0, "ties": 0}
+        for (run_index, task_id), system_rows in sorted(grouped.items()):
+            if lower not in system_rows or upper not in system_rows:
+                continue
+            lower_row = system_rows[lower]
+            upper_row = system_rows[upper]
+            lower_success = _scored_success(lower_row)
+            upper_success = _scored_success(upper_row)
+            summary["comparisons"] += 1
+            audit["total_adjacent_comparisons"] += 1
+            if upper_success and not lower_success:
+                summary["wins"] += 1
+            elif lower_success and not upper_success:
+                summary["losses"] += 1
+                regression = {
+                    "run_index": run_index,
+                    "task_id": task_id,
+                    "lower_system": lower,
+                    "upper_system": upper,
+                    "lower_success": lower_success,
+                    "upper_success": upper_success,
+                    "lower_stop_reason": lower_row.get("stop_reason", ""),
+                    "upper_stop_reason": upper_row.get("stop_reason", ""),
+                    "lower_trace_path": lower_row.get("trace_path", ""),
+                    "upper_trace_path": upper_row.get("trace_path", ""),
+                    "lower_chosen_tool": lower_row.get("chosen_tool", ""),
+                    "upper_chosen_tool": upper_row.get("chosen_tool", ""),
+                }
+                audit["regressions"].append(regression)
+            else:
+                summary["ties"] += 1
+        audit["pair_summaries"][pair_key] = summary
+    audit["regression_count"] = len(audit["regressions"])
+
+    json_path = outdir / "strict_layer_monotonicity_audit.json"
+    md_path = outdir / "strict_layer_monotonicity_audit.md"
+    json_path.write_text(json.dumps(audit, indent=2), encoding="utf-8")
+    lines = [
+        "# Strict Layer Monotonicity Audit",
+        "",
+        f"- audit_version: `{audit['audit_version']}`",
+        f"- success_metric: `{audit['success_metric']}`",
+        f"- total_adjacent_comparisons: `{audit['total_adjacent_comparisons']}`",
+        f"- regression_count: `{audit['regression_count']}`",
+        "",
+        "## Adjacent Pair Summary",
+        "",
+        "| pair | comparisons | wins | losses | ties |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for pair_key, summary in sorted(audit["pair_summaries"].items()):
+        lines.append(
+            f"| {pair_key} | {int(summary['comparisons'])} | {int(summary['wins'])} | {int(summary['losses'])} | {int(summary['ties'])} |"
+        )
+    lines.extend(["", "## Regressions", ""])
+    if audit["regressions"]:
+        lines.extend(
+            [
+                "| run_index | task_id | lower_system | upper_system | lower_stop | upper_stop | lower_tool | upper_tool |",
+                "|---|---|---|---|---|---|---|---|",
+            ]
+        )
+        for regression in audit["regressions"][:100]:
+            lines.append(
+                "| {run_index} | {task_id} | {lower_system} | {upper_system} | {lower_stop_reason} | {upper_stop_reason} | {lower_chosen_tool} | {upper_chosen_tool} |".format(
+                    **{key: str(value).replace("|", "\\|") for key, value in regression.items()}
+                )
+            )
+        if len(audit["regressions"]) > 100:
+            lines.append(f"\nOnly first 100 regressions shown; full list is in `{json_path.name}`.")
+    else:
+        lines.append("No adjacent primary-success regressions detected.")
+    md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return audit
+
+
 def _focused_slice_summary(per_system_summary: Dict[str, Any]) -> Dict[str, Any]:
     per_category: Dict[str, Dict[str, Any]] = {}
     for system, system_summary in per_system_summary.items():
@@ -1850,6 +1964,7 @@ def main() -> None:
     )
     write_csv_rows(raw_run_rows, outdir / "comparison.raw.csv")
     write_csv_rows(scored_run_rows, outdir / "comparison.scored.csv")
+    strict_audit = _write_strict_layer_monotonicity_audit(outdir, scored_run_rows)
     failure_type_summary = _failure_type_summary(outdir)
     (outdir / "per_failure_type_summary.json").write_text(
         json.dumps(failure_type_summary, indent=2),
@@ -1885,6 +2000,12 @@ def main() -> None:
             "latest_raw_report_path": display_path(outdir / "latest_run_raw_report.md") if (outdir / "latest_run_raw_report.md").exists() else None,
             "raw_vs_benchmark_gap_summary_path": display_path(outdir / "raw_vs_benchmark_gap_summary.json"),
             "raw_vs_benchmark_gap_report_path": display_path(outdir / "raw_vs_benchmark_gap_summary.md"),
+            "strict_layer_monotonicity_audit_path": display_path(outdir / "strict_layer_monotonicity_audit.json")
+            if (outdir / "strict_layer_monotonicity_audit.json").exists()
+            else None,
+            "strict_layer_monotonicity_regression_count": strict_audit.get("regression_count")
+            if strict_audit.get("active_pairs")
+            else None,
             "local_debug_only_paths": [
                 display_path(outdir / "comparison.raw.csv"),
                 display_path(outdir / "latest_run_comparison.raw.csv"),
