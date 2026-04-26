@@ -72,6 +72,7 @@ main() {
   python3 "$ROOT_DIR/scripts/export_toolsandbox_core_reproducible.py" \
     --execute \
     --limit "$SMOKE_LIMIT" \
+    --toolsandbox-python "$python_bin" \
     --out-prefix "$OUT_PREFIX"
 
   PYTHONPATH=src python3 "$ROOT_DIR/scripts/validate_toolsandbox_core_export.py" \

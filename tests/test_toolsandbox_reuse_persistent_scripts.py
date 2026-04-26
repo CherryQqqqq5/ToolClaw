@@ -606,6 +606,18 @@ def test_toolsandbox_core_reproducible_filter_limit_tracks_truncated_candidates(
     assert sum(payload["primary_excluded_reason_counts"].values()) == payload["excluded_count"]
 
 
+
+def test_toolsandbox_core_reproducible_rejects_missing_execution_python(tmp_path) -> None:
+    module = _load_script("export_toolsandbox_core_reproducible.py")
+
+    missing_python = tmp_path / "missing-python"
+    try:
+        module._validate_toolsandbox_python(missing_python)
+    except ValueError as exc:
+        assert "ToolSandbox execution Python not found" in str(exc)
+    else:
+        raise AssertionError("missing execution Python should fail preflight")
+
 def test_toolsandbox_core_reproducible_manifest_marks_dry_run_not_evidence() -> None:
     module = _load_script("export_toolsandbox_core_reproducible.py")
     manifest = module.build_manifest(
@@ -624,6 +636,8 @@ def test_toolsandbox_core_reproducible_manifest_marks_dry_run_not_evidence() -> 
     assert manifest["result_summary_present"] is False
     assert manifest["export_row_count"] == 0
     assert "no headline or reuse claim" in manifest["claim_boundary"]
+    assert manifest["execution_environment"]["toolclaw_python_version"]
+    assert manifest["execution_environment"]["openai_api_key_recorded"] is False
 
 
 def test_toolsandbox_core_reproducible_manifest_requires_run_artifacts_for_evidence(tmp_path) -> None:

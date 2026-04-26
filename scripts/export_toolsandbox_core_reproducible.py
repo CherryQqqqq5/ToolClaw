@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
+import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,6 +45,105 @@ def _read_json(path: Path) -> Any:
 def _write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+
+
+def _python_probe(python_path: Path | None) -> Dict[str, Any]:
+    if python_path is None:
+        return {}
+    path = Path(python_path)
+    if not path.exists():
+        return {"path": str(path), "exists": False}
+    code = "\n".join([
+        "import json",
+        "import sys",
+        "payload = {",
+        "    'path': sys.executable,",
+        "    'version': sys.version.split()[0],",
+        "    'version_info': list(sys.version_info[:3]),",
+        "}",
+        "try:",
+        "    import networkx",
+        "    payload['networkx_version'] = networkx.__version__",
+        "except Exception as exc:",
+        "    payload['networkx_version'] = ''",
+        "    payload['networkx_error'] = f'{type(exc).__name__}: {exc}'",
+        "print(json.dumps(payload, sort_keys=True))",
+    ])
+    try:
+        completed = subprocess.run(
+            [str(path), "-c", code],
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        payload = json.loads(completed.stdout)
+        payload["exists"] = True
+        return payload
+    except Exception as exc:
+        return {"path": str(path), "exists": True, "probe_error": f"{type(exc).__name__}: {exc}"}
+
+
+def _validate_toolsandbox_python(python_path: Path) -> Dict[str, Any]:
+    info = _python_probe(python_path)
+    if not info.get("exists"):
+        raise ValueError(f"ToolSandbox execution Python not found: {python_path}")
+    version_info = info.get("version_info")
+    if not isinstance(version_info, list) or len(version_info) < 2:
+        raise ValueError(f"could not determine ToolSandbox execution Python version: {python_path}")
+    if tuple(int(part) for part in version_info[:2]) < (3, 9):
+        raise ValueError(
+            f"ToolSandbox execution requires Python >=3.9; got {info.get('version', 'unknown')} at {python_path}"
+        )
+    return info
+
+
+def _runtime_python_from_env(fallback_python: Path | None) -> Path | None:
+    venv_dir = os.environ.get("TOOLSANDBOX_VENV_DIR") or os.environ.get("TOOLSANDBOX_OFFICIAL_VENV_DIR")
+    if venv_dir:
+        candidate = Path(venv_dir) / "bin" / "python"
+        if candidate.exists():
+            return candidate
+    return fallback_python
+
+
+def _write_pip_freeze(runtime_python: Path | None, out_prefix: Path) -> str:
+    if runtime_python is None or not Path(runtime_python).exists():
+        return ""
+    path = Path(str(out_prefix) + ".execution_pip_freeze.txt")
+    try:
+        completed = subprocess.run(
+            [str(runtime_python), "-m", "pip", "freeze"],
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except Exception:
+        return ""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(completed.stdout, encoding="utf-8")
+    return str(path)
+
+
+def _execution_environment_manifest(*, toolsandbox_python: Path | None, out_prefix: Path) -> Dict[str, Any]:
+    runtime_python = _runtime_python_from_env(toolsandbox_python)
+    bootstrap_info = _python_probe(toolsandbox_python)
+    runtime_info = _python_probe(runtime_python)
+    return {
+        "toolsandbox_python": str(toolsandbox_python) if toolsandbox_python else "",
+        "toolsandbox_python_version": bootstrap_info.get("version", ""),
+        "toolsandbox_runtime_python": str(runtime_python) if runtime_python else "",
+        "toolsandbox_runtime_python_version": runtime_info.get("version", ""),
+        "toolclaw_python_path": sys.executable,
+        "toolclaw_python_version": sys.version.split()[0],
+        "networkx_version": runtime_info.get("networkx_version") or bootstrap_info.get("networkx_version", ""),
+        "openai_base_url_configured": bool(os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_API_BASE")),
+        "openai_api_key_recorded": False,
+        "pip_freeze_path": _write_pip_freeze(runtime_python, out_prefix),
+    }
 
 
 def _official_scenario_names(official_root: Path) -> set[str]:
@@ -147,7 +248,14 @@ def _latest_result_run_dir(root: Path) -> Path | None:
     return max(candidates, key=lambda path: path.stat().st_mtime)
 
 
-def _run_official_scenarios(scenario_names: Sequence[str], *, output_root: Path, parallel: int, extra_args: Sequence[str]) -> Path:
+def _run_official_scenarios(
+    scenario_names: Sequence[str],
+    *,
+    output_root: Path,
+    parallel: int,
+    extra_args: Sequence[str],
+    toolsandbox_python: Path,
+) -> Path:
     if not scenario_names:
         raise ValueError("no core scenarios selected for official run")
     output_root.mkdir(parents=True, exist_ok=True)
@@ -162,7 +270,9 @@ def _run_official_scenarios(scenario_names: Sequence[str], *, output_root: Path,
         str(output_root),
         *extra_args,
     ]
-    subprocess.run(cmd, cwd=str(ROOT_DIR), check=True)
+    env = dict(os.environ)
+    env["PYTHON_BIN"] = str(toolsandbox_python)
+    subprocess.run(cmd, cwd=str(ROOT_DIR), check=True, env=env)
     after = _latest_result_run_dir(output_root)
     if after is None or after == before:
         raise RuntimeError(f"official ToolSandbox run did not produce a new result_summary.json under {output_root}")
@@ -208,6 +318,7 @@ def build_manifest(
     run_dir: Path | None,
     run_mode: str,
     out_prefix: Path,
+    toolsandbox_python: Path | None = None,
 ) -> Dict[str, Any]:
     run_ready = _run_dir_ready(run_dir)
     export_complete = (not dry_run) and run_ready and bool(export_rows)
@@ -242,6 +353,7 @@ def build_manifest(
         "core_export_is_evidence": core_export_is_evidence,
         "full_trajectory_messages_runtime_visible": False,
         "runtime_visibility_policy": "runtime_messages_only; full official transcript is scorer/provenance-only",
+        "execution_environment": _execution_environment_manifest(toolsandbox_python=toolsandbox_python, out_prefix=out_prefix),
         "claim_boundary": "dry-run and smoke exports are pipeline validation only; no headline or reuse claim is promoted by this artifact",
         "next_step": "use a confirmed core export to re-derive reuse v3 candidates; do not run reuse formal before pilot-confirming exact headroom families",
     }
@@ -256,6 +368,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-dir", default="new", help="new, latest, or an existing run directory path")
     parser.add_argument("--official-output-root", default=str(DEFAULT_OFFICIAL_OUTPUT_ROOT))
     parser.add_argument("--parallel", type=int, default=1)
+    parser.add_argument("--toolsandbox-python", default=os.environ.get("TOOLSANDBOX_PYTHON_BIN", ""), help="Python >=3.9 interpreter used by the official ToolSandbox wrapper during --execute")
     parser.add_argument("--dry-run", action="store_true", help="Filter and write non-evidence artifacts without running official ToolSandbox; this is the default")
     parser.add_argument("--execute", action="store_true", help="Actually run official ToolSandbox for selected core scenarios")
     parser.add_argument("official_args", nargs=argparse.REMAINDER, help="Extra args passed to official ToolSandbox after --")
@@ -277,8 +390,19 @@ def main() -> None:
     extra_args = list(args.official_args)
     if extra_args and extra_args[0] == "--":
         extra_args = extra_args[1:]
+    toolsandbox_python: Path | None = None
     if args.execute:
-        run_dir = _run_official_scenarios(selected_names, output_root=Path(args.official_output_root), parallel=args.parallel, extra_args=extra_args)
+        if not args.toolsandbox_python:
+            raise ValueError("--toolsandbox-python is required when --execute is used")
+        toolsandbox_python = Path(args.toolsandbox_python)
+        _validate_toolsandbox_python(toolsandbox_python)
+        run_dir = _run_official_scenarios(
+            selected_names,
+            output_root=Path(args.official_output_root),
+            parallel=args.parallel,
+            extra_args=extra_args,
+            toolsandbox_python=toolsandbox_python,
+        )
         dry_run = False
     elif args.run_dir == "latest":
         run_dir = _latest_result_run_dir(Path(args.official_output_root) if Path(args.official_output_root).exists() else ROOT_DIR / "data" / "external" / "ToolSandbox" / "data")
@@ -294,7 +418,7 @@ def main() -> None:
     else:
         _write_json(export_path, [])
     _write_json(paths["filter"], filter_payload)
-    _write_json(paths["manifest"], build_manifest(filter_payload=filter_payload, export_rows=export_rows, dry_run=dry_run, run_dir=run_dir, run_mode=args.run_dir, out_prefix=out_prefix))
+    _write_json(paths["manifest"], build_manifest(filter_payload=filter_payload, export_rows=export_rows, dry_run=dry_run, run_dir=run_dir, run_mode=args.run_dir, out_prefix=out_prefix, toolsandbox_python=toolsandbox_python))
     print(f"wrote: {paths['filter']}")
     print(f"wrote: {export_path}")
     print(f"wrote: {paths['manifest']}")
