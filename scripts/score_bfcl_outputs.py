@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 import shutil
@@ -1611,6 +1612,9 @@ def _bfcl_selected_correct_failure_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "serial_materialization_block_reason": str(diagnostic.get("serial_materialization_block_reason") or ""),
         "trace_metric_tool_calls": trace_metric_tool_calls,
         "trace_status": trace_status,
+        "query_text": str(row.get("query_text") or ""),
+        "expected_call_arguments": [call.get("arguments", {}) for call in expected_calls],
+        "emitted_call_arguments": [call.get("arguments", {}) for call in emitted_calls],
         "selected_correct_failure_bucket": selected_correct_failure_bucket,
     }
 
@@ -1867,6 +1871,128 @@ def _bfcl_selected_correct_repair_triage(by_tool_audit: Dict[str, Any]) -> Dict[
         ],
     }
 
+
+
+def _stable_dev_heldout_split(task_id: str) -> str:
+    digest = hashlib.sha256(str(task_id or "").encode("utf-8")).hexdigest()
+    return "dev" if int(digest[:8], 16) % 2 == 0 else "heldout"
+
+
+def _weather_arg_labels(row: Dict[str, Any]) -> List[str]:
+    labels: List[str] = []
+    for label in row.get("missing_required_args", []) or []:
+        labels.append(_bfcl_arg_name_from_label(str(label)))
+    for label in row.get("wrong_value_args", []) or []:
+        labels.append(_bfcl_arg_name_from_label(str(label)))
+    for label in row.get("wrong_type_args", []) or []:
+        labels.append(_bfcl_arg_name_from_label(str(label)))
+    for label in row.get("nested_structure_mismatches", []) or []:
+        labels.append(_bfcl_arg_name_from_label(str(label)))
+    return [label for label in labels if label]
+
+
+def _weather_argument_sample(row: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "task_id": str(row.get("task_id") or ""),
+        "system": str(row.get("system") or ""),
+        "split": _stable_dev_heldout_split(str(row.get("task_id") or "")),
+        "tool_id": str(row.get("tool_id") or row.get("selected_tool_id") or row.get("expected_function") or ""),
+        "case_type": str(row.get("case_type") or ""),
+        "failure_bucket": str(row.get("selected_correct_failure_bucket") or ""),
+        "query_text": str(row.get("query_text") or ""),
+        "missing_required_args": list(row.get("missing_required_args") or []),
+        "wrong_value_args": list(row.get("wrong_value_args") or []),
+        "expected_arguments": list(row.get("expected_call_arguments") or [])[:1],
+        "emitted_arguments": list(row.get("emitted_call_arguments") or [])[:1],
+    }
+
+
+def _weather_location_argument_summary(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    failure_counts = Counter(str(row.get("selected_correct_failure_bucket") or "unknown") for row in rows)
+    arg_counts = Counter()
+    split_counts = Counter(_stable_dev_heldout_split(str(row.get("task_id") or "")) for row in rows)
+    samples: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        labels = _weather_arg_labels(row)
+        if not labels:
+            labels = ["__none__"]
+        for label in labels:
+            arg_counts[label] += 1
+        sample_key = str(row.get("selected_correct_failure_bucket") or "unknown")
+        if len(samples[sample_key]) < 5:
+            samples[sample_key].append(_weather_argument_sample(row))
+    return {
+        "selected_is_expected_count": len(rows),
+        "selected_correct_success_count": int(failure_counts.get("selected_correct_success", 0)),
+        "selected_correct_success_rate": (float(failure_counts.get("selected_correct_success", 0)) / len(rows)) if rows else 0.0,
+        "failure_bucket_counts": dict(failure_counts),
+        "argument_failure_counts": dict(arg_counts),
+        "split_counts": dict(split_counts),
+        "row_samples_by_failure_bucket": dict(samples),
+    }
+
+
+def _bfcl_weather_location_argument_audit(audit: Dict[str, Any]) -> Dict[str, Any]:
+    rows = [row for row in audit.get("rows", []) if isinstance(row, dict)]
+    target_rows = [
+        row
+        for row in rows
+        if row.get("selected_is_expected")
+        and str(row.get("case_type") or "") == "live:serial"
+        and str(row.get("tool_id") or row.get("selected_tool_id") or row.get("expected_function") or "") in {"get_current_weather", "Weather_1_GetWeather"}
+    ]
+    by_tool: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    by_tool_split: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for row in target_rows:
+        tool_id = str(row.get("tool_id") or row.get("selected_tool_id") or row.get("expected_function") or "")
+        split = _stable_dev_heldout_split(str(row.get("task_id") or ""))
+        by_tool[tool_id].append(row)
+        by_tool_split[f"{tool_id}::{split}"].append(row)
+    return {
+        "audit_schema_version": "bfcl_weather_location_argument_audit_v1",
+        "gold_fields_added_after_execution": True,
+        "runtime_diagnostics_gold_free": audit.get("runtime_diagnostics_gold_free", True),
+        "split_policy": "sha256_task_id_even_dev_odd_heldout_v1",
+        "summary": _weather_location_argument_summary(target_rows),
+        "by_tool": {key: _weather_location_argument_summary(value) for key, value in sorted(by_tool.items())},
+        "by_tool_split": {key: _weather_location_argument_summary(value) for key, value in sorted(by_tool_split.items())},
+    }
+
+
+def _write_bfcl_weather_location_argument_markdown(audit: Dict[str, Any], path: Path) -> None:
+    lines = [
+        "# BFCL Weather/Location Argument Audit",
+        "",
+        "This report is scorer-only and gold-enriched after execution. It targets selected-correct `live:serial` weather/location-style rows.",
+        "",
+        f"- audit_schema_version: `{audit.get('audit_schema_version')}`",
+        f"- runtime_diagnostics_gold_free: `{audit.get('runtime_diagnostics_gold_free')}`",
+        f"- split_policy: `{audit.get('split_policy')}`",
+        "",
+        "## By Tool",
+        "",
+        "| tool | selected | success | missing_required | wrong_arg_value | top_args | split_counts |",
+        "|---|---:|---:|---:|---:|---|---|",
+    ]
+    for tool, summary in sorted((audit.get("by_tool") or {}).items()):
+        failures = summary.get("failure_bucket_counts") or {}
+        arg_counts = summary.get("argument_failure_counts") or {}
+        top_args = ", ".join(f"{key}:{value}" for key, value in Counter(arg_counts).most_common(5))
+        lines.append(
+            f"| {tool} | {int(summary.get('selected_is_expected_count', 0) or 0)} | "
+            f"{int(summary.get('selected_correct_success_count', 0) or 0)} | "
+            f"{int(failures.get('missing_required', 0) or 0)} | "
+            f"{int(failures.get('wrong_arg_value', 0) or 0)} | `{top_args}` | "
+            f"`{json.dumps(summary.get('split_counts') or {}, sort_keys=True)}` |"
+        )
+    lines.extend(["", "## Dev/Held-Out By Tool", "", "| tool_split | selected | failure_buckets | argument_failures |", "|---|---:|---|---|"])
+    for key, summary in sorted((audit.get("by_tool_split") or {}).items()):
+        lines.append(
+            f"| {key} | {int(summary.get('selected_is_expected_count', 0) or 0)} | "
+            f"`{json.dumps(summary.get('failure_bucket_counts') or {}, sort_keys=True)}` | "
+            f"`{json.dumps(summary.get('argument_failure_counts') or {}, sort_keys=True)}` |"
+        )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _weather_count_bucket(row: Dict[str, Any]) -> str:
@@ -2636,6 +2762,7 @@ def main() -> None:
         scored_rows.append(
             {
                 **row,
+                "query_text": str(task_lookup.get(row.get("task_id", ""), {}).get("query") or ""),
                 "official_bfcl_eval_success": float(official["success"]),
                 "official_bfcl_eval_tool_selection_correctness": float(official["tool_selection_correctness"]),
                 "official_bfcl_eval_argument_correctness": float(official["argument_correctness"]),
@@ -2727,6 +2854,7 @@ def main() -> None:
     selected_correct_failure_by_tool = _bfcl_selected_correct_failure_by_tool(selected_correct_failure_audit)
     selected_correct_repair_triage = _bfcl_selected_correct_repair_triage(selected_correct_failure_by_tool)
     weather_live_serial_count_audit = _bfcl_get_current_weather_live_serial_count_audit(selected_correct_failure_audit)
+    weather_location_argument_audit = _bfcl_weather_location_argument_audit(selected_correct_failure_audit)
 
     (outdir / "official_scoreboard.json").write_text(json.dumps(official_scoreboard, indent=2), encoding="utf-8")
     (outdir / "toolclaw_diagnostics.json").write_text(json.dumps(toolclaw_diagnostics, indent=2), encoding="utf-8")
@@ -2749,6 +2877,8 @@ def main() -> None:
     _write_bfcl_selected_correct_repair_triage_markdown(selected_correct_repair_triage, outdir / "bfcl_selected_correct_repair_triage.md")
     (outdir / "bfcl_get_current_weather_live_serial_count_audit.json").write_text(json.dumps(weather_live_serial_count_audit, indent=2), encoding="utf-8")
     _write_bfcl_get_current_weather_live_serial_count_markdown(weather_live_serial_count_audit, outdir / "bfcl_get_current_weather_live_serial_count_audit.md")
+    (outdir / "bfcl_weather_location_argument_audit.json").write_text(json.dumps(weather_location_argument_audit, indent=2), encoding="utf-8")
+    _write_bfcl_weather_location_argument_markdown(weather_location_argument_audit, outdir / "bfcl_weather_location_argument_audit.md")
 
     manifest["comparison_scored_path"] = _display_path(comparison_scored_path)
     manifest["official_scoreboard_path"] = _display_path(outdir / "official_scoreboard.json")
@@ -2763,6 +2893,7 @@ def main() -> None:
     manifest["bfcl_selected_correct_failure_by_tool_path"] = _display_path(outdir / "bfcl_selected_correct_failure_by_tool.json")
     manifest["bfcl_selected_correct_repair_triage_path"] = _display_path(outdir / "bfcl_selected_correct_repair_triage.json")
     manifest["bfcl_get_current_weather_live_serial_count_audit_path"] = _display_path(outdir / "bfcl_get_current_weather_live_serial_count_audit.json")
+    manifest["bfcl_weather_location_argument_audit_path"] = _display_path(outdir / "bfcl_weather_location_argument_audit.json")
     (outdir / "experiment_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     print(f"official_scoreboard: {outdir / 'official_scoreboard.json'}")
@@ -2774,6 +2905,7 @@ def main() -> None:
     print(f"bfcl_selected_correct_failure_by_tool: {outdir / 'bfcl_selected_correct_failure_by_tool.json'}")
     print(f"bfcl_selected_correct_repair_triage: {outdir / 'bfcl_selected_correct_repair_triage.json'}")
     print(f"bfcl_get_current_weather_live_serial_count_audit: {outdir / 'bfcl_get_current_weather_live_serial_count_audit.json'}")
+    print(f"bfcl_weather_location_argument_audit: {outdir / 'bfcl_weather_location_argument_audit.json'}")
 
 
 if __name__ == "__main__":

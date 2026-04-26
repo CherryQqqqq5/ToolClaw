@@ -3171,6 +3171,119 @@ def test_bfcl_serial_required_grounder_prioritizes_enum_over_generic_quotes() ->
     assert diagnostics["grounding_source_by_arg"]["priority"] == "enum_exact_mention"
 
 
+def test_bfcl_schema_driven_weather_grounder_extracts_location_unit_and_date() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_schema_weather_grounder", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    weather_tool = module.ToolSpec(
+        tool_id="weather_lookup",
+        description="Retrieves weather data for a city.",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["location"],
+                "properties": {
+                    "location": {"type": "string", "description": "Weather location in City, State format."},
+                    "unit": {"type": "string", "description": "Temperature unit", "enum": ["celsius", "fahrenheit"]},
+                },
+            }
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        weather_tool,
+        "Tell me the current weather in Boston, MA in Fahrenheit.",
+        {},
+    )
+
+    assert inputs["location"] == "Boston, MA"
+    assert inputs["unit"] == "fahrenheit"
+    assert diagnostics["schema_driven_weather_grounding_policy_version"] == "bfcl_schema_driven_location_unit_date_v1"
+    assert diagnostics["location_like_arg_grounded_by_arg"]["location"] == "schema_location_phrase"
+    assert diagnostics["unit_enum_grounded_by_arg"]["unit"] == "schema_unit_enum_mention"
+
+    dated_tool = module.ToolSpec(
+        tool_id="any_weather_tool",
+        description="Retrieves weather data for a city on a date.",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["city"],
+                "properties": {
+                    "city": {"type": "string", "description": "The name of the city for weather data."},
+                    "date": {"type": "string", "description": "The date for weather data in YYYY-MM-DD format."},
+                },
+            }
+        },
+    )
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        dated_tool,
+        "Could you tell me the weather conditions in Tomales, CA on the date 2023-03-11?",
+        {},
+    )
+
+    assert inputs["city"] == "Tomales, CA"
+    assert inputs["date"] == "2023-03-11"
+    assert diagnostics["date_like_arg_grounded_by_arg"]["date"] == "schema_explicit_date"
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        dated_tool,
+        "What's the weather going to be like in New York tomorrow? today is 2023.10.1",
+        {},
+    )
+    assert inputs["city"] == "New York"
+    assert inputs["date"] == "2023-10-02"
+
+
+def test_bfcl_schema_driven_weather_grounder_blocks_no_evidence_and_invalid_unit() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_schema_weather_grounder_blocks", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tool = module.ToolSpec(
+        tool_id="weather_lookup",
+        description="Retrieves weather data for a city.",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["city"],
+                "properties": {
+                    "city": {"type": "string", "description": "The name of the city for weather data."},
+                    "date": {"type": "string", "description": "The date for weather data in YYYY-MM-DD format."},
+                    "unit": {"type": "string", "description": "Temperature unit", "enum": ["celsius", "fahrenheit"]},
+                },
+            }
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(tool, "Look up the weather.", {})
+
+    assert "city" not in inputs
+    assert "date" not in inputs
+    assert diagnostics["grounding_blocked_no_runtime_evidence_by_arg"]["city"] == "no_runtime_location_evidence"
+    assert diagnostics["grounding_blocked_no_runtime_evidence_by_arg"]["date"] == "no_runtime_date_evidence"
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        tool,
+        "Could you tell me the current weather conditions in Shanghai, using the metric system?",
+        {"city": "Shanghai", "unit": "metric"},
+    )
+
+    assert inputs["city"] == "Shanghai"
+    assert "unit" not in inputs
+    assert diagnostics["unit_enum_grounded_by_arg"]["unit"] == "removed_value_not_allowed_by_schema_enum"
+    assert "expected_call_count" not in json.dumps(diagnostics)
+    assert "official_failure_bucket" not in json.dumps(diagnostics)
+    assert "expected_function" not in json.dumps(diagnostics)
+
+
 def test_bfcl_serial_required_grounder_avoids_scalar_span_reuse() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_serial_grounder_reuse", module_path)

@@ -2844,6 +2844,78 @@ def test_bfcl_get_current_weather_live_serial_count_audit_and_markdown(tmp_path:
     assert "not generic multi-call collapse" in text
 
 
+def test_bfcl_weather_location_argument_audit_splits_tools_and_holdout(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "score_bfcl_outputs_weather_location_argument_audit_module",
+        ROOT_DIR / "scripts" / "score_bfcl_outputs.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    rows = [
+        {
+            "selected_is_expected": True,
+            "tool_id": "get_current_weather",
+            "case_type": "live:serial",
+            "task_id": "weather_arg_dev",
+            "system": "a2_planner",
+            "selected_correct_failure_bucket": "wrong_arg_value",
+            "wrong_value_args": ["call_1.location"],
+            "query_text": "Weather in Boston, MA",
+            "expected_call_arguments": [{"location": "Boston, MA"}],
+            "emitted_call_arguments": [{"location": "Boston"}],
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "Weather_1_GetWeather",
+            "case_type": "live:serial",
+            "task_id": "weather_missing_date",
+            "system": "a2_planner",
+            "selected_correct_failure_bucket": "missing_required",
+            "missing_required_args": ["call_1.date"],
+            "query_text": "Weather in Tomales, CA on 2023-03-11",
+            "expected_call_arguments": [{"city": "Tomales, CA", "date": "2023-03-11"}],
+            "emitted_call_arguments": [{"city": "Tomales, CA"}],
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "other_tool",
+            "case_type": "live:serial",
+            "task_id": "ignored_other",
+            "selected_correct_failure_bucket": "wrong_arg_value",
+        },
+        {
+            "selected_is_expected": True,
+            "tool_id": "get_current_weather",
+            "case_type": "non_live:serial",
+            "task_id": "ignored_case",
+            "selected_correct_failure_bucket": "wrong_arg_value",
+        },
+    ]
+    audit = {"runtime_diagnostics_gold_free": True, "rows": rows}
+
+    weather_audit = module._bfcl_weather_location_argument_audit(audit)
+
+    assert weather_audit["runtime_diagnostics_gold_free"] is True
+    assert weather_audit["by_tool"]["get_current_weather"]["argument_failure_counts"]["location"] == 1
+    assert weather_audit["by_tool"]["Weather_1_GetWeather"]["argument_failure_counts"]["date"] == 1
+    assert "other_tool" not in weather_audit["by_tool"]
+    assert sum(weather_audit["summary"]["split_counts"].values()) == 2
+    first_sample = weather_audit["by_tool"]["get_current_weather"]["row_samples_by_failure_bucket"]["wrong_arg_value"][0]
+    assert first_sample["expected_arguments"] == [{"location": "Boston, MA"}]
+    assert first_sample["emitted_arguments"] == [{"location": "Boston"}]
+    assert first_sample["query_text"] == "Weather in Boston, MA"
+
+    output = tmp_path / "weather_location.md"
+    module._write_bfcl_weather_location_argument_markdown(weather_audit, output)
+    text = output.read_text(encoding="utf-8")
+    assert "# BFCL Weather/Location Argument Audit" in text
+    assert "get_current_weather" in text
+    assert "Weather_1_GetWeather" in text
+    assert "Dev/Held-Out" in text
+
+
 def test_bfcl_guard_gates_separate_wrong_function_bucket_from_claim_readiness() -> None:
     spec = importlib.util.spec_from_file_location(
         "score_bfcl_outputs_guard_gate_names_module",

@@ -11,6 +11,7 @@ import json
 import re
 import sys
 import time
+from datetime import datetime, timedelta
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -949,6 +950,198 @@ def _bfcl_descriptor_has_any(prop: Dict[str, Any], terms: Tuple[str, ...]) -> bo
     return any(_bfcl_term_in_text(term, descriptor) for term in terms)
 
 
+
+def _bfcl_is_location_like_arg(key: str, prop: Dict[str, Any]) -> bool:
+    descriptor = _bfcl_arg_descriptor_text(key, prop)
+    return any(
+        _bfcl_term_in_text(term, descriptor)
+        for term in ("location", "city", "place", "address", "region", "country", "venue")
+    ) or "city state" in descriptor or "city country" in descriptor
+
+
+def _bfcl_is_unit_like_arg(key: str, prop: Dict[str, Any]) -> bool:
+    enum_values = prop.get("enum") if isinstance(prop.get("enum"), list) else []
+    descriptor = _bfcl_arg_descriptor_text(key, prop)
+    unit_terms = ("unit", "temperature", "temp", "celsius", "fahrenheit", "metric", "imperial")
+    return bool(enum_values) and any(_bfcl_term_in_text(term, descriptor) for term in unit_terms)
+
+
+def _bfcl_is_date_like_arg(key: str, prop: Dict[str, Any]) -> bool:
+    descriptor = _bfcl_arg_descriptor_text(key, prop)
+    return any(
+        _bfcl_term_in_text(term, descriptor)
+        for term in ("date", "day", "time", "year", "month", "today", "tomorrow")
+    ) or "yyyy mm dd" in descriptor or "yyyy-mm-dd" in descriptor
+
+
+def _bfcl_location_token_pattern() -> str:
+    token = r"(?:[A-Z][A-Za-z]+|[A-Z]\.)"
+    phrase = rf"{token}(?:[ .'-]{token})*"
+    qualifier = rf"(?:,\s*(?:[A-Z]{{2,3}}|{phrase}))?"
+    return rf"{phrase}{qualifier}"
+
+
+def _bfcl_extract_schema_location_value(text: str) -> Tuple[Any, str, float, str]:
+    location = _bfcl_location_token_pattern()
+    patterns = [
+        rf"\b(?:in|for|at|near|around|to)\s+({location})(?=\s*,?\s+(?:and|but|on|in|using|with|please|tomorrow|today|yesterday|now|currently|could|can|would|will|be|like)\b|[.?!;]|$)",
+        rf"\b(?:city|location|place|address)\s*(?:is|=|:|as|to|for)?\s+({location})(?=\s*,?\s+(?:and|but|on|in|using|with|please|tomorrow|today|yesterday|now|currently|could|can|would|will|be|like)\b|[.?!;]|$)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            value = match.group(1).strip(" .?!,;:'\"")
+            if value:
+                return value, "schema_location_phrase", 0.9, "location_schema_cue"
+    return None, "", 0.0, ""
+
+
+def _bfcl_location_replacement_allowed(current: Any, candidate: Any) -> bool:
+    current_text = str(current or "").strip()
+    candidate_text = str(candidate or "").strip()
+    if not candidate_text:
+        return False
+    if not current_text:
+        return True
+    current_norm = _bfcl_normalized_phrase(current_text)
+    candidate_norm = _bfcl_normalized_phrase(candidate_text)
+    if candidate_norm == current_norm:
+        return False
+    if candidate_norm.startswith(current_norm + " ") and "," in candidate_text:
+        return True
+    if current_norm.startswith(candidate_norm + " "):
+        return True
+    if current_text.startswith(candidate_text + " "):
+        return True
+    return False
+
+
+_BFCL_MONTHS = {
+    "january": 1,
+    "february": 2,
+    "march": 3,
+    "april": 4,
+    "may": 5,
+    "june": 6,
+    "july": 7,
+    "august": 8,
+    "september": 9,
+    "october": 10,
+    "november": 11,
+    "december": 12,
+}
+
+
+def _bfcl_format_date(year: int, month: int, day: int) -> Optional[str]:
+    try:
+        return datetime(year, month, day).strftime("%Y-%m-%d")
+    except ValueError:
+        return None
+
+
+def _bfcl_extract_schema_date_value(text: str) -> Tuple[Any, str, float, str]:
+    today_match = re.search(r"\btoday\s+is\s+(\d{4})[-./](\d{1,2})[-./](\d{1,2})\b", text, re.IGNORECASE)
+    if today_match:
+        today = _bfcl_format_date(int(today_match.group(1)), int(today_match.group(2)), int(today_match.group(3)))
+        if today:
+            base = datetime.strptime(today, "%Y-%m-%d")
+            lower = text.lower()
+            if re.search(r"\btomorrow\b", lower):
+                return (base + timedelta(days=1)).strftime("%Y-%m-%d"), "schema_relative_tomorrow_with_anchor", 0.86, "relative_date_with_anchor"
+            if re.search(r"\bon\s+today\b|\bweather\s+(?:today|for today)\b", lower):
+                return today, "schema_relative_today_with_anchor", 0.82, "relative_date_with_anchor"
+    iso_match = re.search(r"\b(\d{4})[-./](\d{1,2})[-./](\d{1,2})\b", text)
+    if iso_match:
+        value = _bfcl_format_date(int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3)))
+        if value:
+            return value, "schema_explicit_date", 0.94, "explicit_date"
+    month_names = "|".join(_BFCL_MONTHS)
+    month_match = re.search(rf"\b({month_names})\s+(\d{{1,2}})(?:st|nd|rd|th)?[,]?\s+(\d{{4}})\b", text, re.IGNORECASE)
+    if month_match:
+        value = _bfcl_format_date(int(month_match.group(3)), _BFCL_MONTHS[month_match.group(1).lower()], int(month_match.group(2)))
+        if value:
+            return value, "schema_month_name_date", 0.9, "explicit_date"
+    return None, "", 0.0, ""
+
+
+def _bfcl_extract_schema_unit_value(prop: Dict[str, Any], text: str) -> Tuple[Any, str, float, str]:
+    enum_values = prop.get("enum") if isinstance(prop.get("enum"), list) else []
+    enum_by_lower = {str(value).lower(): value for value in enum_values}
+    lower = text.lower()
+    aliases = {
+        "fahrenheit": ("fahrenheit", "degrees fahrenheit", "degree fahrenheit"),
+        "celsius": ("celsius", "centigrade", "degrees celsius", "degree celsius"),
+        "metric": ("metric", "metric system"),
+        "imperial": ("imperial", "imperial system"),
+    }
+    for canonical, terms in aliases.items():
+        if canonical not in enum_by_lower:
+            continue
+        if any(re.search(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])", lower) for term in terms):
+            return enum_by_lower[canonical], "schema_unit_enum_mention", 0.92, "unit_enum"
+    return None, "", 0.0, ""
+
+
+def _bfcl_apply_schema_driven_weather_grounding(
+    *,
+    text: str,
+    properties: Dict[str, Any],
+    grounded_inputs: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    updated = dict(grounded_inputs)
+    location_by_arg: Dict[str, str] = {}
+    unit_by_arg: Dict[str, str] = {}
+    date_by_arg: Dict[str, str] = {}
+    descriptor_by_arg: Dict[str, str] = {}
+    blocked_by_arg: Dict[str, str] = {}
+    for key, raw_prop in properties.items():
+        prop = raw_prop if isinstance(raw_prop, dict) else {}
+        if _bfcl_is_location_like_arg(key, prop):
+            descriptor_by_arg[key] = "location_like_schema_descriptor"
+            value, source, confidence, descriptor = _bfcl_extract_schema_location_value(text)
+            if _bfcl_has_bound_value(value) and _bfcl_location_replacement_allowed(updated.get(key), value):
+                updated[key] = value
+                location_by_arg[key] = source
+                descriptor_by_arg[key] = descriptor
+            elif not _bfcl_has_bound_value(updated.get(key)):
+                blocked_by_arg[key] = "no_runtime_location_evidence"
+        if _bfcl_is_date_like_arg(key, prop):
+            descriptor_by_arg.setdefault(key, "date_like_schema_descriptor")
+            value, source, confidence, descriptor = _bfcl_extract_schema_date_value(text)
+            if _bfcl_has_bound_value(value) and (not _bfcl_has_bound_value(updated.get(key)) or str(updated.get(key)) != str(value)):
+                updated[key] = value
+                date_by_arg[key] = source
+                descriptor_by_arg[key] = descriptor
+            elif not _bfcl_has_bound_value(updated.get(key)):
+                blocked_by_arg.setdefault(key, "no_runtime_date_evidence")
+        if _bfcl_is_unit_like_arg(key, prop):
+            descriptor_by_arg.setdefault(key, "unit_like_schema_descriptor")
+            value, source, confidence, descriptor = _bfcl_extract_schema_unit_value(prop, text)
+            if _bfcl_has_bound_value(value):
+                updated[key] = value
+                unit_by_arg[key] = source
+                descriptor_by_arg[key] = descriptor
+            else:
+                enum_values = prop.get("enum") if isinstance(prop.get("enum"), list) else []
+                enum_lowers = {str(item).lower() for item in enum_values}
+                current = updated.get(key)
+                if _bfcl_has_bound_value(current) and enum_lowers and str(current).lower() not in enum_lowers:
+                    updated.pop(key, None)
+                    unit_by_arg[key] = "removed_value_not_allowed_by_schema_enum"
+                    descriptor_by_arg[key] = "unit_enum"
+                elif not _bfcl_has_bound_value(current):
+                    blocked_by_arg.setdefault(key, "no_runtime_unit_evidence")
+    diagnostics = {
+        "schema_driven_weather_grounding_policy_version": "bfcl_schema_driven_location_unit_date_v1",
+        "location_like_arg_grounded_by_arg": location_by_arg,
+        "unit_enum_grounded_by_arg": unit_by_arg,
+        "date_like_arg_grounded_by_arg": date_by_arg,
+        "schema_descriptor_match_by_arg": descriptor_by_arg,
+        "grounding_blocked_no_runtime_evidence_by_arg": blocked_by_arg,
+    }
+    return updated, diagnostics
+
+
 def _bfcl_exact_parameter_name(key: str, expected: str) -> bool:
     return _bfcl_normalized_phrase(key) == expected
 
@@ -1410,6 +1603,28 @@ def _bfcl_ground_serial_required_args(
         else:
             source_by_arg[key] = "unresolved"
             confidence_by_arg[key] = 0.0
+    grounded_inputs, schema_weather_diagnostics = _bfcl_apply_schema_driven_weather_grounding(
+        text=text,
+        properties=properties,
+        grounded_inputs=grounded_inputs,
+    )
+    for key, source in schema_weather_diagnostics.get("location_like_arg_grounded_by_arg", {}).items():
+        if _bfcl_has_bound_value(grounded_inputs.get(key)):
+            source_by_arg[key] = str(source)
+            confidence_by_arg[key] = 0.9
+            assignment_score_by_arg[key] = 0.9
+            assignment_reason_by_arg[key] = str(source)
+    for key, source in schema_weather_diagnostics.get("date_like_arg_grounded_by_arg", {}).items():
+        if _bfcl_has_bound_value(grounded_inputs.get(key)):
+            source_by_arg[key] = str(source)
+            confidence_by_arg[key] = 0.9
+            assignment_score_by_arg[key] = 0.9
+            assignment_reason_by_arg[key] = str(source)
+    for key, source in schema_weather_diagnostics.get("unit_enum_grounded_by_arg", {}).items():
+        source_by_arg[key] = str(source)
+        confidence_by_arg[key] = 0.9
+        assignment_score_by_arg[key] = 0.9
+        assignment_reason_by_arg[key] = str(source)
     grounded = [key for key in required if _bfcl_has_bound_value(grounded_inputs.get(key))]
     ungrounded = [key for key in required if key not in grounded]
     diagnostics = {
@@ -1432,6 +1647,7 @@ def _bfcl_ground_serial_required_args(
         "ambiguous_alias_blocked_by_arg": ambiguous_alias_blocked_by_arg,
         "high_evidence_assignment_allowed_by_arg": high_evidence_assignment_allowed_by_arg,
         "high_evidence_assignment_reason_by_arg": high_evidence_assignment_reason_by_arg,
+        **schema_weather_diagnostics,
     }
     return grounded_inputs, diagnostics
 
@@ -1707,6 +1923,12 @@ def _configure_bfcl_step_metadata(
             "ambiguous_alias_blocked_by_arg",
             "high_evidence_assignment_allowed_by_arg",
             "high_evidence_assignment_reason_by_arg",
+            "schema_driven_weather_grounding_policy_version",
+            "location_like_arg_grounded_by_arg",
+            "unit_enum_grounded_by_arg",
+            "date_like_arg_grounded_by_arg",
+            "schema_descriptor_match_by_arg",
+            "grounding_blocked_no_runtime_evidence_by_arg",
             "parallel_materialization_policy_version",
             "parallel_argument_sets_extracted",
             "parallel_argument_set_count",
