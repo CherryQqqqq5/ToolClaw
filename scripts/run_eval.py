@@ -9,6 +9,7 @@ import os
 import subprocess
 import json
 import re
+import shlex
 import sys
 import time
 from datetime import datetime, timedelta
@@ -1082,6 +1083,145 @@ def _bfcl_extract_schema_unit_value(prop: Dict[str, Any], text: str) -> Tuple[An
     return None, "", 0.0, ""
 
 
+
+def _bfcl_is_command_like_arg(key: str, prop: Dict[str, Any]) -> bool:
+    descriptor = _bfcl_arg_descriptor_text(key, prop)
+    return any(
+        _bfcl_term_in_text(term, descriptor)
+        for term in ("command", "cmd", "shell command", "cli command", "terminal command", "command line")
+    )
+
+
+def _bfcl_tool_supports_command_grounding(tool: Optional[ToolSpec]) -> bool:
+    if tool is None:
+        return False
+    descriptor = _bfcl_normalized_phrase(f"{tool.tool_id} {tool.description}")
+    return any(
+        _bfcl_term_in_text(term, descriptor)
+        for term in ("execute", "executor", "command", "cmd", "shell", "terminal", "cli", "run")
+    )
+
+
+def _bfcl_clean_command_value(value: str) -> str:
+    command = re.sub(r"\s+", " ", str(value or "")).strip(" \t\r\n.?!;")
+    if len(command) >= 2 and command[0] == command[-1] and command[0] in {"\"", "'", "`"}:
+        command = command[1:-1].strip()
+    command = re.sub(r"^(?:the\s+)?", "", command, flags=re.IGNORECASE)
+    return command.strip()
+
+
+def _bfcl_shell_tokenize_command(command: str) -> List[str]:
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        tokens = command.split()
+    return [token for token in tokens if token]
+
+
+def _bfcl_command_output_value(prop: Dict[str, Any], command: str) -> Any:
+    prop_type = str(prop.get("type") or "").lower()
+    if prop_type in {"array", "list"}:
+        return _bfcl_shell_tokenize_command(command)
+    return command
+
+
+def _bfcl_extract_schema_command_value(text: str) -> Tuple[Any, str, float, str]:
+    lower = text.lower()
+    backtick = re.search(r"`([^`]+)`", text)
+    if backtick:
+        command = _bfcl_clean_command_value(backtick.group(1))
+        if command:
+            return command, "schema_backtick_command_span", 0.96, "backtick_command_span"
+
+    for pattern, source in (
+        (r"\busing\s+the\s+instruction\s+(.+?)(?:[?!]|$)", "schema_instruction_command_span"),
+        (r"\binstruction\s*[:=]?\s+(.+?)(?:[?!]|$)", "schema_instruction_command_span"),
+        (r"\b(?:run|execute|call)\s+(?:the\s+)?command\s+(.+?)(?:[?!]|$)", "schema_run_command_span"),
+        (r"\bcommand\s*[:=]\s*(.+?)(?:[?!]|$)", "schema_command_label_span"),
+    ):
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            command = _bfcl_clean_command_value(match.group(1))
+            if command:
+                return command, source, 0.94, "explicit_command_span"
+
+    url_match = re.search(r"https?://[^\s,;]+", text)
+    if url_match and re.search(r"\bstart\s+command\b", lower):
+        url = url_match.group(0).rstrip(".?!),;")
+        return f"start {url}", "schema_start_url_command", 0.93, "start_command_url"
+
+    if re.search(r"\btaskkill\s+command\b", lower):
+        process = ""
+        exe_match = re.search(r"\b([A-Za-z0-9_.-]+\.exe)\b", text, re.IGNORECASE)
+        if exe_match:
+            process = exe_match.group(1)
+        else:
+            process_match = re.search(
+                r"\b(?:close|kill|terminate|stop|end|remove)\s+(?:the\s+)?([A-Za-z0-9_.-]+)\s+(?:.*?\s+)?(?:using|with)\s+(?:the\s+)?taskkill\s+command\b",
+                text,
+                re.IGNORECASE,
+            )
+            if process_match:
+                process = process_match.group(1)
+        process = process.strip(" .?!,;:'\"")
+        if process and process.lower() not in {"taskkill", "command", "the"}:
+            if not process.lower().endswith(".exe"):
+                process = f"{process}.exe"
+            return f"taskkill /F /IM {process}", "schema_taskkill_process_command", 0.92, "taskkill_process_command"
+
+    if re.search(r"\becho\s+command\b", lower):
+        message_match = re.search(r"\b(?:say|print|echo)\s+(.+?)\s+using\s+(?:the\s+)?echo\s+command\b", text, re.IGNORECASE)
+        if message_match:
+            message = _bfcl_clean_command_value(message_match.group(1))
+            if message:
+                return f"echo {message}", "schema_echo_message_command", 0.9, "echo_message_command"
+
+    for match in _BFCL_QUOTED_RE.finditer(text):
+        command = _bfcl_clean_command_value(match.group(1))
+        if command:
+            return command, "schema_quoted_command_span", 0.86, "quoted_command_span"
+    return None, "", 0.0, ""
+
+
+def _bfcl_apply_schema_driven_command_grounding(
+    *,
+    tool: Optional[ToolSpec],
+    text: str,
+    properties: Dict[str, Any],
+    grounded_inputs: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    updated = dict(grounded_inputs)
+    grounded_by_arg: Dict[str, str] = {}
+    reason_by_arg: Dict[str, str] = {}
+    blocked_by_arg: Dict[str, str] = {}
+    descriptor_by_arg: Dict[str, str] = {}
+    tool_supports_command = _bfcl_tool_supports_command_grounding(tool)
+    for key, raw_prop in properties.items():
+        prop = raw_prop if isinstance(raw_prop, dict) else {}
+        if not _bfcl_is_command_like_arg(key, prop):
+            continue
+        descriptor_by_arg[key] = "command_like_schema_descriptor"
+        if not tool_supports_command:
+            blocked_by_arg[key] = "tool_descriptor_not_command_execution"
+            continue
+        command, source, confidence, reason = _bfcl_extract_schema_command_value(text)
+        if _bfcl_has_bound_value(command):
+            updated[key] = _bfcl_command_output_value(prop, str(command))
+            grounded_by_arg[key] = source
+            reason_by_arg[key] = reason
+            descriptor_by_arg[key] = "command_execution_schema_and_tool_descriptor"
+        elif not _bfcl_has_bound_value(updated.get(key)):
+            blocked_by_arg[key] = "no_runtime_command_evidence"
+    diagnostics = {
+        "schema_driven_command_grounding_policy_version": "bfcl_schema_driven_command_v1",
+        "command_like_arg_grounded_by_arg": grounded_by_arg,
+        "command_grounding_reason_by_arg": reason_by_arg,
+        "command_grounding_blocked_by_arg": blocked_by_arg,
+        "command_descriptor_match_by_arg": descriptor_by_arg,
+    }
+    return updated, diagnostics
+
+
 def _bfcl_apply_schema_driven_weather_grounding(
     *,
     text: str,
@@ -1603,6 +1743,18 @@ def _bfcl_ground_serial_required_args(
         else:
             source_by_arg[key] = "unresolved"
             confidence_by_arg[key] = 0.0
+    grounded_inputs, schema_command_diagnostics = _bfcl_apply_schema_driven_command_grounding(
+        tool=tool,
+        text=text,
+        properties=properties,
+        grounded_inputs=grounded_inputs,
+    )
+    for key, source in schema_command_diagnostics.get("command_like_arg_grounded_by_arg", {}).items():
+        if _bfcl_has_bound_value(grounded_inputs.get(key)):
+            source_by_arg[key] = str(source)
+            confidence_by_arg[key] = 0.92
+            assignment_score_by_arg[key] = 0.92
+            assignment_reason_by_arg[key] = str(source)
     grounded_inputs, schema_weather_diagnostics = _bfcl_apply_schema_driven_weather_grounding(
         text=text,
         properties=properties,
@@ -1647,6 +1799,7 @@ def _bfcl_ground_serial_required_args(
         "ambiguous_alias_blocked_by_arg": ambiguous_alias_blocked_by_arg,
         "high_evidence_assignment_allowed_by_arg": high_evidence_assignment_allowed_by_arg,
         "high_evidence_assignment_reason_by_arg": high_evidence_assignment_reason_by_arg,
+        **schema_command_diagnostics,
         **schema_weather_diagnostics,
     }
     return grounded_inputs, diagnostics
@@ -1929,6 +2082,11 @@ def _configure_bfcl_step_metadata(
             "date_like_arg_grounded_by_arg",
             "schema_descriptor_match_by_arg",
             "grounding_blocked_no_runtime_evidence_by_arg",
+            "schema_driven_command_grounding_policy_version",
+            "command_like_arg_grounded_by_arg",
+            "command_grounding_reason_by_arg",
+            "command_grounding_blocked_by_arg",
+            "command_descriptor_match_by_arg",
             "parallel_materialization_policy_version",
             "parallel_argument_sets_extracted",
             "parallel_argument_set_count",

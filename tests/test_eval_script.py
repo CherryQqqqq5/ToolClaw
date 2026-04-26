@@ -3284,6 +3284,134 @@ def test_bfcl_schema_driven_weather_grounder_blocks_no_evidence_and_invalid_unit
     assert "expected_function" not in json.dumps(diagnostics)
 
 
+
+def test_bfcl_schema_driven_command_grounder_extracts_high_evidence_commands() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_schema_command_grounder", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    command_tool = module.ToolSpec(
+        tool_id="shell_executor",
+        description="Execute terminal command in a shell.",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["command"],
+                "properties": {
+                    "command": {"type": "string", "description": "The terminal command to execute."},
+                },
+            }
+        },
+    )
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(command_tool, "Run `ls -la /tmp` now.", {})
+    assert inputs["command"] == "ls -la /tmp"
+    assert diagnostics["schema_driven_command_grounding_policy_version"] == "bfcl_schema_driven_command_v1"
+    assert diagnostics["command_like_arg_grounded_by_arg"]["command"] == "schema_backtick_command_span"
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        command_tool,
+        'Please execute the command "grep foo file.txt".',
+        {},
+    )
+    assert inputs["command"] == "grep foo file.txt"
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        command_tool,
+        "open huggingface using the start command and through the link: https://huggingface.co",
+        {"command": "and"},
+    )
+    assert inputs["command"] == "start https://huggingface.co"
+    assert diagnostics["command_grounding_reason_by_arg"]["command"] == "start_command_url"
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        command_tool,
+        "close firefox using taskkill command",
+        {},
+    )
+    assert inputs["command"] == "taskkill /F /IM firefox.exe"
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        command_tool,
+        "remove the timer.exe that i have been set earlier using the taskkill command",
+        {"command": True},
+    )
+    assert inputs["command"] == "taskkill /F /IM timer.exe"
+
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(
+        command_tool,
+        "say hi using the echo command",
+        {},
+    )
+    assert inputs["command"] == "echo hi"
+
+
+def test_bfcl_schema_driven_command_grounder_blocks_without_schema_or_evidence() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_schema_command_grounder_blocks", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    non_command_tool = module.ToolSpec(
+        tool_id="note_writer",
+        description="Create a text note.",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["message"],
+                "properties": {
+                    "message": {"type": "string", "description": "Text to write."},
+                },
+            }
+        },
+    )
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(non_command_tool, "Run `ls -la` now.", {})
+    assert inputs.get("message") != "ls -la"
+    assert diagnostics["schema_driven_command_grounding_policy_version"] == "bfcl_schema_driven_command_v1"
+    assert diagnostics["command_like_arg_grounded_by_arg"] == {}
+
+    command_tool = module.ToolSpec(
+        tool_id="shell_executor",
+        description="Execute terminal command in a shell.",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["command"],
+                "properties": {
+                    "command": {"type": "string", "description": "The terminal command to execute."},
+                },
+            }
+        },
+    )
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(command_tool, "Please do the thing.", {})
+    assert "command" not in inputs
+    assert diagnostics["command_grounding_blocked_by_arg"]["command"] == "no_runtime_command_evidence"
+
+    list_command_tool = module.ToolSpec(
+        tool_id="cli_runner",
+        description="Run CLI command arguments.",
+        metadata={
+            "parameters": {
+                "type": "dict",
+                "required": ["cmd"],
+                "properties": {
+                    "cmd": {"type": "array", "description": "CLI command to execute."},
+                },
+            }
+        },
+    )
+    inputs, diagnostics = module._bfcl_ground_serial_required_args(list_command_tool, "Run `python -m pytest -q`.", {})
+    assert inputs["cmd"] == ["python", "-m", "pytest", "-q"]
+    assert "expected_call_count" not in json.dumps(diagnostics)
+    assert "official_failure_bucket" not in json.dumps(diagnostics)
+    assert "expected_function" not in json.dumps(diagnostics)
+
+
 def test_bfcl_serial_required_grounder_avoids_scalar_span_reuse() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_bfcl_serial_grounder_reuse", module_path)
