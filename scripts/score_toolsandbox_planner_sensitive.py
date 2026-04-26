@@ -27,6 +27,17 @@ GOLD_KEYS = {
 PRIMARY_SYSTEM = "a2_planner"
 BASELINE_SYSTEM = "a1_recovery"
 V2_PROTOCOL = "planner_sensitive_v2"
+V2_HELDOUT_PROTOCOL = "planner_sensitive_v2_heldout"
+V2_LIKE_PROTOCOLS = {V2_PROTOCOL, V2_HELDOUT_PROTOCOL}
+
+
+def select_protocol(protocols: Iterable[str]) -> str:
+    normalized = [str(protocol or "") for protocol in protocols if str(protocol or "")]
+    if V2_HELDOUT_PROTOCOL in normalized:
+        return V2_HELDOUT_PROTOCOL
+    if V2_PROTOCOL in normalized:
+        return V2_PROTOCOL
+    return normalized[0] if normalized else "planner_sensitive_v1"
 
 
 def load_jsonl(path: Path) -> List[Dict[str, Any]]:
@@ -492,7 +503,7 @@ def aggregate(scored: List[Dict[str, Any]], *, source_count: int) -> Dict[str, A
         "user_queries",
     ]
     protocols = sorted({str(row.get("protocol") or "planner_sensitive_v1") for row in scored}) or ["planner_sensitive_v1"]
-    protocol = V2_PROTOCOL if V2_PROTOCOL in protocols else protocols[0]
+    protocol = select_protocol(protocols)
     per_system = {}
     for system, rows in sorted(by_system.items()):
         known_rows = [row for row in rows if row.get("planner_bypass_known")]
@@ -578,17 +589,18 @@ def aggregate(scored: List[Dict[str, Any]], *, source_count: int) -> Dict[str, A
     a2_bypass_rate = a2.get("planner_bypass_rate", "unknown")
     a2_bypass_known_rate = float(a2.get("planner_bypass_known_rate", 0.0) or 0.0)
     acceptance["source_task_count_ge_40"] = source_count >= 40
+    acceptance["source_task_count_ge_60"] = source_count >= 60 if protocol == V2_HELDOUT_PROTOCOL else True
     acceptance["family_positive_count_ge_3"] = family_positive_count >= 3
-    acceptance["planner_bypass_known_rate_ge_90pp"] = a2_bypass_known_rate >= 0.90 if protocol == V2_PROTOCOL else True
+    acceptance["planner_bypass_known_rate_ge_90pp"] = a2_bypass_known_rate >= 0.90 if protocol in V2_LIKE_PROTOCOLS else True
     acceptance["planner_bypass_rate_controlled"] = (
         isinstance(a2_bypass_rate, (int, float)) and float(a2_bypass_rate) <= 0.25
-    ) if protocol == V2_PROTOCOL else (a2_bypass_rate == "unknown" or float(a2_bypass_rate) <= 0.25)
+    ) if protocol in V2_LIKE_PROTOCOLS else (a2_bypass_rate == "unknown" or float(a2_bypass_rate) <= 0.25)
     effect_size_evidence_ready = all(
         bool(value)
         for key, value in acceptance.items()
         if key not in {"source_task_count_ge_40", "family_positive_count_ge_3", "planner_bypass_known_rate_ge_90pp"}
     )
-    v2_promotion_ready = protocol == V2_PROTOCOL and all(bool(value) for value in acceptance.values())
+    v2_promotion_ready = protocol in V2_LIKE_PROTOCOLS and all(bool(value) for value in acceptance.values())
     strong_claim_allowed = v2_promotion_ready
     return {
         "protocol": protocol,
@@ -632,7 +644,7 @@ def leakage_report(scored: List[Dict[str, Any]], source_rows: List[Dict[str, Any
     any_ordered_leakage = any(report.get("ordered_gold_structure_leakage_detected") for report in task_reports.values())
     protocols = sorted({str(row.get("planner_sensitive_protocol") or row.get("protocol") or "planner_sensitive_v1") for row in source_rows})
     return {
-        "protocol": V2_PROTOCOL if V2_PROTOCOL in protocols else (protocols[0] if protocols else "planner_sensitive_v1"),
+        "protocol": select_protocol(protocols),
         "sample_count": len(source_rows),
         "task_reports": task_reports,
         "leakage_detected": any_leakage,

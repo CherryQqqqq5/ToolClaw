@@ -563,6 +563,26 @@
         "remaining_limitation": "resolved by toolsandbox_planner_sensitive_v2_f2; retained as historical 3/4 evidence"
       }
     },
+    "toolsandbox_planner_sensitive_v2_heldout": {
+      "status": "heldout_robustness_candidate",
+      "prepare_script": "scripts/derive_toolsandbox_planner_sensitive.py --version v2_heldout",
+      "runner": "scripts/run_toolsandbox_bench.py",
+      "score_script": "scripts/score_toolsandbox_planner_sensitive.py",
+      "default_source": "data/toolsandbox_planner_sensitive_v2_heldout.jsonl",
+      "default_manifest": "data/toolsandbox_planner_sensitive_v2_heldout.manifest.json",
+      "default_mode": "planner",
+      "default_systems": "a1_recovery,a2_planner,a3_interaction,a4_reuse",
+      "default_num_runs": 3,
+      "runner_flags": [
+        "--planner-sensitive-protocol"
+      ],
+      "claim_ids": [
+        "planner_structural_mechanism"
+      ],
+      "claim_strength": "mechanism_robustness_candidate",
+      "paper_role": "planner_mechanism_heldout_robustness",
+      "promotion_gate": "Held-out V2 robustness can only support mechanism robustness, never headline. Require >=60 source tasks, >=3 positive families, a2-a1 strict success delta >=20pp, paired wins > losses, planner_bypass_known_rate >=90%, known-row bypass <=25%, no ordered gold structure leakage, and no major cost explosion versus V2 F2 baseline."
+    },
     "toolsandbox_planner_sensitive_v2_f2": {
       "status": "formal_f2_supported_mechanism_supporting",
       "prepare_script": "scripts/derive_toolsandbox_planner_sensitive.py --version v2",

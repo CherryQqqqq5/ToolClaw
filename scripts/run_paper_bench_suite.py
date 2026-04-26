@@ -148,6 +148,8 @@ def _command_for_suite(suite_cfg: Dict[str, Any], outdir: Path, args: argparse.N
         "--num-runs",
         str(args.num_runs or suite_cfg["default_num_runs"]),
     ]
+    for runner_flag in suite_cfg.get("runner_flags") or []:
+        command.append(str(runner_flag))
     if suite_cfg.get("slice_by"):
         command.extend(["--slice-by", str(suite_cfg["slice_by"])])
     if suite_cfg.get("slice_values"):
@@ -165,10 +167,26 @@ def _command_for_suite(suite_cfg: Dict[str, Any], outdir: Path, args: argparse.N
     return command
 
 
-def _score_command(suite_cfg: Dict[str, Any], outdir: Path) -> List[str]:
+def _score_command(suite_cfg: Dict[str, Any], outdir: Path, args: argparse.Namespace) -> List[str]:
+    score_script = ROOT_DIR / suite_cfg["score_script"]
+    if score_script.name == "score_toolsandbox_planner_sensitive.py":
+        resolved_source = _resolve_source_path(args.source or suite_cfg["default_source"])
+        comparison = outdir / "comparison.scored.csv"
+        if not comparison.exists():
+            comparison = outdir / "comparison.csv"
+        return [
+            sys.executable,
+            str(score_script),
+            "--source",
+            str(resolved_source),
+            "--comparison",
+            str(comparison),
+            "--outdir",
+            str(outdir),
+        ]
     return [
         sys.executable,
-        str(ROOT_DIR / suite_cfg["score_script"]),
+        str(score_script),
         "--outdir",
         str(outdir),
         "--official-eval",
@@ -323,7 +341,7 @@ def main() -> None:
     if not args.dry_run:
         _run(runner_command)
         if suite_cfg.get("score_script"):
-            score_command = _score_command(suite_cfg, outdir)
+            score_command = _score_command(suite_cfg, outdir, args)
             _run(score_command)
         if suite_cfg.get("post_analysis") == ["reuse_strata", "reuse_headroom"]:
             _post_analyze_reuse(outdir)

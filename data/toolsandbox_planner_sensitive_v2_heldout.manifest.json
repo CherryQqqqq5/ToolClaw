@@ -1,0 +1,55 @@
+{
+  "dataset": "toolsandbox_planner_sensitive_v2_heldout",
+  "protocol": "planner_sensitive_v2_heldout",
+  "source": "synthetic planner-sensitive protocol derived from ToolSandbox adapter semantics",
+  "sample_count": 80,
+  "family_counts": {
+    "retrieve_summarize_write": 20,
+    "check_modify_verify": 20,
+    "branch_select_execute": 20,
+    "multi_source_merge_write": 20
+  },
+  "planner_visible_keys": [
+    "query",
+    "target_path",
+    "messages",
+    "candidate_tools",
+    "categories",
+    "constraints",
+    "ideal_turn_count",
+    "metadata"
+  ],
+  "scorer_gold_keys": [
+    "expected_capability_order",
+    "expected_dependency_edges",
+    "expected_tool_sequence",
+    "required_state_slots_by_step",
+    "forbidden_shortcuts"
+  ],
+  "anti_leakage_policy": {
+    "scorer_gold_not_planner_visible": true,
+    "no_single_tool_primary_samples": true,
+    "no_ideal_tool_calls_one": true,
+    "milestones_hidden_from_planner": true,
+    "candidate_tools_shuffled": true,
+    "distractor_tools_per_task": true
+  },
+  "paper_claim_policy": "planner structural mechanism robustness candidate only; not headline and not BFCL/function-calling transfer evidence",
+  "promotion_gates": {
+    "source_task_count_ge_40": true,
+    "family_positive_count_ge_3": true,
+    "planner_bypass_known_rate_ge_0_90": true,
+    "known_row_planner_bypass_rate_le_0_25": true,
+    "ordered_gold_structure_leakage_detected": false,
+    "retrieve_summarize_write_positive_win_cap": "25-30%"
+  },
+  "heldout_robustness_design": {
+    "sample_count_target": 80,
+    "tasks_per_family": 20,
+    "renamed_tool_ids": true,
+    "deterministic_candidate_shuffle": true,
+    "strong_lexical_distractors_per_task_ge_2": true,
+    "family_name_hidden_from_planner_metadata": true,
+    "heldout_paraphrase_templates": true
+  }
+}

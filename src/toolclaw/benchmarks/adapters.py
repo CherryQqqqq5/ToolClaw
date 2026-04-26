@@ -1024,7 +1024,7 @@ class ToolSandboxAdapter:
     }
 
     PLANNER_SENSITIVE_PROTOCOL = "planner_sensitive_v1"
-    PLANNER_SENSITIVE_PROTOCOLS = {"planner_sensitive_v1", "planner_sensitive_v2"}
+    PLANNER_SENSITIVE_PROTOCOLS = {"planner_sensitive_v1", "planner_sensitive_v2", "planner_sensitive_v2_heldout"}
     PLANNER_SENSITIVE_GOLD_KEYS = {
         "expected_capability_order",
         "expected_dependency_edges",

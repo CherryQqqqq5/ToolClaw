@@ -132,6 +132,7 @@ def _is_planner_sensitive_payload(raw_payload: Dict[str, Any]) -> bool:
     return str(raw_payload.get("planner_sensitive_protocol") or raw_payload.get("protocol") or "") in {
         "planner_sensitive_v1",
         "planner_sensitive_v2",
+        "planner_sensitive_v2_heldout",
     }
 
 
@@ -1700,7 +1701,7 @@ def main() -> None:
         ]
         if non_protocol_samples:
             raise ValueError(
-                "--planner-sensitive-protocol requires planner_sensitive_v1/v2 samples; "
+                "--planner-sensitive-protocol requires planner_sensitive_v1/v2/v2_heldout samples; "
                 + "non-protocol sample ids: "
                 + ", ".join(non_protocol_samples[:20])
             )
