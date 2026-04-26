@@ -53,6 +53,22 @@ def _write_jsonl(path: Path, rows: List[Dict[str, Any]]) -> None:
     path.write_text("\n".join(json.dumps(row, sort_keys=True) for row in rows) + ("\n" if rows else ""), encoding="utf-8")
 
 
+def _family_metadata(dataset_rows: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    metadata: Dict[str, Dict[str, Any]] = {}
+    for row in dataset_rows:
+        family_id = str(row.get("family_id") or "")
+        if not family_id:
+            continue
+        metadata[family_id] = {
+            "claim_scope": str(row.get("claim_scope") or "exact_match_cost"),
+            "claim_inclusion": bool(row.get("claim_inclusion", True)),
+            "pair_type": str(row.get("pair_type") or ""),
+            "headroom_label": str(row.get("headroom_label") or ""),
+            "signature_key": str(row.get("signature_key") or ""),
+        }
+    return metadata
+
+
 def _success(row: Dict[str, str]) -> float:
     return 1.0 if _bool(row.get("success")) else 0.0
 
@@ -136,7 +152,7 @@ def _aggregate(rows: List[Dict[str, str]]) -> Dict[str, float]:
     }
 
 
-def _pair_effects(rows: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+def _pair_effects(rows: List[Dict[str, str]], family_metadata: Dict[str, Dict[str, Any]] | None = None) -> List[Dict[str, Any]]:
     grouped: Dict[Tuple[str, str], Dict[str, Dict[str, str]]] = defaultdict(dict)
     for row in rows:
         if str(row.get("stage")) != "pass2_eval":
@@ -144,6 +160,7 @@ def _pair_effects(rows: List[Dict[str, str]]) -> List[Dict[str, Any]]:
         grouped[(str(row.get("run_index") or "1"), _family(row))][str(row.get("system"))] = row
 
     effects: List[Dict[str, Any]] = []
+    family_metadata = family_metadata or {}
     for (run_index, family), arm_rows in sorted(grouped.items()):
         warm = arm_rows.get("a4_reuse_warm")
         cold = arm_rows.get("a4_reuse_cold")
@@ -151,9 +168,15 @@ def _pair_effects(rows: List[Dict[str, str]]) -> List[Dict[str, Any]]:
         sham = arm_rows.get("a4_reuse_sham")
         if not warm or not cold:
             continue
+        meta = family_metadata.get(family, {})
         item = {
             "run_index": run_index,
             "family_id": family,
+            "claim_scope": str(meta.get("claim_scope") or "exact_match_cost"),
+            "claim_inclusion": bool(meta.get("claim_inclusion", True)),
+            "pair_type": str(meta.get("pair_type") or ""),
+            "headroom_label": str(meta.get("headroom_label") or ""),
+            "signature_key": str(meta.get("signature_key") or ""),
             "warm_success": _success(warm),
             "cold_success": _success(cold),
             "a3_success": _success(a3) if a3 else 0.0,
@@ -242,13 +265,28 @@ def _scoped_rate(stats_row: Dict[str, float], scope: str, *, metric: str) -> flo
     return float(stats_row.get(metric, 0.0) or 0.0)
 
 
-def _claim_summary(
+def _included_effect(effect: Dict[str, Any]) -> bool:
+    return bool(effect.get("claim_inclusion", True)) and str(effect.get("claim_scope") or "exact_match_cost") == "exact_match_cost"
+
+
+def _effect_families(effects: List[Dict[str, Any]]) -> set[str]:
+    return {str(item.get("family_id") or "") for item in effects if str(item.get("family_id") or "")}
+
+
+def _filter_rows_for_families(rows: List[Dict[str, str]], families: set[str]) -> List[Dict[str, str]]:
+    if not families:
+        return []
+    return [row for row in rows if _family(row) in families]
+
+
+def _claim_core_summary(
     *,
     rows: List[Dict[str, str]],
     effects: List[Dict[str, Any]],
     stats: Dict[str, Any],
     manifest: Dict[str, Any],
     reuse_scope: str = "exact",
+    family_count: int | None = None,
 ) -> Dict[str, Any]:
     if reuse_scope not in REUSE_SCOPES:
         reuse_scope = "exact"
@@ -297,13 +335,14 @@ def _claim_summary(
         and ci_ok
         and success_guard
     )
+    count = int(family_count if family_count is not None else manifest.get("family_count", 0) or 0)
     return {
         "paper_safe_reuse_evidence": paper_safe,
         "strong_second_run_claim_supported": paper_safe and bool(manifest.get("statistical_claim_allowed", False)),
         "mechanism_evidence_only": not paper_safe or not bool(manifest.get("statistical_claim_allowed", False)),
         "registry_preflight_passed": bool(manifest.get("registry_preflight_passed", False)),
         "reuse_scope": reuse_scope,
-        "family_count": int(manifest.get("family_count", 0) or 0),
+        "family_count": count,
         "statistical_claim_allowed": bool(manifest.get("statistical_claim_allowed", False)),
         "warm_claim_reuse_hit_rate": warm_claim_reuse_hit_rate,
         "warm_claim_correct_source_match_rate": warm_claim_correct_source_match_rate,
@@ -326,6 +365,59 @@ def _claim_summary(
         "primary_reduction_present": any_reduction,
         "paired_effect_count": len(effects),
     }
+
+
+def _control_summary(rows: List[Dict[str, str]], effects: List[Dict[str, Any]]) -> Dict[str, Any]:
+    families = _effect_families(effects)
+    pass2_rows = [row for row in rows if str(row.get("stage")) == "pass2_eval"]
+    by_system = {system: _aggregate([row for row in pass2_rows if row.get("system") == system]) for system in sorted({row.get("system", "") for row in pass2_rows})}
+    stats = _stat_tests(effects)
+    return {
+        "family_count": len(families),
+        "paired_effect_count": len(effects),
+        "by_system": by_system,
+        "reductions_mean": {metric: float(stats.get(metric, {}).get("mean", 0.0) or 0.0) for metric in PRIMARY_REDUCTION_METRICS},
+    }
+
+
+def _claim_summary(
+    *,
+    rows: List[Dict[str, str]],
+    effects: List[Dict[str, Any]],
+    stats: Dict[str, Any],
+    manifest: Dict[str, Any],
+    reuse_scope: str = "exact",
+) -> Dict[str, Any]:
+    primary_effects = [item for item in effects if _included_effect(item)]
+    if effects and not primary_effects and all("claim_scope" not in item for item in effects):
+        primary_effects = list(effects)
+    primary_families = _effect_families(primary_effects)
+    primary_rows = _filter_rows_for_families(rows, primary_families) if primary_families else []
+    primary_stats = _stat_tests(primary_effects)
+    primary_summary = _claim_core_summary(
+        rows=primary_rows,
+        effects=primary_effects,
+        stats=primary_stats,
+        manifest=manifest,
+        reuse_scope=reuse_scope,
+        family_count=len(primary_families) if primary_families else int(manifest.get("family_count", 0) or 0),
+    )
+
+    no_headroom_effects = [item for item in effects if str(item.get("claim_scope") or "") == "control_no_headroom"]
+    transfer_effects = [item for item in effects if str(item.get("claim_scope") or "") == "transfer_control"]
+    overall_summary = _control_summary(rows, effects)
+    sham_rows = [row for row in rows if str(row.get("stage")) == "pass2_eval" and row.get("system") == "a4_reuse_sham"]
+    summary = dict(primary_summary)
+    summary.update(
+        {
+            "primary_claim_summary": primary_summary,
+            "control_no_headroom_summary": _control_summary(_filter_rows_for_families(rows, _effect_families(no_headroom_effects)), no_headroom_effects),
+            "transfer_control_summary": _control_summary(_filter_rows_for_families(rows, _effect_families(transfer_effects)), transfer_effects),
+            "sham_summary": _aggregate(sham_rows),
+            "overall_summary": overall_summary,
+        }
+    )
+    return summary
 
 
 def _write_report(path: Path, summary: Dict[str, Any], effects_summary: Dict[str, Any], stats: Dict[str, Any]) -> None:
@@ -383,9 +475,10 @@ def main() -> None:
     comparison_path = Path(args.comparison or outdir / "comparison.scored.csv")
     if not dataset_path.exists():
         raise FileNotFoundError(f"reuse persistent dataset not found: {dataset_path}")
-    _read_jsonl(dataset_path)
+    dataset_rows = _read_jsonl(dataset_path)
+    family_metadata = _family_metadata(dataset_rows)
     rows = _read_csv(comparison_path)
-    effects = _pair_effects(rows)
+    effects = _pair_effects(rows, family_metadata=family_metadata)
     _write_jsonl(outdir / "reuse_pair_effects.jsonl", effects)
     pass2_rows = [row for row in rows if str(row.get("stage")) == "pass2_eval"]
     effect_summary = {

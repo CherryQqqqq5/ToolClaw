@@ -45,8 +45,68 @@ def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
     return rows
 
 
-def _stage_task(task: Dict[str, Any], *, family_id: str, stage: str, pass_index: int, sham: bool = False) -> Dict[str, Any]:
+SCORER_ONLY_TASK_KEYS = {
+    "scorer_gold",
+    "result_summary",
+    "reference_result_summary",
+    "official_milestone_mapping",
+    "official_milestone_similarity",
+    "official_similarity",
+    "official_traceback",
+    "official_exception_type",
+}
+
+
+def _false_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value is False
+    return str(value).strip().lower() in {"0", "false", "no"}
+
+
+def _initial_runtime_messages(messages: Any) -> List[Dict[str, Any]]:
+    if not isinstance(messages, list):
+        return []
+    runtime_messages: List[Dict[str, Any]] = []
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        sender = str(message.get("sender") or message.get("role") or "").lower()
+        recipient = str(message.get("recipient") or "").lower()
+        if sender == "system" or (sender == "user" and (not recipient or recipient == "agent")):
+            runtime_messages.append(dict(message))
+            if sender == "user":
+                break
+        elif runtime_messages:
+            break
+    return runtime_messages
+
+
+def _sanitize_runtime_task(task: Dict[str, Any]) -> Dict[str, Any]:
     staged = deepcopy(task)
+    metadata = dict(staged.get("metadata", {})) if isinstance(staged.get("metadata"), dict) else {}
+    runtime_visibility = staged.get("runtime_visibility")
+    if not isinstance(runtime_visibility, dict):
+        runtime_visibility = metadata.get("runtime_visibility") if isinstance(metadata.get("runtime_visibility"), dict) else {}
+    full_messages_hidden = _false_value(runtime_visibility.get("full_messages_runtime_visible"))
+    milestones_hidden = _false_value(runtime_visibility.get("milestones_runtime_visible"))
+    scorer_gold_hidden = _false_value(runtime_visibility.get("scorer_gold_runtime_visible"))
+    if full_messages_hidden:
+        runtime_messages = staged.get("runtime_messages")
+        staged["messages"] = list(runtime_messages) if isinstance(runtime_messages, list) else _initial_runtime_messages(staged.get("messages"))
+        metadata.pop("messages", None)
+    if milestones_hidden:
+        staged["milestones"] = []
+        metadata.pop("milestones", None)
+    if scorer_gold_hidden:
+        for key in SCORER_ONLY_TASK_KEYS:
+            staged.pop(key, None)
+            metadata.pop(key, None)
+    staged["metadata"] = metadata
+    return staged
+
+
+def _stage_task(task: Dict[str, Any], *, family_id: str, stage: str, pass_index: int, sham: bool = False, reuse_version: str = "toolsandbox_reuse_persistent_v1") -> Dict[str, Any]:
+    staged = _sanitize_runtime_task(task)
     metadata = dict(staged.get("metadata", {})) if isinstance(staged.get("metadata"), dict) else {}
     family = f"sham_unrelated::{family_id}" if sham else family_id
     task_id = f"{family_id}__{'sham_' if sham else ''}pass{pass_index}_{stage}"
@@ -60,6 +120,8 @@ def _stage_task(task: Dict[str, Any], *, family_id: str, stage: str, pass_index:
             "reuse_pass_index": pass_index,
             "reuse_stage": stage,
             "reuse_persistent_v1": True,
+            "reuse_persistent_version": reuse_version,
+            "reuse_pass2_compile_allowed": False if pass_index == 2 else True,
             "original_reuse_family_id": family_id,
             "sham_registry_stage": sham,
         }
@@ -199,6 +261,9 @@ def main() -> None:
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     families = _read_jsonl(source)
+    dataset_manifest = Path(str(source).replace(".jsonl", ".manifest.json"))
+    source_manifest = json.loads(dataset_manifest.read_text(encoding="utf-8")) if dataset_manifest.exists() else {}
+    reuse_version = str(source_manifest.get("version") or source_manifest.get("suite") or "toolsandbox_reuse_persistent_v1")
     if args.limit_families:
         families = families[: max(args.limit_families, 0)]
     if not families:
@@ -230,15 +295,15 @@ def main() -> None:
             pass2_path = staged_dir / f"run_{run_index:02d}.{family_name}.pass2_eval.json"
             _write_taskset(
                 pass1_path,
-                [_stage_task(family_row["pass1_compile"], family_id=family_id, stage="compile", pass_index=1)],
+                [_stage_task(family_row["pass1_compile"], family_id=family_id, stage="compile", pass_index=1, reuse_version=reuse_version)],
             )
             _write_taskset(
                 sham_path,
-                [_stage_task(sham_source["pass1_compile"], family_id=sham_family_id, stage="compile", pass_index=1, sham=True)],
+                [_stage_task(sham_source["pass1_compile"], family_id=sham_family_id, stage="compile", pass_index=1, sham=True, reuse_version=reuse_version)],
             )
             _write_taskset(
                 pass2_path,
-                [_stage_task(family_row["pass2_eval"], family_id=family_id, stage="eval", pass_index=2)],
+                [_stage_task(family_row["pass2_eval"], family_id=family_id, stage="eval", pass_index=2, reuse_version=reuse_version)],
             )
 
             _run_eval(pass1_path, family_run_dir / "pass1_compile_warm", system="a4_reuse", registry_root=warm_registry, quiet=args.quiet_progress)
@@ -265,10 +330,8 @@ def main() -> None:
     _write_csv(comparison_raw, all_rows)
     _write_csv(comparison_scored, all_rows)
 
-    dataset_manifest = Path(str(source).replace(".jsonl", ".manifest.json"))
-    source_manifest = json.loads(dataset_manifest.read_text(encoding="utf-8")) if dataset_manifest.exists() else {}
     experiment_manifest = {
-        "suite": "toolsandbox_reuse_persistent_v1",
+        "suite": reuse_version,
         "source": str(source),
         "source_manifest": str(dataset_manifest) if dataset_manifest.exists() else "",
         "git_commit": _git_commit(),
@@ -276,6 +339,7 @@ def main() -> None:
         "num_runs": max(args.num_runs, 1),
         "family_count": len(families),
         "reuse_scope": str(args.reuse_scope),
+        "reuse_persistent_version": reuse_version,
         "statistical_claim_allowed": bool(source_manifest.get("statistical_claim_allowed", len(families) >= 20)),
         "registry_preflight_passed": bool(registry_preflight_passed),
         "comparison_raw": str(comparison_raw),

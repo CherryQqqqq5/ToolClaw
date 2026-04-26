@@ -1,0 +1,20 @@
+{
+  "claim_scope_policy": "primary claim uses only claim_scope=exact_match_cost and claim_inclusion=true",
+  "control_no_headroom_count": 0,
+  "dataset": "data/toolsandbox_reuse_persistent_v3.jsonl",
+  "exact_claim_family_count": 0,
+  "family_count": 0,
+  "formal_source_status": "awaiting_pilot_confirmation",
+  "headroom_candidate_count": 0,
+  "inventory_is_evidence": false,
+  "potential_exact_candidate_count": 0,
+  "selection_gate_targets": {
+    "exact_claim_family_count": 12,
+    "family_count": 20,
+    "headroom_candidate_count": 10
+  },
+  "source_commit": "76231cb732c38894b704e1000a16a7137d1d2b91",
+  "statistical_claim_allowed": false,
+  "transfer_control_count": 0,
+  "version": "toolsandbox_reuse_persistent_v3"
+}

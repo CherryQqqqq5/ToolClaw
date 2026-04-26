@@ -157,8 +157,8 @@
     "reuse_exact_match_cost": {
       "status": "pending_committed_formal_bundle",
       "claim_strength": "pending",
-      "benchmark_suite": "toolsandbox_reuse_persistent_v2",
-      "claim": "Reuse is being tested under a narrow exact/matched-signature second-run cost-reduction protocol. Server-side V2 smoke indicates the sham false-positive issue has been addressed, but no committed paper-safe V2 formal result bundle yet shows warm exact hits plus positive cost/headroom deltas.",
+      "benchmark_suite": "toolsandbox_reuse_persistent_v3",
+      "claim": "Reuse is under a narrow exact/matched-signature second-run cost protocol. V3 separates official scenario inventory, static candidates, pilot-confirmed formal source, and control families; the claim remains pending until V3 has enough pilot-confirmed exact high-headroom families and passes warm/cold/sham gates.",
       "metrics": {
         "primary": [
           "tool_call_reduction@warm_vs_cold",
@@ -655,6 +655,26 @@
         "known_row_planner_bypass_rate": 0.0,
         "remaining_limitation": "none inside planner-sensitive V2 f2; external exact function-calling transfer remains unsupported"
       }
+    },
+    "toolsandbox_reuse_persistent_v3": {
+      "status": "pending_pilot_confirmation",
+      "prepare_script": "scripts/derive_toolsandbox_reuse_persistent_v3.py --phase all",
+      "runner": "scripts/run_toolsandbox_reuse_persistent.py",
+      "score_script": "scripts/score_toolsandbox_reuse_persistent.py",
+      "default_source": "data/toolsandbox_reuse_persistent_v3.jsonl",
+      "default_manifest": "data/toolsandbox_reuse_persistent_v3.manifest.json",
+      "candidate_source": "data/toolsandbox_reuse_persistent_v3_candidates.jsonl",
+      "candidate_manifest": "data/toolsandbox_reuse_persistent_v3_candidates.manifest.json",
+      "scenario_inventory": "data/toolsandbox_official_scenario_inventory.json",
+      "default_mode": "planner",
+      "default_systems": "a3_interaction,a4_reuse_cold,a4_reuse_warm,a4_reuse_sham",
+      "default_num_runs": 3,
+      "claim_ids": [
+        "reuse_exact_match_cost"
+      ],
+      "claim_strength": "pending",
+      "paper_role": "reuse_exact_match_cost_candidate",
+      "promotion_gate": "V3 can support only a narrow exact/matched-signature second-run cost claim. Primary gates must be computed on claim_scope=exact_match_cost and claim_inclusion=true only: >=12 exact claim families, >=10 pilot-confirmed headroom families, warm exact reuse hit >=0.50, warm exact correct-source match >=0.90, warm success >= cold success, positive cost reduction, and sham false positive <=0.05. Inventory and static candidates are not evidence."
     }
   }
 }
