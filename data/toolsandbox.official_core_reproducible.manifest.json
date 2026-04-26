@@ -7,7 +7,7 @@
   "dry_run": true,
   "export_path": "/cephfs/qiuyn/ToolClaw/data/toolsandbox.official_core_reproducible.json",
   "export_row_count": 0,
-  "generated_at_utc": "2026-04-26T05:07:41Z",
+  "generated_at_utc": "2026-04-26T05:20:45Z",
   "inventory_count": 1032,
   "manifest_path": "/cephfs/qiuyn/ToolClaw/data/toolsandbox.official_core_reproducible.manifest.json",
   "next_step": "use a confirmed core export to re-derive reuse v3 candidates; do not run reuse formal before pilot-confirming exact headroom families",
@@ -16,7 +16,7 @@
   "result_summary_present": false,
   "run_dir": "",
   "run_mode": "new",
-  "toolclaw_commit": "ec58f2e80bafc3d6be2001e741303435700ceb20",
+  "toolclaw_commit": "c201ba8cdf640249218b184b9bf5f48438ade146",
   "trajectories_present": false,
   "version": "toolsandbox_official_core_reproducible"
 }

@@ -110,16 +110,25 @@ def core_filter_rows(inventory: Mapping[str, Any], *, resolvable_names: set[str]
                 "scenario_source_file": row.get("scenario_source_file", ""),
             })
     selected.sort(key=lambda row: row["scenario_name"])
+    eligible_core_candidate_count = len(selected)
     if limit is not None:
         selected = selected[: max(0, limit)]
+    selected_count_after_limit = len(selected)
+    true_excluded_count = len(excluded)
+    limit_truncated_candidate_count = max(0, eligible_core_candidate_count - selected_count_after_limit)
     category_counts = Counter(cat for row in selected for cat in row.get("categories", []))
     return {
         "filter_is_evidence": False,
         "filter_policy": "requires_external_api=false, external_dependency_status=python_native, tool_allow_list present, milestone_count>0, official scenario resolvable",
         "inventory_count": len(rows),
-        "core_candidate_count": len(selected),
-        "excluded_count": len(rows) - len(selected),
+        "eligible_core_candidate_count": eligible_core_candidate_count,
+        "core_candidate_count": eligible_core_candidate_count,
+        "selected_count_after_limit": selected_count_after_limit,
+        "true_excluded_count": true_excluded_count,
+        "excluded_count": true_excluded_count,
         "limit": limit,
+        "limit_applied": limit is not None,
+        "limit_truncated_candidate_count": limit_truncated_candidate_count,
         "selected_scenarios": selected,
         "excluded_scenarios": excluded,
         "excluded_reason_counting": "multi_label_non_exclusive",
