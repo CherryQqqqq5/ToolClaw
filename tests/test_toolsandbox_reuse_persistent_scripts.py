@@ -533,3 +533,63 @@ def test_reuse_v3_candidate_rejection_markdown_keeps_claim_pending() -> None:
     assert "final formal families: `0`" in md
     assert "No reuse claim should be marked supported" in md
     assert "core reproducible official-run export" in md
+
+def test_toolsandbox_core_reproducible_filter_excludes_external_and_unresolvable() -> None:
+    module = _load_script("export_toolsandbox_core_reproducible.py")
+    inventory = {
+        "scenarios": [
+            {"scenario_name": "native_ok", "requires_external_api": False, "external_dependency_status": "python_native", "tool_allow_list": ["add_contact"], "milestone_count": 1, "categories": ["SINGLE_TOOL_CALL"]},
+            {"scenario_name": "rapidapi", "requires_external_api": True, "external_dependency_status": "rapidapi", "tool_allow_list": ["search_stock"], "milestone_count": 1, "categories": ["SINGLE_TOOL_CALL"]},
+            {"scenario_name": "missing_tool", "requires_external_api": False, "external_dependency_status": "python_native", "tool_allow_list": [], "milestone_count": 1, "categories": []},
+            {"scenario_name": "unresolvable", "requires_external_api": False, "external_dependency_status": "python_native", "tool_allow_list": ["add_contact"], "milestone_count": 1, "categories": []},
+        ]
+    }
+
+    payload = module.core_filter_rows(inventory, resolvable_names={"native_ok"})
+
+    assert payload["filter_is_evidence"] is False
+    assert payload["inventory_count"] == 4
+    assert payload["core_candidate_count"] == 1
+    assert payload["selected_scenarios"][0]["scenario_name"] == "native_ok"
+    assert payload["excluded_reason_counts"]["requires_external_api"] == 1
+    assert payload["excluded_reason_counts"]["missing_tool_allow_list"] == 1
+    assert payload["excluded_reason_counts"]["official_scenario_unresolvable"] == 3
+
+
+def test_toolsandbox_core_reproducible_manifest_marks_dry_run_not_evidence() -> None:
+    module = _load_script("export_toolsandbox_core_reproducible.py")
+    manifest = module.build_manifest(
+        filter_payload={"inventory_count": 4, "core_candidate_count": 1},
+        export_rows=[],
+        dry_run=True,
+        run_dir=None,
+        run_mode="new",
+        out_prefix=module.ROOT_DIR / "data" / "toolsandbox.official_core_reproducible",
+    )
+
+    assert manifest["dry_run"] is True
+    assert manifest["core_export_is_evidence"] is False
+    assert manifest["result_summary_present"] is False
+    assert manifest["export_row_count"] == 0
+    assert "no headline or reuse claim" in manifest["claim_boundary"]
+
+
+def test_toolsandbox_core_reproducible_manifest_requires_run_artifacts_for_evidence(tmp_path) -> None:
+    module = _load_script("export_toolsandbox_core_reproducible.py")
+    run_dir = tmp_path / "official_run"
+    (run_dir / "trajectories").mkdir(parents=True)
+    (run_dir / "result_summary.json").write_text("{}", encoding="utf-8")
+
+    manifest = module.build_manifest(
+        filter_payload={"inventory_count": 4, "core_candidate_count": 1},
+        export_rows=[{"name": "native_ok"}],
+        dry_run=False,
+        run_dir=run_dir,
+        run_mode="existing",
+        out_prefix=module.ROOT_DIR / "data" / "toolsandbox.official_core_reproducible",
+    )
+
+    assert manifest["core_export_is_evidence"] is True
+    assert manifest["result_summary_present"] is True
+    assert manifest["trajectories_present"] is True
+    assert manifest["export_row_count"] == 1
