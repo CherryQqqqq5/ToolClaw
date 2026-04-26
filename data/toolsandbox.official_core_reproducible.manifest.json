@@ -17,7 +17,8 @@
     "toolsandbox_python": "",
     "toolsandbox_python_version": "",
     "toolsandbox_runtime_python": "",
-    "toolsandbox_runtime_python_version": ""
+    "toolsandbox_runtime_python_version": "",
+    "toolsandbox_venv_dir": ""
   },
   "export_path": "/cephfs/qiuyn/ToolClaw/data/toolsandbox.official_core_reproducible.json",
   "export_row_count": 0,
@@ -26,7 +27,7 @@
     "missing_from_result_summary": 405
   },
   "full_trajectory_messages_runtime_visible": false,
-  "generated_at_utc": "2026-04-26T06:39:23Z",
+  "generated_at_utc": "2026-04-26T06:43:50Z",
   "inventory_count": 1032,
   "limit_applied": false,
   "manifest_path": "/cephfs/qiuyn/ToolClaw/data/toolsandbox.official_core_reproducible.manifest.json",
@@ -39,7 +40,7 @@
   "run_mode": "new",
   "runtime_visibility_policy": "runtime_messages_only; full official transcript is scorer/provenance-only",
   "selected_count_after_limit": 405,
-  "toolclaw_commit": "c2d6c81bd2ba81336c818f5e01ff1237f8c84081",
+  "toolclaw_commit": "4f27db0d66089088360c2b78442f335a04bb2064",
   "trajectories_present": false,
   "trajectory_count": 0,
   "version": "toolsandbox_official_core_reproducible"

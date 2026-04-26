@@ -22,6 +22,7 @@ DEFAULT_INVENTORY = ROOT_DIR / "data" / "toolsandbox_official_scenario_inventory
 DEFAULT_OFFICIAL_ROOT = ROOT_DIR / "data" / "external" / "ToolSandbox"
 DEFAULT_OUT_PREFIX = ROOT_DIR / "data" / "toolsandbox.official_core_reproducible"
 DEFAULT_OFFICIAL_OUTPUT_ROOT = ROOT_DIR / "outputs" / "toolsandbox_core_reproducible_official_runs"
+DEFAULT_TOOLSANDBOX_VENV_DIR = Path("/cephfs/qiuyn/venvs/toolsandbox-official-py310")
 EXCLUSION_REASON_PRIORITY = [
     "requires_external_api",
     "not_python_native",
@@ -100,8 +101,8 @@ def _validate_toolsandbox_python(python_path: Path) -> Dict[str, Any]:
     return info
 
 
-def _runtime_python_from_env(fallback_python: Path | None) -> Path | None:
-    venv_dir = os.environ.get("TOOLSANDBOX_VENV_DIR") or os.environ.get("TOOLSANDBOX_OFFICIAL_VENV_DIR")
+def _runtime_python_from_env(fallback_python: Path | None, venv_dir_override: Path | None = None) -> Path | None:
+    venv_dir = str(venv_dir_override) if venv_dir_override else (os.environ.get("TOOLSANDBOX_VENV_DIR") or os.environ.get("TOOLSANDBOX_OFFICIAL_VENV_DIR"))
     if venv_dir:
         candidate = Path(venv_dir) / "bin" / "python"
         if candidate.exists():
@@ -128,13 +129,14 @@ def _write_pip_freeze(runtime_python: Path | None, out_prefix: Path) -> str:
     return str(path)
 
 
-def _execution_environment_manifest(*, toolsandbox_python: Path | None, out_prefix: Path) -> Dict[str, Any]:
-    runtime_python = _runtime_python_from_env(toolsandbox_python)
+def _execution_environment_manifest(*, toolsandbox_python: Path | None, toolsandbox_venv_dir: Path | None, out_prefix: Path) -> Dict[str, Any]:
+    runtime_python = _runtime_python_from_env(toolsandbox_python, toolsandbox_venv_dir)
     bootstrap_info = _python_probe(toolsandbox_python)
     runtime_info = _python_probe(runtime_python)
     return {
         "toolsandbox_python": str(toolsandbox_python) if toolsandbox_python else "",
         "toolsandbox_python_version": bootstrap_info.get("version", ""),
+        "toolsandbox_venv_dir": str(toolsandbox_venv_dir) if toolsandbox_venv_dir else "",
         "toolsandbox_runtime_python": str(runtime_python) if runtime_python else "",
         "toolsandbox_runtime_python_version": runtime_info.get("version", ""),
         "toolclaw_python_path": sys.executable,
@@ -255,6 +257,7 @@ def _run_official_scenarios(
     parallel: int,
     extra_args: Sequence[str],
     toolsandbox_python: Path,
+    toolsandbox_venv_dir: Path | None,
 ) -> Path:
     if not scenario_names:
         raise ValueError("no core scenarios selected for official run")
@@ -272,6 +275,8 @@ def _run_official_scenarios(
     ]
     env = dict(os.environ)
     env["PYTHON_BIN"] = str(toolsandbox_python)
+    if toolsandbox_venv_dir is not None:
+        env["TOOLSANDBOX_VENV_DIR"] = str(toolsandbox_venv_dir)
     subprocess.run(cmd, cwd=str(ROOT_DIR), check=True, env=env)
     after = _latest_result_run_dir(output_root)
     if after is None or after == before:
@@ -363,6 +368,7 @@ def build_manifest(
     run_mode: str,
     out_prefix: Path,
     toolsandbox_python: Path | None = None,
+    toolsandbox_venv_dir: Path | None = None,
     selected_names: Sequence[str] | None = None,
 ) -> Dict[str, Any]:
     run_ready = _run_dir_ready(run_dir)
@@ -425,7 +431,7 @@ def build_manifest(
         "core_export_is_evidence": core_export_is_evidence,
         "full_trajectory_messages_runtime_visible": False,
         "runtime_visibility_policy": "runtime_messages_only; full official transcript is scorer/provenance-only",
-        "execution_environment": _execution_environment_manifest(toolsandbox_python=toolsandbox_python, out_prefix=out_prefix),
+        "execution_environment": _execution_environment_manifest(toolsandbox_python=toolsandbox_python, toolsandbox_venv_dir=toolsandbox_venv_dir, out_prefix=out_prefix),
         "claim_boundary": "dry-run and smoke exports are pipeline validation only; no headline or reuse claim is promoted by this artifact",
         "next_step": "use a confirmed core export to re-derive reuse v3 candidates; do not run reuse formal before pilot-confirming exact headroom families",
     }
@@ -441,6 +447,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--official-output-root", default=str(DEFAULT_OFFICIAL_OUTPUT_ROOT))
     parser.add_argument("--parallel", type=int, default=1)
     parser.add_argument("--toolsandbox-python", default=os.environ.get("TOOLSANDBOX_PYTHON_BIN", ""), help="Python >=3.9 interpreter used by the official ToolSandbox wrapper during --execute")
+    parser.add_argument("--toolsandbox-venv-dir", default=os.environ.get("TOOLSANDBOX_VENV_DIR") or os.environ.get("TOOLSANDBOX_OFFICIAL_VENV_DIR") or str(DEFAULT_TOOLSANDBOX_VENV_DIR), help="Isolated official ToolSandbox venv used by the wrapper during --execute")
     parser.add_argument("--dry-run", action="store_true", help="Filter and write non-evidence artifacts without running official ToolSandbox; this is the default")
     parser.add_argument("--execute", action="store_true", help="Actually run official ToolSandbox for selected core scenarios")
     parser.add_argument("official_args", nargs=argparse.REMAINDER, help="Extra args passed to official ToolSandbox after --")
@@ -463,10 +470,12 @@ def main() -> None:
     if extra_args and extra_args[0] == "--":
         extra_args = extra_args[1:]
     toolsandbox_python: Path | None = None
+    toolsandbox_venv_dir: Path | None = None
     if args.execute:
         if not args.toolsandbox_python:
             raise ValueError("--toolsandbox-python is required when --execute is used")
         toolsandbox_python = Path(args.toolsandbox_python)
+        toolsandbox_venv_dir = Path(args.toolsandbox_venv_dir) if args.toolsandbox_venv_dir else None
         _validate_toolsandbox_python(toolsandbox_python)
         run_dir = _run_official_scenarios(
             selected_names,
@@ -474,6 +483,7 @@ def main() -> None:
             parallel=args.parallel,
             extra_args=extra_args,
             toolsandbox_python=toolsandbox_python,
+            toolsandbox_venv_dir=toolsandbox_venv_dir,
         )
         dry_run = False
     elif args.run_dir == "latest":
@@ -490,7 +500,7 @@ def main() -> None:
     else:
         _write_json(export_path, [])
     _write_json(paths["filter"], filter_payload)
-    _write_json(paths["manifest"], build_manifest(filter_payload=filter_payload, export_rows=export_rows, dry_run=dry_run, run_dir=run_dir, run_mode=args.run_dir, out_prefix=out_prefix, toolsandbox_python=toolsandbox_python, selected_names=selected_names))
+    _write_json(paths["manifest"], build_manifest(filter_payload=filter_payload, export_rows=export_rows, dry_run=dry_run, run_dir=run_dir, run_mode=args.run_dir, out_prefix=out_prefix, toolsandbox_python=toolsandbox_python, toolsandbox_venv_dir=toolsandbox_venv_dir, selected_names=selected_names))
     print(f"wrote: {paths['filter']}")
     print(f"wrote: {export_path}")
     print(f"wrote: {paths['manifest']}")
