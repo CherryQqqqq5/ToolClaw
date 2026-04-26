@@ -1510,9 +1510,19 @@ class ToolSandboxAdapter:
         protocol = str(raw.get("planner_sensitive_protocol") or raw.get("protocol") or "").strip()
         return protocol if protocol in self.PLANNER_SENSITIVE_PROTOCOLS else self.PLANNER_SENSITIVE_PROTOCOL
 
+    def _runtime_message_payload(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+        visible = dict(raw)
+        runtime_visibility = visible.get("runtime_visibility")
+        if isinstance(runtime_visibility, dict) and runtime_visibility.get("full_messages_runtime_visible") is False:
+            runtime_messages = visible.get("runtime_messages")
+            if isinstance(runtime_messages, list):
+                visible["messages"] = list(runtime_messages)
+            visible.pop("scorer_gold_messages", None)
+        return visible
+
     def _planner_visible_payload(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         if not self._is_planner_sensitive_protocol(raw):
-            return raw
+            return self._runtime_message_payload(raw)
         visible = dict(raw.get("planner_visible", {}) or {})
         for key in (
             "sample_id",

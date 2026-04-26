@@ -136,9 +136,20 @@ def _is_planner_sensitive_payload(raw_payload: Dict[str, Any]) -> bool:
     }
 
 
+def _runtime_message_payload(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
+    visible = dict(raw_payload)
+    runtime_visibility = visible.get("runtime_visibility")
+    if isinstance(runtime_visibility, dict) and runtime_visibility.get("full_messages_runtime_visible") is False:
+        runtime_messages = visible.get("runtime_messages")
+        if isinstance(runtime_messages, list):
+            visible["messages"] = list(runtime_messages)
+        visible.pop("scorer_gold_messages", None)
+    return visible
+
+
 def _planner_visible_payload(raw_payload: Dict[str, Any]) -> Dict[str, Any]:
     if not _is_planner_sensitive_payload(raw_payload):
-        return raw_payload
+        return _runtime_message_payload(raw_payload)
     visible = dict(raw_payload.get("planner_visible", {}) or {})
     for key in ("sample_id", "task_id", "name", "scenario_id"):
         if key in raw_payload and key not in visible:

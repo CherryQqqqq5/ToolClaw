@@ -118,11 +118,33 @@ def infer_simulated_policy(row: Dict[str, Any]) -> Dict[str, Any] | None:
     return None
 
 
+def initial_runtime_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    runtime_messages: List[Dict[str, Any]] = []
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        runtime_messages.append(dict(message))
+        sender = str(message.get("sender") or message.get("role") or "").strip().lower()
+        if sender == "user":
+            break
+    return runtime_messages
+
+
 def aligned_row_to_formal_record(row: Dict[str, Any]) -> Dict[str, Any]:
+    scorer_gold_messages = list(row.get("messages", []))
+    runtime_messages = initial_runtime_messages(scorer_gold_messages)
     record: Dict[str, Any] = {
         "name": row["sample_id"],
         "query": row.get("query") or row["sample_id"],
-        "messages": list(row.get("messages", [])),
+        "messages": runtime_messages,
+        "runtime_messages": runtime_messages,
+        "scorer_gold_messages": scorer_gold_messages,
+        "runtime_visibility": {
+            "query_only": False,
+            "full_messages_runtime_visible": False,
+            "milestones_runtime_visible": False,
+            "scorer_gold_runtime_visible": False,
+        },
         "tool_allow_list": list(row.get("tool_allow_list", [])),
         "candidate_tools": list(row.get("candidate_tools", [])),
         "categories": [to_display_category(category) for category in row.get("categories", [])],

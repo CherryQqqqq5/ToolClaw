@@ -211,7 +211,16 @@ def build_manifest(
 ) -> Dict[str, Any]:
     run_ready = _run_dir_ready(run_dir)
     export_complete = (not dry_run) and run_ready and bool(export_rows)
-    dataset_status = "executed_core_export" if export_complete else "dry_run_empty_export" if dry_run else "incomplete_core_export"
+    limited_export = bool(filter_payload.get("limit_applied"))
+    core_export_is_evidence = export_complete and not limited_export
+    if dry_run:
+        dataset_status = "dry_run_empty_export"
+    elif not export_complete:
+        dataset_status = "incomplete_core_export"
+    elif limited_export:
+        dataset_status = "executed_core_smoke_export"
+    else:
+        dataset_status = "executed_core_export"
     return {
         "version": "toolsandbox_official_core_reproducible",
         "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -219,7 +228,7 @@ def build_manifest(
         "official_toolsandbox_commit": _git_commit(DEFAULT_OFFICIAL_ROOT),
         "dry_run": dry_run,
         "dataset_status": dataset_status,
-        "requires_execute_before_benchmark": not export_complete,
+        "requires_execute_before_benchmark": not core_export_is_evidence,
         "run_mode": run_mode,
         "run_dir": str(run_dir.resolve()) if run_dir else "",
         "result_summary_present": bool(run_dir and (run_dir / "result_summary.json").exists()),
@@ -230,7 +239,9 @@ def build_manifest(
         "inventory_count": filter_payload.get("inventory_count", 0),
         "core_candidate_count": filter_payload.get("core_candidate_count", 0),
         "export_row_count": len(export_rows),
-        "core_export_is_evidence": export_complete,
+        "core_export_is_evidence": core_export_is_evidence,
+        "full_trajectory_messages_runtime_visible": False,
+        "runtime_visibility_policy": "runtime_messages_only; full official transcript is scorer/provenance-only",
         "claim_boundary": "dry-run and smoke exports are pipeline validation only; no headline or reuse claim is promoted by this artifact",
         "next_step": "use a confirmed core export to re-derive reuse v3 candidates; do not run reuse formal before pilot-confirming exact headroom families",
     }

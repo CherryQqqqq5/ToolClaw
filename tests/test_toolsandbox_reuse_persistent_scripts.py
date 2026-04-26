@@ -5,6 +5,9 @@ from pathlib import Path
 
 def _load_script(name: str):
     module_path = Path(__file__).resolve().parents[1] / "scripts" / name
+    scripts_dir = str(module_path.parent)
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
     spec = importlib.util.spec_from_file_location(name.replace(".py", ""), module_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -644,3 +647,148 @@ def test_toolsandbox_core_reproducible_manifest_requires_run_artifacts_for_evide
     assert manifest["result_summary_present"] is True
     assert manifest["trajectories_present"] is True
     assert manifest["export_row_count"] == 1
+
+
+def test_toolsandbox_core_reproducible_manifest_marks_limited_execute_as_smoke(tmp_path) -> None:
+    module = _load_script("export_toolsandbox_core_reproducible.py")
+    run_dir = tmp_path / "official_run"
+    (run_dir / "trajectories").mkdir(parents=True)
+    (run_dir / "result_summary.json").write_text("{}", encoding="utf-8")
+
+    manifest = module.build_manifest(
+        filter_payload={"inventory_count": 4, "core_candidate_count": 3, "limit_applied": True},
+        export_rows=[{"name": "native_ok"}],
+        dry_run=False,
+        run_dir=run_dir,
+        run_mode="new",
+        out_prefix=module.ROOT_DIR / "data" / "toolsandbox.official_core_reproducible",
+    )
+
+    assert manifest["dataset_status"] == "executed_core_smoke_export"
+    assert manifest["core_export_is_evidence"] is False
+    assert manifest["requires_execute_before_benchmark"] is True
+    assert manifest["full_trajectory_messages_runtime_visible"] is False
+
+
+def test_toolsandbox_formal_export_separates_runtime_and_scorer_messages() -> None:
+    module = _load_script("prepare_toolsandbox_formal_dataset.py")
+    row = {
+        "sample_id": "scenario_a",
+        "query": "Please add a contact.",
+        "messages": [
+            {"sender": "system", "recipient": "agent", "content": "You are an agent."},
+            {"sender": "user", "recipient": "agent", "content": "Please add a contact."},
+            {"sender": "assistant", "recipient": "tool", "content": "tool call"},
+            {"sender": "tool", "recipient": "assistant", "content": "tool result"},
+        ],
+        "tool_allow_list": ["add_contact"],
+        "candidate_tools": ["add_contact"],
+        "categories": ["single_tool"],
+        "normalized_categories": ["single_tool"],
+        "milestones": [{"snapshot_constraint": "contact exists"}],
+        "result_summary": {"similarity": 1.0},
+        "reference_result_summary": {"similarity": 1.0},
+        "has_ground_truth_messages": True,
+        "has_ground_truth_milestones": True,
+        "has_ground_truth_tools": True,
+        "metadata": {"trajectory_dir": "/tmp/traj", "result_summary_path": "/tmp/result_summary.json"},
+    }
+
+    record = module.aligned_row_to_formal_record(row)
+
+    assert record["messages"] == row["messages"][:2]
+    assert record["runtime_messages"] == row["messages"][:2]
+    assert record["scorer_gold_messages"] == row["messages"]
+    assert record["runtime_visibility"]["full_messages_runtime_visible"] is False
+    assert record["runtime_visibility"]["scorer_gold_runtime_visible"] is False
+
+
+def test_toolsandbox_adapter_uses_runtime_messages_when_full_transcript_is_hidden() -> None:
+    from toolclaw.benchmarks.adapters import ToolSandboxAdapter
+
+    adapter = ToolSandboxAdapter()
+    sample = adapter._make_sample(
+        {
+            "name": "scenario_a",
+            "query": "Please add a contact.",
+            "messages": [
+                {"sender": "user", "recipient": "agent", "content": "Please add a contact."},
+                {"sender": "assistant", "recipient": "tool", "content": "leaked tool call"},
+            ],
+            "runtime_messages": [{"sender": "user", "recipient": "agent", "content": "Please add a contact."}],
+            "scorer_gold_messages": [
+                {"sender": "user", "recipient": "agent", "content": "Please add a contact."},
+                {"sender": "assistant", "recipient": "tool", "content": "leaked tool call"},
+            ],
+            "runtime_visibility": {"full_messages_runtime_visible": False, "scorer_gold_runtime_visible": False},
+            "tool_allow_list": ["add_contact"],
+            "candidate_tools": ["add_contact"],
+            "categories": ["single_tool"],
+            "milestones": [{"snapshot_constraint": "contact exists"}],
+        },
+        1,
+    )
+
+    task = adapter.to_eval_task(sample)
+
+    assert task["messages"] == [{"sender": "user", "recipient": "agent", "content": "Please add a contact."}]
+    assert task["metadata"]["messages"] == task["messages"]
+    assert "leaked tool call" not in str(task)
+
+
+def test_toolsandbox_core_export_validator_rejects_dry_run_and_accepts_executed_export() -> None:
+    module = _load_script("validate_toolsandbox_core_export.py")
+    row = {
+        "name": "scenario_a",
+        "query": "Please add a contact.",
+        "messages": [{"sender": "user", "recipient": "agent", "content": "Please add a contact."}],
+        "runtime_messages": [{"sender": "user", "recipient": "agent", "content": "Please add a contact."}],
+        "scorer_gold_messages": [
+            {"sender": "user", "recipient": "agent", "content": "Please add a contact."},
+            {"sender": "assistant", "recipient": "tool", "content": "tool call"},
+        ],
+        "runtime_visibility": {"full_messages_runtime_visible": False, "scorer_gold_runtime_visible": False},
+        "tool_allow_list": ["add_contact"],
+        "candidate_tools": ["add_contact"],
+        "milestones": [{"snapshot_constraint": "contact exists"}],
+        "result_summary": {"similarity": 1.0},
+        "metadata": {"trajectory_dir": "/tmp/traj", "result_summary_path": "/tmp/result_summary.json"},
+    }
+    dry_manifest = {
+        "dry_run": True,
+        "dataset_status": "dry_run_empty_export",
+        "core_export_is_evidence": False,
+        "result_summary_present": False,
+        "trajectories_present": False,
+        "export_row_count": 0,
+        "requires_execute_before_benchmark": True,
+        "full_trajectory_messages_runtime_visible": False,
+    }
+    executed_manifest = {
+        "dry_run": False,
+        "dataset_status": "executed_core_export",
+        "core_export_is_evidence": True,
+        "result_summary_present": True,
+        "trajectories_present": True,
+        "export_row_count": 1,
+        "requires_execute_before_benchmark": False,
+        "full_trajectory_messages_runtime_visible": False,
+    }
+    smoke_manifest = dict(executed_manifest, dataset_status="executed_core_smoke_export", core_export_is_evidence=False, requires_execute_before_benchmark=True)
+
+    dry_result = module.validate_core_export([], dry_manifest)
+    executed_result = module.validate_core_export([row], executed_manifest)
+    smoke_result = module.validate_core_export([row], smoke_manifest)
+    smoke_allowed_result = module.validate_core_export([row], smoke_manifest, allow_smoke=True)
+
+    assert dry_result["pipeline_valid"] is False
+    assert dry_result["freeze_ready"] is False
+    assert "dry_run_export_not_freeze_ready" in dry_result["errors"]
+    assert executed_result["pipeline_valid"] is True
+    assert executed_result["freeze_ready"] is True
+    assert smoke_result["pipeline_valid"] is False
+    assert smoke_result["freeze_ready"] is False
+    assert "limited_smoke_export_not_claim_evidence" in smoke_result["warnings"]
+    assert smoke_allowed_result["pipeline_valid"] is True
+    assert smoke_allowed_result["freeze_ready"] is False
+    assert "limited_smoke_export_not_claim_evidence" in smoke_allowed_result["warnings"]
