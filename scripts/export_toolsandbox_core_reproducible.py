@@ -20,6 +20,13 @@ DEFAULT_INVENTORY = ROOT_DIR / "data" / "toolsandbox_official_scenario_inventory
 DEFAULT_OFFICIAL_ROOT = ROOT_DIR / "data" / "external" / "ToolSandbox"
 DEFAULT_OUT_PREFIX = ROOT_DIR / "data" / "toolsandbox.official_core_reproducible"
 DEFAULT_OFFICIAL_OUTPUT_ROOT = ROOT_DIR / "outputs" / "toolsandbox_core_reproducible_official_runs"
+EXCLUSION_REASON_PRIORITY = [
+    "requires_external_api",
+    "not_python_native",
+    "missing_milestones",
+    "missing_tool_allow_list",
+    "official_scenario_unresolvable",
+]
 
 
 def _git_commit(path: Path) -> str:
@@ -63,6 +70,7 @@ def core_filter_rows(inventory: Mapping[str, Any], *, resolvable_names: set[str]
     selected: List[Dict[str, Any]] = []
     excluded: List[Dict[str, Any]] = []
     reason_counts: Counter[str] = Counter()
+    primary_reason_counts: Counter[str] = Counter()
     for row in rows:
         scenario_name = str(row.get("scenario_name") or row.get("name") or "")
         reasons: List[str] = []
@@ -81,6 +89,8 @@ def core_filter_rows(inventory: Mapping[str, Any], *, resolvable_names: set[str]
             reasons.append("official_scenario_unresolvable")
         if reasons:
             reason_counts.update(reasons)
+            primary_reason = next((reason for reason in EXCLUSION_REASON_PRIORITY if reason in reasons), "other")
+            primary_reason_counts[primary_reason] += 1
             excluded.append({
                 "scenario_name": scenario_name,
                 "excluded_reasons": reasons,
@@ -112,7 +122,9 @@ def core_filter_rows(inventory: Mapping[str, Any], *, resolvable_names: set[str]
         "limit": limit,
         "selected_scenarios": selected,
         "excluded_scenarios": excluded,
+        "excluded_reason_counting": "multi_label_non_exclusive",
         "excluded_reason_counts": dict(sorted(reason_counts.items())),
+        "primary_excluded_reason_counts": dict(sorted(primary_reason_counts.items())),
         "category_counts": dict(sorted(category_counts.items())),
     }
 
@@ -190,12 +202,15 @@ def build_manifest(
 ) -> Dict[str, Any]:
     run_ready = _run_dir_ready(run_dir)
     export_complete = (not dry_run) and run_ready and bool(export_rows)
+    dataset_status = "executed_core_export" if export_complete else "dry_run_empty_export" if dry_run else "incomplete_core_export"
     return {
         "version": "toolsandbox_official_core_reproducible",
         "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "toolclaw_commit": _git_commit(ROOT_DIR),
         "official_toolsandbox_commit": _git_commit(DEFAULT_OFFICIAL_ROOT),
         "dry_run": dry_run,
+        "dataset_status": dataset_status,
+        "requires_execute_before_benchmark": not export_complete,
         "run_mode": run_mode,
         "run_dir": str(run_dir.resolve()) if run_dir else "",
         "result_summary_present": bool(run_dir and (run_dir / "result_summary.json").exists()),

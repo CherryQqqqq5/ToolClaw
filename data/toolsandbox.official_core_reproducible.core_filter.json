@@ -17,6 +17,7 @@
   },
   "core_candidate_count": 405,
   "excluded_count": 627,
+  "excluded_reason_counting": "multi_label_non_exclusive",
   "excluded_reason_counts": {
     "missing_milestones": 208,
     "not_python_native": 523,
@@ -19141,6 +19142,10 @@
   "filter_policy": "requires_external_api=false, external_dependency_status=python_native, tool_allow_list present, milestone_count>0, official scenario resolvable",
   "inventory_count": 1032,
   "limit": null,
+  "primary_excluded_reason_counts": {
+    "missing_milestones": 104,
+    "requires_external_api": 523
+  },
   "selected_scenarios": [
     {
       "categories": [

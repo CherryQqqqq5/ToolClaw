@@ -551,9 +551,16 @@ def test_toolsandbox_core_reproducible_filter_excludes_external_and_unresolvable
     assert payload["inventory_count"] == 4
     assert payload["core_candidate_count"] == 1
     assert payload["selected_scenarios"][0]["scenario_name"] == "native_ok"
+    assert payload["excluded_reason_counting"] == "multi_label_non_exclusive"
     assert payload["excluded_reason_counts"]["requires_external_api"] == 1
     assert payload["excluded_reason_counts"]["missing_tool_allow_list"] == 1
     assert payload["excluded_reason_counts"]["official_scenario_unresolvable"] == 3
+    assert payload["primary_excluded_reason_counts"] == {
+        "missing_tool_allow_list": 1,
+        "official_scenario_unresolvable": 1,
+        "requires_external_api": 1,
+    }
+    assert sum(payload["primary_excluded_reason_counts"].values()) == payload["excluded_count"]
 
 
 def test_toolsandbox_core_reproducible_manifest_marks_dry_run_not_evidence() -> None:
@@ -568,6 +575,8 @@ def test_toolsandbox_core_reproducible_manifest_marks_dry_run_not_evidence() -> 
     )
 
     assert manifest["dry_run"] is True
+    assert manifest["dataset_status"] == "dry_run_empty_export"
+    assert manifest["requires_execute_before_benchmark"] is True
     assert manifest["core_export_is_evidence"] is False
     assert manifest["result_summary_present"] is False
     assert manifest["export_row_count"] == 0
@@ -590,6 +599,8 @@ def test_toolsandbox_core_reproducible_manifest_requires_run_artifacts_for_evide
     )
 
     assert manifest["core_export_is_evidence"] is True
+    assert manifest["dataset_status"] == "executed_core_export"
+    assert manifest["requires_execute_before_benchmark"] is False
     assert manifest["result_summary_present"] is True
     assert manifest["trajectories_present"] is True
     assert manifest["export_row_count"] == 1
