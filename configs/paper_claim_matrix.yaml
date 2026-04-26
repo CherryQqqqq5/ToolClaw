@@ -43,7 +43,7 @@
       "status": "headline_not_supported_mechanism_only",
       "claim_strength": "limitation",
       "benchmark_suite": "bfcl_fc_core",
-      "claim": "BFCL fc_core is now paper-safe after official evaluator dependency preflight, but current full formal results do not support a headline planner/binder lift: a2_planner remains below a0_baseline/a1_recovery on official success, tool selection, argument correctness, and structure. BFCL should be used as mechanism evidence only until a future formal run shows stable positive separation.",
+      "claim": "BFCL fc_core is now paper-safe after official evaluator dependency preflight, but current full formal results do not support a planner/binder headline lift: a2_planner remains below a0_baseline/a1_recovery on official success, tool selection, argument correctness, and structure. BFCL should be used as mechanism evidence only until a future formal run shows stable positive separation.",
       "metrics": {
         "primary": [
           "official_bfcl_eval_success",
@@ -63,10 +63,10 @@
       }
     },
     "planner_structural_mechanism": {
-      "status": "supported_current_evidence_f2_v2",
+      "status": "supported_current_evidence_f2_plus_heldout",
       "claim_strength": "mechanism_supporting",
       "benchmark_suite": "toolsandbox_planner_sensitive_v2_f2",
-      "claim": "HTGP provides planner-sensitive structural mechanism evidence across all four V2 structural families, with structured observability, no hint or ordered-structure leakage, known bypass telemetry, and controlled cost. The claim remains mechanism-level rather than headline because external exact function-calling transfer, especially BFCL, is not yet positive.",
+      "claim": "HTGP provides planner-sensitive structural mechanism evidence. The canonical V2 F2 bundle shows 4/4-family structural separation, and the held-out V2 robustness suite shows the mechanism transfers under paraphrase, renamed tools, shuffled candidates, and distractor stress with positive separation in 3/4 families. The claim remains mechanism-level rather than headline because external exact function-calling transfer, especially BFCL, is not positive.",
       "metrics": {
         "primary": [
           "a2_minus_a1_success_delta",
@@ -82,9 +82,29 @@
           "required_state_satisfaction_rate",
           "ordering_failure_rate",
           "state_dependency_failure_rate",
-          "steps_exceed_ideal_rate"
+          "steps_exceed_ideal_rate",
+          "heldout_family_positive_count",
+          "heldout_paired_wins_losses_ties",
+          "heldout_ordered_gold_structure_leakage_task_count"
         ]
-      }
+      },
+      "heldout_summary": {
+        "suite": "toolsandbox_planner_sensitive_v2_heldout",
+        "source_task_count": 80,
+        "family_positive_count": 3,
+        "a2_minus_a1_success_delta": 0.4375,
+        "paired_wins": 105,
+        "paired_losses": 0,
+        "paired_ties": 135,
+        "leakage_task_count": 0,
+        "ordered_gold_structure_leakage_task_count": 0,
+        "planner_bypass_known_rate": 1.0,
+        "known_row_planner_bypass_rate": 0.0,
+        "remaining_limitation": "branch_select_execute has 0.0 held-out strict-success delta; held-out supports mechanism robustness, not headline or universal planner generalization"
+      },
+      "supporting_benchmark_suites": [
+        "toolsandbox_planner_sensitive_v2_heldout"
+      ]
     },
     "bfcl_agentic_supporting": {
       "status": "supporting_only",
@@ -564,7 +584,7 @@
       }
     },
     "toolsandbox_planner_sensitive_v2_heldout": {
-      "status": "heldout_robustness_candidate",
+      "status": "formal_heldout_supported_mechanism_robustness",
       "prepare_script": "scripts/derive_toolsandbox_planner_sensitive.py --version v2_heldout",
       "runner": "scripts/run_toolsandbox_bench.py",
       "score_script": "scripts/score_toolsandbox_planner_sensitive.py",
@@ -579,9 +599,28 @@
       "claim_ids": [
         "planner_structural_mechanism"
       ],
-      "claim_strength": "mechanism_robustness_candidate",
+      "claim_strength": "mechanism_robustness_supporting",
       "paper_role": "planner_mechanism_heldout_robustness",
-      "promotion_gate": "Held-out V2 robustness can only support mechanism robustness, never headline. Require >=60 source tasks, >=3 positive families, a2-a1 strict success delta >=20pp, paired wins > losses, planner_bypass_known_rate >=90%, known-row bypass <=25%, no ordered gold structure leakage, and no major cost explosion versus V2 F2 baseline."
+      "promotion_gate": "Held-out V2 robustness supports mechanism robustness only, never headline. Current formal bundle passes the held-out robustness gate: 80 source tasks, 3/4 positive families, a2-a1 strict success delta 0.4375, paired wins/losses/ties 105/0/135, planner_bypass_known_rate 1.0, known-row bypass 0.0, no ordered gold structure leakage, and no major cost explosion. Boundary: branch_select_execute remains unresolved, so this is not complete held-out family coverage.",
+      "formal_bundle": "outputs/paper_suite/toolsandbox_planner_sensitive_v2_heldout",
+      "heldout_summary": {
+        "source_task_count": 80,
+        "family_positive_count": 3,
+        "a2_minus_a1_success_delta": 0.4375,
+        "paired_wins": 105,
+        "paired_losses": 0,
+        "paired_ties": 135,
+        "leakage_task_count": 0,
+        "ordered_gold_structure_leakage_task_count": 0,
+        "planner_bypass_known_rate": 1.0,
+        "known_row_planner_bypass_rate": 0.0,
+        "family_deltas": {
+          "retrieve_summarize_write": 0.75,
+          "check_modify_verify": 0.75,
+          "multi_source_merge_write": 0.25,
+          "branch_select_execute": 0.0
+        }
+      }
     },
     "toolsandbox_planner_sensitive_v2_f2": {
       "status": "formal_f2_supported_mechanism_supporting",

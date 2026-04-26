@@ -37,12 +37,13 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
     - `repair_semantic_positive`: trace-backed official tasks with human-reviewed useful repair signal
     - `probe_only_control`: contract/probe caveat tasks that must not be counted as semantic repair
 
-- `toolsandbox_planner_sensitive_v2_f2`
-  - role: mechanism-supporting HTGP structural planner suite
+- `toolsandbox_planner_sensitive_v2_f2` and `toolsandbox_planner_sensitive_v2_heldout`
+  - role: mechanism-supporting HTGP structural planner suite plus held-out robustness check
   - current claim: `planner_structural_mechanism`
-  - result bundle: `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal`
-  - reason: after capability-vocabulary, instance-graph, binder, runtime mock, structured-observability, and multi-source execution repair, the 42-task x 3-run f2 formal bundle passes mechanism-supporting gates: `a2_minus_a1_success_delta = 1.0`, paired wins/losses/ties `126/0/0`, no hint or ordered-gold leakage, known bypass telemetry, controlled cost, and 4/4 positive families
-  - boundary: this supports planner structural mechanism evidence, not a headline claim; BFCL exact function-calling transfer remains negative and must not be folded into this claim
+  - primary result bundle: `outputs/paper_final_freeze_20260424/planner_sensitive_v2_f2_formal`
+  - held-out result bundle: `outputs/paper_suite/toolsandbox_planner_sensitive_v2_heldout`
+  - reason: the 42-task x 3-run F2 formal bundle remains the canonical strong mechanism evidence with `a2_minus_a1_success_delta = 1.0`, paired wins/losses/ties `126/0/0`, no hint or ordered-gold leakage, known bypass telemetry, controlled cost, and 4/4 positive families. The 80-task held-out suite adds robustness support under paraphrased goals, renamed tools, shuffled candidates, and strong distractors: `a2_minus_a1_success_delta = 0.4375`, paired wins/losses/ties `105/0/135`, no leakage, and 3/4 positive families.
+  - boundary: this supports planner structural mechanism evidence and held-out robustness, not a headline or general planner claim; BFCL exact function-calling transfer remains negative and must not be folded into this claim
 
 - `bfcl_fc_core`
   - role: planner / binder / parameter correctness limitation benchmark, with a completed guarded coverage-funnel diagnostic
@@ -75,7 +76,7 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
 
 - ToolSandbox official should stay the main headline benchmark.
 - ToolSandbox semantic-usefulness should be treated as a targeted mechanism claim anchored to `toolsandbox_semantic_repair_official_v1`, not a whole-benchmark headline claim.
-- Planner should not be sold as a ToolSandbox official headline lift. The dedicated `toolsandbox_planner_sensitive_v2_f2` bundle now provides mechanism-supporting HTGP structural evidence across all four V2 structural families, while BFCL exact function-calling transfer remains a limitation. The guarded BFCL adapter can only become narrow supporting evidence after full-suite non-regression gates and the pre-registered baseline-missing-required slice gates pass.
+- Planner should not be sold as a ToolSandbox official headline lift. The dedicated `toolsandbox_planner_sensitive_v2_f2` bundle remains the canonical mechanism evidence across all four V2 structural families, and `toolsandbox_planner_sensitive_v2_heldout` adds a robustness check with positive separation in 3/4 held-out families under paraphrase, tool renaming, shuffled candidates, and distractor stress. BFCL exact function-calling transfer remains a limitation. The guarded BFCL adapter can only become narrow supporting evidence after full-suite non-regression gates and the pre-registered baseline-missing-required slice gates pass.
 - Reuse should stay pending and scoped to exact/matched-signature cost reduction until a committed persistent-reuse v2 formal bundle demonstrates cost/headroom gains.
 - ToolGym is best treated as a later supplementary stress test, not the main paper anchor.
 - WebArena, WorkArena, and OSWorld are strong benchmarks, but they move the paper toward browser or computer-use agents rather than workflow intelligence over tool calling.
@@ -187,7 +188,7 @@ BFCL `fc_core` protocol and the official-eval bridge are implemented. A full for
   - [outputs/paper_suite_formal/bfcl_fc_core/official_scoreboard.json](../outputs/paper_suite_formal/bfcl_fc_core/official_scoreboard.json)
   - [outputs/paper_suite_formal/bfcl_fc_core/toolclaw_diagnostics.json](../outputs/paper_suite_formal/bfcl_fc_core/toolclaw_diagnostics.json)
   - [outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json](../outputs/paper_suite_formal/bfcl_fc_core/claim_summary.json)
-- The current BFCL full formal bundle is paper-safe, but it does not support a headline planner/binder lift.
+- The current BFCL full formal bundle is paper-safe, but it does not support a planner/binder headline lift.
 - Diagnostic slices are frozen at:
   - [outputs/paper_suite_formal/bfcl_fc_core/bfcl_failure_slice_summary.json](../outputs/paper_suite_formal/bfcl_fc_core/bfcl_failure_slice_summary.json)
   - [outputs/paper_suite_formal/bfcl_fc_core/bfcl_failure_slice_summary.md](../outputs/paper_suite_formal/bfcl_fc_core/bfcl_failure_slice_summary.md)
