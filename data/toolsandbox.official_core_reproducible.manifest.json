@@ -1,10 +1,12 @@
 {
+  "attempted_count": 0,
   "claim_boundary": "dry-run and smoke exports are pipeline validation only; no headline or reuse claim is promoted by this artifact",
   "core_candidate_count": 405,
   "core_export_is_evidence": false,
   "core_filter_path": "/cephfs/qiuyn/ToolClaw/data/toolsandbox.official_core_reproducible.core_filter.json",
   "dataset_status": "dry_run_empty_export",
   "dry_run": true,
+  "eligible_core_candidate_count": 405,
   "execution_environment": {
     "networkx_version": "",
     "openai_api_key_recorded": false,
@@ -19,18 +21,26 @@
   },
   "export_path": "/cephfs/qiuyn/ToolClaw/data/toolsandbox.official_core_reproducible.json",
   "export_row_count": 0,
+  "failed_count": 0,
+  "failure_reason_counts": {
+    "missing_from_result_summary": 405
+  },
   "full_trajectory_messages_runtime_visible": false,
-  "generated_at_utc": "2026-04-26T06:27:40Z",
+  "generated_at_utc": "2026-04-26T06:39:23Z",
   "inventory_count": 1032,
+  "limit_applied": false,
   "manifest_path": "/cephfs/qiuyn/ToolClaw/data/toolsandbox.official_core_reproducible.manifest.json",
   "next_step": "use a confirmed core export to re-derive reuse v3 candidates; do not run reuse formal before pilot-confirming exact headroom families",
   "official_toolsandbox_commit": "165848b9a78cead7ca7fe7c89c688b58e6501219",
   "requires_execute_before_benchmark": true,
   "result_summary_present": false,
+  "result_summary_scenario_count": 0,
   "run_dir": "",
   "run_mode": "new",
   "runtime_visibility_policy": "runtime_messages_only; full official transcript is scorer/provenance-only",
-  "toolclaw_commit": "ff579b6e00e165f9e2d0be3dabc802b35f06ebff",
+  "selected_count_after_limit": 405,
+  "toolclaw_commit": "c2d6c81bd2ba81336c818f5e01ff1237f8c84081",
   "trajectories_present": false,
+  "trajectory_count": 0,
   "version": "toolsandbox_official_core_reproducible"
 }

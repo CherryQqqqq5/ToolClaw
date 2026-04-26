@@ -621,7 +621,7 @@ def test_toolsandbox_core_reproducible_rejects_missing_execution_python(tmp_path
 def test_toolsandbox_core_reproducible_manifest_marks_dry_run_not_evidence() -> None:
     module = _load_script("export_toolsandbox_core_reproducible.py")
     manifest = module.build_manifest(
-        filter_payload={"inventory_count": 4, "core_candidate_count": 1},
+        filter_payload={"inventory_count": 4, "core_candidate_count": 1, "eligible_core_candidate_count": 1, "selected_count_after_limit": 1},
         export_rows=[],
         dry_run=True,
         run_dir=None,
@@ -644,10 +644,14 @@ def test_toolsandbox_core_reproducible_manifest_requires_run_artifacts_for_evide
     module = _load_script("export_toolsandbox_core_reproducible.py")
     run_dir = tmp_path / "official_run"
     (run_dir / "trajectories").mkdir(parents=True)
-    (run_dir / "result_summary.json").write_text("{}", encoding="utf-8")
+    (run_dir / "result_summary.json").write_text(
+        '{"per_scenario_results": [{"name": "native_ok"}]}',
+        encoding="utf-8",
+    )
+    (run_dir / "trajectories" / "native_ok").mkdir()
 
     manifest = module.build_manifest(
-        filter_payload={"inventory_count": 4, "core_candidate_count": 1},
+        filter_payload={"inventory_count": 4, "core_candidate_count": 1, "eligible_core_candidate_count": 1, "selected_count_after_limit": 1},
         export_rows=[{"name": "native_ok"}],
         dry_run=False,
         run_dir=run_dir,
@@ -663,14 +667,50 @@ def test_toolsandbox_core_reproducible_manifest_requires_run_artifacts_for_evide
     assert manifest["export_row_count"] == 1
 
 
+def test_toolsandbox_core_reproducible_manifest_keeps_partial_core_non_evidence(tmp_path) -> None:
+    module = _load_script("export_toolsandbox_core_reproducible.py")
+    run_dir = tmp_path / "official_run"
+    (run_dir / "trajectories" / "native_ok").mkdir(parents=True)
+    (run_dir / "result_summary.json").write_text(
+        '{"per_scenario_results": [{"name": "native_ok"}, {"name": "native_missing"}]}',
+        encoding="utf-8",
+    )
+
+    manifest = module.build_manifest(
+        filter_payload={
+            "inventory_count": 4,
+            "core_candidate_count": 2,
+            "eligible_core_candidate_count": 2,
+            "selected_count_after_limit": 2,
+            "limit_applied": False,
+        },
+        export_rows=[{"name": "native_ok"}],
+        dry_run=False,
+        run_dir=run_dir,
+        run_mode="new",
+        out_prefix=module.ROOT_DIR / "data" / "toolsandbox.official_core_reproducible",
+        selected_names=["native_ok", "native_missing"],
+    )
+
+    assert manifest["dataset_status"] == "incomplete_core_export"
+    assert manifest["core_export_is_evidence"] is False
+    assert manifest["attempted_count"] == 2
+    assert manifest["failed_count"] == 1
+    assert manifest["failure_reason_counts"] == {"missing_from_normalized_export": 1}
+
+
 def test_toolsandbox_core_reproducible_manifest_marks_limited_execute_as_smoke(tmp_path) -> None:
     module = _load_script("export_toolsandbox_core_reproducible.py")
     run_dir = tmp_path / "official_run"
     (run_dir / "trajectories").mkdir(parents=True)
-    (run_dir / "result_summary.json").write_text("{}", encoding="utf-8")
+    (run_dir / "result_summary.json").write_text(
+        '{"per_scenario_results": [{"name": "native_ok"}]}',
+        encoding="utf-8",
+    )
+    (run_dir / "trajectories" / "native_ok").mkdir()
 
     manifest = module.build_manifest(
-        filter_payload={"inventory_count": 4, "core_candidate_count": 3, "limit_applied": True},
+        filter_payload={"inventory_count": 4, "core_candidate_count": 3, "eligible_core_candidate_count": 3, "selected_count_after_limit": 1, "limit_applied": True},
         export_rows=[{"name": "native_ok"}],
         dry_run=False,
         run_dir=run_dir,
@@ -787,11 +827,20 @@ def test_toolsandbox_core_export_validator_rejects_dry_run_and_accepts_executed_
         "export_row_count": 1,
         "requires_execute_before_benchmark": False,
         "full_trajectory_messages_runtime_visible": False,
+        "limit_applied": False,
+        "eligible_core_candidate_count": 1,
+        "selected_count_after_limit": 1,
+        "attempted_count": 1,
+        "failed_count": 0,
+        "trajectory_count": 1,
+        "result_summary_scenario_count": 1,
     }
-    smoke_manifest = dict(executed_manifest, dataset_status="executed_core_smoke_export", core_export_is_evidence=False, requires_execute_before_benchmark=True)
+    partial_manifest = dict(executed_manifest, failed_count=1, core_export_is_evidence=True)
+    smoke_manifest = dict(executed_manifest, dataset_status="executed_core_smoke_export", core_export_is_evidence=False, requires_execute_before_benchmark=True, limit_applied=True)
 
     dry_result = module.validate_core_export([], dry_manifest)
     executed_result = module.validate_core_export([row], executed_manifest)
+    partial_result = module.validate_core_export([row], partial_manifest)
     smoke_result = module.validate_core_export([row], smoke_manifest)
     smoke_allowed_result = module.validate_core_export([row], smoke_manifest, allow_smoke=True)
 
@@ -800,6 +849,8 @@ def test_toolsandbox_core_export_validator_rejects_dry_run_and_accepts_executed_
     assert "dry_run_export_not_freeze_ready" in dry_result["errors"]
     assert executed_result["pipeline_valid"] is True
     assert executed_result["freeze_ready"] is True
+    assert partial_result["pipeline_valid"] is False
+    assert "failed_count_must_be_zero" in partial_result["errors"]
     assert smoke_result["pipeline_valid"] is False
     assert smoke_result["freeze_ready"] is False
     assert "limited_smoke_export_not_claim_evidence" in smoke_result["warnings"]

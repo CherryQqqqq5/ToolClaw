@@ -301,6 +301,50 @@ def _run_dir_ready(run_dir: Path | None) -> bool:
     return bool(run_dir and (run_dir / "result_summary.json").exists() and (run_dir / "trajectories").exists())
 
 
+def _result_summary_rows(run_dir: Path | None) -> List[Dict[str, Any]]:
+    if not run_dir:
+        return []
+    path = run_dir / "result_summary.json"
+    if not path.exists():
+        return []
+    try:
+        payload = _read_json(path)
+    except Exception:
+        return []
+    rows = payload.get("per_scenario_results") if isinstance(payload, dict) else None
+    return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+
+
+def _trajectory_count(run_dir: Path | None) -> int:
+    if not run_dir:
+        return 0
+    path = run_dir / "trajectories"
+    if not path.exists():
+        return 0
+    return sum(1 for child in path.iterdir() if child.is_dir())
+
+
+def _failure_reason_counts(run_dir: Path | None, export_rows: List[Dict[str, Any]], selected_names: Sequence[str]) -> Dict[str, int]:
+    if not selected_names:
+        return {}
+    exported = {str(row.get("name") or row.get("sample_id") or "") for row in export_rows if isinstance(row, dict)}
+    summary_by_name = {str(row.get("name") or row.get("scenario_name") or ""): row for row in _result_summary_rows(run_dir)}
+    counts: Counter[str] = Counter()
+    for name in selected_names:
+        if name in exported:
+            continue
+        result_row = summary_by_name.get(name)
+        if result_row is None:
+            counts["missing_from_result_summary"] += 1
+            continue
+        exception_type = str(result_row.get("exception_type") or result_row.get("error_type") or "").strip()
+        if exception_type:
+            counts[f"official_exception:{exception_type}"] += 1
+        else:
+            counts["missing_from_normalized_export"] += 1
+    return dict(sorted(counts.items()))
+
+
 def artifact_paths(out_prefix: Path) -> Dict[str, Path]:
     base = str(out_prefix)
     return {
@@ -319,17 +363,37 @@ def build_manifest(
     run_mode: str,
     out_prefix: Path,
     toolsandbox_python: Path | None = None,
+    selected_names: Sequence[str] | None = None,
 ) -> Dict[str, Any]:
     run_ready = _run_dir_ready(run_dir)
-    export_complete = (not dry_run) and run_ready and bool(export_rows)
     limited_export = bool(filter_payload.get("limit_applied"))
-    core_export_is_evidence = export_complete and not limited_export
+    eligible_core_candidate_count = int(filter_payload.get("eligible_core_candidate_count") or filter_payload.get("core_candidate_count") or 0)
+    selected_count_after_limit = int(filter_payload.get("selected_count_after_limit") or 0)
+    attempted_count = selected_count_after_limit if not dry_run else 0
+    result_summary_scenario_count = len(_result_summary_rows(run_dir))
+    trajectory_count = _trajectory_count(run_dir)
+    failed_count = max(0, attempted_count - len(export_rows))
+    failure_reason_counts = _failure_reason_counts(run_dir, export_rows, list(selected_names or []))
+    export_complete = (not dry_run) and run_ready and bool(export_rows)
+    strict_complete = (
+        export_complete
+        and not limited_export
+        and eligible_core_candidate_count > 0
+        and selected_count_after_limit == eligible_core_candidate_count
+        and attempted_count == eligible_core_candidate_count
+        and result_summary_scenario_count == attempted_count
+        and trajectory_count == len(export_rows)
+        and failed_count == 0
+    )
+    core_export_is_evidence = strict_complete
     if dry_run:
         dataset_status = "dry_run_empty_export"
     elif not export_complete:
         dataset_status = "incomplete_core_export"
     elif limited_export:
         dataset_status = "executed_core_smoke_export"
+    elif not strict_complete:
+        dataset_status = "incomplete_core_export"
     else:
         dataset_status = "executed_core_export"
     return {
@@ -349,7 +413,15 @@ def build_manifest(
         "manifest_path": str(artifact_paths(out_prefix)["manifest"]),
         "inventory_count": filter_payload.get("inventory_count", 0),
         "core_candidate_count": filter_payload.get("core_candidate_count", 0),
+        "eligible_core_candidate_count": eligible_core_candidate_count,
+        "selected_count_after_limit": selected_count_after_limit,
+        "limit_applied": limited_export,
+        "attempted_count": attempted_count,
+        "result_summary_scenario_count": result_summary_scenario_count,
+        "trajectory_count": trajectory_count,
         "export_row_count": len(export_rows),
+        "failed_count": failed_count,
+        "failure_reason_counts": failure_reason_counts,
         "core_export_is_evidence": core_export_is_evidence,
         "full_trajectory_messages_runtime_visible": False,
         "runtime_visibility_policy": "runtime_messages_only; full official transcript is scorer/provenance-only",
@@ -418,7 +490,7 @@ def main() -> None:
     else:
         _write_json(export_path, [])
     _write_json(paths["filter"], filter_payload)
-    _write_json(paths["manifest"], build_manifest(filter_payload=filter_payload, export_rows=export_rows, dry_run=dry_run, run_dir=run_dir, run_mode=args.run_dir, out_prefix=out_prefix, toolsandbox_python=toolsandbox_python))
+    _write_json(paths["manifest"], build_manifest(filter_payload=filter_payload, export_rows=export_rows, dry_run=dry_run, run_dir=run_dir, run_mode=args.run_dir, out_prefix=out_prefix, toolsandbox_python=toolsandbox_python, selected_names=selected_names))
     print(f"wrote: {paths['filter']}")
     print(f"wrote: {export_path}")
     print(f"wrote: {paths['manifest']}")

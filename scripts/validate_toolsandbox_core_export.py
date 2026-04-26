@@ -59,16 +59,39 @@ def validate_core_export(export_rows: Any, manifest: Mapping[str, Any], *, allow
     export_row_count = int(manifest.get("export_row_count") or 0)
     requires_execute = bool(manifest.get("requires_execute_before_benchmark"))
     runtime_visible = bool(manifest.get("full_trajectory_messages_runtime_visible"))
+    limit_applied = bool(manifest.get("limit_applied"))
+    eligible_core_candidate_count = int(manifest.get("eligible_core_candidate_count") or manifest.get("core_candidate_count") or 0)
+    selected_count_after_limit = int(manifest.get("selected_count_after_limit") or 0)
+    attempted_count = int(manifest.get("attempted_count") or 0)
+    failed_count = int(manifest.get("failed_count") or 0)
+    trajectory_count = int(manifest.get("trajectory_count") or 0)
+    result_summary_scenario_count = int(manifest.get("result_summary_scenario_count") or 0)
 
     if dry_run:
         errors.append("dry_run_export_not_freeze_ready")
     if runtime_visible:
         errors.append("full_trajectory_messages_marked_runtime_visible")
     if core_export_is_evidence:
+        if dry_run:
+            errors.append("evidence_export_must_not_be_dry_run")
         if dataset_status != "executed_core_export":
             errors.append("evidence_export_must_have_executed_core_export_status")
         if requires_execute:
             errors.append("evidence_export_must_not_require_execute_before_benchmark")
+        if limit_applied:
+            errors.append("evidence_export_must_not_be_limited")
+        if eligible_core_candidate_count <= 0:
+            errors.append("evidence_export_missing_eligible_core_candidate_count")
+        if selected_count_after_limit != eligible_core_candidate_count:
+            errors.append("selected_count_after_limit_must_equal_eligible_core_candidate_count")
+        if attempted_count != eligible_core_candidate_count:
+            errors.append("attempted_count_must_equal_eligible_core_candidate_count")
+        if failed_count != 0:
+            errors.append("failed_count_must_be_zero")
+        if trajectory_count != export_row_count:
+            errors.append("trajectory_count_must_equal_export_row_count")
+        if result_summary_scenario_count != attempted_count:
+            errors.append("result_summary_scenario_count_must_equal_attempted_count")
     else:
         warnings.append("core_export_is_not_evidence")
     if dataset_status == "executed_core_smoke_export":
