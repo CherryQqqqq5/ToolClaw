@@ -372,3 +372,90 @@ def test_reuse_scorer_v3_transfer_control_does_not_inflate_exact_metrics() -> No
     assert summary["warm_exact_reuse_hit_rate"] == 0.0
     assert summary["transfer_control_summary"]["family_count"] == 1
     assert summary["overall_summary"]["by_system"]["a4_reuse_warm"]["transfer_reuse_hit_rate"] == 1.0
+
+def test_toolsandbox_official_inventory_imports_source_and_external_flags() -> None:
+    module = _load_script("inventory_toolsandbox_official_scenarios.py")
+
+    inventory = module.build_inventory()
+
+    assert inventory["inventory_is_evidence"] is False
+    assert inventory["scenario_count"] >= 100
+    assert inventory["requires_external_api_count"] > 0
+    assert "search_weather_around_lat_lon" in inventory["rapidapi_tool_names"]
+    assert inventory["category_counts"]["STATE_DEPENDENCY"] > 0
+    assert any(row.get("initial_user_query") for row in inventory["scenarios"])
+    assert any(row.get("scenario_source_file") for row in inventory["scenarios"])
+
+
+def test_toolsandbox_coverage_ledger_tracks_export_and_external_dependency() -> None:
+    module = _load_script("inventory_toolsandbox_official_scenarios.py")
+    inventory = {
+        "source_commit": "official-sha",
+        "scenarios": [
+            {
+                "scenario_name": "included_native",
+                "categories": ["SINGLE_TOOL_CALL"],
+                "tool_allow_list": ["add_contact"],
+                "tool_augmentation_list": [],
+                "requires_external_api": False,
+                "external_dependency_status": "python_native",
+                "rapidapi_or_external_api_reason": "python_native_or_local_tools",
+            },
+            {
+                "scenario_name": "missing_rapidapi",
+                "categories": ["STATE_DEPENDENCY"],
+                "tool_allow_list": ["search_weather_around_lat_lon"],
+                "tool_augmentation_list": [],
+                "requires_external_api": True,
+                "external_dependency_status": "rapidapi",
+                "rapidapi_or_external_api_reason": "rapidapi_backed_tools:search_weather_around_lat_lon",
+            },
+        ],
+    }
+    frozen_rows = [
+        {
+            "name": "included_native",
+            "metadata": {"trajectory_dir": "traj/included_native", "result_summary_path": "result_summary.json"},
+            "result_summary": {"traceback": None, "exception_type": None},
+        },
+        {"name": "unmatched_legacy_row", "metadata": {}},
+    ]
+
+    ledger = module.build_coverage_ledger(inventory, frozen_rows)
+
+    assert ledger["manifest"]["inventory_count"] == 2
+    assert ledger["manifest"]["frozen_export_count"] == 2
+    assert ledger["manifest"]["included_in_frozen_export_count"] == 1
+    assert ledger["manifest"]["excluded_from_frozen_export_count"] == 1
+    assert ledger["manifest"]["coverage_ledger_is_evidence"] is False
+    missing = next(row for row in ledger["scenarios"] if row["scenario_name"] == "missing_rapidapi")
+    assert missing["excluded_reason"] == "external_api_or_not_in_legacy_frozen_export"
+    assert missing["requires_external_api"] is True
+    assert ledger["unmatched_frozen_export_rows"][0]["name"] == "unmatched_legacy_row"
+
+
+def test_toolsandbox_coverage_doc_warns_legacy_subset_not_complete() -> None:
+    module = _load_script("inventory_toolsandbox_official_scenarios.py")
+    inventory = {"scenarios": []}
+    ledger = {
+        "manifest": {
+            "inventory_count": 2,
+            "frozen_export_count": 1,
+            "included_in_frozen_export_count": 1,
+            "excluded_from_frozen_export_count": 1,
+            "coverage_rate": 0.5,
+            "requires_external_api_count": 1,
+            "unmatched_frozen_export_row_count": 0,
+        },
+        "scenarios": [
+            {"scenario_name": "a", "categories": ["SINGLE_TOOL_CALL"], "included_in_frozen_export": True, "requires_external_api": False},
+            {"scenario_name": "b", "categories": ["STATE_DEPENDENCY"], "included_in_frozen_export": False, "requires_external_api": True, "rapidapi_or_external_api_reason": "rapidapi_backed_tools:search_stock"},
+        ],
+    }
+
+    doc = module.render_coverage_doc(inventory, ledger)
+
+    assert "not experimental evidence" in doc
+    assert "Do not call the current frozen export a complete official ToolSandbox benchmark" in doc
+    assert "legacy frozen official-run subset" in doc
+    assert "rapidapi_backed_tools:search_stock" in doc

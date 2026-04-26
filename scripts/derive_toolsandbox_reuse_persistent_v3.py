@@ -215,6 +215,12 @@ def _candidate_row(pass1: Dict[str, Any], pass2: Dict[str, Any], *, family_id: s
 
 
 def load_official_inventory(official_root: Path = OFFICIAL_ROOT) -> Dict[str, Any]:
+    try:
+        from inventory_toolsandbox_official_scenarios import build_inventory as _build_inventory
+
+        return _build_inventory(official_root)
+    except Exception:
+        pass
     python_bin = official_root / ".venv" / "bin" / "python"
     if not python_bin.exists():
         raise FileNotFoundError(f"official ToolSandbox python not found: {python_bin}")
