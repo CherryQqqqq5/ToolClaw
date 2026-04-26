@@ -459,3 +459,77 @@ def test_toolsandbox_coverage_doc_warns_legacy_subset_not_complete() -> None:
     assert "Do not call the current frozen export a complete official ToolSandbox benchmark" in doc
     assert "legacy frozen official-run subset" in doc
     assert "rapidapi_backed_tools:search_stock" in doc
+
+def test_reuse_v3_candidate_rejection_audit_counts_buckets() -> None:
+    module = _load_script("audit_toolsandbox_reuse_v3_candidates.py")
+    inventory = {"scenario_count": 4, "scenarios": []}
+    ledger = {
+        "scenarios": [
+            {"scenario_name": "included_a", "included_in_frozen_export": True, "requires_external_api": False},
+            {"scenario_name": "included_b", "included_in_frozen_export": True, "requires_external_api": False},
+            {"scenario_name": "external_missing", "included_in_frozen_export": False, "requires_external_api": True, "rapidapi_or_external_api_reason": "rapidapi_backed_tools:search_stock"},
+            {"scenario_name": "native_missing", "included_in_frozen_export": False, "requires_external_api": False},
+        ],
+        "unmatched_frozen_export_rows": [],
+    }
+    frozen_rows = [
+        {"name": "included_a", "tool_allow_list": ["tool.a"], "categories": ["STATE_DEPENDENCY", "MULTIPLE_TOOL_CALL"], "result_summary": {"success": True}},
+        {"name": "included_b", "tool_allow_list": ["tool.a"], "categories": ["STATE_DEPENDENCY", "MULTIPLE_TOOL_CALL"], "result_summary": {"success": True}},
+        {"name": "singleton", "tool_allow_list": ["tool.b"], "categories": ["SINGLE_TOOL_CALL"], "result_summary": {"success": True}},
+        {"name": "no_signature", "tool_allow_list": [], "categories": ["SINGLE_TOOL_CALL"], "result_summary": {}},
+    ]
+    candidates = [
+        {"family_id": "exact", "claim_scope": "exact_match_cost", "claim_inclusion": False, "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation", "signature_key": "sig"},
+        {"family_id": "control", "claim_scope": "control_no_headroom", "claim_inclusion": False, "signature_key": "sig2"},
+        {"family_id": "transfer", "claim_scope": "transfer_control", "claim_inclusion": False, "pair_type": "same_pattern_transfer", "signature_key": "sig3"},
+    ]
+
+    audit = module.build_audit(
+        inventory=inventory,
+        ledger=ledger,
+        frozen_rows=frozen_rows,
+        candidates=candidates,
+        final_rows=[],
+        candidates_manifest={"family_count": 3, "potential_exact_candidate_count": 1},
+        final_manifest={"formal_source_status": "awaiting_pilot_confirmation", "statistical_claim_allowed": False},
+    )
+
+    assert audit["audit_is_evidence"] is False
+    assert audit["summary"]["inventory_count"] == 4
+    assert audit["summary"]["candidate_family_count"] == 3
+    assert audit["summary"]["selected_exact_candidates"] == 1
+    assert audit["summary"]["selected_no_headroom_controls"] == 1
+    assert audit["summary"]["selected_transfer_controls"] == 1
+    assert audit["summary"]["final_formal_family_count"] == 0
+    assert audit["rejection_bucket_counts"]["external_api_only_no_trace"] == 1
+    assert audit["rejection_bucket_counts"]["rejected_no_headroom_static"] == 1
+    assert audit["rejection_bucket_counts"]["transfer_only"] == 1
+    assert audit["rejection_bucket_counts"]["awaiting_pilot"] == 1
+    assert audit["rejection_bucket_counts"]["final_source_empty_pending_pilot"] == 1
+    assert audit["gate_gaps"]["potential_exact_candidate_gap_before_pilot"] == 11
+
+
+def test_reuse_v3_candidate_rejection_markdown_keeps_claim_pending() -> None:
+    module = _load_script("audit_toolsandbox_reuse_v3_candidates.py")
+    audit = {
+        "summary": {
+            "inventory_count": 1032,
+            "frozen_export_count": 88,
+            "matched_frozen_rows": 88,
+            "candidate_family_count": 34,
+            "selected_exact_candidates": 7,
+            "selected_no_headroom_controls": 26,
+            "selected_transfer_controls": 1,
+            "final_formal_family_count": 0,
+            "formal_source_status": "awaiting_pilot_confirmation",
+        },
+        "rejection_bucket_counts": {"awaiting_pilot": 7, "rejected_no_headroom_static": 26},
+        "gate_gaps": {"final_exact_claim_family_gap": 12, "pilot_confirmed_headroom_gap": 10},
+    }
+
+    md = module.render_markdown(audit)
+
+    assert "not benchmark evidence" in md
+    assert "final formal families: `0`" in md
+    assert "No reuse claim should be marked supported" in md
+    assert "core reproducible official-run export" in md

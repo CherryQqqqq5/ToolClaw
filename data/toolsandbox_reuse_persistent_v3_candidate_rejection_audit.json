@@ -1,0 +1,462 @@
+{
+  "audit_is_evidence": false,
+  "audit_purpose": "pipeline diagnosis for ToolSandbox reuse persistent v3 candidate bottleneck",
+  "candidate_manifest_summary": {
+    "claim_scope_policy": "primary claim uses only claim_scope=exact_match_cost and claim_inclusion=true",
+    "control_no_headroom_count": 26,
+    "dataset": "data/toolsandbox_reuse_persistent_v3_candidates.jsonl",
+    "exact_claim_family_count": 0,
+    "family_count": 34,
+    "formal_source_status": "candidate_pool_not_evidence",
+    "headroom_candidate_count": 0,
+    "inventory_is_evidence": false,
+    "potential_exact_candidate_count": 7,
+    "selection_gate_targets": {
+      "exact_claim_family_count": 12,
+      "family_count": 20,
+      "headroom_candidate_count": 10
+    },
+    "source_commit": "76231cb732c38894b704e1000a16a7137d1d2b91",
+    "statistical_claim_allowed": false,
+    "transfer_control_count": 1,
+    "version": "toolsandbox_reuse_persistent_v3_candidates"
+  },
+  "candidate_scope_counts": {
+    "control_no_headroom": 26,
+    "exact_match_cost": 7,
+    "transfer_control": 1
+  },
+  "final_manifest_summary": {
+    "claim_scope_policy": "primary claim uses only claim_scope=exact_match_cost and claim_inclusion=true",
+    "control_no_headroom_count": 0,
+    "dataset": "data/toolsandbox_reuse_persistent_v3.jsonl",
+    "exact_claim_family_count": 0,
+    "family_count": 0,
+    "formal_source_status": "awaiting_pilot_confirmation",
+    "headroom_candidate_count": 0,
+    "inventory_is_evidence": false,
+    "potential_exact_candidate_count": 0,
+    "selection_gate_targets": {
+      "exact_claim_family_count": 12,
+      "family_count": 20,
+      "headroom_candidate_count": 10
+    },
+    "source_commit": "76231cb732c38894b704e1000a16a7137d1d2b91",
+    "statistical_claim_allowed": false,
+    "transfer_control_count": 0,
+    "version": "toolsandbox_reuse_persistent_v3"
+  },
+  "final_scope_counts": {},
+  "frozen_signature_summary": {
+    "rows_without_signature_count": 0,
+    "signature_group_count": 47,
+    "singleton_signature_group_count": 21,
+    "unpaired_same_signature_row_count": 22
+  },
+  "gate_gaps": {
+    "final_exact_claim_family_gap": 12,
+    "pilot_confirmed_headroom_gap": 10,
+    "potential_exact_candidate_gap_before_pilot": 5,
+    "target_exact_claim_family_count": 12,
+    "target_family_count": 20,
+    "target_headroom_candidate_count": 10
+  },
+  "generated_at_utc": "2026-04-26T04:47:15Z",
+  "next_step_recommendation": "expand official-run evidence via core reproducible export, then re-derive candidates and run pilot; do not run formal while final source has zero pilot-confirmed families",
+  "rejection_bucket_counts": {
+    "awaiting_pilot": 7,
+    "external_api_only_no_trace": 510,
+    "final_source_empty_pending_pilot": 1,
+    "insufficient_paired_frozen_evidence": 43,
+    "inventory_not_in_frozen_export": 944,
+    "missing_success_run_evidence": 0,
+    "rejected_no_exact_signature": 0,
+    "rejected_no_headroom_static": 26,
+    "rejected_toolset_mismatch": 1,
+    "transfer_only": 1
+  },
+  "samples": {
+    "external_api_no_trace": [
+      {
+        "categories": [
+          "SINGLE_TOOL_CALL",
+          "SINGLE_USER_TURN",
+          "TEN_DISTRACTION_TOOLS"
+        ],
+        "rapidapi_or_external_api_reason": "rapidapi_backed_tools:convert_currency,search_location_around_lat_lon",
+        "scenario_name": "add_contact_with_name_and_phone_number_10_distraction_tools"
+      },
+      {
+        "categories": [
+          "SINGLE_TOOL_CALL",
+          "SINGLE_USER_TURN",
+          "ALL_TOOLS_AVAILABLE"
+        ],
+        "rapidapi_or_external_api_reason": "rapidapi_backed_tools:convert_currency,search_lat_lon,search_location_around_lat_lon,search_stock,search_weather_around_lat_lon",
+        "scenario_name": "add_contact_with_name_and_phone_number_all_tools"
+      },
+      {
+        "categories": [
+          "CANONICALIZATION",
+          "MULTIPLE_TOOL_CALL",
+          "SINGLE_USER_TURN",
+          "ALL_TOOLS_AVAILABLE"
+        ],
+        "rapidapi_or_external_api_reason": "rapidapi_backed_tools:convert_currency,search_lat_lon,search_location_around_lat_lon,search_stock,search_weather_around_lat_lon",
+        "scenario_name": "add_reminder_content_and_date_and_time_all_tools"
+      },
+      {
+        "categories": [
+          "CANONICALIZATION",
+          "MULTIPLE_TOOL_CALL",
+          "SINGLE_USER_TURN",
+          "ALL_TOOLS_AVAILABLE"
+        ],
+        "rapidapi_or_external_api_reason": "rapidapi_backed_tools:convert_currency,search_lat_lon,search_location_around_lat_lon,search_stock,search_weather_around_lat_lon",
+        "scenario_name": "add_reminder_content_and_date_and_time_alt_all_tools"
+      },
+      {
+        "categories": [
+          "CANONICALIZATION",
+          "MULTIPLE_TOOL_CALL",
+          "MULTIPLE_USER_TURN",
+          "ALL_TOOLS_AVAILABLE"
+        ],
+        "rapidapi_or_external_api_reason": "rapidapi_backed_tools:convert_currency,search_lat_lon,search_location_around_lat_lon,search_stock,search_weather_around_lat_lon",
+        "scenario_name": "add_reminder_content_and_date_and_time_multiple_user_turn_all_tools"
+      },
+      {
+        "categories": [
+          "CANONICALIZATION",
+          "MULTIPLE_TOOL_CALL",
+          "MULTIPLE_USER_TURN",
+          "ALL_TOOLS_AVAILABLE"
+        ],
+        "rapidapi_or_external_api_reason": "rapidapi_backed_tools:convert_currency,search_lat_lon,search_location_around_lat_lon,search_stock,search_weather_around_lat_lon",
+        "scenario_name": "add_reminder_content_and_date_and_time_multiple_user_turn_alt_all_tools"
+      },
+      {
+        "categories": [
+          "CANONICALIZATION",
+          "MULTIPLE_TOOL_CALL",
+          "SINGLE_USER_TURN",
+          "TEN_DISTRACTION_TOOLS"
+        ],
+        "rapidapi_or_external_api_reason": "rapidapi_backed_tools:convert_currency",
+        "scenario_name": "add_reminder_content_and_week_delta_and_time_10_distraction_tools"
+      },
+      {
+        "categories": [
+          "CANONICALIZATION",
+          "MULTIPLE_TOOL_CALL",
+          "SINGLE_USER_TURN",
+          "ALL_TOOLS_AVAILABLE"
+        ],
+        "rapidapi_or_external_api_reason": "rapidapi_backed_tools:convert_currency,search_lat_lon,search_location_around_lat_lon,search_stock,search_weather_around_lat_lon",
+        "scenario_name": "add_reminder_content_and_week_delta_and_time_all_tools"
+      },
+      {
+        "categories": [
+          "CANONICALIZATION",
+          "MULTIPLE_TOOL_CALL",
+          "SINGLE_USER_TURN",
+          "TEN_DISTRACTION_TOOLS"
+        ],
+        "rapidapi_or_external_api_reason": "rapidapi_backed_tools:convert_currency",
+        "scenario_name": "add_reminder_content_and_week_delta_and_time_alt_10_distraction_tools"
+      },
+      {
+        "categories": [
+          "CANONICALIZATION",
+          "MULTIPLE_TOOL_CALL",
+          "SINGLE_USER_TURN",
+          "ALL_TOOLS_AVAILABLE"
+        ],
+        "rapidapi_or_external_api_reason": "rapidapi_backed_tools:convert_currency,search_lat_lon,search_location_around_lat_lon,search_stock,search_weather_around_lat_lon",
+        "scenario_name": "add_reminder_content_and_week_delta_and_time_alt_all_tools"
+      }
+    ],
+    "no_headroom_controls": [
+      {
+        "claim_exclusion_reason": "control_family_not_primary_claim",
+        "claim_scope": "control_no_headroom",
+        "family_id": "v3_add_reminder_content_and_week_delta_and_time_and_location_multiple_user_turn__pair00",
+        "signature_key": "tools=add_reminder,datetime_info_to_timestamp,get_current_timestamp,modify_reminder,search_location_around_lat_lon,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN"
+      },
+      {
+        "claim_exclusion_reason": "control_family_not_primary_claim",
+        "claim_scope": "control_no_headroom",
+        "family_id": "v3_add_reminder_content_and_week_delta_and_time_and_location__pair00",
+        "signature_key": "tools=add_reminder,datetime_info_to_timestamp,get_current_timestamp,modify_reminder,search_location_around_lat_lon,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN"
+      },
+      {
+        "claim_exclusion_reason": "control_family_not_primary_claim",
+        "claim_scope": "control_no_headroom",
+        "family_id": "v3_add_reminder_content_and_week_delta_and_time_multiple_user_turn__pair00",
+        "signature_key": "tools=add_reminder,datetime_info_to_timestamp,get_current_timestamp,modify_reminder,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN"
+      },
+      {
+        "claim_exclusion_reason": "control_family_not_primary_claim",
+        "claim_scope": "control_no_headroom",
+        "family_id": "v3_add_reminder_content_and_weekday_delta_and_time_multiple_user_turn__pair01",
+        "signature_key": "tools=add_reminder,datetime_info_to_timestamp,get_current_timestamp,modify_reminder,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN"
+      },
+      {
+        "claim_exclusion_reason": "control_family_not_primary_claim",
+        "claim_scope": "control_no_headroom",
+        "family_id": "v3_add_reminder_content_and_week_delta_and_time__pair00",
+        "signature_key": "tools=add_reminder,datetime_info_to_timestamp,get_current_timestamp,modify_reminder,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN"
+      },
+      {
+        "claim_exclusion_reason": "control_family_not_primary_claim",
+        "claim_scope": "control_no_headroom",
+        "family_id": "v3_add_reminder_content_and_weekday_delta_and_time__pair01",
+        "signature_key": "tools=add_reminder,datetime_info_to_timestamp,get_current_timestamp,modify_reminder,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN"
+      },
+      {
+        "claim_exclusion_reason": "control_family_not_primary_claim",
+        "claim_scope": "control_no_headroom",
+        "family_id": "v3_find_distance_with_location_name__pair00",
+        "signature_key": "tools=calculate_lat_lon_distance,get_current_location,search_location_around_lat_lon|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN"
+      },
+      {
+        "claim_exclusion_reason": "control_family_not_primary_claim",
+        "claim_scope": "control_no_headroom",
+        "family_id": "v3_modify_reminder_with_recency_latest__pair00",
+        "signature_key": "tools=datetime_info_to_timestamp,get_current_timestamp,modify_reminder,search_reminder,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN"
+      },
+      {
+        "claim_exclusion_reason": "control_family_not_primary_claim",
+        "claim_scope": "control_no_headroom",
+        "family_id": "v3_remove_reminder_with_recency_latest__pair00",
+        "signature_key": "tools=datetime_info_to_timestamp,get_current_timestamp,remove_reminder,search_reminder,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN"
+      },
+      {
+        "claim_exclusion_reason": "control_family_not_primary_claim",
+        "claim_scope": "control_no_headroom",
+        "family_id": "v3_modify_contact_with_message_recency_multiple_user_turn__pair00",
+        "signature_key": "tools=get_current_timestamp,modify_contact,search_contacts,search_messages|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN"
+      }
+    ],
+    "potential_exact_candidates": [
+      {
+        "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
+        "claim_scope": "exact_match_cost",
+        "family_id": "v3_turn_on_cellular_low_battery_mode__pair00",
+        "signature_key": "tools=get_cellular_service_status,get_low_battery_mode_status,set_cellular_service_status,set_low_battery_mode_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+      },
+      {
+        "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
+        "claim_scope": "exact_match_cost",
+        "family_id": "v3_send_message_with_contact_content_cellular_off_multiple_user_turn__pair00",
+        "signature_key": "tools=get_cellular_service_status,search_contacts,send_message_with_phone_number,set_cellular_service_status|categories=MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,STATE_DEPENDENCY"
+      },
+      {
+        "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
+        "claim_scope": "exact_match_cost",
+        "family_id": "v3_send_message_with_contact_content_cellular_off__pair00",
+        "signature_key": "tools=get_cellular_service_status,search_contacts,send_message_with_phone_number,set_cellular_service_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+      },
+      {
+        "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
+        "claim_scope": "exact_match_cost",
+        "family_id": "v3_find_days_till_holiday_wifi_off__pair00",
+        "signature_key": "tools=get_current_timestamp,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+      },
+      {
+        "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
+        "claim_scope": "exact_match_cost",
+        "family_id": "v3_turn_on_location_low_battery_mode__pair00",
+        "signature_key": "tools=get_location_service_status,get_low_battery_mode_status,set_location_service_status,set_low_battery_mode_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+      },
+      {
+        "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
+        "claim_scope": "exact_match_cost",
+        "family_id": "v3_find_stock_symbol_with_company_name_low_battery_mode__pair00",
+        "signature_key": "tools=get_low_battery_mode_status,get_wifi_status,search_stock,set_low_battery_mode_status,set_wifi_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+      },
+      {
+        "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
+        "claim_scope": "exact_match_cost",
+        "family_id": "v3_turn_on_wifi_low_battery_mode__pair00",
+        "signature_key": "tools=get_low_battery_mode_status,get_wifi_status,set_low_battery_mode_status,set_wifi_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+      }
+    ],
+    "singleton_signature_frozen_rows": [
+      {
+        "categories": [
+          "SINGLE_TOOL_CALL",
+          "Single User Turn",
+          "No Distraction Tools"
+        ],
+        "name": "add_contact_with_name_and_phone_number",
+        "tool_allow_list": [
+          "add_contact"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
+          "Single User Turn",
+          "No Distraction Tools"
+        ],
+        "name": "add_reminder_content_and_date_and_time",
+        "tool_allow_list": [
+          "add_reminder",
+          "datetime_info_to_timestamp"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
+          "Single User Turn",
+          "No Distraction Tools"
+        ],
+        "name": "add_reminder_content_and_date_and_time_alt",
+        "tool_allow_list": [
+          "add_reminder",
+          "modify_reminder",
+          "datetime_info_to_timestamp"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
+          "Multiple User Turn",
+          "No Distraction Tools"
+        ],
+        "name": "add_reminder_content_and_date_and_time_multiple_user_turn",
+        "tool_allow_list": [
+          "add_reminder",
+          "datetime_info_to_timestamp"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
+          "Multiple User Turn",
+          "No Distraction Tools"
+        ],
+        "name": "add_reminder_content_and_date_and_time_multiple_user_turn_alt",
+        "tool_allow_list": [
+          "add_reminder",
+          "modify_reminder",
+          "datetime_info_to_timestamp"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
+          "Multiple User Turn",
+          "No Distraction Tools"
+        ],
+        "name": "add_reminder_content_and_week_delta_and_time_and_location_low_battery_mode_multiple_user_turn_alt",
+        "tool_allow_list": [
+          "add_reminder",
+          "modify_reminder",
+          "get_current_timestamp",
+          "timestamp_to_datetime_info",
+          "datetime_info_to_timestamp",
+          "search_location_around_lat_lon",
+          "set_low_battery_mode_status",
+          "set_wifi_status",
+          "get_low_battery_mode_status",
+          "get_wifi_status"
+        ]
+      },
+      {
+        "categories": [
+          "SINGLE_TOOL_CALL",
+          "Single User Turn",
+          "No Distraction Tools"
+        ],
+        "name": "cellular_off",
+        "tool_allow_list": [
+          "set_cellular_service_status"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
+          "Multiple User Turn",
+          "No Distraction Tools"
+        ],
+        "name": "find_days_till_holiday_multiple_user_turn",
+        "tool_allow_list": [
+          "search_holiday",
+          "get_current_timestamp",
+          "timestamp_diff"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "State Dependency",
+          "MULTIPLE_TOOL_CALL",
+          "Multiple User Turn",
+          "No Distraction Tools"
+        ],
+        "name": "find_days_till_holiday_wifi_off_multiple_user_turn",
+        "tool_allow_list": [
+          "search_holiday",
+          "get_current_timestamp",
+          "timestamp_diff",
+          "set_wifi_status",
+          "get_wifi_status"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "State Dependency",
+          "MULTIPLE_TOOL_CALL",
+          "Multiple User Turn",
+          "No Distraction Tools"
+        ],
+        "name": "find_distance_with_location_name_low_battery_mode_multiple_user_turn",
+        "tool_allow_list": [
+          "get_current_location",
+          "search_location_around_lat_lon",
+          "calculate_lat_lon_distance",
+          "set_low_battery_mode_status",
+          "set_location_service_status",
+          "set_wifi_status",
+          "get_low_battery_mode_status",
+          "get_location_service_status",
+          "get_wifi_status"
+        ]
+      }
+    ],
+    "transfer_controls": [
+      {
+        "claim_scope": "transfer_control",
+        "family_id": "v3_transfer_find_days_till_holiday_wifi_off_multiple_user_turn__to__find_distance_with_location_name_low_battery_mode_multiple_user_turn",
+        "pair_type": "same_pattern_transfer",
+        "signature_key": "tools=get_current_timestamp,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,STATE_DEPENDENCY"
+      }
+    ]
+  },
+  "summary": {
+    "candidate_family_count": 34,
+    "candidate_pairs_attempted": 34,
+    "final_exact_claim_family_count": 0,
+    "final_formal_family_count": 0,
+    "formal_source_status": "awaiting_pilot_confirmation",
+    "frozen_export_count": 88,
+    "inventory_count": 1032,
+    "matched_frozen_rows": 88,
+    "same_signature_pair_attempt_count": 33,
+    "selected_exact_candidates": 7,
+    "selected_no_headroom_controls": 26,
+    "selected_transfer_controls": 1,
+    "statistical_claim_allowed": false,
+    "unmatched_frozen_export_rows": 0
+  },
+  "toolclaw_commit": "1dfac3f540cb6e8e522cf76e53c37be3f9b7b029"
+}
