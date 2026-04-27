@@ -1,0 +1,33 @@
+{
+  "dataset": "toolsandbox_semantic_repair_official_v2",
+  "source": "data/toolsandbox.official_core_reproducible.frozen.json",
+  "source_sha256": "335d74b6a7580f84fbd37f233ca21eca0c495a475323108f276dcffee91a4a5c",
+  "evidence_comparison": "outputs/paper_final_freeze_20260423/toolsandbox_interaction_causality_formal/comparison.scored.csv",
+  "git_commit": "49ed8243179f1426c331b969ff26a8ef74918ef6",
+  "slice_policy_version": "toolsandbox_semantic_repair_official_v2",
+  "selection_rule": {
+    "repair_semantic_positive": "human-reviewed task ids with trace-backed target_aligned/effective_patch/post_query_progress signals",
+    "probe_only_control": "multiple_user_turn / insufficient_information control tasks with query/contract behavior but no useful repair signal"
+  },
+  "reviewed_primary_task_ids": [
+    "turn_on_cellular_low_battery_mode",
+    "turn_on_cellular_low_battery_mode_implicit",
+    "turn_on_location_low_battery_mode",
+    "turn_on_location_low_battery_mode_implicit",
+    "turn_on_wifi_low_battery_mode",
+    "turn_on_wifi_low_battery_mode_implicit"
+  ],
+  "probe_control_task_ids": [
+    "add_reminder_content_and_date_and_time_multiple_user_turn",
+    "add_reminder_content_and_week_delta_and_time_multiple_user_turn",
+    "find_days_till_holiday_multiple_user_turn",
+    "search_message_with_recency_latest_multiple_user_turn",
+    "remove_contact_by_phone_no_remove_contact_insufficient_information",
+    "remove_contact_by_phone_no_remove_contact_insufficient_information_alt"
+  ],
+  "row_count": 12,
+  "counts_by_slice": {
+    "repair_semantic_positive": 6,
+    "probe_only_control": 6
+  }
+}

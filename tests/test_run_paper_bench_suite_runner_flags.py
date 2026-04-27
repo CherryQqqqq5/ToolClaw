@@ -58,3 +58,31 @@ def test_planner_sensitive_score_command_includes_source_and_comparison(tmp_path
     assert "--comparison" in command
     assert str(comparison) in command
     assert "--outdir" in command
+
+
+def test_semantic_repair_score_command_includes_dataset_and_comparison(tmp_path: Path) -> None:
+    module_path = Path("scripts/run_paper_bench_suite.py")
+    spec = importlib.util.spec_from_file_location("run_paper_bench_suite", module_path)
+    assert spec is not None and spec.loader is not None
+    suite_runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(suite_runner)
+
+    source = tmp_path / "semantic.jsonl"
+    source.write_text("{}\n", encoding="utf-8")
+    outdir = tmp_path / "out"
+    outdir.mkdir()
+    comparison = outdir / "comparison.scored.csv"
+    comparison.write_text("task_id,system\n", encoding="utf-8")
+    suite_cfg = {
+        "score_script": "scripts/score_toolsandbox_semantic_repair_official.py",
+        "default_source": str(source),
+    }
+    args = argparse.Namespace(source=None)
+
+    command = suite_runner._score_command(suite_cfg, outdir, args)
+
+    assert "--dataset" in command
+    assert str(source) in command
+    assert "--comparison" in command
+    assert str(comparison) in command
+    assert "--outdir" in command

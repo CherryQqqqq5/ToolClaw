@@ -3,28 +3,42 @@
   "audit_purpose": "pipeline diagnosis for ToolSandbox reuse persistent v3 candidate bottleneck",
   "candidate_manifest_summary": {
     "claim_scope_policy": "primary claim uses only claim_scope=exact_match_cost and claim_inclusion=true",
-    "control_no_headroom_count": 26,
+    "control_no_headroom_count": 135,
     "dataset": "data/toolsandbox_reuse_persistent_v3_candidates.jsonl",
     "exact_claim_family_count": 0,
-    "family_count": 34,
+    "family_count": 190,
     "formal_source_status": "candidate_pool_not_evidence",
     "headroom_candidate_count": 0,
     "inventory_is_evidence": false,
-    "potential_exact_candidate_count": 7,
+    "potential_exact_candidate_count": 39,
     "selection_gate_targets": {
       "exact_claim_family_count": 12,
       "family_count": 20,
       "headroom_candidate_count": 10
     },
-    "source_commit": "76231cb732c38894b704e1000a16a7137d1d2b91",
+    "source_commit": "49ed8243179f1426c331b969ff26a8ef74918ef6",
     "statistical_claim_allowed": false,
-    "transfer_control_count": 1,
+    "transfer_control_count": 16,
     "version": "toolsandbox_reuse_persistent_v3_candidates"
   },
   "candidate_scope_counts": {
-    "control_no_headroom": 26,
-    "exact_match_cost": 7,
-    "transfer_control": 1
+    "control_no_headroom": 135,
+    "exact_match_cost": 39,
+    "transfer_control": 16
+  },
+  "core_filter_summary": {
+    "eligible_core_candidate_count": 405,
+    "excluded_count": 627,
+    "excluded_reason_counts": {
+      "missing_milestones": 208,
+      "not_python_native": 523,
+      "requires_external_api": 523
+    },
+    "path_used": true,
+    "primary_excluded_reason_counts": {
+      "missing_milestones": 104,
+      "requires_external_api": 523
+    }
   },
   "final_manifest_summary": {
     "claim_scope_policy": "primary claim uses only claim_scope=exact_match_cost and claim_inclusion=true",
@@ -41,7 +55,7 @@
       "family_count": 20,
       "headroom_candidate_count": 10
     },
-    "source_commit": "76231cb732c38894b704e1000a16a7137d1d2b91",
+    "source_commit": "49ed8243179f1426c331b969ff26a8ef74918ef6",
     "statistical_claim_allowed": false,
     "transfer_control_count": 0,
     "version": "toolsandbox_reuse_persistent_v3"
@@ -49,31 +63,31 @@
   "final_scope_counts": {},
   "frozen_signature_summary": {
     "rows_without_signature_count": 0,
-    "signature_group_count": 47,
-    "singleton_signature_group_count": 21,
-    "unpaired_same_signature_row_count": 22
+    "signature_group_count": 178,
+    "singleton_signature_group_count": 56,
+    "unpaired_same_signature_row_count": 57
   },
   "gate_gaps": {
     "final_exact_claim_family_gap": 12,
     "pilot_confirmed_headroom_gap": 10,
-    "potential_exact_candidate_gap_before_pilot": 5,
+    "potential_exact_candidate_gap_before_pilot": 0,
     "target_exact_claim_family_count": 12,
     "target_family_count": 20,
     "target_headroom_candidate_count": 10
   },
-  "generated_at_utc": "2026-04-26T04:47:15Z",
+  "generated_at_utc": "2026-04-27T00:18:08Z",
   "next_step_recommendation": "expand official-run evidence via core reproducible export, then re-derive candidates and run pilot; do not run formal while final source has zero pilot-confirmed families",
   "rejection_bucket_counts": {
-    "awaiting_pilot": 7,
-    "external_api_only_no_trace": 510,
+    "awaiting_pilot": 39,
+    "external_api_only_no_trace": 523,
     "final_source_empty_pending_pilot": 1,
-    "insufficient_paired_frozen_evidence": 43,
-    "inventory_not_in_frozen_export": 944,
+    "insufficient_paired_frozen_evidence": 113,
+    "inventory_not_in_frozen_export": 627,
     "missing_success_run_evidence": 0,
     "rejected_no_exact_signature": 0,
-    "rejected_no_headroom_static": 26,
-    "rejected_toolset_mismatch": 1,
-    "transfer_only": 1
+    "rejected_no_headroom_static": 135,
+    "rejected_toolset_mismatch": 16,
+    "transfer_only": 16
   },
   "samples": {
     "external_api_no_trace": [
@@ -180,106 +194,124 @@
       {
         "claim_exclusion_reason": "control_family_not_primary_claim",
         "claim_scope": "control_no_headroom",
-        "family_id": "v3_add_reminder_content_and_week_delta_and_time_and_location_multiple_user_turn__pair00",
-        "signature_key": "tools=add_reminder,datetime_info_to_timestamp,get_current_timestamp,modify_reminder,search_location_around_lat_lon,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN"
+        "family_id": "v3_modify_contact_with_message_recency_multiple_user_turn_10_distraction_tools__pair00",
+        "signature_key": "tools=add_contact,datetime_info_to_timestamp,end_conversation,get_current_timestamp,modify_contact,remove_contact,search_contacts,search_holiday,search_messages,seconds_to_hours_minutes_seconds,send_message_with_phone_number,shift_timestamp,timestamp_diff,timestamp_to_datetime_info,unit_conversion|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,TEN_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "control_family_not_primary_claim",
         "claim_scope": "control_no_headroom",
-        "family_id": "v3_add_reminder_content_and_week_delta_and_time_and_location__pair00",
-        "signature_key": "tools=add_reminder,datetime_info_to_timestamp,get_current_timestamp,modify_reminder,search_location_around_lat_lon,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN"
+        "family_id": "v3_modify_contact_with_message_recency_10_distraction_tools__pair00",
+        "signature_key": "tools=add_contact,datetime_info_to_timestamp,end_conversation,get_current_timestamp,modify_contact,remove_contact,search_contacts,search_holiday,search_messages,seconds_to_hours_minutes_seconds,send_message_with_phone_number,shift_timestamp,timestamp_diff,timestamp_to_datetime_info,unit_conversion|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,TEN_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "control_family_not_primary_claim",
         "claim_scope": "control_no_headroom",
-        "family_id": "v3_add_reminder_content_and_week_delta_and_time_multiple_user_turn__pair00",
-        "signature_key": "tools=add_reminder,datetime_info_to_timestamp,get_current_timestamp,modify_reminder,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN"
+        "family_id": "v3_modify_contact_with_message_recency_multiple_user_turn_3_distraction_tools_arg_description_scrambled__pair00",
+        "signature_key": "tools=add_contact,end_conversation,get_current_timestamp,modify_contact,search_contacts,search_messages,timestamp_diff,unit_conversion|categories=ARG_DESCRIPTION_SCRAMBLED,CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,THREE_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "control_family_not_primary_claim",
         "claim_scope": "control_no_headroom",
-        "family_id": "v3_add_reminder_content_and_weekday_delta_and_time_multiple_user_turn__pair01",
-        "signature_key": "tools=add_reminder,datetime_info_to_timestamp,get_current_timestamp,modify_reminder,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN"
+        "family_id": "v3_modify_contact_with_message_recency_3_distraction_tools_arg_description_scrambled__pair00",
+        "signature_key": "tools=add_contact,end_conversation,get_current_timestamp,modify_contact,search_contacts,search_messages,timestamp_diff,unit_conversion|categories=ARG_DESCRIPTION_SCRAMBLED,CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,THREE_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "control_family_not_primary_claim",
         "claim_scope": "control_no_headroom",
-        "family_id": "v3_add_reminder_content_and_week_delta_and_time__pair00",
-        "signature_key": "tools=add_reminder,datetime_info_to_timestamp,get_current_timestamp,modify_reminder,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN"
+        "family_id": "v3_modify_contact_with_message_recency_multiple_user_turn_3_distraction_tools_arg_type_scrambled__pair00",
+        "signature_key": "tools=add_contact,end_conversation,get_current_timestamp,modify_contact,search_contacts,search_messages,timestamp_diff,unit_conversion|categories=ARG_TYPE_SCRAMBLED,CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,THREE_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "control_family_not_primary_claim",
         "claim_scope": "control_no_headroom",
-        "family_id": "v3_add_reminder_content_and_weekday_delta_and_time__pair01",
-        "signature_key": "tools=add_reminder,datetime_info_to_timestamp,get_current_timestamp,modify_reminder,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN"
+        "family_id": "v3_modify_contact_with_message_recency_3_distraction_tools_arg_type_scrambled__pair00",
+        "signature_key": "tools=add_contact,end_conversation,get_current_timestamp,modify_contact,search_contacts,search_messages,timestamp_diff,unit_conversion|categories=ARG_TYPE_SCRAMBLED,CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,THREE_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "control_family_not_primary_claim",
         "claim_scope": "control_no_headroom",
-        "family_id": "v3_find_distance_with_location_name__pair00",
-        "signature_key": "tools=calculate_lat_lon_distance,get_current_location,search_location_around_lat_lon|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN"
+        "family_id": "v3_modify_contact_with_message_recency_multiple_user_turn_3_distraction_tools__pair00",
+        "signature_key": "tools=add_contact,end_conversation,get_current_timestamp,modify_contact,search_contacts,search_messages,timestamp_diff,unit_conversion|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,THREE_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "control_family_not_primary_claim",
         "claim_scope": "control_no_headroom",
-        "family_id": "v3_modify_reminder_with_recency_latest__pair00",
-        "signature_key": "tools=datetime_info_to_timestamp,get_current_timestamp,modify_reminder,search_reminder,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN"
+        "family_id": "v3_modify_contact_with_message_recency_multiple_user_turn_3_distraction_tools_tool_description_scrambled__pair00",
+        "signature_key": "tools=add_contact,end_conversation,get_current_timestamp,modify_contact,search_contacts,search_messages,timestamp_diff,unit_conversion|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,THREE_DISTRACTION_TOOLS,TOOL_DESCRIPTION_SCRAMBLED"
       },
       {
         "claim_exclusion_reason": "control_family_not_primary_claim",
         "claim_scope": "control_no_headroom",
-        "family_id": "v3_remove_reminder_with_recency_latest__pair00",
-        "signature_key": "tools=datetime_info_to_timestamp,get_current_timestamp,remove_reminder,search_reminder,timestamp_to_datetime_info|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN"
+        "family_id": "v3_modify_contact_with_message_recency_multiple_user_turn_3_distraction_tools_tool_name_scrambled__pair00",
+        "signature_key": "tools=add_contact,end_conversation,get_current_timestamp,modify_contact,search_contacts,search_messages,timestamp_diff,unit_conversion|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,THREE_DISTRACTION_TOOLS,TOOL_NAME_SCRAMBLED"
       },
       {
         "claim_exclusion_reason": "control_family_not_primary_claim",
         "claim_scope": "control_no_headroom",
-        "family_id": "v3_modify_contact_with_message_recency_multiple_user_turn__pair00",
-        "signature_key": "tools=get_current_timestamp,modify_contact,search_contacts,search_messages|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN"
+        "family_id": "v3_modify_contact_with_message_recency_3_distraction_tools__pair00",
+        "signature_key": "tools=add_contact,end_conversation,get_current_timestamp,modify_contact,search_contacts,search_messages,timestamp_diff,unit_conversion|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,THREE_DISTRACTION_TOOLS"
       }
     ],
     "potential_exact_candidates": [
       {
         "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
         "claim_scope": "exact_match_cost",
-        "family_id": "v3_turn_on_cellular_low_battery_mode__pair00",
-        "signature_key": "tools=get_cellular_service_status,get_low_battery_mode_status,set_cellular_service_status,set_low_battery_mode_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+        "family_id": "v3_send_message_with_contact_content_cellular_off_multiple_user_turn_10_distraction_tools__pair00",
+        "signature_key": "tools=add_contact,end_conversation,get_cellular_service_status,get_location_service_status,get_low_battery_mode_status,get_wifi_status,modify_contact,remove_contact,search_contacts,search_messages,send_message_with_phone_number,set_cellular_service_status,set_location_service_status,set_low_battery_mode_status,set_wifi_status|categories=MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,STATE_DEPENDENCY,TEN_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
         "claim_scope": "exact_match_cost",
-        "family_id": "v3_send_message_with_contact_content_cellular_off_multiple_user_turn__pair00",
-        "signature_key": "tools=get_cellular_service_status,search_contacts,send_message_with_phone_number,set_cellular_service_status|categories=MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,STATE_DEPENDENCY"
+        "family_id": "v3_send_message_with_contact_content_cellular_off_10_distraction_tools__pair00",
+        "signature_key": "tools=add_contact,end_conversation,get_cellular_service_status,get_location_service_status,get_low_battery_mode_status,get_wifi_status,modify_contact,remove_contact,search_contacts,search_messages,send_message_with_phone_number,set_cellular_service_status,set_location_service_status,set_low_battery_mode_status,set_wifi_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,TEN_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
         "claim_scope": "exact_match_cost",
-        "family_id": "v3_send_message_with_contact_content_cellular_off__pair00",
-        "signature_key": "tools=get_cellular_service_status,search_contacts,send_message_with_phone_number,set_cellular_service_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+        "family_id": "v3_find_days_till_holiday_wifi_off_10_distraction_tools__pair00",
+        "signature_key": "tools=datetime_info_to_timestamp,end_conversation,get_cellular_service_status,get_current_timestamp,get_location_service_status,get_low_battery_mode_status,get_wifi_status,search_holiday,set_cellular_service_status,set_location_service_status,set_low_battery_mode_status,set_wifi_status,shift_timestamp,timestamp_diff,timestamp_to_datetime_info,unit_conversion|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,TEN_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
         "claim_scope": "exact_match_cost",
-        "family_id": "v3_find_days_till_holiday_wifi_off__pair00",
-        "signature_key": "tools=get_current_timestamp,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+        "family_id": "v3_find_days_till_holiday_wifi_off_3_distraction_tools_arg_description_scrambled__pair00",
+        "signature_key": "tools=end_conversation,get_cellular_service_status,get_current_timestamp,get_location_service_status,get_low_battery_mode_status,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=ARG_DESCRIPTION_SCRAMBLED,CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,THREE_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
         "claim_scope": "exact_match_cost",
-        "family_id": "v3_turn_on_location_low_battery_mode__pair00",
-        "signature_key": "tools=get_location_service_status,get_low_battery_mode_status,set_location_service_status,set_low_battery_mode_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+        "family_id": "v3_find_days_till_holiday_wifi_off_3_distraction_tools_arg_type_scrambled__pair00",
+        "signature_key": "tools=end_conversation,get_cellular_service_status,get_current_timestamp,get_location_service_status,get_low_battery_mode_status,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=ARG_TYPE_SCRAMBLED,CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,THREE_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
         "claim_scope": "exact_match_cost",
-        "family_id": "v3_find_stock_symbol_with_company_name_low_battery_mode__pair00",
-        "signature_key": "tools=get_low_battery_mode_status,get_wifi_status,search_stock,set_low_battery_mode_status,set_wifi_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+        "family_id": "v3_find_days_till_holiday_wifi_off_3_distraction_tools__pair00",
+        "signature_key": "tools=end_conversation,get_cellular_service_status,get_current_timestamp,get_location_service_status,get_low_battery_mode_status,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,THREE_DISTRACTION_TOOLS"
       },
       {
         "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
         "claim_scope": "exact_match_cost",
-        "family_id": "v3_turn_on_wifi_low_battery_mode__pair00",
-        "signature_key": "tools=get_low_battery_mode_status,get_wifi_status,set_low_battery_mode_status,set_wifi_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+        "family_id": "v3_find_days_till_holiday_wifi_off_3_distraction_tools_tool_description_scrambled__pair00",
+        "signature_key": "tools=end_conversation,get_cellular_service_status,get_current_timestamp,get_location_service_status,get_low_battery_mode_status,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,THREE_DISTRACTION_TOOLS,TOOL_DESCRIPTION_SCRAMBLED"
+      },
+      {
+        "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
+        "claim_scope": "exact_match_cost",
+        "family_id": "v3_find_days_till_holiday_wifi_off_3_distraction_tools_tool_name_scrambled__pair00",
+        "signature_key": "tools=end_conversation,get_cellular_service_status,get_current_timestamp,get_location_service_status,get_low_battery_mode_status,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,THREE_DISTRACTION_TOOLS,TOOL_NAME_SCRAMBLED"
+      },
+      {
+        "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
+        "claim_scope": "exact_match_cost",
+        "family_id": "v3_turn_on_cellular_low_battery_mode_3_distraction_tools_arg_description_scrambled__pair00",
+        "signature_key": "tools=end_conversation,get_cellular_service_status,get_location_service_status,get_low_battery_mode_status,get_wifi_status,set_cellular_service_status,set_low_battery_mode_status,set_wifi_status|categories=ARG_DESCRIPTION_SCRAMBLED,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,THREE_DISTRACTION_TOOLS"
+      },
+      {
+        "claim_exclusion_reason": "awaiting_pilot_headroom_confirmation",
+        "claim_scope": "exact_match_cost",
+        "family_id": "v3_turn_on_wifi_low_battery_mode_3_distraction_tools_arg_description_scrambled__pair01",
+        "signature_key": "tools=end_conversation,get_cellular_service_status,get_location_service_status,get_low_battery_mode_status,get_wifi_status,set_cellular_service_status,set_low_battery_mode_status,set_wifi_status|categories=ARG_DESCRIPTION_SCRAMBLED,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,THREE_DISTRACTION_TOOLS"
       }
     ],
     "singleton_signature_frozen_rows": [
@@ -291,6 +323,7 @@
         ],
         "name": "add_contact_with_name_and_phone_number",
         "tool_allow_list": [
+          "end_conversation",
           "add_contact"
         ]
       },
@@ -304,7 +337,121 @@
         "name": "add_reminder_content_and_date_and_time",
         "tool_allow_list": [
           "add_reminder",
+          "end_conversation",
           "datetime_info_to_timestamp"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
+          "Single User Turn",
+          "Ten Distraction Tools"
+        ],
+        "name": "add_reminder_content_and_date_and_time_10_distraction_tools",
+        "tool_allow_list": [
+          "shift_timestamp",
+          "remove_reminder",
+          "seconds_to_hours_minutes_seconds",
+          "timestamp_diff",
+          "get_current_timestamp",
+          "unit_conversion",
+          "add_reminder",
+          "calculate_lat_lon_distance",
+          "timestamp_to_datetime_info",
+          "search_reminder",
+          "datetime_info_to_timestamp",
+          "end_conversation",
+          "modify_reminder"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
+          "Single User Turn",
+          "Three Distraction Tools"
+        ],
+        "name": "add_reminder_content_and_date_and_time_3_distraction_tools",
+        "tool_allow_list": [
+          "end_conversation",
+          "datetime_info_to_timestamp",
+          "timestamp_diff",
+          "shift_timestamp",
+          "add_reminder",
+          "timestamp_to_datetime_info"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
+          "Single User Turn",
+          "Three Distraction Tools",
+          "Arg Description Scrambled"
+        ],
+        "name": "add_reminder_content_and_date_and_time_3_distraction_tools_arg_description_scrambled",
+        "tool_allow_list": [
+          "end_conversation",
+          "datetime_info_to_timestamp",
+          "timestamp_diff",
+          "shift_timestamp",
+          "add_reminder",
+          "timestamp_to_datetime_info"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
+          "Single User Turn",
+          "Three Distraction Tools",
+          "Arg Type Scrambled"
+        ],
+        "name": "add_reminder_content_and_date_and_time_3_distraction_tools_arg_type_scrambled",
+        "tool_allow_list": [
+          "end_conversation",
+          "datetime_info_to_timestamp",
+          "timestamp_diff",
+          "shift_timestamp",
+          "add_reminder",
+          "timestamp_to_datetime_info"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
+          "Single User Turn",
+          "Three Distraction Tools",
+          "Tool Description Scrambled"
+        ],
+        "name": "add_reminder_content_and_date_and_time_3_distraction_tools_tool_description_scrambled",
+        "tool_allow_list": [
+          "end_conversation",
+          "datetime_info_to_timestamp",
+          "timestamp_diff",
+          "shift_timestamp",
+          "add_reminder",
+          "timestamp_to_datetime_info"
+        ]
+      },
+      {
+        "categories": [
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
+          "Single User Turn",
+          "Three Distraction Tools",
+          "Tool Name Scrambled"
+        ],
+        "name": "add_reminder_content_and_date_and_time_3_distraction_tools_tool_name_scrambled",
+        "tool_allow_list": [
+          "end_conversation",
+          "datetime_info_to_timestamp",
+          "timestamp_diff",
+          "shift_timestamp",
+          "add_reminder",
+          "timestamp_to_datetime_info"
         ]
       },
       {
@@ -316,147 +463,117 @@
         ],
         "name": "add_reminder_content_and_date_and_time_alt",
         "tool_allow_list": [
-          "add_reminder",
           "modify_reminder",
-          "datetime_info_to_timestamp"
-        ]
-      },
-      {
-        "categories": [
-          "Canonicalization",
-          "MULTIPLE_TOOL_CALL",
-          "Multiple User Turn",
-          "No Distraction Tools"
-        ],
-        "name": "add_reminder_content_and_date_and_time_multiple_user_turn",
-        "tool_allow_list": [
-          "add_reminder",
-          "datetime_info_to_timestamp"
-        ]
-      },
-      {
-        "categories": [
-          "Canonicalization",
-          "MULTIPLE_TOOL_CALL",
-          "Multiple User Turn",
-          "No Distraction Tools"
-        ],
-        "name": "add_reminder_content_and_date_and_time_multiple_user_turn_alt",
-        "tool_allow_list": [
-          "add_reminder",
-          "modify_reminder",
-          "datetime_info_to_timestamp"
-        ]
-      },
-      {
-        "categories": [
-          "Canonicalization",
-          "MULTIPLE_TOOL_CALL",
-          "Multiple User Turn",
-          "No Distraction Tools"
-        ],
-        "name": "add_reminder_content_and_week_delta_and_time_and_location_low_battery_mode_multiple_user_turn_alt",
-        "tool_allow_list": [
-          "add_reminder",
-          "modify_reminder",
-          "get_current_timestamp",
-          "timestamp_to_datetime_info",
           "datetime_info_to_timestamp",
-          "search_location_around_lat_lon",
-          "set_low_battery_mode_status",
-          "set_wifi_status",
-          "get_low_battery_mode_status",
-          "get_wifi_status"
+          "end_conversation",
+          "add_reminder"
         ]
       },
       {
         "categories": [
-          "SINGLE_TOOL_CALL",
+          "Canonicalization",
+          "MULTIPLE_TOOL_CALL",
           "Single User Turn",
-          "No Distraction Tools"
+          "Ten Distraction Tools"
         ],
-        "name": "cellular_off",
+        "name": "add_reminder_content_and_date_and_time_alt_10_distraction_tools",
         "tool_allow_list": [
-          "set_cellular_service_status"
-        ]
-      },
-      {
-        "categories": [
-          "Canonicalization",
-          "MULTIPLE_TOOL_CALL",
-          "Multiple User Turn",
-          "No Distraction Tools"
-        ],
-        "name": "find_days_till_holiday_multiple_user_turn",
-        "tool_allow_list": [
+          "seconds_to_hours_minutes_seconds",
+          "unit_conversion",
           "search_holiday",
-          "get_current_timestamp",
-          "timestamp_diff"
-        ]
-      },
-      {
-        "categories": [
-          "Canonicalization",
-          "State Dependency",
-          "MULTIPLE_TOOL_CALL",
-          "Multiple User Turn",
-          "No Distraction Tools"
-        ],
-        "name": "find_days_till_holiday_wifi_off_multiple_user_turn",
-        "tool_allow_list": [
-          "search_holiday",
-          "get_current_timestamp",
-          "timestamp_diff",
-          "set_wifi_status",
-          "get_wifi_status"
-        ]
-      },
-      {
-        "categories": [
-          "Canonicalization",
-          "State Dependency",
-          "MULTIPLE_TOOL_CALL",
-          "Multiple User Turn",
-          "No Distraction Tools"
-        ],
-        "name": "find_distance_with_location_name_low_battery_mode_multiple_user_turn",
-        "tool_allow_list": [
-          "get_current_location",
-          "search_location_around_lat_lon",
           "calculate_lat_lon_distance",
-          "set_low_battery_mode_status",
-          "set_location_service_status",
-          "set_wifi_status",
-          "get_low_battery_mode_status",
-          "get_location_service_status",
-          "get_wifi_status"
+          "end_conversation",
+          "shift_timestamp",
+          "timestamp_diff",
+          "modify_reminder",
+          "timestamp_to_datetime_info",
+          "search_reminder",
+          "remove_reminder",
+          "add_reminder",
+          "datetime_info_to_timestamp",
+          "get_current_timestamp"
         ]
       }
     ],
     "transfer_controls": [
       {
         "claim_scope": "transfer_control",
-        "family_id": "v3_transfer_find_days_till_holiday_wifi_off_multiple_user_turn__to__find_distance_with_location_name_low_battery_mode_multiple_user_turn",
+        "family_id": "v3_transfer_find_days_till_holiday_wifi_off__to__find_days_till_holiday_wifi_off_10_distraction_tools",
         "pair_type": "same_pattern_transfer",
-        "signature_key": "tools=get_current_timestamp,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,STATE_DEPENDENCY"
+        "signature_key": "tools=end_conversation,get_current_timestamp,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+      },
+      {
+        "claim_scope": "transfer_control",
+        "family_id": "v3_transfer_find_days_till_holiday_wifi_off_3_distraction_tools_tool_name_scrambled__to__find_days_till_holiday_wifi_off_alt",
+        "pair_type": "same_pattern_transfer",
+        "signature_key": "tools=end_conversation,get_cellular_service_status,get_current_timestamp,get_location_service_status,get_low_battery_mode_status,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,THREE_DISTRACTION_TOOLS,TOOL_NAME_SCRAMBLED"
+      },
+      {
+        "claim_scope": "transfer_control",
+        "family_id": "v3_transfer_find_days_till_holiday_wifi_off_alt_10_distraction_tools__to__find_days_till_holiday_wifi_off_alt_3_distraction_tools",
+        "pair_type": "same_pattern_transfer",
+        "signature_key": "tools=datetime_info_to_timestamp,end_conversation,get_cellular_service_status,get_current_timestamp,get_location_service_status,get_low_battery_mode_status,get_wifi_status,search_holiday,set_cellular_service_status,set_location_service_status,set_low_battery_mode_status,set_wifi_status,shift_timestamp,timestamp_diff,timestamp_to_datetime_info,unit_conversion|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,TEN_DISTRACTION_TOOLS"
+      },
+      {
+        "claim_scope": "transfer_control",
+        "family_id": "v3_transfer_find_days_till_holiday_wifi_off_multiple_user_turn__to__find_days_till_holiday_wifi_off_multiple_user_turn_10_distraction_tools",
+        "pair_type": "same_pattern_transfer",
+        "signature_key": "tools=end_conversation,get_current_timestamp,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,STATE_DEPENDENCY"
+      },
+      {
+        "claim_scope": "transfer_control",
+        "family_id": "v3_transfer_find_days_till_holiday_wifi_off_multiple_user_turn_3_distraction_tools_tool_name_scrambled__to__send_message_with_contact_content_cellular_off",
+        "pair_type": "same_pattern_transfer",
+        "signature_key": "tools=end_conversation,get_cellular_service_status,get_current_timestamp,get_location_service_status,get_low_battery_mode_status,get_wifi_status,search_holiday,set_wifi_status,timestamp_diff|categories=CANONICALIZATION,MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,STATE_DEPENDENCY,THREE_DISTRACTION_TOOLS,TOOL_NAME_SCRAMBLED"
+      },
+      {
+        "claim_scope": "transfer_control",
+        "family_id": "v3_transfer_send_message_with_contact_content_cellular_off_10_distraction_tools__to__send_message_with_contact_content_cellular_off_3_distraction_tools",
+        "pair_type": "same_pattern_transfer",
+        "signature_key": "tools=add_contact,end_conversation,get_cellular_service_status,get_location_service_status,get_low_battery_mode_status,get_wifi_status,modify_contact,remove_contact,search_contacts,search_messages,send_message_with_phone_number,set_cellular_service_status,set_location_service_status,set_low_battery_mode_status,set_wifi_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,TEN_DISTRACTION_TOOLS"
+      },
+      {
+        "claim_scope": "transfer_control",
+        "family_id": "v3_transfer_send_message_with_contact_content_cellular_off_alt__to__send_message_with_contact_content_cellular_off_alt_10_distraction_tools",
+        "pair_type": "same_pattern_transfer",
+        "signature_key": "tools=end_conversation,get_cellular_service_status,search_contacts,send_message_with_phone_number,set_cellular_service_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY"
+      },
+      {
+        "claim_scope": "transfer_control",
+        "family_id": "v3_transfer_send_message_with_contact_content_cellular_off_alt_3_distraction_tools_tool_name_scrambled__to__send_message_with_contact_content_cellular_off_multiple_user_turn",
+        "pair_type": "same_pattern_transfer",
+        "signature_key": "tools=end_conversation,get_cellular_service_status,get_location_service_status,get_wifi_status,search_contacts,send_message_with_phone_number,set_cellular_service_status,set_wifi_status|categories=MULTIPLE_TOOL_CALL,SINGLE_USER_TURN,STATE_DEPENDENCY,THREE_DISTRACTION_TOOLS,TOOL_NAME_SCRAMBLED"
+      },
+      {
+        "claim_scope": "transfer_control",
+        "family_id": "v3_transfer_send_message_with_contact_content_cellular_off_multiple_user_turn_10_distraction_tools__to__send_message_with_contact_content_cellular_off_multiple_user_turn_3_distraction_tools",
+        "pair_type": "same_pattern_transfer",
+        "signature_key": "tools=add_contact,end_conversation,get_cellular_service_status,get_location_service_status,get_low_battery_mode_status,get_wifi_status,modify_contact,remove_contact,search_contacts,search_messages,send_message_with_phone_number,set_cellular_service_status,set_location_service_status,set_low_battery_mode_status,set_wifi_status|categories=MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,STATE_DEPENDENCY,TEN_DISTRACTION_TOOLS"
+      },
+      {
+        "claim_scope": "transfer_control",
+        "family_id": "v3_transfer_send_message_with_contact_content_cellular_off_multiple_user_turn_alt__to__send_message_with_contact_content_cellular_off_multiple_user_turn_alt_10_distraction_tools",
+        "pair_type": "same_pattern_transfer",
+        "signature_key": "tools=end_conversation,get_cellular_service_status,search_contacts,send_message_with_phone_number,set_cellular_service_status|categories=MULTIPLE_TOOL_CALL,MULTIPLE_USER_TURN,STATE_DEPENDENCY"
       }
     ]
   },
   "summary": {
-    "candidate_family_count": 34,
-    "candidate_pairs_attempted": 34,
+    "candidate_family_count": 190,
+    "candidate_pairs_attempted": 190,
+    "coverage_filter_source": "core_filter",
     "final_exact_claim_family_count": 0,
     "final_formal_family_count": 0,
     "formal_source_status": "awaiting_pilot_confirmation",
-    "frozen_export_count": 88,
+    "frozen_export_count": 405,
     "inventory_count": 1032,
-    "matched_frozen_rows": 88,
-    "same_signature_pair_attempt_count": 33,
-    "selected_exact_candidates": 7,
-    "selected_no_headroom_controls": 26,
-    "selected_transfer_controls": 1,
+    "matched_frozen_rows": 405,
+    "same_signature_pair_attempt_count": 174,
+    "selected_exact_candidates": 39,
+    "selected_no_headroom_controls": 135,
+    "selected_transfer_controls": 16,
     "statistical_claim_allowed": false,
     "unmatched_frozen_export_rows": 0
   },
-  "toolclaw_commit": "1dfac3f540cb6e8e522cf76e53c37be3f9b7b029"
+  "toolclaw_commit": "49ed8243179f1426c331b969ff26a8ef74918ef6"
 }

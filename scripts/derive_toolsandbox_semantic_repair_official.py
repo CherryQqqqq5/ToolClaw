@@ -190,6 +190,8 @@ def _derive_row(
     *,
     slice_type: str,
     comparison_rows: List[Dict[str, str]],
+    metadata_key: str,
+    manual_label_suffix: str,
 ) -> Dict[str, Any]:
     task_id = _task_id(source_row)
     result = dict(source_row)
@@ -228,13 +230,13 @@ def _derive_row(
         result["execution_scenario"] = "state_failure"
         result["state_failure_mode"] = "resume_state_loss"
     result["manual_label_status"] = (
-        "human_verified_trace_review_20260424"
+        f"human_verified_trace_review_{manual_label_suffix}"
         if slice_type == "repair_semantic_positive"
-        else "trace_verified_probe_only_control_20260424"
+        else f"trace_verified_probe_only_control_{manual_label_suffix}"
     )
     result.setdefault("metadata", {})
     if isinstance(result["metadata"], dict):
-        result["metadata"]["semantic_repair_official_v1"] = {
+        result["metadata"][metadata_key] = {
             "slice_type": slice_type,
             "selection_basis": (
                 "trace-backed useful interaction candidate"
@@ -250,7 +252,17 @@ def _derive_row(
     return result
 
 
-def derive(source: Path, comparison: Path) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def derive(
+    source: Path,
+    comparison: Path,
+    *,
+    dataset_name: str = "toolsandbox_semantic_repair_official_v1",
+    slice_policy_version: Optional[str] = None,
+    metadata_key: Optional[str] = None,
+    manual_label_suffix: str = "20260424",
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    slice_policy_version = slice_policy_version or dataset_name
+    metadata_key = metadata_key or dataset_name
     source_rows = _load_source(source)
     comparison_rows = _load_comparison(comparison)
     source_by_id = {_task_id(row): row for row in source_rows}
@@ -263,16 +275,16 @@ def derive(source: Path, comparison: Path) -> Tuple[List[Dict[str, Any]], Dict[s
         raise ValueError(f"source missing expected tasks: {missing}")
     dataset: List[Dict[str, Any]] = []
     for task_id in PRIMARY_TASK_IDS:
-        dataset.append(_derive_row(source_by_id[task_id], slice_type="repair_semantic_positive", comparison_rows=comparison_rows))
+        dataset.append(_derive_row(source_by_id[task_id], slice_type="repair_semantic_positive", comparison_rows=comparison_rows, metadata_key=metadata_key, manual_label_suffix=manual_label_suffix))
     for task_id in PROBE_CONTROL_TASK_IDS:
-        dataset.append(_derive_row(source_by_id[task_id], slice_type="probe_only_control", comparison_rows=comparison_rows))
+        dataset.append(_derive_row(source_by_id[task_id], slice_type="probe_only_control", comparison_rows=comparison_rows, metadata_key=metadata_key, manual_label_suffix=manual_label_suffix))
     manifest = {
-        "dataset": "toolsandbox_semantic_repair_official_v1",
+        "dataset": dataset_name,
         "source": _repo_relative(source),
         "source_sha256": _sha256(source),
         "evidence_comparison": _repo_relative(comparison),
         "git_commit": _git_commit(),
-        "slice_policy_version": "toolsandbox_semantic_repair_official_v1",
+        "slice_policy_version": slice_policy_version,
         "selection_rule": {
             "repair_semantic_positive": "human-reviewed task ids with trace-backed target_aligned/effective_patch/post_query_progress signals",
             "probe_only_control": "multiple_user_turn / insufficient_information control tasks with query/contract behavior but no useful repair signal",
@@ -305,12 +317,23 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--out", default="data/toolsandbox_semantic_repair_official_v1.jsonl")
     parser.add_argument("--manifest", default="data/toolsandbox_semantic_repair_official_v1.manifest.json")
+    parser.add_argument("--dataset-name", default="toolsandbox_semantic_repair_official_v1")
+    parser.add_argument("--slice-policy-version", default=None)
+    parser.add_argument("--metadata-key", default=None)
+    parser.add_argument("--manual-label-suffix", default="20260424")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    dataset, manifest = derive(Path(args.source), Path(args.comparison))
+    dataset, manifest = derive(
+        Path(args.source),
+        Path(args.comparison),
+        dataset_name=args.dataset_name,
+        slice_policy_version=args.slice_policy_version,
+        metadata_key=args.metadata_key,
+        manual_label_suffix=args.manual_label_suffix,
+    )
     out_path = Path(args.out)
     manifest_path = Path(args.manifest)
     _write_jsonl(out_path, dataset)

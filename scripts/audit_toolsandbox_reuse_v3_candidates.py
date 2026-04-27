@@ -15,7 +15,8 @@ from typing import Any, Dict, Iterable, List, Mapping
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_INVENTORY = ROOT_DIR / "data" / "toolsandbox_official_scenario_inventory.json"
 DEFAULT_LEDGER = ROOT_DIR / "data" / "toolsandbox_run_coverage_ledger.json"
-DEFAULT_FROZEN = ROOT_DIR / "data" / "toolsandbox.formal.official.json"
+DEFAULT_FROZEN = ROOT_DIR / "data" / "toolsandbox.official_core_reproducible.frozen.json"
+DEFAULT_CORE_FILTER = ROOT_DIR / "data" / "toolsandbox.official_core_reproducible.frozen.core_filter.json"
 DEFAULT_CANDIDATES = ROOT_DIR / "data" / "toolsandbox_reuse_persistent_v3_candidates.jsonl"
 DEFAULT_CANDIDATES_MANIFEST = ROOT_DIR / "data" / "toolsandbox_reuse_persistent_v3_candidates.manifest.json"
 DEFAULT_FINAL = ROOT_DIR / "data" / "toolsandbox_reuse_persistent_v3.jsonl"
@@ -128,6 +129,7 @@ def build_audit(
     final_rows: List[Dict[str, Any]],
     candidates_manifest: Mapping[str, Any] | None = None,
     final_manifest: Mapping[str, Any] | None = None,
+    core_filter: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
     ledger_scenarios = ledger.get("scenarios", []) if isinstance(ledger.get("scenarios"), list) else []
     frozen_by_signature: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
@@ -150,6 +152,13 @@ def build_audit(
     included = [row for row in ledger_scenarios if row.get("included_in_frozen_export")]
     excluded = [row for row in ledger_scenarios if not row.get("included_in_frozen_export")]
     external_excluded = [row for row in excluded if row.get("requires_external_api")]
+    core_filter = dict(core_filter or {})
+    core_primary_exclusions = core_filter.get("primary_excluded_reason_counts") if isinstance(core_filter.get("primary_excluded_reason_counts"), dict) else {}
+    core_reason_counts = core_filter.get("excluded_reason_counts") if isinstance(core_filter.get("excluded_reason_counts"), dict) else {}
+    using_core_filter = bool(core_filter) and int(core_filter.get("selected_count_after_limit") or 0) == len(frozen_rows)
+    matched_frozen_count = len(frozen_rows) if using_core_filter else len(included)
+    inventory_excluded_count = int(core_filter.get("excluded_count") or 0) if using_core_filter else len(excluded)
+    external_excluded_count = int(core_primary_exclusions.get("requires_external_api") or core_reason_counts.get("requires_external_api") or 0) if using_core_filter else len(external_excluded)
     missing_success = [row for row in frozen_rows if _frozen_success_missing(row)]
     final_included = [row for row in final_rows if row.get("claim_scope") == "exact_match_cost" and row.get("claim_inclusion")]
     awaiting_pilot = [
@@ -158,8 +167,8 @@ def build_audit(
     ]
 
     rejection_bucket_counts = {
-        "inventory_not_in_frozen_export": len(excluded),
-        "external_api_only_no_trace": len(external_excluded),
+        "inventory_not_in_frozen_export": inventory_excluded_count,
+        "external_api_only_no_trace": external_excluded_count,
         "insufficient_paired_frozen_evidence": len(singleton_signature_rows) + unpaired_same_signature_rows,
         "rejected_no_exact_signature": len(no_signature_rows),
         "rejected_toolset_mismatch": len(transfers),
@@ -181,7 +190,8 @@ def build_audit(
         "summary": {
             "inventory_count": int(inventory.get("scenario_count") or len(inventory.get("scenarios", []))),
             "frozen_export_count": len(frozen_rows),
-            "matched_frozen_rows": len(included),
+            "matched_frozen_rows": matched_frozen_count,
+            "coverage_filter_source": "core_filter" if using_core_filter else "legacy_coverage_ledger",
             "unmatched_frozen_export_rows": len(ledger.get("unmatched_frozen_export_rows", [])),
             "same_signature_pair_attempt_count": same_signature_pair_attempts,
             "candidate_pairs_attempted": len(candidates),
@@ -193,6 +203,13 @@ def build_audit(
             "final_exact_claim_family_count": len(final_included),
             "formal_source_status": (final_manifest or {}).get("formal_source_status", "unknown"),
             "statistical_claim_allowed": bool((final_manifest or {}).get("statistical_claim_allowed", False)),
+        },
+        "core_filter_summary": {
+            "path_used": bool(core_filter),
+            "eligible_core_candidate_count": core_filter.get("eligible_core_candidate_count"),
+            "excluded_count": core_filter.get("excluded_count"),
+            "primary_excluded_reason_counts": core_primary_exclusions,
+            "excluded_reason_counts": core_reason_counts,
         },
         "candidate_manifest_summary": dict(candidates_manifest or {}),
         "final_manifest_summary": dict(final_manifest or {}),
@@ -265,9 +282,9 @@ def render_markdown(audit: Mapping[str, Any]) -> str:
         "",
         "## Interpretation",
         "",
-        "The v3 runner/scorer pipeline is ready for separated exact/control evidence, but the current frozen export is too small to produce enough pilot-confirmed primary exact families. The immediate bottleneck is evidence source coverage and pilot confirmation, not reuse runtime behavior.",
+        "The v3 runner/scorer pipeline is ready for separated exact/control evidence, but the current candidates still require pilot-confirmed primary exact headroom families before any claim. The immediate bottleneck is pilot confirmation and exact high-headroom selection, not reuse runtime behavior.",
         "",
-        "Recommended next step: generate a core reproducible official-run export, re-derive v3 candidates, then run a one-run pilot before any formal reuse experiment.",
+        "Recommended next step: run a one-run pilot on the core-derived candidates, promote only pilot-confirmed exact high-headroom families into the final source, then consider any formal reuse experiment.",
         "",
         "## Claim Boundary",
         "",
@@ -283,6 +300,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--inventory", default=str(DEFAULT_INVENTORY))
     parser.add_argument("--ledger", default=str(DEFAULT_LEDGER))
     parser.add_argument("--frozen-export", default=str(DEFAULT_FROZEN))
+    parser.add_argument("--core-filter", default=str(DEFAULT_CORE_FILTER))
     parser.add_argument("--candidates", default=str(DEFAULT_CANDIDATES))
     parser.add_argument("--candidates-manifest", default=str(DEFAULT_CANDIDATES_MANIFEST))
     parser.add_argument("--final", default=str(DEFAULT_FINAL))
@@ -302,6 +320,7 @@ def main() -> None:
         final_rows=_read_jsonl(Path(args.final)),
         candidates_manifest=_read_json(Path(args.candidates_manifest), {}),
         final_manifest=_read_json(Path(args.final_manifest), {}),
+        core_filter=_read_json(Path(args.core_filter), {}),
     )
     _write_json(Path(args.out), audit)
     Path(args.md_out).parent.mkdir(parents=True, exist_ok=True)

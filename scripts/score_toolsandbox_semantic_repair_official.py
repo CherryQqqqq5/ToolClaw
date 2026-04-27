@@ -26,6 +26,16 @@ def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+def _source_manifest(source: Path) -> Dict[str, Any]:
+    candidates = [source.with_suffix(".manifest.json")]
+    if source.name.endswith(".jsonl"):
+        candidates.append(source.parent / (source.name[:-6] + ".manifest.json"))
+    for path in candidates:
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
+    return {}
+
+
 def _read_csv(path: Path) -> List[Dict[str, str]]:
     with path.open("r", encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle))
@@ -121,7 +131,7 @@ def _aggregate_rounds(rounds: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]
     return result
 
 
-def _paired_delta_summary(rows: List[Dict[str, str]], dataset_by_id: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+def _paired_delta_summary(rows: List[Dict[str, str]], dataset_by_id: Dict[str, Dict[str, Any]], *, version: str = "toolsandbox_semantic_repair_official_v1") -> Dict[str, Any]:
     comparisons = {
         "a3_full_interaction_vs_a2_planner": ("a3_full_interaction", "a2_planner"),
         "a3_full_interaction_vs_a3_no_query": ("a3_full_interaction", "a3_no_query"),
@@ -139,7 +149,7 @@ def _paired_delta_summary(rows: List[Dict[str, str]], dataset_by_id: Dict[str, D
         by_key[(slice_type, task_id, run_index)][system] = row
 
     result: Dict[str, Any] = {
-        "summary_version": "toolsandbox_semantic_repair_official_v1_paired_delta",
+        "summary_version": f"{version}_paired_delta",
         "paired_key": ["task_id", "run_index"],
         "metric": "strict_scored_success_rate",
         "comparisons": {},
@@ -182,7 +192,7 @@ def _paired_delta_summary(rows: List[Dict[str, str]], dataset_by_id: Dict[str, D
 
 def _write_paired_delta_markdown(path: Path, paired_summary: Dict[str, Any]) -> None:
     lines = [
-        "# ToolSandbox Semantic Repair Official v1 Paired Delta Summary",
+        f"# {paired_summary.get('summary_version', 'toolsandbox_semantic_repair_official_v1').replace('_', ' ').replace(' paired delta', '').title()} Paired Delta Summary",
         "",
         "Paired key: `(task_id, run_index)`.",
         "",
@@ -203,6 +213,8 @@ def _claim_summary(
     row_summary: Dict[str, Dict[str, Any]],
     round_summary: Dict[str, Dict[str, Any]],
     systems_observed: List[str],
+    *,
+    version: str = "toolsandbox_semantic_repair_official_v1",
 ) -> Dict[str, Any]:
     expected = ["a2_planner", "a3_full_interaction", "a3_no_query", "a3_noisy_user"]
     protocol_complete = systems_observed == expected
@@ -244,7 +256,7 @@ def _claim_summary(
         and probe_noisy_round.get("useful_interaction_round_rate", 0.0) <= 0.1
     )
     return {
-        "summary_version": "toolsandbox_semantic_repair_official_v1",
+        "summary_version": version,
         "systems_expected": expected,
         "systems_observed": systems_observed,
         "protocol_complete": protocol_complete,
@@ -282,7 +294,7 @@ def _write_report(
     paired_summary: Dict[str, Any],
 ) -> None:
     lines = [
-        "# ToolSandbox Semantic Repair Official v1",
+        f"# {str(summary.get('summary_version', 'toolsandbox_semantic_repair_official_v1')).replace('_', ' ').title()}",
         "",
         "## Claim Summary",
         "",
@@ -378,18 +390,20 @@ def main() -> None:
     )
     row_summary = _aggregate_rows(filtered_rows, dataset_by_id)
     round_summary = _aggregate_rounds(rounds)
-    paired_summary = _paired_delta_summary(filtered_rows, dataset_by_id)
+    source_manifest = _source_manifest(dataset_path)
+    version = str(source_manifest.get("dataset") or source_manifest.get("slice_policy_version") or "toolsandbox_semantic_repair_official_v1")
+    paired_summary = _paired_delta_summary(filtered_rows, dataset_by_id, version=version)
     (outdir / "paired_delta_summary.json").write_text(json.dumps(paired_summary, indent=2), encoding="utf-8")
     _write_paired_delta_markdown(outdir / "paired_delta_summary.md", paired_summary)
     slice_summary = {
-        "summary_version": "toolsandbox_semantic_repair_official_v1",
+        "summary_version": version,
         "row_level": row_summary,
         "round_level": round_summary,
         "paired_delta_path": _repo_relative(outdir / "paired_delta_summary.json"),
     }
     (outdir / "slice_summary.json").write_text(json.dumps(slice_summary, indent=2), encoding="utf-8")
     systems_observed = sorted({str(row.get("system") or "") for row in filtered_rows})
-    claim_summary = _claim_summary(row_summary, round_summary, systems_observed)
+    claim_summary = _claim_summary(row_summary, round_summary, systems_observed, version=version)
     claim_summary["paired_delta_summary_path"] = _repo_relative(outdir / "paired_delta_summary.json")
     (outdir / "claim_summary.json").write_text(json.dumps(claim_summary, indent=2), encoding="utf-8")
     _write_report(outdir / "report.md", claim_summary, row_summary, round_summary, paired_summary)
@@ -398,7 +412,7 @@ def main() -> None:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
     manifest.update(
         {
-            "benchmark": "toolsandbox_semantic_repair_official_v1",
+            "benchmark": version,
             "dataset": _repo_relative(dataset_path),
             "comparison_scored": _repo_relative(comparison_path),
             "slice_summary_path": _repo_relative(outdir / "slice_summary.json"),

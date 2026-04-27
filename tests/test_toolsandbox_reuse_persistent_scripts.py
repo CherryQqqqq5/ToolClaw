@@ -535,7 +535,7 @@ def test_reuse_v3_candidate_rejection_markdown_keeps_claim_pending() -> None:
     assert "not benchmark evidence" in md
     assert "final formal families: `0`" in md
     assert "No reuse claim should be marked supported" in md
-    assert "core reproducible official-run export" in md
+    assert "one-run pilot" in md
 
 def test_toolsandbox_core_reproducible_filter_excludes_external_and_unresolvable() -> None:
     module = _load_script("export_toolsandbox_core_reproducible.py")
@@ -857,3 +857,30 @@ def test_toolsandbox_core_export_validator_rejects_dry_run_and_accepts_executed_
     assert smoke_allowed_result["pipeline_valid"] is True
     assert smoke_allowed_result["freeze_ready"] is False
     assert "limited_smoke_export_not_claim_evidence" in smoke_allowed_result["warnings"]
+
+
+def test_reuse_v3_candidate_rejection_audit_uses_core_filter_counts() -> None:
+    module = _load_script("audit_toolsandbox_reuse_v3_candidates.py")
+    audit = module.build_audit(
+        inventory={"scenario_count": 5, "scenarios": []},
+        ledger={"scenarios": [{"scenario_name": "legacy", "included_in_frozen_export": True, "requires_external_api": False}], "unmatched_frozen_export_rows": []},
+        frozen_rows=[
+            {"name": "a", "tool_allow_list": ["tool.a"], "categories": ["STATE_DEPENDENCY"], "result_summary": {"success": True}},
+            {"name": "b", "tool_allow_list": ["tool.b"], "categories": ["STATE_DEPENDENCY"], "result_summary": {"success": True}},
+        ],
+        candidates=[{"family_id": "exact", "claim_scope": "exact_match_cost", "claim_inclusion": False}],
+        final_rows=[],
+        core_filter={
+            "selected_count_after_limit": 2,
+            "eligible_core_candidate_count": 2,
+            "excluded_count": 3,
+            "primary_excluded_reason_counts": {"requires_external_api": 2, "missing_milestones": 1},
+            "excluded_reason_counts": {"requires_external_api": 2, "missing_milestones": 1},
+        },
+    )
+
+    assert audit["summary"]["coverage_filter_source"] == "core_filter"
+    assert audit["summary"]["matched_frozen_rows"] == 2
+    assert audit["rejection_bucket_counts"]["inventory_not_in_frozen_export"] == 3
+    assert audit["rejection_bucket_counts"]["external_api_only_no_trace"] == 2
+    assert audit["core_filter_summary"]["eligible_core_candidate_count"] == 2

@@ -5,12 +5,12 @@
 This audit diagnoses the reuse v3 evidence-generation funnel. It is not benchmark evidence and does not promote the reuse claim.
 
 - inventory scenarios: `1032`
-- frozen export rows: `88`
-- matched frozen rows: `88`
-- candidate families: `34`
-- potential exact candidates: `7`
-- no-headroom controls: `26`
-- transfer controls: `1`
+- frozen export rows: `405`
+- matched frozen rows: `405`
+- candidate families: `190`
+- potential exact candidates: `39`
+- no-headroom controls: `135`
+- transfer controls: `16`
 - final formal families: `0`
 - formal source status: `awaiting_pilot_confirmation`
 
@@ -18,14 +18,14 @@ This audit diagnoses the reuse v3 evidence-generation funnel. It is not benchmar
 
 | bucket | count |
 | --- | ---: |
-| `inventory_not_in_frozen_export` | 944 |
-| `external_api_only_no_trace` | 510 |
-| `insufficient_paired_frozen_evidence` | 43 |
+| `inventory_not_in_frozen_export` | 627 |
+| `external_api_only_no_trace` | 523 |
+| `insufficient_paired_frozen_evidence` | 113 |
 | `rejected_no_exact_signature` | 0 |
-| `rejected_toolset_mismatch` | 1 |
-| `rejected_no_headroom_static` | 26 |
-| `transfer_only` | 1 |
-| `awaiting_pilot` | 7 |
+| `rejected_toolset_mismatch` | 16 |
+| `rejected_no_headroom_static` | 135 |
+| `transfer_only` | 16 |
+| `awaiting_pilot` | 39 |
 | `missing_success_run_evidence` | 0 |
 | `final_source_empty_pending_pilot` | 1 |
 
@@ -37,14 +37,14 @@ This audit diagnoses the reuse v3 evidence-generation funnel. It is not benchmar
 | `target_exact_claim_family_count` | 12 |
 | `target_headroom_candidate_count` | 10 |
 | `final_exact_claim_family_gap` | 12 |
-| `potential_exact_candidate_gap_before_pilot` | 5 |
+| `potential_exact_candidate_gap_before_pilot` | 0 |
 | `pilot_confirmed_headroom_gap` | 10 |
 
 ## Interpretation
 
-The v3 runner/scorer pipeline is ready for separated exact/control evidence, but the current frozen export is too small to produce enough pilot-confirmed primary exact families. The immediate bottleneck is evidence source coverage and pilot confirmation, not reuse runtime behavior.
+The v3 runner/scorer pipeline is ready for separated exact/control evidence, but the current candidates still require pilot-confirmed primary exact headroom families before any claim. The immediate bottleneck is pilot confirmation and exact high-headroom selection, not reuse runtime behavior.
 
-Recommended next step: generate a core reproducible official-run export, re-derive v3 candidates, then run a one-run pilot before any formal reuse experiment.
+Recommended next step: run a one-run pilot on the core-derived candidates, promote only pilot-confirmed exact high-headroom families into the final source, then consider any formal reuse experiment.
 
 ## Claim Boundary
 

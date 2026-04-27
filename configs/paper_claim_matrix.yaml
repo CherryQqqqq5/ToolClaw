@@ -750,6 +750,24 @@
       "claim_strength": "pending",
       "paper_role": "reuse_exact_match_cost_candidate",
       "promotion_gate": "V3 can support only a narrow exact/matched-signature second-run cost claim. Primary gates must be computed on claim_scope=exact_match_cost and claim_inclusion=true only: >=12 exact claim families, >=10 pilot-confirmed headroom families, warm exact reuse hit >=0.50, warm exact correct-source match >=0.90, warm success >= cold success, positive cost reduction, and sham false positive <=0.05. Inventory and static candidates are not evidence."
+    },
+    "toolsandbox_semantic_repair_official_v2": {
+      "status": "formal_completed_pending_claim_review",
+      "prepare_script": "scripts/derive_toolsandbox_semantic_repair_official.py --dataset-name toolsandbox_semantic_repair_official_v2",
+      "runner": "scripts/run_toolsandbox_semantic_repair_official.py",
+      "score_script": "scripts/score_toolsandbox_semantic_repair_official.py",
+      "default_source": "data/toolsandbox_semantic_repair_official_v2.jsonl",
+      "default_manifest": "data/toolsandbox_semantic_repair_official_v2.manifest.json",
+      "default_mode": "planner",
+      "default_systems": "a2_planner,a3_full_interaction,a3_no_query,a3_noisy_user",
+      "default_num_runs": 3,
+      "claim_ids": [
+        "interaction_semantic_usefulness_mechanism"
+      ],
+      "slice_policy_version": "toolsandbox_semantic_repair_official_v2",
+      "claim_strength": "mechanism_primary",
+      "paper_role": "mechanism_primary_refresh_pending_review",
+      "source_boundary": "derived from data/toolsandbox.official_core_reproducible.frozen.json; use after review before replacing v1 claim source"
     }
   }
 }

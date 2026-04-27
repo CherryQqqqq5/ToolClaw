@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import importlib.util
 import subprocess
 import sys
 from pathlib import Path
@@ -342,3 +343,38 @@ def test_score_toolsandbox_semantic_repair_official(tmp_path: Path) -> None:
     assert probe_stats["wins"] == 0
     assert probe_stats["ties"] == 1
     assert (outdir / "paired_delta_summary.md").exists()
+
+
+def test_derive_toolsandbox_semantic_repair_official_v2_manifest(tmp_path: Path) -> None:
+    module_path = ROOT_DIR / "scripts" / "derive_toolsandbox_semantic_repair_official.py"
+    spec = importlib.util.spec_from_file_location("derive_toolsandbox_semantic_repair_official", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    source = tmp_path / "source.json"
+    task_ids = list(module.PRIMARY_TASK_IDS) + list(module.PROBE_CONTROL_TASK_IDS)
+    source.write_text(json.dumps([{"name": task_id, "categories": ["state_dependency"]} for task_id in task_ids]), encoding="utf-8")
+    trace = tmp_path / "trace.json"
+    trace.write_text(json.dumps({"events": [{"event_type": "interaction_round_outcome", "metadata": {"answer_patch": {"effective_patch": True}}, "output": {"target_alignment": 1.0, "effective_patch": True, "post_query_progress": True}}]}), encoding="utf-8")
+    comparison = tmp_path / "comparison.csv"
+    rows = []
+    for task_id in task_ids:
+        for system in ["a3_full_interaction", "a3_no_query", "a3_noisy_user"]:
+            rows.append({"task_id": task_id, "system": system, "trace_path": str(trace), "strict_scored_success_rate": "1.0" if system == "a3_full_interaction" else "0.0"})
+    _write_csv(comparison, rows)
+
+    dataset, manifest = module.derive(
+        source,
+        comparison,
+        dataset_name="toolsandbox_semantic_repair_official_v2",
+        slice_policy_version="toolsandbox_semantic_repair_official_v2",
+        metadata_key="semantic_repair_official_v2",
+        manual_label_suffix="20260427",
+    )
+
+    assert manifest["dataset"] == "toolsandbox_semantic_repair_official_v2"
+    assert manifest["source"].endswith("source.json")
+    assert manifest["row_count"] == 12
+    assert dataset[0]["manual_label_status"].endswith("20260427")
+    assert "semantic_repair_official_v2" in dataset[0]["metadata"]

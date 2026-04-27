@@ -323,7 +323,7 @@ def manifest_for(rows: List[Dict[str, Any]], *, version: str, source: str, statu
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Derive ToolSandbox reuse persistent v3 artifacts")
-    parser.add_argument("--frozen-source", default="data/toolsandbox.formal.official.json")
+    parser.add_argument("--frozen-source", default="data/toolsandbox.official_core_reproducible.frozen.json")
     parser.add_argument("--inventory-out", default="data/toolsandbox_official_scenario_inventory.json")
     parser.add_argument("--candidates-out", default="data/toolsandbox_reuse_persistent_v3_candidates.jsonl")
     parser.add_argument("--candidates-manifest", default="data/toolsandbox_reuse_persistent_v3_candidates.manifest.json")

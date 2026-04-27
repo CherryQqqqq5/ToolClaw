@@ -184,6 +184,21 @@ def _score_command(suite_cfg: Dict[str, Any], outdir: Path, args: argparse.Names
             "--outdir",
             str(outdir),
         ]
+    if score_script.name == "score_toolsandbox_semantic_repair_official.py":
+        resolved_source = _resolve_source_path(args.source or suite_cfg["default_source"])
+        comparison = outdir / "comparison.scored.csv"
+        if not comparison.exists():
+            comparison = outdir / "comparison.csv"
+        return [
+            sys.executable,
+            str(score_script),
+            "--dataset",
+            str(resolved_source),
+            "--comparison",
+            str(comparison),
+            "--outdir",
+            str(outdir),
+        ]
     return [
         sys.executable,
         str(score_script),

@@ -13,7 +13,7 @@
     "family_count": 20,
     "headroom_candidate_count": 10
   },
-  "source_commit": "76231cb732c38894b704e1000a16a7137d1d2b91",
+  "source_commit": "49ed8243179f1426c331b969ff26a8ef74918ef6",
   "statistical_claim_allowed": false,
   "transfer_control_count": 0,
   "version": "toolsandbox_reuse_persistent_v3"
