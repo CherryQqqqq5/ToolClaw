@@ -193,6 +193,9 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert experiment_manifest["comparison_path"].endswith("comparison.scored.csv")
     assert experiment_manifest["comparison_raw_path"].endswith("comparison.raw.csv")
     assert experiment_manifest["comparison_scored_path"].endswith("comparison.scored.csv")
+    assert experiment_manifest["planner_admission_impact_audit_path"].endswith("planner_admission_impact_audit.json")
+    assert "planner_utility_win_count" in experiment_manifest
+    assert "planner_takeover_on_s1_fail_count" in experiment_manifest
     assert experiment_manifest["experiment_metadata"]["runner_script"].endswith("scripts/run_toolsandbox_bench.py")
 
     per_category_md = per_category_md_path.read_text(encoding="utf-8")
@@ -1081,3 +1084,62 @@ def test_strict_layer_monotonicity_audit_reports_adjacent_regressions(tmp_path: 
     assert audit["regressions"][0]["task_id"] == "task_regress"
     assert (tmp_path / "strict_layer_monotonicity_audit.json").exists()
     assert "task_regress" in (tmp_path / "strict_layer_monotonicity_audit.md").read_text(encoding="utf-8")
+
+
+
+def test_planner_admission_impact_audit_reports_paired_takeover_utility(tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_toolsandbox_bench.py"
+    spec = importlib.util.spec_from_file_location("run_toolsandbox_bench_module_planner_impact", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    def row(task_id: str, system: str, success: bool, *, takeover: bool = False, reason: str = "none", category: str = "single_tool", failure_type: str = "single_user_turn") -> dict[str, object]:
+        return {
+            "run_index": 1,
+            "task_id": task_id,
+            "system": system,
+            "strict_scored_success": success,
+            "planner_takeover_admitted": takeover,
+            "planner_admission_mode": "execution_takeover" if takeover else "observability_only",
+            "planner_admission_reason": reason,
+            "primary_category": category,
+            "categories": json.dumps([category]),
+            "failure_type": failure_type,
+            "stop_reason": "success" if success else "blocked",
+            "trace_path": f"{task_id}_{system}.json",
+        }
+
+    rows = [
+        row("utility", "s1_recovery", False, category="state_dependency"),
+        row("utility", "s2_planner_overlay", True, takeover=True, reason="base_disallowed_seed_planner_valid", category="state_dependency"),
+        row("safe_tie", "s1_recovery", True),
+        row("safe_tie", "s2_planner_overlay", True, takeover=True, reason="strict_refinement"),
+        row("regress", "s1_recovery", True),
+        row("regress", "s2_planner_overlay", False, takeover=True, reason="strict_refinement"),
+        row("interaction_fail", "s1_recovery", False, category="multiple_user_turn", failure_type="multiple_user_turn"),
+        row("interaction_fail", "s2_planner_overlay", False, takeover=False, reason="no_admissible_execution_takeover", category="multiple_user_turn", failure_type="multiple_user_turn"),
+    ]
+
+    audit = module._write_planner_admission_impact_audit(tmp_path, rows)
+
+    assert audit["paired_comparisons"] == 4
+    assert audit["planner_utility_win_count"] == 1
+    assert audit["planner_takeover_on_s1_fail_count"] == 1
+    assert audit["planner_takeover_on_s1_success_count"] == 2
+    assert audit["bucket_counts"]["s1_fail_s2_success_takeover"] == 1
+    assert audit["bucket_counts"]["s1_success_s2_success_takeover"] == 1
+    assert audit["bucket_counts"]["s1_success_s2_fail_takeover"] == 1
+    assert audit["bucket_counts"]["s1_fail_s2_fail_no_takeover"] == 1
+    assert audit["admission_reason_by_outcome"]["s1_fail_s2_success_takeover"]["base_disallowed_seed_planner_valid"] == 1
+    assert audit["primary_category_by_outcome"]["s1_fail_s2_fail_no_takeover"]["multiple_user_turn"] == 1
+    assert audit["failure_type_by_outcome"]["s1_fail_s2_fail_no_takeover"]["multiple_user_turn"] == 1
+    assert audit["s1_failed_category_summary"]["multiple_user_turn"] == 1
+    assert audit["s1_failed_interaction_contract_like_count"] == 1
+    assert audit["examples"]["s1_fail_s2_success_takeover"][0]["task_id"] == "utility"
+    assert (tmp_path / "planner_admission_impact_audit.json").exists()
+    report = (tmp_path / "planner_admission_impact_audit.md").read_text(encoding="utf-8")
+    assert "Planner Admission Impact Audit" in report
+    assert "s1_fail_s2_success_takeover" in report
+    assert "S1 Failed Categories" in report

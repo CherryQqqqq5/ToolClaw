@@ -1025,6 +1025,222 @@ def _write_planner_admission_audit(outdir: Path, rows: List[Dict[str, Any]]) -> 
     (outdir / "planner_admission_audit.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return audit
 
+
+PLANNER_ADMISSION_IMPACT_BUCKETS = [
+    "s1_success_s2_success_takeover",
+    "s1_success_s2_success_no_takeover",
+    "s1_success_s2_fail_takeover",
+    "s1_success_s2_fail_no_takeover",
+    "s1_fail_s2_success_takeover",
+    "s1_fail_s2_success_no_takeover",
+    "s1_fail_s2_fail_takeover",
+    "s1_fail_s2_fail_no_takeover",
+]
+INTERACTION_CONTRACT_CATEGORIES = {"multiple_user_turn", "insufficient_information"}
+
+
+def _json_list_cell(value: Any) -> List[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    if value is None:
+        return []
+    text = str(value).strip()
+    if not text:
+        return []
+    try:
+        parsed = json.loads(text)
+    except Exception:
+        return [text]
+    if isinstance(parsed, list):
+        return [str(item) for item in parsed]
+    return [str(parsed)]
+
+
+def _increment_nested_counter(container: Dict[str, Dict[str, int]], bucket: str, key: str) -> None:
+    bucket_map = container.setdefault(bucket, {})
+    label = key or "none"
+    bucket_map[label] = int(bucket_map.get(label, 0)) + 1
+
+
+def _planner_impact_example(
+    *,
+    run_index: str,
+    task_id: str,
+    s1_row: Dict[str, Any],
+    s2_row: Dict[str, Any],
+    s1_success: bool,
+    s2_success: bool,
+    takeover: bool,
+) -> Dict[str, Any]:
+    return {
+        "run_index": run_index,
+        "task_id": task_id,
+        "s1_success": s1_success,
+        "s2_success": s2_success,
+        "planner_takeover_admitted": takeover,
+        "planner_admission_mode": str(s2_row.get("planner_admission_mode") or "none"),
+        "planner_admission_reason": str(s2_row.get("planner_admission_reason") or "none"),
+        "primary_category": str(s2_row.get("primary_category") or s1_row.get("primary_category") or ""),
+        "categories": s2_row.get("categories") or s1_row.get("categories") or "[]",
+        "failure_type": str(s2_row.get("failure_type") or s1_row.get("failure_type") or ""),
+        "s1_stop_reason": str(s1_row.get("stop_reason") or ""),
+        "s2_stop_reason": str(s2_row.get("stop_reason") or ""),
+        "s1_trace_path": str(s1_row.get("trace_path") or ""),
+        "s2_trace_path": str(s2_row.get("trace_path") or ""),
+    }
+
+
+def _write_planner_admission_impact_audit(outdir: Path, rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    grouped: Dict[tuple[str, str], Dict[str, Dict[str, Any]]] = {}
+    for row in rows:
+        key = (str(row.get("run_index") or ""), str(row.get("task_id") or ""))
+        grouped.setdefault(key, {})[str(row.get("system") or "")] = row
+
+    bucket_counts = {bucket: 0 for bucket in PLANNER_ADMISSION_IMPACT_BUCKETS}
+    admission_reason_by_outcome: Dict[str, Dict[str, int]] = {bucket: {} for bucket in PLANNER_ADMISSION_IMPACT_BUCKETS}
+    admission_mode_by_outcome: Dict[str, Dict[str, int]] = {bucket: {} for bucket in PLANNER_ADMISSION_IMPACT_BUCKETS}
+    primary_category_by_outcome: Dict[str, Dict[str, int]] = {bucket: {} for bucket in PLANNER_ADMISSION_IMPACT_BUCKETS}
+    failure_type_by_outcome: Dict[str, Dict[str, int]] = {bucket: {} for bucket in PLANNER_ADMISSION_IMPACT_BUCKETS}
+    s1_failed_category_summary: Dict[str, int] = {}
+    examples: Dict[str, List[Dict[str, Any]]] = {bucket: [] for bucket in PLANNER_ADMISSION_IMPACT_BUCKETS}
+    paired_comparisons = 0
+    planner_takeover_on_s1_fail_count = 0
+    planner_takeover_on_s1_success_count = 0
+    s1_failed_interaction_contract_like_count = 0
+
+    for (run_index, task_id), system_rows in sorted(grouped.items()):
+        if "s1_recovery" not in system_rows or "s2_planner_overlay" not in system_rows:
+            continue
+        s1_row = system_rows["s1_recovery"]
+        s2_row = system_rows["s2_planner_overlay"]
+        s1_success = _scored_success(s1_row)
+        s2_success = _scored_success(s2_row)
+        takeover = _bool_from_value(s2_row.get("planner_takeover_admitted", False))
+        bucket = "s1_{s1}_s2_{s2}_{takeover}".format(
+            s1="success" if s1_success else "fail",
+            s2="success" if s2_success else "fail",
+            takeover="takeover" if takeover else "no_takeover",
+        )
+        bucket_counts[bucket] += 1
+        paired_comparisons += 1
+        if takeover and s1_success:
+            planner_takeover_on_s1_success_count += 1
+        if takeover and not s1_success:
+            planner_takeover_on_s1_fail_count += 1
+
+        primary_category = str(s2_row.get("primary_category") or s1_row.get("primary_category") or "none")
+        failure_type = str(s2_row.get("failure_type") or s1_row.get("failure_type") or "none")
+        categories = _json_list_cell(s2_row.get("categories") or s1_row.get("categories") or "[]")
+        _increment_nested_counter(admission_reason_by_outcome, bucket, str(s2_row.get("planner_admission_reason") or "none"))
+        _increment_nested_counter(admission_mode_by_outcome, bucket, str(s2_row.get("planner_admission_mode") or "none"))
+        _increment_nested_counter(primary_category_by_outcome, bucket, primary_category)
+        _increment_nested_counter(failure_type_by_outcome, bucket, failure_type)
+
+        if not s1_success:
+            labels = categories or [primary_category]
+            for category in labels:
+                label = str(category or "none")
+                s1_failed_category_summary[label] = int(s1_failed_category_summary.get(label, 0)) + 1
+            normalized_labels = {str(item).lower() for item in labels}
+            if normalized_labels & INTERACTION_CONTRACT_CATEGORIES or failure_type.lower() in INTERACTION_CONTRACT_CATEGORIES:
+                s1_failed_interaction_contract_like_count += 1
+
+        if len(examples[bucket]) < 50:
+            examples[bucket].append(
+                _planner_impact_example(
+                    run_index=run_index,
+                    task_id=task_id,
+                    s1_row=s1_row,
+                    s2_row=s2_row,
+                    s1_success=s1_success,
+                    s2_success=s2_success,
+                    takeover=takeover,
+                )
+            )
+
+    planner_utility_win_count = int(bucket_counts["s1_fail_s2_success_takeover"])
+    s1_success_takeover_successes = int(bucket_counts["s1_success_s2_success_takeover"])
+    s1_fail_takeover_successes = int(bucket_counts["s1_fail_s2_success_takeover"])
+    planner_takeover_success_rate_on_s1_success = (
+        s1_success_takeover_successes / planner_takeover_on_s1_success_count
+        if planner_takeover_on_s1_success_count
+        else 0.0
+    )
+    planner_takeover_success_rate_on_s1_fail = (
+        s1_fail_takeover_successes / planner_takeover_on_s1_fail_count
+        if planner_takeover_on_s1_fail_count
+        else 0.0
+    )
+    regression_risk_count = int(bucket_counts["s1_success_s2_fail_takeover"] + bucket_counts["s1_success_s2_fail_no_takeover"])
+    audit = {
+        "audit_version": "planner_admission_impact_v1",
+        "lower_system": "s1_recovery",
+        "upper_system": "s2_planner_overlay",
+        "success_metric": "strict_scored_success",
+        "paired_comparisons": paired_comparisons,
+        "bucket_counts": bucket_counts,
+        "planner_utility_win_count": planner_utility_win_count,
+        "regression_risk_count": regression_risk_count,
+        "planner_takeover_on_s1_fail_count": planner_takeover_on_s1_fail_count,
+        "planner_takeover_on_s1_success_count": planner_takeover_on_s1_success_count,
+        "planner_takeover_success_rate_on_s1_fail": planner_takeover_success_rate_on_s1_fail,
+        "planner_takeover_success_rate_on_s1_success": planner_takeover_success_rate_on_s1_success,
+        "admission_reason_by_outcome": admission_reason_by_outcome,
+        "admission_mode_by_outcome": admission_mode_by_outcome,
+        "primary_category_by_outcome": primary_category_by_outcome,
+        "failure_type_by_outcome": failure_type_by_outcome,
+        "s1_failed_category_summary": dict(sorted(s1_failed_category_summary.items())),
+        "s1_failed_interaction_contract_like_count": s1_failed_interaction_contract_like_count,
+        "examples": examples,
+    }
+    (outdir / "planner_admission_impact_audit.json").write_text(json.dumps(audit, indent=2), encoding="utf-8")
+
+    lines = [
+        "# Planner Admission Impact Audit",
+        "",
+        f"- audit_version: `{audit['audit_version']}`",
+        f"- paired_comparisons: `{paired_comparisons}`",
+        f"- planner_utility_win_count: `{planner_utility_win_count}`",
+        f"- regression_risk_count: `{regression_risk_count}`",
+        f"- planner_takeover_on_s1_fail_count: `{planner_takeover_on_s1_fail_count}`",
+        f"- planner_takeover_on_s1_success_count: `{planner_takeover_on_s1_success_count}`",
+        f"- planner_takeover_success_rate_on_s1_fail: `{planner_takeover_success_rate_on_s1_fail:.6f}`",
+        f"- planner_takeover_success_rate_on_s1_success: `{planner_takeover_success_rate_on_s1_success:.6f}`",
+        "",
+        "## Outcome Buckets",
+        "",
+        "| bucket | count |",
+        "|---|---:|",
+    ]
+    for bucket in PLANNER_ADMISSION_IMPACT_BUCKETS:
+        lines.append(f"| {bucket} | {bucket_counts[bucket]} |")
+    lines.extend(["", "## Admission Reasons By Outcome", ""])
+    for bucket in PLANNER_ADMISSION_IMPACT_BUCKETS:
+        reason_map = admission_reason_by_outcome.get(bucket, {})
+        if not reason_map:
+            continue
+        reasons = ", ".join(f"{key}:{value}" for key, value in sorted(reason_map.items()))
+        lines.append(f"- `{bucket}`: {reasons}")
+    lines.extend(["", "## S1 Failed Categories", "", "| category | count |", "|---|---:|"])
+    for category, count in sorted(s1_failed_category_summary.items(), key=lambda item: (-item[1], item[0])):
+        lines.append(f"| {category} | {count} |")
+    lines.extend(["", "## Interpretation Boundary", ""])
+    if planner_utility_win_count == 0:
+        lines.append(
+            "Current evidence supports safe admitted planner takeover, but this audit does not show broad-core planner lift because no `s1_fail -> s2_success` takeover was observed."
+        )
+    else:
+        lines.append(
+            "This audit observed `s1_fail -> s2_success` takeover cases; review the capped examples before promoting any planner utility claim."
+        )
+    if s1_failed_interaction_contract_like_count:
+        lines.append(
+            f"S1 failures include `{s1_failed_interaction_contract_like_count}` interaction-contract-like rows, so full-core planner utility may be limited by tasks owned by the interaction layer."
+        )
+    lines.append("No scenario-name or ToolSandbox tool-name repair recommendations are emitted by this audit.")
+    (outdir / "planner_admission_impact_audit.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return audit
+
 def _focused_slice_summary(per_system_summary: Dict[str, Any]) -> Dict[str, Any]:
     per_category: Dict[str, Dict[str, Any]] = {}
     for system, system_summary in per_system_summary.items():
@@ -2044,6 +2260,7 @@ def main() -> None:
     write_csv_rows(scored_run_rows, outdir / "comparison.scored.csv")
     strict_audit = _write_strict_layer_monotonicity_audit(outdir, scored_run_rows)
     planner_admission_audit = _write_planner_admission_audit(outdir, scored_run_rows)
+    planner_admission_impact_audit = _write_planner_admission_impact_audit(outdir, scored_run_rows)
     failure_type_summary = _failure_type_summary(outdir)
     (outdir / "per_failure_type_summary.json").write_text(
         json.dumps(failure_type_summary, indent=2),
@@ -2087,6 +2304,9 @@ def main() -> None:
             else None,
             "planner_admission_audit_path": display_path(outdir / "planner_admission_audit.json"),
             "planner_takeover_admitted_count": planner_admission_audit.get("takeover_admitted_count"),
+            "planner_admission_impact_audit_path": display_path(outdir / "planner_admission_impact_audit.json"),
+            "planner_utility_win_count": planner_admission_impact_audit.get("planner_utility_win_count"),
+            "planner_takeover_on_s1_fail_count": planner_admission_impact_audit.get("planner_takeover_on_s1_fail_count"),
             "local_debug_only_paths": [
                 display_path(outdir / "comparison.raw.csv"),
                 display_path(outdir / "latest_run_comparison.raw.csv"),
