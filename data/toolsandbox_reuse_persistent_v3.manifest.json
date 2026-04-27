@@ -8,7 +8,7 @@
   "headroom_candidate_count": 18,
   "inventory_is_evidence": false,
   "pilot_effect_count": 59,
-  "pilot_effects": "outputs/paper_suite/toolsandbox_reuse_persistent_v3_pilot/reuse_pair_effects.jsonl",
+  "pilot_effects": "outputs/paper_suite/toolsandbox_reuse_persistent_v3_pilot_exact_scope_fix/reuse_pair_effects.jsonl",
   "pilot_source": "data/toolsandbox_reuse_persistent_v3_pilot_candidates.jsonl",
   "potential_exact_candidate_count": 18,
   "selection_gate_targets": {
@@ -16,7 +16,7 @@
     "family_count": 20,
     "headroom_candidate_count": 10
   },
-  "source_commit": "89bf5c1cb90ac5c1e2fdbc2d27adbd6421c5f596",
+  "source_commit": "8da494530fda20b111f9dbc2c7d20c57c4f4d1cc",
   "statistical_claim_allowed": true,
   "transfer_control_count": 8,
   "version": "toolsandbox_reuse_persistent_v3"

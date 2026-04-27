@@ -1519,3 +1519,109 @@ def test_planner_sensitive_multi_source_executes_all_steps_with_semantic_mock(tm
     assert tool_calls == ["primary_source_fetcher", "secondary_source_fetcher", "source_merger", "merged_report_writer"]
     stop_event = next(event for event in payload["events"] if event["event_type"] == "stop")
     assert stop_event["output"]["reason"] == "success_criteria_satisfied"
+
+
+def test_exact_reuse_scope_rejects_transfer_registry_match() -> None:
+    asset_registry = InMemoryAssetRegistry()
+    asset_registry.upsert(
+        SimpleNamespace(
+            snippet_id="asset_exact_scope_transfer_only",
+            task_signature="phase1::family=exact_scope_family::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_old_report",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "backup_write_tool"},
+            recommended_inputs={},
+            metadata={
+                "failure_context": "environment_failure",
+                "required_state_slots": [],
+                "reuse_family_id": "exact_scope_family",
+                "semantic_reuse_family": "exact_scope",
+                "reuse_application_hint": "binding_prior",
+                "utility_gain_score": 0.0,
+            },
+        )
+    )
+    planner = build_planner(asset_registry=asset_registry)
+    request = PlanningRequest(
+        task=TaskSpec(task_id="exact_scope_family__pass2", user_goal="retrieve and write new report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+                ToolSpec(tool_id="backup_write_tool", description="backup writer"),
+            ]
+        ),
+        hints=PlanningHints(
+            allow_reuse=True,
+            user_style={
+                "task_family": "exact_scope_family",
+                "reuse_family_id": "exact_scope_family",
+                "semantic_reuse_family": "exact_scope",
+                "failure_type": "environment_failure",
+                "reuse_scope": "exact",
+                "reuse_allowed_modes": ["exact_reuse"],
+                "reuse_require_source_family_match": True,
+                "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool"],
+            },
+        ),
+    )
+
+    result = planner.plan(request)
+
+    context = result.workflow.metadata["reusable_context"]
+    assert context["profile_loaded"] is False
+    assert context["resolved_asset_ids"] == []
+    assert context["reuse_mode"] == "none"
+    assert request.hints.reusable_asset_ids == []
+
+
+def test_exact_reuse_scope_accepts_same_family_exact_registry_match() -> None:
+    asset_registry = InMemoryAssetRegistry()
+    asset_registry.upsert(
+        SimpleNamespace(
+            snippet_id="asset_exact_scope_exact_match",
+            task_signature="phase1::family=exact_scope_family::caps=cap_retrieve+cap_write::fail=environment_failure::goal=retrieve_and_write_report",
+            capability_skeleton=["cap_retrieve", "cap_write"],
+            recommended_bindings={"cap_write": "backup_write_tool"},
+            recommended_inputs={},
+            metadata={
+                "failure_context": "environment_failure",
+                "required_state_slots": [],
+                "reuse_family_id": "exact_scope_family",
+                "semantic_reuse_family": "exact_scope",
+                "reuse_application_hint": "binding_prior",
+                "utility_gain_score": 0.0,
+            },
+        )
+    )
+    planner = build_planner(asset_registry=asset_registry)
+    request = PlanningRequest(
+        task=TaskSpec(task_id="exact_scope_family__pass2", user_goal="retrieve and write report", constraints=TaskConstraints()),
+        context=WorkflowContext(
+            candidate_tools=[
+                ToolSpec(tool_id="search_tool", description="search"),
+                ToolSpec(tool_id="write_tool", description="write"),
+                ToolSpec(tool_id="backup_write_tool", description="backup writer"),
+            ]
+        ),
+        hints=PlanningHints(
+            allow_reuse=True,
+            user_style={
+                "task_family": "exact_scope_family",
+                "reuse_family_id": "exact_scope_family",
+                "semantic_reuse_family": "exact_scope",
+                "failure_type": "environment_failure",
+                "reuse_scope": "exact",
+                "reuse_allowed_modes": ["exact_reuse"],
+                "reuse_require_source_family_match": True,
+                "tool_allow_list": ["search_tool", "write_tool", "backup_write_tool"],
+            },
+        ),
+    )
+
+    result = planner.plan(request)
+
+    context = result.workflow.metadata["reusable_context"]
+    assert context["profile_loaded"] is True
+    assert context["resolved_asset_ids"] == ["asset_exact_scope_exact_match"]
+    assert context["reuse_mode"] == "exact_reuse"
+    assert context["selected_match"]["source_reuse_family_id"] == "exact_scope_family"

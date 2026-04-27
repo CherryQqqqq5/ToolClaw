@@ -732,7 +732,7 @@
       }
     },
     "toolsandbox_reuse_persistent_v3": {
-      "status": "pilot_completed_safety_blocked",
+      "status": "pilot_completed_safety_passed_pending_formal",
       "prepare_script": "scripts/derive_toolsandbox_reuse_persistent_v3.py --phase all",
       "runner": "scripts/run_toolsandbox_reuse_persistent.py",
       "score_script": "scripts/score_toolsandbox_reuse_persistent.py",
@@ -752,7 +752,7 @@
       ],
       "claim_strength": "pending",
       "paper_role": "reuse_exact_match_cost_candidate",
-      "promotion_gate": "V3 can support only a narrow exact/matched-signature second-run cost claim. Primary gates must be computed on claim_scope=exact_match_cost and claim_inclusion=true only: >=12 exact claim families, >=10 pilot-confirmed headroom families, warm exact reuse hit >=0.50, warm exact correct-source match >=0.90, warm success >= cold success, positive cost reduction, and sham false positive <=0.05. Current pilot has enough exact/headroom families but final-source smoke is safety-blocked by sham false positives, so no formal claim is allowed. Inventory and static candidates are not evidence."
+      "promotion_gate": "V3 can support only a narrow exact/matched-signature second-run cost claim. Primary gates must be computed on claim_scope=exact_match_cost and claim_inclusion=true only: >=12 exact claim families, >=10 pilot-confirmed headroom families, warm exact reuse hit >=0.50, warm exact correct-source match >=0.90, warm success >= cold success, positive cost reduction, and sham false positive <=0.05. Exact-scope admission now passes the final-source 1-run smoke safety gate, but reuse remains pending until 3-run formal passes. Inventory, static candidates, pilot results, and 1-run smoke are not paper claim evidence."
     },
     "toolsandbox_semantic_repair_official_v2": {
       "status": "formal_completed_pending_claim_review",

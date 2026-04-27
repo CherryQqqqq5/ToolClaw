@@ -8,7 +8,7 @@ import csv
 import json
 import math
 import random
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 from statistics import mean, median
 from typing import Any, Dict, Iterable, List, Tuple
@@ -380,6 +380,131 @@ def _control_summary(rows: List[Dict[str, str]], effects: List[Dict[str, Any]]) 
     }
 
 
+def _sham_false_positive_bucket(row: Dict[str, str]) -> str:
+    tier = str(row.get("reuse_tier") or "").strip()
+    mode = str(row.get("reuse_mode") or "").strip()
+    if mode == "exact_reuse" and tier != "exact_match_reuse":
+        return "exact_source_mismatch_false_positive"
+    if tier == "exact_match_reuse" or mode == "exact_reuse":
+        return "exact_false_positive"
+    if tier == "same_family_transfer_reuse":
+        return "same_family_transfer_false_positive"
+    if tier == "cross_family_transfer_reuse":
+        return "cross_family_transfer_false_positive"
+    if tier == "unresolved_transfer_reuse" or mode == "transfer_reuse":
+        return "transfer_false_positive"
+    return "policy_or_hint_false_positive"
+
+
+def _sham_false_positive_audit(rows: List[Dict[str, str]], family_metadata: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    sham_rows = [
+        row
+        for row in rows
+        if str(row.get("stage")) == "pass2_eval" and row.get("system") == "a4_reuse_sham"
+    ]
+    hit_rows = [row for row in sham_rows if _bool(row.get("reused_artifact"))]
+    bucket_counts: Counter[str] = Counter()
+    tier_counts: Counter[str] = Counter()
+    mode_counts: Counter[str] = Counter()
+    records: List[Dict[str, Any]] = []
+    for row in hit_rows:
+        family = _family(row)
+        target_meta = family_metadata.get(family, {})
+        bucket = _sham_false_positive_bucket(row)
+        bucket_counts[bucket] += 1
+        tier_counts[str(row.get("reuse_tier") or "")] += 1
+        mode_counts[str(row.get("reuse_mode") or "")] += 1
+        target_semantic = str(row.get("reuse_target_semantic_family") or "")
+        source_semantic = str(row.get("reuse_source_semantic_family") or "")
+        matched_signature = str(row.get("reuse_selected_match_signature") or "")
+        target_signature = str(target_meta.get("signature_key") or "")
+        records.append(
+            {
+                "bucket": bucket,
+                "run_index": str(row.get("run_index") or ""),
+                "task_id": str(row.get("task_id") or ""),
+                "target_family": str(row.get("reuse_target_family") or family),
+                "source_family": str(row.get("reuse_source_family") or ""),
+                "target_semantic_family": target_semantic,
+                "source_semantic_family": source_semantic,
+                "same_semantic_family": bool(target_semantic and source_semantic and target_semantic == source_semantic),
+                "target_signature": target_signature,
+                "matched_signature": matched_signature,
+                "same_signature_leak": bool(target_signature and matched_signature and target_signature == matched_signature),
+                "claim_scope": str(target_meta.get("claim_scope") or ""),
+                "claim_inclusion": bool(target_meta.get("claim_inclusion", False)),
+                "pair_type": str(target_meta.get("pair_type") or ""),
+                "reuse_tier": str(row.get("reuse_tier") or ""),
+                "reuse_mode": str(row.get("reuse_mode") or ""),
+                "reuse_selected_asset_id": str(row.get("reuse_selected_asset_id") or ""),
+                "reuse_source_task_id": str(row.get("reuse_source_task_id") or ""),
+                "trace_path": str(row.get("trace_path") or ""),
+                "chosen_tool": str(row.get("chosen_tool") or ""),
+                "stop_reason": str(row.get("stop_reason") or ""),
+            }
+        )
+    sham_count = len(sham_rows)
+    hit_count = len(hit_rows)
+    exact_count = int(
+        bucket_counts.get("exact_false_positive", 0)
+        + bucket_counts.get("exact_source_mismatch_false_positive", 0)
+    )
+    transfer_count = int(
+        bucket_counts.get("same_family_transfer_false_positive", 0)
+        + bucket_counts.get("cross_family_transfer_false_positive", 0)
+        + bucket_counts.get("transfer_false_positive", 0)
+    )
+    return {
+        "sham_row_count": sham_count,
+        "sham_reuse_hit_count": hit_count,
+        "sham_any_reuse_hit_rate": float(hit_count / sham_count) if sham_count else 0.0,
+        "sham_exact_false_positive_count": exact_count,
+        "sham_exact_false_positive_rate": float(exact_count / sham_count) if sham_count else 0.0,
+        "sham_transfer_false_positive_count": transfer_count,
+        "sham_transfer_false_positive_rate": float(transfer_count / sham_count) if sham_count else 0.0,
+        "bucket_counts": dict(sorted(bucket_counts.items())),
+        "reuse_tier_counts": dict(sorted(tier_counts.items())),
+        "reuse_mode_counts": dict(sorted(mode_counts.items())),
+        "records": records,
+    }
+
+
+def _write_sham_false_positive_report(path: Path, audit: Dict[str, Any]) -> None:
+    lines = [
+        "# Reuse Sham False-Positive Audit",
+        "",
+        "This audit diagnoses sham-registry reuse hits. It is safety diagnostics, not reuse claim evidence.",
+        "",
+        "| metric | value |",
+        "|---|---:|",
+        f"| sham rows | {audit.get('sham_row_count', 0)} |",
+        f"| sham reuse hits | {audit.get('sham_reuse_hit_count', 0)} |",
+        f"| sham any reuse hit rate | {float(audit.get('sham_any_reuse_hit_rate', 0.0)):.3f} |",
+        f"| sham exact false positives | {audit.get('sham_exact_false_positive_count', 0)} |",
+        f"| sham transfer false positives | {audit.get('sham_transfer_false_positive_count', 0)} |",
+        "",
+        "## Buckets",
+        "",
+        "| bucket | count |",
+        "|---|---:|",
+    ]
+    for bucket, count in sorted(dict(audit.get("bucket_counts", {})).items()):
+        lines.append(f"| `{bucket}` | {count} |")
+    lines.extend(["", "## Hit Records", "", "| target_family | source_family | bucket | tier | mode | trace |", "|---|---|---|---|---|---|"])
+    for record in audit.get("records", []):
+        lines.append(
+            "| {target_family} | {source_family} | `{bucket}` | `{reuse_tier}` | `{reuse_mode}` | {trace_path} |".format(
+                target_family=record.get("target_family", ""),
+                source_family=record.get("source_family", ""),
+                bucket=record.get("bucket", ""),
+                reuse_tier=record.get("reuse_tier", ""),
+                reuse_mode=record.get("reuse_mode", ""),
+                trace_path=record.get("trace_path", ""),
+            )
+        )
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def _claim_summary(
     *,
     rows: List[Dict[str, str]],
@@ -491,7 +616,13 @@ def main() -> None:
     (outdir / "reuse_effect_summary.json").write_text(json.dumps(effect_summary, indent=2), encoding="utf-8")
     stats = _stat_tests(effects)
     (outdir / "reuse_stat_tests.json").write_text(json.dumps(stats, indent=2), encoding="utf-8")
+    sham_audit = _sham_false_positive_audit(rows, family_metadata)
+    (outdir / "reuse_sham_false_positive_audit.json").write_text(json.dumps(sham_audit, indent=2), encoding="utf-8")
+    _write_sham_false_positive_report(outdir / "reuse_sham_false_positive_audit.md", sham_audit)
     summary = _claim_summary(rows=rows, effects=effects, stats=stats, manifest=manifest, reuse_scope=reuse_scope)
+    summary["sham_false_positive_audit"] = {
+        key: value for key, value in sham_audit.items() if key != "records"
+    }
     (outdir / "claim_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     _write_report(outdir / "report.md", summary, effect_summary, stats)
 

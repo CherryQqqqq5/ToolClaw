@@ -3536,6 +3536,11 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
     request.hints.user_style["requires_interaction"] = workflow.metadata.get("requires_interaction")
     request.hints.user_style["reuse_family_id"] = workflow.metadata.get("reuse_family_id")
     request.hints.user_style["semantic_reuse_family"] = workflow.metadata.get("semantic_reuse_family")
+    request.hints.user_style["reuse_scope"] = workflow.metadata.get("reuse_scope")
+    request.hints.user_style["reuse_claim_scope"] = workflow.metadata.get("reuse_claim_scope")
+    request.hints.user_style["reuse_allowed_modes"] = list(workflow.metadata.get("reuse_allowed_modes", []))
+    request.hints.user_style["reuse_require_source_family_match"] = workflow.metadata.get("reuse_require_source_family_match")
+    request.hints.user_style["reuse_signature_key"] = workflow.metadata.get("reuse_signature_key")
     request.hints.user_style["reuse_override_inputs"] = dict(workflow.metadata.get("reuse_override_inputs", {}))
     request.hints.user_style["tool_execution_backend"] = workflow.metadata.get("tool_execution_backend")
     if not allow_reuse:

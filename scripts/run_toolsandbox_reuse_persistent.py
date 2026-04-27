@@ -105,7 +105,27 @@ def _sanitize_runtime_task(task: Dict[str, Any]) -> Dict[str, Any]:
     return staged
 
 
-def _stage_task(task: Dict[str, Any], *, family_id: str, stage: str, pass_index: int, sham: bool = False, reuse_version: str = "toolsandbox_reuse_persistent_v1") -> Dict[str, Any]:
+def _reuse_allowed_modes(reuse_scope: str) -> List[str]:
+    scope = str(reuse_scope or "exact").strip().lower()
+    if scope == "exact":
+        return ["exact_reuse"]
+    if scope == "transfer":
+        return ["transfer_reuse"]
+    return ["exact_reuse", "transfer_reuse"]
+
+
+def _stage_task(
+    task: Dict[str, Any],
+    *,
+    family_id: str,
+    stage: str,
+    pass_index: int,
+    sham: bool = False,
+    reuse_version: str = "toolsandbox_reuse_persistent_v1",
+    reuse_scope: str = "exact",
+    claim_scope: str = "exact_match_cost",
+    signature_key: str = "",
+) -> Dict[str, Any]:
     staged = _sanitize_runtime_task(task)
     metadata = dict(staged.get("metadata", {})) if isinstance(staged.get("metadata"), dict) else {}
     family = f"sham_unrelated::{family_id}" if sham else family_id
@@ -119,6 +139,11 @@ def _stage_task(task: Dict[str, Any], *, family_id: str, stage: str, pass_index:
             "reuse_family_id": family,
             "reuse_pass_index": pass_index,
             "reuse_stage": stage,
+            "reuse_scope": str(reuse_scope or "exact"),
+            "reuse_claim_scope": str(claim_scope or "exact_match_cost"),
+            "reuse_allowed_modes": _reuse_allowed_modes(str(reuse_scope or "exact")),
+            "reuse_require_source_family_match": str(reuse_scope or "exact") == "exact",
+            "reuse_signature_key": str(signature_key or ""),
             "reuse_persistent_v1": True,
             "reuse_persistent_version": reuse_version,
             "reuse_pass2_compile_allowed": False if pass_index == 2 else True,
@@ -128,6 +153,11 @@ def _stage_task(task: Dict[str, Any], *, family_id: str, stage: str, pass_index:
         }
     )
     staged["reuse_runtime_verification_signal"] = True
+    staged["reuse_scope"] = str(reuse_scope or "exact")
+    staged["reuse_claim_scope"] = str(claim_scope or "exact_match_cost")
+    staged["reuse_allowed_modes"] = _reuse_allowed_modes(str(reuse_scope or "exact"))
+    staged["reuse_require_source_family_match"] = str(reuse_scope or "exact") == "exact"
+    staged["reuse_signature_key"] = str(signature_key or "")
     staged["metadata"] = metadata
     return staged
 
@@ -224,10 +254,57 @@ def _semantic_family(family_id: str) -> str:
     return text
 
 
+
+
+def _row_value(row: Dict[str, Any], key: str) -> str:
+    value = row.get(key)
+    if value not in (None, ""):
+        return str(value)
+    for task_key in ("pass1_compile", "pass2_eval"):
+        task = row.get(task_key)
+        if isinstance(task, dict):
+            metadata = task.get("metadata")
+            if isinstance(metadata, dict) and metadata.get(key) not in (None, ""):
+                return str(metadata.get(key))
+    return ""
+
+
 def _unrelated_family(current: Dict[str, Any], families: List[Dict[str, Any]]) -> Dict[str, Any]:
     current_family = str(current["family_id"])
     current_semantic = _semantic_family(current_family)
     current_signature = str(current.get("signature_key") or "")
+    current_failure = _row_value(current, "failure_context")
+    current_capability = _row_value(current, "capability_skeleton")
+    current_tool_signature = _row_value(current, "tool_signature")
+    degraded_candidate: Dict[str, Any] | None = None
+
+    for candidate in families:
+        candidate_family = str(candidate["family_id"])
+        candidate_signature = str(candidate.get("signature_key") or "")
+        if candidate_family == current_family:
+            continue
+        if _semantic_family(candidate_family) == current_semantic:
+            continue
+        if candidate_signature == current_signature:
+            continue
+        if current_failure and _row_value(candidate, "failure_context") == current_failure:
+            if degraded_candidate is None:
+                degraded_candidate = candidate
+            continue
+        if current_capability and _row_value(candidate, "capability_skeleton") == current_capability:
+            if degraded_candidate is None:
+                degraded_candidate = candidate
+            continue
+        if current_tool_signature and _row_value(candidate, "tool_signature") == current_tool_signature:
+            if degraded_candidate is None:
+                degraded_candidate = candidate
+            continue
+        return candidate
+
+    if degraded_candidate is not None:
+        degraded_candidate["_sham_unrelated_selection_degraded"] = True
+        return degraded_candidate
+
     for candidate in families:
         candidate_family = str(candidate["family_id"])
         candidate_signature = str(candidate.get("signature_key") or "")
@@ -274,6 +351,7 @@ def main() -> None:
     staged_dir = outdir / "staged_tasksets"
     all_rows: List[Dict[str, str]] = []
     registry_preflight_passed = True
+    degraded_sham_pairs: List[Dict[str, str]] = []
 
     for run_index in range(1, max(args.num_runs, 1) + 1):
         run_dir = outdir / "runs" / f"run_{run_index:02d}"
@@ -282,6 +360,16 @@ def main() -> None:
             family_id = str(family_row["family_id"])
             sham_source = _unrelated_family(family_row, families)
             sham_family_id = str(sham_source["family_id"])
+            if bool(sham_source.get("_sham_unrelated_selection_degraded")):
+                degraded_sham_pairs.append(
+                    {
+                        "run_index": str(run_index),
+                        "target_family_id": family_id,
+                        "sham_family_id": sham_family_id,
+                    }
+                )
+            claim_scope = str(family_row.get("claim_scope") or "exact_match_cost")
+            signature_key = str(family_row.get("signature_key") or "")
             family_name = _safe_name(family_id)
             family_run_dir = run_dir / family_name
             warm_registry = _registry_for(registry_base / family_name, "warm")
@@ -297,15 +385,49 @@ def main() -> None:
             pass2_path = staged_dir / f"run_{run_index:02d}.{family_name}.pass2_eval.json"
             _write_taskset(
                 pass1_path,
-                [_stage_task(family_row["pass1_compile"], family_id=family_id, stage="compile", pass_index=1, reuse_version=reuse_version)],
+                [
+                    _stage_task(
+                        family_row["pass1_compile"],
+                        family_id=family_id,
+                        stage="compile",
+                        pass_index=1,
+                        reuse_version=reuse_version,
+                        reuse_scope=str(args.reuse_scope),
+                        claim_scope=claim_scope,
+                        signature_key=signature_key,
+                    )
+                ],
             )
             _write_taskset(
                 sham_path,
-                [_stage_task(sham_source["pass1_compile"], family_id=sham_family_id, stage="compile", pass_index=1, sham=True, reuse_version=reuse_version)],
+                [
+                    _stage_task(
+                        sham_source["pass1_compile"],
+                        family_id=sham_family_id,
+                        stage="compile",
+                        pass_index=1,
+                        sham=True,
+                        reuse_version=reuse_version,
+                        reuse_scope=str(args.reuse_scope),
+                        claim_scope=str(sham_source.get("claim_scope") or "exact_match_cost"),
+                        signature_key=str(sham_source.get("signature_key") or ""),
+                    )
+                ],
             )
             _write_taskset(
                 pass2_path,
-                [_stage_task(family_row["pass2_eval"], family_id=family_id, stage="eval", pass_index=2, reuse_version=reuse_version)],
+                [
+                    _stage_task(
+                        family_row["pass2_eval"],
+                        family_id=family_id,
+                        stage="eval",
+                        pass_index=2,
+                        reuse_version=reuse_version,
+                        reuse_scope=str(args.reuse_scope),
+                        claim_scope=claim_scope,
+                        signature_key=signature_key,
+                    )
+                ],
             )
 
             _run_eval(pass1_path, family_run_dir / "pass1_compile_warm", system="a4_reuse", registry_root=warm_registry, quiet=args.quiet_progress)
@@ -344,6 +466,9 @@ def main() -> None:
         "reuse_persistent_version": reuse_version,
         "statistical_claim_allowed": bool(source_manifest.get("statistical_claim_allowed", len(families) >= 20)),
         "registry_preflight_passed": bool(registry_preflight_passed),
+        "sham_unrelated_selection_degraded": bool(degraded_sham_pairs),
+        "sham_unrelated_selection_degraded_count": len(degraded_sham_pairs),
+        "sham_unrelated_selection_degraded_pairs": degraded_sham_pairs,
         "comparison_raw": str(comparison_raw),
         "comparison_scored": str(comparison_scored),
     }

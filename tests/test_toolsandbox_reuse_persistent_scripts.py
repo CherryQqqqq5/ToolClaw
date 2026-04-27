@@ -237,6 +237,86 @@ def test_reuse_persistent_scorer_blocks_no_headroom_pairs() -> None:
 
 
 
+def test_reuse_persistent_stage_task_writes_exact_scope_runtime_hints() -> None:
+    module = _load_script("run_toolsandbox_reuse_persistent.py")
+    staged = module._stage_task(
+        {"task_id": "family__pass2", "metadata": {}},
+        family_id="family",
+        stage="eval",
+        pass_index=2,
+        reuse_scope="exact",
+        claim_scope="exact_match_cost",
+        signature_key="sig-family",
+    )
+
+    assert staged["reuse_scope"] == "exact"
+    assert staged["reuse_allowed_modes"] == ["exact_reuse"]
+    assert staged["reuse_require_source_family_match"] is True
+    assert staged["metadata"]["reuse_scope"] == "exact"
+    assert staged["metadata"]["reuse_allowed_modes"] == ["exact_reuse"]
+    assert staged["metadata"]["reuse_signature_key"] == "sig-family"
+
+
+def test_reuse_persistent_sham_false_positive_audit_buckets_transfer_hits() -> None:
+    module = _load_script("score_toolsandbox_reuse_persistent.py")
+    rows = [
+        {
+            "stage": "pass2_eval",
+            "system": "a4_reuse_sham",
+            "run_index": "1",
+            "task_id": "target__pass2_eval",
+            "reuse_target_family": "target",
+            "reuse_source_family": "source",
+            "reuse_target_semantic_family": "target_sem",
+            "reuse_source_semantic_family": "source_sem",
+            "reused_artifact": "true",
+            "reuse_tier": "cross_family_transfer_reuse",
+            "reuse_mode": "transfer_reuse",
+            "reuse_selected_asset_id": "asset_1",
+            "reuse_selected_match_signature": "matched",
+            "trace_path": "trace.json",
+        },
+        {
+            "stage": "pass2_eval",
+            "system": "a4_reuse_sham",
+            "run_index": "1",
+            "task_id": "target2__pass2_eval",
+            "reuse_target_family": "target2",
+            "reuse_source_family": "target2",
+            "reused_artifact": "true",
+            "reuse_tier": "exact_match_reuse",
+            "reuse_mode": "exact_reuse",
+        },
+        {
+            "stage": "pass2_eval",
+            "system": "a4_reuse_sham",
+            "run_index": "1",
+            "task_id": "target3__pass2_eval",
+            "reuse_target_family": "target3",
+            "reuse_source_family": "source3",
+            "reused_artifact": "true",
+            "reuse_tier": "cross_family_transfer_reuse",
+            "reuse_mode": "exact_reuse",
+        },
+    ]
+
+    audit = module._sham_false_positive_audit(
+        rows,
+        {
+            "target": {"claim_scope": "exact_match_cost", "claim_inclusion": True, "signature_key": "target_sig"},
+            "target2": {"claim_scope": "exact_match_cost", "claim_inclusion": True, "signature_key": "target2_sig"},
+            "target3": {"claim_scope": "exact_match_cost", "claim_inclusion": True, "signature_key": "target3_sig"},
+        },
+    )
+
+    assert audit["sham_reuse_hit_count"] == 3
+    assert audit["sham_exact_false_positive_count"] == 2
+    assert audit["sham_transfer_false_positive_count"] == 1
+    assert audit["bucket_counts"]["cross_family_transfer_false_positive"] == 1
+    assert audit["bucket_counts"]["exact_false_positive"] == 1
+    assert audit["bucket_counts"]["exact_source_mismatch_false_positive"] == 1
+
+
 def test_reuse_v3_inventory_imports_official_scenarios() -> None:
     module = _load_script("derive_toolsandbox_reuse_persistent_v3.py")
 

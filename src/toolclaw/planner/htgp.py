@@ -817,7 +817,7 @@ class HTGPPlanner:
         resolved_reusable_asset_ids = [
             str(asset_id) for asset_id in reusable_profile.get("asset_ids", []) if str(asset_id)
         ]
-        if resolved_reusable_asset_ids:
+        if self.asset_registry and (request.hints.allow_reuse or request.hints.reusable_asset_ids):
             request.hints.reusable_asset_ids = list(dict.fromkeys(resolved_reusable_asset_ids))
         if reusable_profile["capability_order"]:
             order = reusable_profile["capability_order"]
@@ -1854,6 +1854,59 @@ class HTGPPlanner:
                 )
             )
 
+    @staticmethod
+    def _bool_hint(value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in {"1", "true", "yes"}
+
+    @staticmethod
+    def _reuse_scope_from_request(request: PlanningRequest) -> str:
+        scope = str(request.hints.user_style.get("reuse_scope") or "all").strip().lower()
+        return scope if scope in {"exact", "transfer", "all"} else "all"
+
+    @staticmethod
+    def _allowed_reuse_modes_from_request(request: PlanningRequest, reuse_scope: str) -> List[str]:
+        raw_modes = request.hints.user_style.get("reuse_allowed_modes")
+        if isinstance(raw_modes, list):
+            modes = [str(item).strip() for item in raw_modes if str(item).strip()]
+            if modes:
+                return modes
+        if reuse_scope == "exact":
+            return ["exact_reuse"]
+        if reuse_scope == "transfer":
+            return ["transfer_reuse"]
+        return ["exact_reuse", "transfer_reuse"]
+
+    @classmethod
+    def _reuse_match_admitted(
+        cls,
+        *,
+        match_metadata: Dict[str, Any],
+        asset_metadata: Optional[Dict[str, Any]],
+        target_reuse_family_id: str,
+        reuse_scope: str,
+        allowed_reuse_modes: List[str],
+        require_source_family_match: bool,
+    ) -> bool:
+        mode = str(match_metadata.get("reuse_mode") or "").strip()
+        if allowed_reuse_modes and mode and mode not in allowed_reuse_modes:
+            return False
+        if reuse_scope != "exact":
+            return True
+        metadata = asset_metadata or {}
+        source_family = str(
+            match_metadata.get("source_reuse_family_id")
+            or match_metadata.get("reuse_family_id")
+            or metadata.get("reuse_family_id")
+            or ""
+        ).strip()
+        return (
+            mode == "exact_reuse"
+            and bool(source_family)
+            and (not require_source_family_match or source_family == target_reuse_family_id)
+        )
+
     def _load_reusable_profile(
         self,
         request: PlanningRequest,
@@ -1878,6 +1931,11 @@ class HTGPPlanner:
         if not self.asset_registry or not reuse_enabled:
             return profile
 
+        reuse_scope = self._reuse_scope_from_request(request)
+        allowed_reuse_modes = self._allowed_reuse_modes_from_request(request, reuse_scope)
+        require_source_family_match = self._bool_hint(
+            request.hints.user_style.get("reuse_require_source_family_match")
+        )
         asset_ids = list(request.hints.reusable_asset_ids)
         capability_skeleton = [capability.capability_id for capability in graph.capabilities] if graph else []
         required_state_slots = self._required_state_slots(request)
@@ -1915,6 +1973,15 @@ class HTGPPlanner:
             for match in matches:
                 if match.asset_id in seen_asset_ids:
                     continue
+                if not self._reuse_match_admitted(
+                    match_metadata=dict(match.metadata),
+                    asset_metadata=None,
+                    target_reuse_family_id=target_reuse_family_id,
+                    reuse_scope=reuse_scope,
+                    allowed_reuse_modes=allowed_reuse_modes,
+                    require_source_family_match=require_source_family_match,
+                ):
+                    continue
                 seen_asset_ids.add(match.asset_id)
                 deduped_matches.append(match)
             if deduped_matches:
@@ -1934,6 +2001,18 @@ class HTGPPlanner:
                 required_state_slots=required_state_slots,
             ):
                 continue
+            asset_metadata = getattr(asset, "metadata", {})
+            if not isinstance(asset_metadata, dict):
+                asset_metadata = {}
+            if not self._reuse_match_admitted(
+                match_metadata=selected_match,
+                asset_metadata=asset_metadata,
+                target_reuse_family_id=target_reuse_family_id,
+                reuse_scope=reuse_scope,
+                allowed_reuse_modes=allowed_reuse_modes,
+                require_source_family_match=require_source_family_match,
+            ):
+                continue
             asset_capability_skeleton = getattr(asset, "capability_skeleton", None)
             recommended_bindings = getattr(asset, "recommended_bindings", None)
             recommended_inputs = getattr(asset, "recommended_inputs", None)
@@ -1951,9 +2030,6 @@ class HTGPPlanner:
                         if isinstance(inputs, dict)
                     }
                 )
-            asset_metadata = getattr(asset, "metadata", {})
-            if not isinstance(asset_metadata, dict):
-                asset_metadata = {}
             exact_reuse_match = str(selected_match.get("reuse_mode") or "") == "exact_reuse"
             source_reuse_family_id = str(
                 selected_match.get("source_reuse_family_id")
@@ -2016,6 +2092,8 @@ class HTGPPlanner:
             profile["utility_gain_score"] = utility_gain_score
             profile["auto_continuation_replay"] = auto_continuation_replay
             break
+        if not admitted_asset_ids:
+            selected_match = {}
         profile["asset_ids"] = admitted_asset_ids
         profile["reuse_mode"] = str(selected_match.get("reuse_mode") or "none")
         profile["reuse_application"] = str(
