@@ -109,7 +109,12 @@ def test_executor_records_completion_verifier_without_changing_success(tmp_path:
     assert outcome.success is True
     assert payload["metrics"]["success"] is True
     assert "completion_verification" in event_types
-    assert event_types.index("completion_verification") < event_types.index("stop")
+    assert "final_response_synthesized" in event_types
+    assert event_types.index("completion_verification") < event_types.index("final_response_synthesized") < event_types.index("stop")
     completion = next(event for event in payload["events"] if event["event_type"] == "completion_verification")
+    final_response = next(event for event in payload["events"] if event["event_type"] == "final_response_synthesized")
+    stop = next(event for event in payload["events"] if event["event_type"] == "stop")
     assert "completion_verified" in completion["output"]
     assert "recommended_action" in completion["output"]
+    assert final_response["output"]["content"]
+    assert stop["output"]["final_response"] == final_response["output"]["content"]

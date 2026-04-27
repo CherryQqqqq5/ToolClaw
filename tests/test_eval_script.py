@@ -3634,3 +3634,31 @@ def test_execute_system_strict_reuse_overlay_does_not_use_replacement_reuse(monk
     assert shell_calls and shell_calls[0]["use_reuse"] is False
     assert shell_calls[0]["seed_workflow"] is workflow
     assert row["system"] == "s4_reuse_overlay"
+
+
+
+def test_strict_interaction_prefixes_force_probe_for_must_interact_success() -> None:
+    from types import SimpleNamespace
+    from toolclaw.interaction.irc import InteractionShell
+    from toolclaw.schemas.workflow import Workflow
+
+    workflow = Workflow.demo()
+    workflow.metadata["toolsandbox_categories"] = ["multiple_user_turn"]
+    outcome = SimpleNamespace(workflow=workflow, success=True, blocked=False)
+
+    assert InteractionShell._should_force_interaction_probe(outcome=outcome, run_id="s3_task") is True
+    assert InteractionShell._should_force_interaction_probe(outcome=outcome, run_id="s4_task") is True
+    assert InteractionShell._should_force_interaction_probe(outcome=outcome, run_id="s2_task") is False
+
+
+def test_strict_interaction_probe_is_not_for_non_interaction_tasks() -> None:
+    from types import SimpleNamespace
+    from toolclaw.interaction.irc import InteractionShell
+    from toolclaw.schemas.workflow import Workflow
+
+    workflow = Workflow.demo()
+    workflow.metadata["toolsandbox_categories"] = ["single_tool"]
+    outcome = SimpleNamespace(workflow=workflow, success=True, blocked=False)
+
+    assert InteractionShell._should_force_interaction_probe(outcome=outcome, run_id="s3_task") is False
+    assert InteractionShell._should_force_interaction_probe(outcome=outcome, run_id="s4_task") is False

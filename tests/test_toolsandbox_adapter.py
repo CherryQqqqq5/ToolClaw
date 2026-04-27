@@ -499,3 +499,59 @@ def test_toolsandbox_adapter_keeps_execution_verified_separate_from_interaction_
     assert score.metrics["execution_verified_success"] == 1.0
     assert score.metrics["interaction_contract_satisfied"] == 0.0
     assert score.metrics["strict_scored_success"] == 0.0
+
+
+def test_toolsandbox_adapter_extracts_final_response_event() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_final_response",
+        raw_payload={
+            "categories": ["Single Tool"],
+            "tool_allow_list": ["generic_write_tool"],
+            "milestones": ["write result", "final response"],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "events": [
+            {"event_type": "tool_call", "tool_id": "generic_write_tool"},
+            {"event_type": "tool_result", "tool_id": "generic_write_tool", "output": {"status": "success", "payload": "created result"}},
+            {"event_type": "final_response_synthesized", "output": {"content": "I saved the requested output."}},
+            {"event_type": "stop", "output": {"status": "success", "final_response": "I saved the requested output."}},
+        ],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.diagnostics["final_response_present"] is True
+    assert score.diagnostics["final_response_source"] == "final_response_synthesized"
+    assert score.diagnostics["final_response_length"] > 0
+    assert score.metrics["final_response_present"] == 1.0
+
+
+def test_toolsandbox_adapter_final_response_does_not_satisfy_interaction_contract() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_final_response_interaction",
+        raw_payload={
+            "categories": ["Multiple User Turn"],
+            "tool_allow_list": ["generic_write_tool"],
+            "milestones": ["ask user", "write result", "final response"],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "events": [
+            {"event_type": "tool_call", "tool_id": "generic_write_tool"},
+            {"event_type": "tool_result", "tool_id": "generic_write_tool", "output": {"status": "success", "payload": "created result"}},
+            {"event_type": "final_response_synthesized", "output": {"content": "I completed the task."}},
+            {"event_type": "stop", "output": {"status": "success", "final_response": "I completed the task."}},
+        ],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.diagnostics["final_response_present"] is True
+    assert score.diagnostics["interaction_contract_satisfied"] is False
+    assert score.diagnostics["final_response_diagnostic"] == "interaction_contract_still_blocked"
+    assert score.success is False

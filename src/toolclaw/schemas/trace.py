@@ -39,6 +39,7 @@ class EventType(str, Enum):
     REPLAN_TRIGGERED = "replan_triggered"
     REPLAN_APPLIED = "replan_applied"
     COMPLETION_VERIFICATION = "completion_verification"
+    FINAL_RESPONSE_SYNTHESIZED = "final_response_synthesized"
     STOP = "stop"
     ABORT = "abort"
 

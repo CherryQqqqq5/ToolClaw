@@ -39,6 +39,9 @@ SUBCAUSE_FIXES = {
     "post_execution_verifier_gap": "Use completion verifier diagnostics to decide whether to ask, repair, or synthesize final response before stop.",
     "raw_success_overclaim": "Tighten executor-side completion criteria only through gold-free runtime evidence.",
     "scorer_contract_gap": "Audit adapter/scorer contract interpretation without changing runtime behavior.",
+    "final_response_absent": "Add gold-free final-response synthesis before successful stop events.",
+    "final_response_present_but_contract_fail": "Inspect whether finalization evidence is insufficient or benchmark-facing scorer contract remains stricter than runtime completion.",
+    "interaction_contract_still_blocked": "Expand generic interaction triggers only if final response is present but an explicit interaction contract remains unsatisfied.",
     "unknown_raw_strict_gap": "Manually inspect representative traces and add generic diagnostic features.",
 }
 
@@ -107,6 +110,7 @@ def extract_trace_evidence(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
     tool_error_count = 0
     final_stop_reason = ""
     completion_verifier: Dict[str, Any] = {}
+    final_response: Dict[str, Any] = {"present": False, "source": "", "length": 0}
 
     for event in events:
         if not isinstance(event, dict):
@@ -152,6 +156,14 @@ def extract_trace_evidence(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
             _append_unique(raw_message_patterns, metadata.get("root_cause"))
         if event_type == "completion_verification":
             completion_verifier = dict(output)
+        if event_type == "final_response_synthesized":
+            content = str(output.get("content") or "").strip()
+            if content:
+                final_response = {"present": True, "source": "final_response_synthesized", "length": len(content)}
+        if event_type == "stop" and not final_response.get("present"):
+            content = str(output.get("final_response") or "").strip()
+            if content:
+                final_response = {"present": True, "source": "stop_output", "length": len(content)}
 
         for key in ("missing_input_keys", "unresolved_required_inputs", "missing_targets"):
             value = metadata.get(key)
@@ -176,6 +188,7 @@ def extract_trace_evidence(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
         "tool_error_count": tool_error_count,
         "final_stop_reason": final_stop_reason,
         "completion_verifier": completion_verifier,
+        "final_response": final_response,
     }
 
 
@@ -231,30 +244,42 @@ def classify_failure(row: Dict[str, str], trace_evidence: Dict[str, Any]) -> Tup
 
 
 def classify_subcause(row: Dict[str, str], trace_evidence: Dict[str, Any]) -> str:
+    raw_success = _truthy(row.get("raw_execution_success") or row.get("raw_success"))
+    execution_verified = _truthy(row.get("execution_verified_success"))
+    strict_success = _truthy(row.get("strict_scored_success") or row.get("success"))
+    final_response = trace_evidence.get("final_response") if isinstance(trace_evidence, dict) else {}
+    final_response_present = bool(final_response.get("present")) if isinstance(final_response, dict) else False
+    interaction_blocked = _truthy(row.get("interaction_contract_satisfied")) is False and (
+        str(row.get("failure_type") or "") in {"multiple_user_turn", "insufficient_information"}
+    )
     verifier = trace_evidence.get("completion_verifier")
     if isinstance(verifier, dict) and verifier:
         missing = {str(item) for item in verifier.get("missing_evidence", []) if str(item)}
         action = str(verifier.get("recommended_action") or "")
-        if "user_clarification_for_ambiguous_goal" in missing:
+        if "user_clarification_for_ambiguous_goal" in missing and not final_response_present:
             return "missing_interaction_gap"
-        if "unresolved_required_inputs" in missing:
+        if "unresolved_required_inputs" in missing and not final_response_present:
             return "state_milestone_gap"
-        if "successful_tool_result" in missing:
+        if "successful_tool_result" in missing and not final_response_present:
             return "tool_trace_milestone_gap"
-        if "task_relevant_final_evidence" in missing and action == "synthesize_final_response":
+        if "task_relevant_final_evidence" in missing and action == "synthesize_final_response" and not final_response_present:
             return "final_response_milestone_gap"
-        if missing:
+        if missing and not final_response_present:
             return "post_execution_verifier_gap"
-
-    raw_success = _truthy(row.get("raw_execution_success") or row.get("raw_success"))
-    execution_verified = _truthy(row.get("execution_verified_success"))
-    strict_success = _truthy(row.get("strict_scored_success") or row.get("success"))
     if raw_success and not execution_verified:
         return "raw_success_overclaim"
+    if execution_verified and not strict_success and final_response_present and interaction_blocked:
+        return "interaction_contract_still_blocked"
+    if execution_verified and not strict_success and final_response_present:
+        return "final_response_present_but_contract_fail"
+    if raw_success and not strict_success and final_response_present and interaction_blocked:
+        return "interaction_contract_still_blocked"
+    if raw_success and not strict_success and final_response_present:
+        return "final_response_present_but_contract_fail"
+    if raw_success and not strict_success and not final_response_present:
+        return "final_response_absent"
     if execution_verified and not strict_success:
         return "scorer_contract_gap"
-    if raw_success and not strict_success:
-        return "unknown_raw_strict_gap"
     return "unknown_raw_strict_gap"
 
 
@@ -292,6 +317,7 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
             "recommended_generic_fix": GENERIC_FIXES[category],
             "recommended_subcause_fix": SUBCAUSE_FIXES[subcause],
             "completion_verifier": evidence.get("completion_verifier", {}),
+            "final_response": evidence.get("final_response", {"present": False, "source": "", "length": 0}),
             "failure_type": row.get("failure_type", ""),
             "primary_failtax": row.get("primary_failtax", ""),
             "failtaxes": _safe_json_list(row.get("failtaxes")),
@@ -307,6 +333,7 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
     owner_counts = Counter(record["candidate_owning_layer"] for record in records)
     first_layer_counts = Counter(record["first_failed_layer"] for record in records)
     raw_success_strict_fail = sum(1 for record in records if record["raw_success_but_strict_fail"])
+    final_response_present = sum(1 for record in records if record.get("final_response", {}).get("present"))
     return {
         "analysis_version": "toolsandbox_strict_failure_taxonomy_v1",
         "target_system": target_system,
@@ -314,6 +341,8 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
         "unique_failed_task_count": len({record["task_id"] for record in records}),
         "raw_success_but_strict_fail_count": raw_success_strict_fail,
         "runtime_execution_failure_count": len(records) - raw_success_strict_fail,
+        "final_response_present_count": final_response_present,
+        "final_response_absent_count": len(records) - final_response_present,
         "failure_category_counts": dict(sorted(category_counts.items())),
         "error_subtype_counts": dict(subtype_counts.most_common()),
         "failure_subcause_counts": dict(sorted(subcause_counts.items())),
@@ -333,6 +362,8 @@ def write_markdown(summary: Dict[str, Any], path: Path) -> None:
         f"- unique_failed_task_count: `{summary['unique_failed_task_count']}`",
         f"- raw_success_but_strict_fail_count: `{summary['raw_success_but_strict_fail_count']}`",
         f"- runtime_execution_failure_count: `{summary['runtime_execution_failure_count']}`",
+        f"- final_response_present_count: `{summary.get('final_response_present_count', 0)}`",
+        f"- final_response_absent_count: `{summary.get('final_response_absent_count', 0)}`",
         "",
         "## Failure Categories",
         "",

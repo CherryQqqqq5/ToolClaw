@@ -873,7 +873,9 @@ class InteractionShell:
 
     @staticmethod
     def _should_force_interaction_probe(outcome: ExecutionOutcome, run_id: str) -> bool:
-        if not (str(run_id).startswith("a3_") or str(run_id).startswith("a4_")):
+        run_id_text = str(run_id)
+        interaction_prefixes = ("a3_", "a4_", "s3_", "s4_")
+        if not any(run_id_text.startswith(prefix) for prefix in interaction_prefixes):
             return False
         categories = outcome.workflow.metadata.get("toolsandbox_categories") or outcome.workflow.metadata.get("categories") or []
         category_set = {str(item) for item in categories if str(item)}

@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 
 from toolclaw.execution.failtax import FailTaxClassifier
 from toolclaw.execution.completion_verifier import CompletionVerifier
+from toolclaw.execution.final_response import FinalResponseSynthesizer
 from toolclaw.execution.recovery import RecoveryEngine
 from toolclaw.execution.state_tracker import StateTracker
 from toolclaw.policy.policy_engine import PolicyEngine
@@ -106,6 +107,7 @@ class SequentialExecutor:
         policy_engine: Optional[PolicyEngine] = None,
         failtax_classifier: Optional[FailTaxClassifier] = None,
         completion_verifier: Optional[CompletionVerifier] = None,
+        final_response_synthesizer: Optional[FinalResponseSynthesizer] = None,
         planner: Optional["HTGPPlanner"] = None,
         config: Optional[ExecutorConfig] = None,
     ) -> None:
@@ -113,6 +115,7 @@ class SequentialExecutor:
         self.policy_engine = policy_engine or PolicyEngine()
         self.failtax_classifier = failtax_classifier or FailTaxClassifier()
         self.completion_verifier = completion_verifier or CompletionVerifier()
+        self.final_response_synthesizer = final_response_synthesizer or FinalResponseSynthesizer()
         self.planner = planner
         self.config = config or ExecutorConfig()
 
@@ -604,11 +607,24 @@ class SequentialExecutor:
             actor="completion_verifier",
             output=completion_verification.to_dict(),
         )
+        final_response = self.final_response_synthesizer.synthesize(
+            workflow=workflow,
+            trace=trace,
+            state_values=tracker.state_values,
+            completion_verification=completion_verification,
+        )
+        trace.metadata.task_annotations["final_response_synthesizer"] = final_response.to_dict()
+        trace.add_event(
+            event_id="evt_final_response_synthesized",
+            event_type=EventType.FINAL_RESPONSE_SYNTHESIZED,
+            actor="final_response_synthesizer",
+            output=final_response.to_dict(),
+        )
         trace.add_event(
             event_id="evt_stop_success",
             event_type=EventType.STOP,
             actor="executor",
-            output={"status": "success", "reason": "success_criteria_satisfied"},
+            output={"status": "success", "reason": "success_criteria_satisfied", "final_response": final_response.content},
         )
         trace.finalize(success=True, total_steps=len(workflow.execution_plan))
         self._update_trace_budget_usage(trace, tracker.state_values)

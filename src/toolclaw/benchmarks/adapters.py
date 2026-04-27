@@ -1194,6 +1194,7 @@ class ToolSandboxAdapter:
     def score_trace(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> BenchmarkTraceScore:
         trace_metrics = trace_payload.get("metrics", {})
         trace_events = trace_payload.get("events", [])
+        final_response_signal = self._extract_final_response_signal(trace_payload)
         current_result_summary = self._extract_current_result_summary(trace_payload)
         reference_result_summary = self._extract_reference_result_summary(sample.raw_payload)
         result_summary = current_result_summary or self.build_proxy_result_summary(sample, trace_payload)
@@ -1346,6 +1347,7 @@ class ToolSandboxAdapter:
                 "success_given_repair_query": 1.0 if (repair_interaction_satisfied and repair_scored_success) else 0.0,
                 "zero_query_success_count": 1.0 if (must_interact_expected and user_queries == 0 and raw_trace_success) else 0.0,
                 "proxy_summary_success": 1.0 if proxy_summary_success else 0.0,
+                "final_response_present": 1.0 if final_response_signal["present"] else 0.0,
                 "state_dependency_score": milestone_similarity if "state_dependency" in categories else 1.0,
                 "write_target_verified": 1.0 if write_target_verified else 0.0,
             },
@@ -1393,12 +1395,17 @@ class ToolSandboxAdapter:
                 "reference_result_summary_available": bool(reference_result_summary),
                 "expected_target_path": expected_target_path,
                 "observed_target_path": observed_target_path,
+                "final_response_present": bool(final_response_signal["present"]),
+                "final_response_source": final_response_signal["source"],
+                "final_response_length": final_response_signal["length"],
+                "final_response_diagnostic": "interaction_contract_still_blocked" if interaction_gate_blocked and final_response_signal["present"] else ("final_response_present" if final_response_signal["present"] else "final_response_absent"),
             },
         )
 
     def build_proxy_result_summary(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> Dict[str, Any]:
         trace_metrics = trace_payload.get("metrics", {})
         trace_events = trace_payload.get("events", [])
+        final_response_signal = self._extract_final_response_signal(trace_payload)
         milestones = list(sample.raw_payload.get("milestones", []))
         success = bool(trace_metrics.get("success"))
         user_queries = sum(1 for event in trace_events if event.get("event_type") == "user_query")
@@ -1418,6 +1425,8 @@ class ToolSandboxAdapter:
             "success": success,
             "source": "toolclaw_proxy",
             "proxy_evaluation": True,
+            "final_response_present": bool(final_response_signal["present"]),
+            "final_response_source": final_response_signal["source"],
         }
 
     def _proxy_progress_signals(self, raw: Dict[str, Any], trace_payload: Dict[str, Any]) -> int:
@@ -1443,11 +1452,37 @@ class ToolSandboxAdapter:
         progress_base = len(progress_keys)
         interaction_bonus = 1 if self._interaction_expected(self._extract_categories(raw)) and any(event.get("event_type") == "user_query" for event in trace_events) else 0
         repair_bonus = 1 if any(event.get("event_type") in {"repair_triggered", "repair_applied"} for event in trace_events) else 0
+        finalization_bonus = 1 if self._extract_final_response_signal(trace_payload)["present"] else 0
         success_bonus = 0
         expected_tool_calls = self._expected_tool_calls(raw, self._extract_categories(raw))
         if bool(trace_metrics.get("success")) and progress_base >= min(max(expected_tool_calls, 1), 2):
             success_bonus = 1
-        return progress_base + interaction_bonus + repair_bonus + success_bonus
+        return progress_base + interaction_bonus + repair_bonus + finalization_bonus + success_bonus
+
+    @staticmethod
+    def _extract_final_response_signal(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
+        events = trace_payload.get("events", [])
+        if not isinstance(events, list):
+            events = []
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            if str(event.get("event_type") or "") != "final_response_synthesized":
+                continue
+            output = event.get("output") if isinstance(event.get("output"), dict) else {}
+            content = str(output.get("content") or "").strip()
+            if content:
+                return {"present": True, "source": "final_response_synthesized", "length": len(content)}
+        for event in reversed(events):
+            if not isinstance(event, dict):
+                continue
+            if str(event.get("event_type") or "") != "stop":
+                continue
+            output = event.get("output") if isinstance(event.get("output"), dict) else {}
+            content = str(output.get("final_response") or "").strip()
+            if content:
+                return {"present": True, "source": "stop_output", "length": len(content)}
+        return {"present": False, "source": "", "length": 0}
 
     @staticmethod
     def _proxy_tool_spec(raw: Dict[str, Any], tool_id: str) -> Dict[str, Any]:

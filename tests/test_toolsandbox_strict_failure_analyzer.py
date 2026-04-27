@@ -163,3 +163,61 @@ def test_analyzer_maps_completion_verifier_to_subcause(tmp_path: Path) -> None:
 
     assert summary["records"][0]["failure_subcause"] == "missing_interaction_gap"
     assert summary["failure_subcause_counts"]["missing_interaction_gap"] == 1
+
+
+def test_analyzer_reports_final_response_contract_subcause(tmp_path: Path) -> None:
+    module = _load_script()
+    trace = tmp_path / "trace.json"
+    _trace(
+        trace,
+        [
+            {"event_type": "final_response_synthesized", "output": {"content": "I completed the requested task."}},
+            {"event_type": "stop", "output": {"status": "success", "reason": "success_criteria_satisfied", "final_response": "I completed the requested task."}},
+        ],
+    )
+    rows = [
+        {
+            "run_index": "1",
+            "task_id": "task",
+            "system": "s4_reuse_overlay",
+            "failure_type": "multiple_user_turn",
+            "primary_failtax": "selection",
+            "failtaxes": '["selection"]',
+            "strict_scored_success": "False",
+            "raw_execution_success": "True",
+            "execution_verified_success": "True",
+            "interaction_contract_satisfied": "False",
+            "stop_reason": "success_criteria_satisfied",
+            "trace_path": str(trace),
+        },
+    ]
+
+    summary = module.build_taxonomy(rows, repo_root=tmp_path)
+
+    assert summary["final_response_present_count"] == 1
+    assert summary["records"][0]["failure_subcause"] == "interaction_contract_still_blocked"
+
+
+def test_analyzer_reports_final_response_absent_subcause(tmp_path: Path) -> None:
+    module = _load_script()
+    trace = tmp_path / "trace.json"
+    _trace(trace, [{"event_type": "stop", "output": {"status": "success", "reason": "success_criteria_satisfied"}}])
+    rows = [
+        {
+            "run_index": "1",
+            "task_id": "task",
+            "system": "s4_reuse_overlay",
+            "failure_type": "single_tool",
+            "strict_scored_success": "False",
+            "raw_execution_success": "True",
+            "execution_verified_success": "True",
+            "interaction_contract_satisfied": "True",
+            "stop_reason": "success_criteria_satisfied",
+            "trace_path": str(trace),
+        },
+    ]
+
+    summary = module.build_taxonomy(rows, repo_root=tmp_path)
+
+    assert summary["final_response_absent_count"] == 1
+    assert summary["records"][0]["failure_subcause"] == "final_response_absent"
