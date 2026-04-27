@@ -1241,6 +1241,262 @@ def _write_planner_admission_impact_audit(outdir: Path, rows: List[Dict[str, Any
     (outdir / "planner_admission_impact_audit.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return audit
 
+
+PLANNER_TAKEOVER_RESIDUAL_BUCKETS = [
+    "interaction_contract",
+    "final_response_or_completion_contract",
+    "state_milestone_or_write_target",
+    "tool_trace_or_execution_evidence",
+    "raw_runtime_failure",
+    "budget_or_policy",
+    "planner_safe_but_no_strict_utility",
+    "unknown",
+]
+
+
+def _cell_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _is_explicit_false(value: Any) -> bool:
+    return str(value).strip().lower() in {"0", "false", "no", "n"}
+
+
+def _row_has_state_signal(row: Dict[str, Any]) -> bool:
+    fields = [
+        row.get("primary_failtax"),
+        row.get("observed_error_type"),
+        row.get("failure_type"),
+        row.get("state_slots"),
+        row.get("expected_target_path"),
+        row.get("observed_target_path"),
+    ]
+    failtaxes = _json_list_cell(row.get("failtaxes"))
+    labels = " ".join(str(item or "") for item in [*fields, *failtaxes]).lower()
+    if "state" in labels or "write" in labels or "target" in labels:
+        return True
+    expected_target = _cell_text(row.get("expected_target_path"))
+    observed_target = _cell_text(row.get("observed_target_path"))
+    if expected_target and observed_target and expected_target != observed_target:
+        return True
+    return _is_explicit_false(row.get("write_target_verified"))
+
+
+def _row_has_policy_or_budget_signal(row: Dict[str, Any]) -> bool:
+    labels = " ".join(
+        str(row.get(key) or "")
+        for key in ("failure_type", "primary_failtax", "observed_error_type", "stop_reason", "budget_violation_reason")
+    ).lower()
+    labels = " ".join([labels, *[item.lower() for item in _json_list_cell(row.get("failtaxes"))]])
+    return _bool_from_value(row.get("budget_violation", False)) or "budget" in labels or "policy" in labels or "approval" in labels
+
+
+def _row_has_tool_trace_gap(row: Dict[str, Any]) -> bool:
+    if not _bool_from_value(row.get("execution_verified_success", False)):
+        tool_calls = int(row.get("tool_calls", 0) or 0)
+        matched = int(row.get("matched_milestones", 0) or 0)
+        coverage = float(row.get("milestone_signal_coverage", 0.0) or 0.0)
+        if tool_calls == 0 or matched == 0 or coverage == 0.0:
+            return True
+    labels = " ".join(
+        str(row.get(key) or "")
+        for key in ("failure_type", "primary_failtax", "observed_error_type", "stop_reason")
+    ).lower()
+    return "tool" in labels or "trace" in labels or "execution_evidence" in labels
+
+
+def _planner_takeover_residual_bucket(s1_row: Dict[str, Any], s2_row: Dict[str, Any]) -> str:
+    failure_type = _cell_text(s2_row.get("failure_type") or s1_row.get("failure_type")).lower()
+    categories = {item.lower() for item in _json_list_cell(s2_row.get("categories") or s1_row.get("categories"))}
+    if failure_type in INTERACTION_CONTRACT_CATEGORIES or categories & INTERACTION_CONTRACT_CATEGORIES:
+        return "interaction_contract"
+    if _is_explicit_false(s2_row.get("interaction_contract_satisfied")):
+        return "interaction_contract"
+    if not _bool_from_value(s2_row.get("raw_execution_success", s2_row.get("raw_success", False))):
+        return "raw_runtime_failure"
+    if _row_has_policy_or_budget_signal(s2_row):
+        return "budget_or_policy"
+    if _row_has_state_signal(s2_row):
+        return "state_milestone_or_write_target"
+    if _row_has_tool_trace_gap(s2_row):
+        return "tool_trace_or_execution_evidence"
+    if _bool_from_value(s2_row.get("raw_execution_success", s2_row.get("raw_success", False))) and not _scored_success(s2_row):
+        if _bool_from_value(s2_row.get("final_response_present", False)) or _cell_text(s2_row.get("final_response_diagnostic")):
+            return "final_response_or_completion_contract"
+        if _cell_text(s2_row.get("stop_reason")) == "success_criteria_satisfied":
+            return "final_response_or_completion_contract"
+        return "planner_safe_but_no_strict_utility"
+    return "unknown"
+
+
+def _planner_takeover_residual_example(
+    *,
+    run_index: str,
+    task_id: str,
+    s1_row: Dict[str, Any],
+    s2_row: Dict[str, Any],
+    bucket: str,
+) -> Dict[str, Any]:
+    return {
+        "run_index": run_index,
+        "task_id": task_id,
+        "residual_bucket": bucket,
+        "primary_category": str(s2_row.get("primary_category") or s1_row.get("primary_category") or ""),
+        "categories": s2_row.get("categories") or s1_row.get("categories") or "[]",
+        "failure_type": str(s2_row.get("failure_type") or s1_row.get("failure_type") or ""),
+        "s1_stop_reason": str(s1_row.get("stop_reason") or ""),
+        "s2_stop_reason": str(s2_row.get("stop_reason") or ""),
+        "s2_planner_admission_reason": str(s2_row.get("planner_admission_reason") or "none"),
+        "s2_planner_admitted_change_count": int(s2_row.get("planner_admitted_change_count", 0) or 0),
+        "s2_raw_execution_success": _bool_from_value(s2_row.get("raw_execution_success", s2_row.get("raw_success", False))),
+        "s2_execution_verified_success": _bool_from_value(s2_row.get("execution_verified_success", False)),
+        "s2_final_response_present": _bool_from_value(s2_row.get("final_response_present", False)),
+        "s2_interaction_contract_satisfied": _bool_from_value(s2_row.get("interaction_contract_satisfied", False)),
+        "s1_trace_path": str(s1_row.get("trace_path") or ""),
+        "s2_trace_path": str(s2_row.get("trace_path") or ""),
+    }
+
+
+def _top_count_key(counts: Dict[str, int]) -> str | None:
+    if not counts:
+        return None
+    return max(counts.items(), key=lambda item: (item[1], item[0]))[0]
+
+
+def _write_planner_takeover_residual_audit(outdir: Path, rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    grouped: Dict[tuple[str, str], Dict[str, Dict[str, Any]]] = {}
+    for row in rows:
+        key = (str(row.get("run_index") or ""), str(row.get("task_id") or ""))
+        grouped.setdefault(key, {})[str(row.get("system") or "")] = row
+
+    bucket_counts = {bucket: 0 for bucket in PLANNER_TAKEOVER_RESIDUAL_BUCKETS}
+    primary_category_by_bucket: Dict[str, Dict[str, int]] = {bucket: {} for bucket in PLANNER_TAKEOVER_RESIDUAL_BUCKETS}
+    failure_type_by_bucket: Dict[str, Dict[str, int]] = {bucket: {} for bucket in PLANNER_TAKEOVER_RESIDUAL_BUCKETS}
+    admission_reason_by_bucket: Dict[str, Dict[str, int]] = {bucket: {} for bucket in PLANNER_TAKEOVER_RESIDUAL_BUCKETS}
+    final_response_present_by_bucket: Dict[str, Dict[str, int]] = {bucket: {} for bucket in PLANNER_TAKEOVER_RESIDUAL_BUCKETS}
+    interaction_contract_satisfied_by_bucket: Dict[str, Dict[str, int]] = {bucket: {} for bucket in PLANNER_TAKEOVER_RESIDUAL_BUCKETS}
+    raw_success_by_bucket: Dict[str, Dict[str, int]] = {bucket: {} for bucket in PLANNER_TAKEOVER_RESIDUAL_BUCKETS}
+    execution_verified_success_by_bucket: Dict[str, Dict[str, int]] = {bucket: {} for bucket in PLANNER_TAKEOVER_RESIDUAL_BUCKETS}
+    examples: Dict[str, List[Dict[str, Any]]] = {bucket: [] for bucket in PLANNER_TAKEOVER_RESIDUAL_BUCKETS}
+    unique_tasks: set[str] = set()
+
+    for (run_index, task_id), system_rows in sorted(grouped.items()):
+        if "s1_recovery" not in system_rows or "s2_planner_overlay" not in system_rows:
+            continue
+        s1_row = system_rows["s1_recovery"]
+        s2_row = system_rows["s2_planner_overlay"]
+        if _scored_success(s1_row) or _scored_success(s2_row):
+            continue
+        if not _bool_from_value(s2_row.get("planner_takeover_admitted", False)):
+            continue
+        bucket = _planner_takeover_residual_bucket(s1_row, s2_row)
+        bucket_counts[bucket] += 1
+        unique_tasks.add(task_id)
+        _increment_nested_counter(primary_category_by_bucket, bucket, str(s2_row.get("primary_category") or s1_row.get("primary_category") or "none"))
+        _increment_nested_counter(failure_type_by_bucket, bucket, str(s2_row.get("failure_type") or s1_row.get("failure_type") or "none"))
+        _increment_nested_counter(admission_reason_by_bucket, bucket, str(s2_row.get("planner_admission_reason") or "none"))
+        _increment_nested_counter(final_response_present_by_bucket, bucket, str(_bool_from_value(s2_row.get("final_response_present", False))).lower())
+        _increment_nested_counter(
+            interaction_contract_satisfied_by_bucket,
+            bucket,
+            str(_bool_from_value(s2_row.get("interaction_contract_satisfied", False))).lower(),
+        )
+        _increment_nested_counter(
+            raw_success_by_bucket,
+            bucket,
+            str(_bool_from_value(s2_row.get("raw_execution_success", s2_row.get("raw_success", False)))).lower(),
+        )
+        _increment_nested_counter(
+            execution_verified_success_by_bucket,
+            bucket,
+            str(_bool_from_value(s2_row.get("execution_verified_success", False))).lower(),
+        )
+        if len(examples[bucket]) < 50:
+            examples[bucket].append(
+                _planner_takeover_residual_example(
+                    run_index=run_index,
+                    task_id=task_id,
+                    s1_row=s1_row,
+                    s2_row=s2_row,
+                    bucket=bucket,
+                )
+            )
+
+    residual_row_count = sum(bucket_counts.values())
+    top_bucket = _top_count_key(bucket_counts)
+    audit = {
+        "audit_version": "planner_takeover_residual_v1",
+        "lower_system": "s1_recovery",
+        "upper_system": "s2_planner_overlay",
+        "residual_definition": "s1_fail_s2_fail_with_planner_takeover",
+        "residual_row_count": residual_row_count,
+        "unique_task_count": len(unique_tasks),
+        "top_bucket": top_bucket,
+        "bucket_counts": bucket_counts,
+        "primary_category_by_bucket": primary_category_by_bucket,
+        "failure_type_by_bucket": failure_type_by_bucket,
+        "admission_reason_by_bucket": admission_reason_by_bucket,
+        "final_response_present_by_bucket": final_response_present_by_bucket,
+        "interaction_contract_satisfied_by_bucket": interaction_contract_satisfied_by_bucket,
+        "raw_success_by_bucket": raw_success_by_bucket,
+        "execution_verified_success_by_bucket": execution_verified_success_by_bucket,
+        "examples": examples,
+    }
+    (outdir / "planner_takeover_residual_audit.json").write_text(json.dumps(audit, indent=2), encoding="utf-8")
+
+    lines = [
+        "# Planner Takeover Residual Audit",
+        "",
+        f"- audit_version: `{audit['audit_version']}`",
+        f"- residual_definition: `{audit['residual_definition']}`",
+        f"- residual_row_count: `{residual_row_count}`",
+        f"- unique_task_count: `{audit['unique_task_count']}`",
+        f"- top_bucket: `{top_bucket}`",
+        "",
+        "## Residual Buckets",
+        "",
+        "| bucket | count |",
+        "|---|---:|",
+    ]
+    for bucket in PLANNER_TAKEOVER_RESIDUAL_BUCKETS:
+        lines.append(f"| {bucket} | {bucket_counts[bucket]} |")
+    lines.extend(["", "## Admission Reasons By Bucket", ""])
+    for bucket in PLANNER_TAKEOVER_RESIDUAL_BUCKETS:
+        reason_map = admission_reason_by_bucket.get(bucket, {})
+        if not reason_map:
+            continue
+        reasons = ", ".join(f"{key}:{value}" for key, value in sorted(reason_map.items()))
+        lines.append(f"- `{bucket}`: {reasons}")
+    lines.extend(["", "## Category And Failure-Type Summary", ""])
+    for bucket in PLANNER_TAKEOVER_RESIDUAL_BUCKETS:
+        if not bucket_counts[bucket]:
+            continue
+        categories = ", ".join(f"{key}:{value}" for key, value in sorted(primary_category_by_bucket[bucket].items()))
+        failure_types = ", ".join(f"{key}:{value}" for key, value in sorted(failure_type_by_bucket[bucket].items()))
+        lines.append(f"- `{bucket}` categories: {categories or 'none'}")
+        lines.append(f"- `{bucket}` failure_types: {failure_types or 'none'}")
+    lines.extend(["", "## Interpretation Boundary", ""])
+    interaction_count = bucket_counts.get("interaction_contract", 0)
+    if residual_row_count and interaction_count >= residual_row_count / 2:
+        lines.append(
+            "Interaction-contract residuals dominate these planner takeover failures; broad-core s2 utility appears limited by tasks owned by the interaction layer, so planner utility should remain supported by planner-sensitive suites."
+        )
+    state_tool_order_count = (
+        bucket_counts.get("state_milestone_or_write_target", 0)
+        + bucket_counts.get("tool_trace_or_execution_evidence", 0)
+        + bucket_counts.get("planner_safe_but_no_strict_utility", 0)
+    )
+    if state_tool_order_count:
+        lines.append(
+            f"`{state_tool_order_count}` residual rows may warrant future generic planner-admission utility predicates; inspect capped examples before changing admission."
+        )
+    if not residual_row_count:
+        lines.append("No `s1_fail + s2_takeover + s2_fail` residual rows were found.")
+    lines.append("No scenario-name or ToolSandbox tool-name repair recommendations are emitted by this audit.")
+    (outdir / "planner_takeover_residual_audit.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return audit
+
+
 def _focused_slice_summary(per_system_summary: Dict[str, Any]) -> Dict[str, Any]:
     per_category: Dict[str, Dict[str, Any]] = {}
     for system, system_summary in per_system_summary.items():
@@ -2261,6 +2517,7 @@ def main() -> None:
     strict_audit = _write_strict_layer_monotonicity_audit(outdir, scored_run_rows)
     planner_admission_audit = _write_planner_admission_audit(outdir, scored_run_rows)
     planner_admission_impact_audit = _write_planner_admission_impact_audit(outdir, scored_run_rows)
+    planner_takeover_residual_audit = _write_planner_takeover_residual_audit(outdir, scored_run_rows)
     failure_type_summary = _failure_type_summary(outdir)
     (outdir / "per_failure_type_summary.json").write_text(
         json.dumps(failure_type_summary, indent=2),
@@ -2307,6 +2564,9 @@ def main() -> None:
             "planner_admission_impact_audit_path": display_path(outdir / "planner_admission_impact_audit.json"),
             "planner_utility_win_count": planner_admission_impact_audit.get("planner_utility_win_count"),
             "planner_takeover_on_s1_fail_count": planner_admission_impact_audit.get("planner_takeover_on_s1_fail_count"),
+            "planner_takeover_residual_audit_path": display_path(outdir / "planner_takeover_residual_audit.json"),
+            "planner_takeover_residual_row_count": planner_takeover_residual_audit.get("residual_row_count"),
+            "planner_takeover_residual_top_bucket": planner_takeover_residual_audit.get("top_bucket"),
             "local_debug_only_paths": [
                 display_path(outdir / "comparison.raw.csv"),
                 display_path(outdir / "latest_run_comparison.raw.csv"),

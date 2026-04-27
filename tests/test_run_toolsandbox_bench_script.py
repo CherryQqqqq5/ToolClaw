@@ -196,6 +196,9 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert experiment_manifest["planner_admission_impact_audit_path"].endswith("planner_admission_impact_audit.json")
     assert "planner_utility_win_count" in experiment_manifest
     assert "planner_takeover_on_s1_fail_count" in experiment_manifest
+    assert experiment_manifest["planner_takeover_residual_audit_path"].endswith("planner_takeover_residual_audit.json")
+    assert "planner_takeover_residual_row_count" in experiment_manifest
+    assert "planner_takeover_residual_top_bucket" in experiment_manifest
     assert experiment_manifest["experiment_metadata"]["runner_script"].endswith("scripts/run_toolsandbox_bench.py")
 
     per_category_md = per_category_md_path.read_text(encoding="utf-8")
@@ -1143,3 +1146,81 @@ def test_planner_admission_impact_audit_reports_paired_takeover_utility(tmp_path
     assert "Planner Admission Impact Audit" in report
     assert "s1_fail_s2_success_takeover" in report
     assert "S1 Failed Categories" in report
+
+
+def test_planner_takeover_residual_audit_classifies_s1_fail_s2_fail_takeovers(tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_toolsandbox_bench.py"
+    spec = importlib.util.spec_from_file_location("run_toolsandbox_bench_module_planner_residual", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    def row(task_id: str, system: str, *, failure_type: str = "single_user_turn", categories: list[str] | None = None, **overrides: object) -> dict[str, object]:
+        base = {
+            "run_index": 1,
+            "task_id": task_id,
+            "system": system,
+            "strict_scored_success": False,
+            "raw_execution_success": True,
+            "execution_verified_success": True,
+            "planner_takeover_admitted": system == "s2_planner_overlay",
+            "planner_admission_mode": "execution_takeover" if system == "s2_planner_overlay" else "none",
+            "planner_admission_reason": "base_disallowed_seed_planner_valid" if system == "s2_planner_overlay" else "none",
+            "planner_admitted_change_count": 1 if system == "s2_planner_overlay" else 0,
+            "failure_type": failure_type,
+            "primary_category": (categories or ["single_tool"])[0],
+            "categories": json.dumps(categories or ["single_tool"]),
+            "stop_reason": "success_criteria_satisfied",
+            "trace_path": f"{task_id}_{system}.json",
+            "final_response_present": True,
+            "interaction_contract_satisfied": True,
+            "write_target_verified": True,
+            "budget_violation": False,
+            "tool_calls": 1,
+            "matched_milestones": 1,
+            "milestone_signal_coverage": 1.0,
+        }
+        base.update(overrides)
+        return base
+
+    rows = [
+        row("interaction", "s1_recovery", failure_type="multiple_user_turn", categories=["multiple_user_turn"]),
+        row("interaction", "s2_planner_overlay", failure_type="multiple_user_turn", categories=["multiple_user_turn"]),
+        row("final_response", "s1_recovery"),
+        row("final_response", "s2_planner_overlay", final_response_diagnostic="present_but_contract_fail"),
+        row("state_gap", "s1_recovery"),
+        row("state_gap", "s2_planner_overlay", write_target_verified=False, primary_failtax="state"),
+        row("raw_failure", "s1_recovery"),
+        row("raw_failure", "s2_planner_overlay", raw_execution_success=False, stop_reason="runtime_error"),
+        row("budget", "s1_recovery"),
+        row("budget", "s2_planner_overlay", budget_violation=True, budget_violation_reason="tool_budget_exceeded"),
+        row("tool_trace", "s1_recovery"),
+        row("tool_trace", "s2_planner_overlay", execution_verified_success=False, tool_calls=0, matched_milestones=0, milestone_signal_coverage=0.0),
+        row("ignored_no_takeover", "s1_recovery"),
+        row("ignored_no_takeover", "s2_planner_overlay", planner_takeover_admitted=False),
+    ]
+
+    audit = module._write_planner_takeover_residual_audit(tmp_path, rows)
+
+    assert audit["residual_row_count"] == 6
+    assert audit["unique_task_count"] == 6
+    assert audit["bucket_counts"]["interaction_contract"] == 1
+    assert audit["bucket_counts"]["final_response_or_completion_contract"] == 1
+    assert audit["bucket_counts"]["state_milestone_or_write_target"] == 1
+    assert audit["bucket_counts"]["raw_runtime_failure"] == 1
+    assert audit["bucket_counts"]["budget_or_policy"] == 1
+    assert audit["bucket_counts"]["tool_trace_or_execution_evidence"] == 1
+    assert audit["admission_reason_by_bucket"]["interaction_contract"]["base_disallowed_seed_planner_valid"] == 1
+    assert audit["primary_category_by_bucket"]["interaction_contract"]["multiple_user_turn"] == 1
+    assert audit["failure_type_by_bucket"]["interaction_contract"]["multiple_user_turn"] == 1
+    assert audit["final_response_present_by_bucket"]["final_response_or_completion_contract"]["true"] == 1
+    assert audit["interaction_contract_satisfied_by_bucket"]["interaction_contract"]["true"] == 1
+    assert audit["raw_success_by_bucket"]["raw_runtime_failure"]["false"] == 1
+    assert audit["execution_verified_success_by_bucket"]["tool_trace_or_execution_evidence"]["false"] == 1
+    assert audit["examples"]["state_milestone_or_write_target"][0]["task_id"] == "state_gap"
+    assert (tmp_path / "planner_takeover_residual_audit.json").exists()
+    report = (tmp_path / "planner_takeover_residual_audit.md").read_text(encoding="utf-8")
+    assert "Planner Takeover Residual Audit" in report
+    assert "interaction_contract" in report
+    assert "No scenario-name or ToolSandbox tool-name repair recommendations" in report
