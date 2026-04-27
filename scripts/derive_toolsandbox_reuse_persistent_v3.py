@@ -294,6 +294,135 @@ def build_final(candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return final
 
 
+def build_pilot_candidates(
+    candidates: List[Dict[str, Any]],
+    *,
+    no_headroom_count: int = 12,
+    transfer_count: int = 8,
+) -> List[Dict[str, Any]]:
+    """Build a deterministic pilot source from static v3 candidates."""
+    exact = sorted(
+        [row for row in candidates if row.get("claim_scope") == "exact_match_cost"],
+        key=lambda row: str(row.get("family_id") or ""),
+    )
+    no_headroom = sorted(
+        [row for row in candidates if row.get("claim_scope") == "control_no_headroom"],
+        key=lambda row: str(row.get("family_id") or ""),
+    )[: max(no_headroom_count, 0)]
+    transfer = sorted(
+        [row for row in candidates if row.get("claim_scope") == "transfer_control"],
+        key=lambda row: str(row.get("family_id") or ""),
+    )[: max(transfer_count, 0)]
+
+    pilot: List[Dict[str, Any]] = []
+    for row in [*exact, *no_headroom, *transfer]:
+        item = dict(row)
+        item["claim_inclusion"] = False
+        if item.get("claim_scope") == "exact_match_cost":
+            item["claim_exclusion_reason"] = "awaiting_pilot_headroom_confirmation"
+        else:
+            item["claim_exclusion_reason"] = "pilot_control_family_not_primary_claim"
+        item["pilot_selection"] = {
+            "selected_for_pilot": True,
+            "selection_policy": "all_exact_plus_deterministic_controls",
+            "pilot_source_is_evidence": False,
+        }
+        pilot.append(item)
+    return pilot
+
+
+def _effects_by_family(effects: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for item in effects:
+        family_id = str(item.get("family_id") or "")
+        if family_id:
+            grouped[family_id].append(item)
+    return grouped
+
+
+def _float(value: Any) -> float:
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _mean(values: Iterable[float]) -> float | None:
+    values = list(values)
+    return sum(values) / len(values) if values else None
+
+
+def _pilot_exact_confirmed(effects: List[Dict[str, Any]]) -> Tuple[bool, str]:
+    if not effects:
+        return False, "missing_pilot_effect"
+    warm_hit = any(_float(item.get("warm_reused_artifact")) > 0.0 for item in effects)
+    correct_source = any(_float(item.get("warm_correct_source_match")) > 0.0 for item in effects)
+    sham_hit = any(_float(item.get("sham_reused_artifact")) > 0.0 for item in effects)
+    success_non_regression = all(_float(item.get("warm_success")) >= _float(item.get("cold_success")) for item in effects)
+    headroom = any(_float(item.get("cold_has_cost_headroom")) > 0.0 for item in effects)
+    cost_reduction = any(
+        max(
+            _float(item.get("repair_reduction")),
+            _float(item.get("tool_call_reduction")),
+            _float(item.get("turn_reduction")),
+        ) > 0.0
+        for item in effects
+    )
+    if not warm_hit:
+        return False, "warm_exact_reuse_hit_missing"
+    if not correct_source:
+        return False, "warm_correct_source_missing"
+    if sham_hit:
+        return False, "sham_reuse_hit_present"
+    if not success_non_regression:
+        return False, "warm_success_below_cold"
+    if not headroom:
+        return False, "cold_headroom_missing"
+    if not cost_reduction:
+        return False, "primary_cost_reduction_missing"
+    return True, "pilot_confirmed_exact_headroom"
+
+
+def finalize_from_pilot(candidates: List[Dict[str, Any]], effects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    grouped = _effects_by_family(effects)
+    final: List[Dict[str, Any]] = []
+    for row in candidates:
+        family_id = str(row.get("family_id") or "")
+        family_effects = grouped.get(family_id, [])
+        item = dict(row)
+        pilot = dict(item.get("pilot_headroom") if isinstance(item.get("pilot_headroom"), dict) else {})
+        pilot.update(
+            {
+                "pilot_effect_count": len(family_effects),
+                "warm_exact_reuse_hit_count": sum(1 for effect in family_effects if _float(effect.get("warm_reused_artifact")) > 0.0),
+                "warm_correct_source_match_count": sum(1 for effect in family_effects if _float(effect.get("warm_correct_source_match")) > 0.0),
+                "sham_reuse_hit_count": sum(1 for effect in family_effects if _float(effect.get("sham_reused_artifact")) > 0.0),
+                "cold_success": _mean(_float(effect.get("cold_success")) for effect in family_effects),
+                "warm_success": _mean(_float(effect.get("warm_success")) for effect in family_effects),
+                "mean_repair_reduction": _mean(_float(effect.get("repair_reduction")) for effect in family_effects),
+                "mean_tool_call_reduction": _mean(_float(effect.get("tool_call_reduction")) for effect in family_effects),
+                "mean_turn_reduction": _mean(_float(effect.get("turn_reduction")) for effect in family_effects),
+            }
+        )
+        if item.get("claim_scope") == "exact_match_cost":
+            confirmed, reason = _pilot_exact_confirmed(family_effects)
+            item["claim_inclusion"] = bool(confirmed)
+            item["claim_exclusion_reason"] = "" if confirmed else reason
+            pilot["pilot_confirmed"] = bool(confirmed)
+            pilot["headroom_reason"] = reason
+            if confirmed:
+                item["pilot_headroom"] = pilot
+                final.append(item)
+        elif item.get("claim_scope") in {"control_no_headroom", "transfer_control"} and family_effects:
+            item["claim_inclusion"] = False
+            item["claim_exclusion_reason"] = "control_family_not_primary_claim"
+            pilot["pilot_confirmed"] = True
+            pilot["headroom_reason"] = "pilot_observed_control_not_primary_claim"
+            item["pilot_headroom"] = pilot
+            final.append(item)
+    return final
+
+
 def manifest_for(rows: List[Dict[str, Any]], *, version: str, source: str, status: str) -> Dict[str, Any]:
     potential_exact = [row for row in rows if row.get("claim_scope") == "exact_match_cost"]
     exact = [row for row in potential_exact if row.get("claim_inclusion")]
@@ -327,9 +456,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--inventory-out", default="data/toolsandbox_official_scenario_inventory.json")
     parser.add_argument("--candidates-out", default="data/toolsandbox_reuse_persistent_v3_candidates.jsonl")
     parser.add_argument("--candidates-manifest", default="data/toolsandbox_reuse_persistent_v3_candidates.manifest.json")
+    parser.add_argument("--pilot-out", default="data/toolsandbox_reuse_persistent_v3_pilot_candidates.jsonl")
+    parser.add_argument("--pilot-manifest", default="data/toolsandbox_reuse_persistent_v3_pilot_candidates.manifest.json")
+    parser.add_argument("--pilot-no-headroom-count", type=int, default=12)
+    parser.add_argument("--pilot-transfer-count", type=int, default=8)
+    parser.add_argument("--pilot-effects", default="outputs/paper_suite/toolsandbox_reuse_persistent_v3_pilot/reuse_pair_effects.jsonl")
     parser.add_argument("--out", default="data/toolsandbox_reuse_persistent_v3.jsonl")
     parser.add_argument("--manifest", default="data/toolsandbox_reuse_persistent_v3.manifest.json")
-    parser.add_argument("--phase", choices=["inventory", "candidates", "final", "all"], default="all")
+    parser.add_argument("--phase", choices=["inventory", "candidates", "pilot", "final", "finalize-pilot", "all"], default="all")
     return parser.parse_args()
 
 
@@ -346,12 +480,60 @@ def main() -> None:
         _write_json(Path(args.candidates_manifest), manifest_for(candidates, version="toolsandbox_reuse_persistent_v3_candidates", source=args.candidates_out, status="candidate_pool_not_evidence"))
         print(f"wrote: {args.candidates_out}")
         print(f"wrote: {args.candidates_manifest}")
+    if args.phase in {"pilot", "all"}:
+        candidates = _read_jsonl(Path(args.candidates_out)) if Path(args.candidates_out).exists() else []
+        pilot = build_pilot_candidates(
+            candidates,
+            no_headroom_count=args.pilot_no_headroom_count,
+            transfer_count=args.pilot_transfer_count,
+        )
+        _write_jsonl(Path(args.pilot_out), pilot)
+        manifest = manifest_for(
+            pilot,
+            version="toolsandbox_reuse_persistent_v3_pilot_candidates",
+            source=args.pilot_out,
+            status="pilot_candidate_pool_not_evidence",
+        )
+        manifest.update(
+            {
+                "pilot_source_is_evidence": False,
+                "formal_claim_allowed": False,
+                "pilot_selection_policy": "all exact candidates plus deterministic control subsets",
+                "pilot_selection_counts": {
+                    "exact_match_cost": sum(1 for row in pilot if row.get("claim_scope") == "exact_match_cost"),
+                    "control_no_headroom": sum(1 for row in pilot if row.get("claim_scope") == "control_no_headroom"),
+                    "transfer_control": sum(1 for row in pilot if row.get("claim_scope") == "transfer_control"),
+                },
+            }
+        )
+        _write_json(Path(args.pilot_manifest), manifest)
+        print(f"wrote: {args.pilot_out}")
+        print(f"wrote: {args.pilot_manifest}")
     if args.phase in {"final", "all"}:
         candidates = _read_jsonl(Path(args.candidates_out)) if Path(args.candidates_out).exists() else []
         final = build_final(candidates)
         _write_jsonl(Path(args.out), final)
         status = "pilot_confirmed_formal_source" if final else "awaiting_pilot_confirmation"
         _write_json(Path(args.manifest), manifest_for(final, version="toolsandbox_reuse_persistent_v3", source=args.out, status=status))
+        print(f"wrote: {args.out}")
+        print(f"wrote: {args.manifest}")
+    if args.phase == "finalize-pilot":
+        source_path = Path(args.pilot_out) if Path(args.pilot_out).exists() else Path(args.candidates_out)
+        candidates = _read_jsonl(source_path) if source_path.exists() else []
+        effects = _read_jsonl(Path(args.pilot_effects)) if Path(args.pilot_effects).exists() else []
+        final = finalize_from_pilot(candidates, effects)
+        _write_jsonl(Path(args.out), final)
+        status = "pilot_confirmed_formal_source" if final else "awaiting_pilot_confirmation"
+        manifest = manifest_for(final, version="toolsandbox_reuse_persistent_v3", source=args.out, status=status)
+        manifest.update(
+            {
+                "pilot_effects": args.pilot_effects,
+                "pilot_source": str(source_path),
+                "pilot_effect_count": len(effects),
+                "statistical_claim_allowed": bool(manifest.get("statistical_claim_allowed", False)),
+            }
+        )
+        _write_json(Path(args.manifest), manifest)
         print(f"wrote: {args.out}")
         print(f"wrote: {args.manifest}")
 

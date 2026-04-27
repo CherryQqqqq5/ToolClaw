@@ -291,6 +291,73 @@ def test_reuse_v3_candidates_are_not_formal_evidence_without_pilot() -> None:
     assert final == []
 
 
+
+
+def test_reuse_v3_pilot_candidate_selection_is_deterministic() -> None:
+    module = _load_script("derive_toolsandbox_reuse_persistent_v3.py")
+    candidates = [
+        {"family_id": "exact_b", "claim_scope": "exact_match_cost", "claim_inclusion": False},
+        {"family_id": "control_b", "claim_scope": "control_no_headroom", "claim_inclusion": False},
+        {"family_id": "transfer_b", "claim_scope": "transfer_control", "claim_inclusion": False},
+        {"family_id": "exact_a", "claim_scope": "exact_match_cost", "claim_inclusion": False},
+        {"family_id": "control_a", "claim_scope": "control_no_headroom", "claim_inclusion": False},
+        {"family_id": "transfer_a", "claim_scope": "transfer_control", "claim_inclusion": False},
+    ]
+
+    pilot = module.build_pilot_candidates(candidates, no_headroom_count=1, transfer_count=1)
+
+    assert [row["family_id"] for row in pilot] == ["exact_a", "exact_b", "control_a", "transfer_a"]
+    assert all(row["claim_inclusion"] is False for row in pilot)
+    assert all(row["pilot_selection"]["pilot_source_is_evidence"] is False for row in pilot)
+    assert pilot[0]["claim_exclusion_reason"] == "awaiting_pilot_headroom_confirmation"
+    assert pilot[2]["claim_exclusion_reason"] == "pilot_control_family_not_primary_claim"
+
+
+def test_reuse_v3_finalize_pilot_promotes_only_confirmed_exact_and_controls() -> None:
+    module = _load_script("derive_toolsandbox_reuse_persistent_v3.py")
+    candidates = [
+        {"family_id": "exact_good", "claim_scope": "exact_match_cost", "claim_inclusion": False, "pilot_headroom": {}},
+        {"family_id": "exact_no_hit", "claim_scope": "exact_match_cost", "claim_inclusion": False, "pilot_headroom": {}},
+        {"family_id": "control", "claim_scope": "control_no_headroom", "claim_inclusion": False, "pilot_headroom": {}},
+    ]
+    effects = [
+        {
+            "family_id": "exact_good",
+            "warm_reused_artifact": 1.0,
+            "warm_correct_source_match": 1.0,
+            "sham_reused_artifact": 0.0,
+            "warm_success": 1.0,
+            "cold_success": 1.0,
+            "cold_has_cost_headroom": 1.0,
+            "repair_reduction": 1.0,
+            "tool_call_reduction": 0.0,
+            "turn_reduction": 0.0,
+        },
+        {
+            "family_id": "exact_no_hit",
+            "warm_reused_artifact": 0.0,
+            "warm_correct_source_match": 0.0,
+            "sham_reused_artifact": 0.0,
+            "warm_success": 1.0,
+            "cold_success": 1.0,
+            "cold_has_cost_headroom": 1.0,
+            "repair_reduction": 1.0,
+            "tool_call_reduction": 0.0,
+            "turn_reduction": 0.0,
+        },
+        {"family_id": "control", "warm_success": 1.0, "cold_success": 1.0},
+    ]
+
+    final = module.finalize_from_pilot(candidates, effects)
+
+    by_family = {row["family_id"]: row for row in final}
+    assert set(by_family) == {"exact_good", "control"}
+    assert by_family["exact_good"]["claim_inclusion"] is True
+    assert by_family["exact_good"]["pilot_headroom"]["pilot_confirmed"] is True
+    assert by_family["exact_good"]["pilot_headroom"]["headroom_reason"] == "pilot_confirmed_exact_headroom"
+    assert by_family["control"]["claim_inclusion"] is False
+    assert by_family["control"]["pilot_headroom"]["headroom_reason"] == "pilot_observed_control_not_primary_claim"
+
 def test_reuse_runner_sanitizes_v3_runtime_visibility_and_sets_version() -> None:
     module = _load_script("run_toolsandbox_reuse_persistent.py")
     task = {
@@ -303,6 +370,8 @@ def test_reuse_runner_sanitizes_v3_runtime_visibility_and_sets_version() -> None
         "milestones": [{"gold": True}],
         "reference_result_summary": {"gold": True},
         "scorer_gold": {"expected": True},
+        "tool_allow_list": ["get_cellular_service_status", "set_cellular_service_status"],
+        "candidate_tools": ["get_cellular_service_status", "set_cellular_service_status"],
         "runtime_visibility": {
             "full_messages_runtime_visible": False,
             "milestones_runtime_visible": False,
@@ -322,8 +391,13 @@ def test_reuse_runner_sanitizes_v3_runtime_visibility_and_sets_version() -> None
     assert staged["milestones"] == []
     assert "reference_result_summary" not in staged
     assert "scorer_gold" not in staged
+    assert staged["reuse_runtime_verification_signal"] is True
+    assert staged["metadata"]["reuse_runtime_verification_signal"] is True
     assert staged["metadata"]["reuse_persistent_version"] == "toolsandbox_reuse_persistent_v3"
     assert staged["metadata"]["reuse_pass2_compile_allowed"] is False
+
+    bench_module = _load_script("run_toolsandbox_bench.py")
+    assert bench_module._validate_toolsandbox_sample(type("Sample", (), {"raw_payload": staged, "sample_id": "reuse_task"})()) == []
 
 
 def test_reuse_scorer_v3_controls_do_not_affect_primary_gates() -> None:
@@ -535,7 +609,7 @@ def test_reuse_v3_candidate_rejection_markdown_keeps_claim_pending() -> None:
     assert "not benchmark evidence" in md
     assert "final formal families: `0`" in md
     assert "No reuse claim should be marked supported" in md
-    assert "one-run pilot" in md
+    assert "smoke/formal safety gates" in md
 
 def test_toolsandbox_core_reproducible_filter_excludes_external_and_unresolvable() -> None:
     module = _load_script("export_toolsandbox_core_reproducible.py")

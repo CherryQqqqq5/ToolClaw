@@ -11,8 +11,8 @@ This audit diagnoses the reuse v3 evidence-generation funnel. It is not benchmar
 - potential exact candidates: `39`
 - no-headroom controls: `135`
 - transfer controls: `16`
-- final formal families: `0`
-- formal source status: `awaiting_pilot_confirmation`
+- final formal families: `38`
+- formal source status: `pilot_confirmed_formal_source`
 
 ## Rejection Buckets
 
@@ -27,7 +27,7 @@ This audit diagnoses the reuse v3 evidence-generation funnel. It is not benchmar
 | `transfer_only` | 16 |
 | `awaiting_pilot` | 39 |
 | `missing_success_run_evidence` | 0 |
-| `final_source_empty_pending_pilot` | 1 |
+| `final_source_empty_pending_pilot` | 0 |
 
 ## Gate Gaps
 
@@ -36,18 +36,18 @@ This audit diagnoses the reuse v3 evidence-generation funnel. It is not benchmar
 | `target_family_count` | 20 |
 | `target_exact_claim_family_count` | 12 |
 | `target_headroom_candidate_count` | 10 |
-| `final_exact_claim_family_gap` | 12 |
+| `final_exact_claim_family_gap` | 0 |
 | `potential_exact_candidate_gap_before_pilot` | 0 |
-| `pilot_confirmed_headroom_gap` | 10 |
+| `pilot_confirmed_headroom_gap` | 0 |
 
 ## Interpretation
 
-The v3 runner/scorer pipeline is ready for separated exact/control evidence, but the current candidates still require pilot-confirmed primary exact headroom families before any claim. The immediate bottleneck is pilot confirmation and exact high-headroom selection, not reuse runtime behavior.
+The v3 runner/scorer pipeline is ready for separated exact/control evidence. Static candidates are not evidence; any final source must still pass pilot and smoke safety gates before formal reuse experiments.
 
-Recommended next step: run a one-run pilot on the core-derived candidates, promote only pilot-confirmed exact high-headroom families into the final source, then consider any formal reuse experiment.
+Recommended next step: use the pilot result note to decide whether safety gates passed. If sham false positives remain uncontrolled, do not run formal or promote the reuse claim.
 
 ## Claim Boundary
 
 - Candidate inventory is not evidence.
-- Final v3 source remains pending while pilot-confirmed family count is zero.
+- A pilot-confirmed final source is still not claim evidence until smoke/formal safety gates pass.
 - No reuse claim should be marked supported from this audit.

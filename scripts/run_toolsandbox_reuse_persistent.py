@@ -124,8 +124,10 @@ def _stage_task(task: Dict[str, Any], *, family_id: str, stage: str, pass_index:
             "reuse_pass2_compile_allowed": False if pass_index == 2 else True,
             "original_reuse_family_id": family_id,
             "sham_registry_stage": sham,
+            "reuse_runtime_verification_signal": True,
         }
     )
+    staged["reuse_runtime_verification_signal"] = True
     staged["metadata"] = metadata
     return staged
 

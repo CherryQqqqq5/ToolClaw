@@ -237,7 +237,7 @@ def build_audit(
             "transfer_controls": _sample(transfers, ["family_id", "claim_scope", "pair_type", "signature_key"], 10),
             "singleton_signature_frozen_rows": _sample(singleton_signature_rows, ["name", "categories", "tool_allow_list"], 10),
         },
-        "next_step_recommendation": "expand official-run evidence via core reproducible export, then re-derive candidates and run pilot; do not run formal while final source has zero pilot-confirmed families",
+        "next_step_recommendation": "use the 405-core candidate pool for pilot/final source generation; run formal only after pilot-confirmed exact families and smoke safety gates, especially sham false positive, pass",
     }
 
 
@@ -282,14 +282,14 @@ def render_markdown(audit: Mapping[str, Any]) -> str:
         "",
         "## Interpretation",
         "",
-        "The v3 runner/scorer pipeline is ready for separated exact/control evidence, but the current candidates still require pilot-confirmed primary exact headroom families before any claim. The immediate bottleneck is pilot confirmation and exact high-headroom selection, not reuse runtime behavior.",
+        "The v3 runner/scorer pipeline is ready for separated exact/control evidence. Static candidates are not evidence; any final source must still pass pilot and smoke safety gates before formal reuse experiments.",
         "",
-        "Recommended next step: run a one-run pilot on the core-derived candidates, promote only pilot-confirmed exact high-headroom families into the final source, then consider any formal reuse experiment.",
+        "Recommended next step: use the pilot result note to decide whether safety gates passed. If sham false positives remain uncontrolled, do not run formal or promote the reuse claim.",
         "",
         "## Claim Boundary",
         "",
         "- Candidate inventory is not evidence.",
-        "- Final v3 source remains pending while pilot-confirmed family count is zero.",
+        "- A pilot-confirmed final source is still not claim evidence until smoke/formal safety gates pass.",
         "- No reuse claim should be marked supported from this audit.",
     ])
     return "\n".join(lines) + "\n"

@@ -42,25 +42,32 @@
   },
   "final_manifest_summary": {
     "claim_scope_policy": "primary claim uses only claim_scope=exact_match_cost and claim_inclusion=true",
-    "control_no_headroom_count": 0,
+    "control_no_headroom_count": 12,
     "dataset": "data/toolsandbox_reuse_persistent_v3.jsonl",
-    "exact_claim_family_count": 0,
-    "family_count": 0,
-    "formal_source_status": "awaiting_pilot_confirmation",
-    "headroom_candidate_count": 0,
+    "exact_claim_family_count": 18,
+    "family_count": 38,
+    "formal_source_status": "pilot_confirmed_formal_source",
+    "headroom_candidate_count": 18,
     "inventory_is_evidence": false,
-    "potential_exact_candidate_count": 0,
+    "pilot_effect_count": 59,
+    "pilot_effects": "outputs/paper_suite/toolsandbox_reuse_persistent_v3_pilot/reuse_pair_effects.jsonl",
+    "pilot_source": "data/toolsandbox_reuse_persistent_v3_pilot_candidates.jsonl",
+    "potential_exact_candidate_count": 18,
     "selection_gate_targets": {
       "exact_claim_family_count": 12,
       "family_count": 20,
       "headroom_candidate_count": 10
     },
-    "source_commit": "49ed8243179f1426c331b969ff26a8ef74918ef6",
-    "statistical_claim_allowed": false,
-    "transfer_control_count": 0,
+    "source_commit": "89bf5c1cb90ac5c1e2fdbc2d27adbd6421c5f596",
+    "statistical_claim_allowed": true,
+    "transfer_control_count": 8,
     "version": "toolsandbox_reuse_persistent_v3"
   },
-  "final_scope_counts": {},
+  "final_scope_counts": {
+    "control_no_headroom": 12,
+    "exact_match_cost": 18,
+    "transfer_control": 8
+  },
   "frozen_signature_summary": {
     "rows_without_signature_count": 0,
     "signature_group_count": 178,
@@ -68,19 +75,19 @@
     "unpaired_same_signature_row_count": 57
   },
   "gate_gaps": {
-    "final_exact_claim_family_gap": 12,
-    "pilot_confirmed_headroom_gap": 10,
+    "final_exact_claim_family_gap": 0,
+    "pilot_confirmed_headroom_gap": 0,
     "potential_exact_candidate_gap_before_pilot": 0,
     "target_exact_claim_family_count": 12,
     "target_family_count": 20,
     "target_headroom_candidate_count": 10
   },
-  "generated_at_utc": "2026-04-27T00:18:08Z",
-  "next_step_recommendation": "expand official-run evidence via core reproducible export, then re-derive candidates and run pilot; do not run formal while final source has zero pilot-confirmed families",
+  "generated_at_utc": "2026-04-27T01:22:32Z",
+  "next_step_recommendation": "use the 405-core candidate pool for pilot/final source generation; run formal only after pilot-confirmed exact families and smoke safety gates, especially sham false positive, pass",
   "rejection_bucket_counts": {
     "awaiting_pilot": 39,
     "external_api_only_no_trace": 523,
-    "final_source_empty_pending_pilot": 1,
+    "final_source_empty_pending_pilot": 0,
     "insufficient_paired_frozen_evidence": 113,
     "inventory_not_in_frozen_export": 627,
     "missing_success_run_evidence": 0,
@@ -562,9 +569,9 @@
     "candidate_family_count": 190,
     "candidate_pairs_attempted": 190,
     "coverage_filter_source": "core_filter",
-    "final_exact_claim_family_count": 0,
-    "final_formal_family_count": 0,
-    "formal_source_status": "awaiting_pilot_confirmation",
+    "final_exact_claim_family_count": 18,
+    "final_formal_family_count": 38,
+    "formal_source_status": "pilot_confirmed_formal_source",
     "frozen_export_count": 405,
     "inventory_count": 1032,
     "matched_frozen_rows": 405,
@@ -572,8 +579,8 @@
     "selected_exact_candidates": 39,
     "selected_no_headroom_controls": 135,
     "selected_transfer_controls": 16,
-    "statistical_claim_allowed": false,
+    "statistical_claim_allowed": true,
     "unmatched_frozen_export_rows": 0
   },
-  "toolclaw_commit": "49ed8243179f1426c331b969ff26a8ef74918ef6"
+  "toolclaw_commit": "89bf5c1cb90ac5c1e2fdbc2d27adbd6421c5f596"
 }

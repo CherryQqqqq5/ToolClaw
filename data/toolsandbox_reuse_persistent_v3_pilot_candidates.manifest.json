@@ -1,0 +1,28 @@
+{
+  "claim_scope_policy": "primary claim uses only claim_scope=exact_match_cost and claim_inclusion=true",
+  "control_no_headroom_count": 12,
+  "dataset": "data/toolsandbox_reuse_persistent_v3_pilot_candidates.jsonl",
+  "exact_claim_family_count": 0,
+  "family_count": 59,
+  "formal_claim_allowed": false,
+  "formal_source_status": "pilot_candidate_pool_not_evidence",
+  "headroom_candidate_count": 0,
+  "inventory_is_evidence": false,
+  "pilot_selection_counts": {
+    "control_no_headroom": 12,
+    "exact_match_cost": 39,
+    "transfer_control": 8
+  },
+  "pilot_selection_policy": "all exact candidates plus deterministic control subsets",
+  "pilot_source_is_evidence": false,
+  "potential_exact_candidate_count": 39,
+  "selection_gate_targets": {
+    "exact_claim_family_count": 12,
+    "family_count": 20,
+    "headroom_candidate_count": 10
+  },
+  "source_commit": "89bf5c1cb90ac5c1e2fdbc2d27adbd6421c5f596",
+  "statistical_claim_allowed": false,
+  "transfer_control_count": 8,
+  "version": "toolsandbox_reuse_persistent_v3_pilot_candidates"
+}

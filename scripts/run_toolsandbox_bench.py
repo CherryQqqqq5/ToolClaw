@@ -110,6 +110,11 @@ def _summary_exception_type(summary: Dict[str, Any]) -> str:
 
 
 def _has_alternative_verification_signal(raw_payload: Dict[str, Any]) -> bool:
+    metadata = raw_payload.get("metadata", {})
+    if raw_payload.get("reuse_runtime_verification_signal") is True:
+        return True
+    if isinstance(metadata, dict) and metadata.get("reuse_runtime_verification_signal") is True:
+        return True
     if _is_planner_sensitive_payload(raw_payload):
         return bool(raw_payload.get("scorer_gold"))
     summary = _reference_result_summary(raw_payload)
