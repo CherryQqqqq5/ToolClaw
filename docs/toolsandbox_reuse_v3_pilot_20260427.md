@@ -4,6 +4,8 @@
 
 Reuse v3 advanced from a static candidate pool to a pilot-confirmed final source, and the exact-scope admission fix now passes the final-source smoke safety gate. This is still not paper evidence: reuse v3 remains pending until a 3-run formal passes the same gates.
 
+Update: the 3-run formal subsequently passed. The paper-facing evidence summary is now `docs/toolsandbox_reuse_v3_formal_20260427.md`; this pilot note is retained as pipeline provenance.
+
 ## Source And Pilot
 
 - source frozen export: `data/toolsandbox.official_core_reproducible.frozen.json`

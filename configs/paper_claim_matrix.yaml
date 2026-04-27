@@ -230,10 +230,10 @@
       }
     },
     "reuse_exact_match_cost": {
-      "status": "pending_committed_formal_bundle",
-      "claim_strength": "pending",
+      "status": "supported_current_evidence",
+      "claim_strength": "mechanism_supporting",
       "benchmark_suite": "toolsandbox_reuse_persistent_v3",
-      "claim": "Reuse is under a narrow exact/matched-signature second-run cost protocol. V3 separates official scenario inventory, static candidates, pilot-confirmed formal source, and control families; the claim remains pending until V3 has enough pilot-confirmed exact high-headroom families and passes warm/cold/sham gates.",
+      "claim": "Under exact matched signatures and pilot-confirmed recovery headroom, warm reuse reduces second-run tool-call cost on ToolSandbox core reuse families while preserving success, with correct source-family provenance and zero sham false positives. This is a narrow guarded exact-reuse cost claim, not broad transfer reuse or ToolSandbox a4 success lift.",
       "metrics": {
         "primary": [
           "tool_call_reduction@warm_vs_cold",
@@ -246,7 +246,25 @@
           "reuse_false_positive_rate@sham",
           "second_run_success_delta@warm_vs_cold"
         ]
-      }
+      },
+      "formal_summary": {
+        "source": "data/toolsandbox_reuse_persistent_v3.jsonl",
+        "outdir": "outputs/paper_suite/toolsandbox_reuse_persistent_v3",
+        "result_note": "docs/toolsandbox_reuse_v3_formal_20260427.md",
+        "family_count": 38,
+        "primary_exact_family_count": 18,
+        "primary_paired_effect_count": 54,
+        "warm_exact_reuse_hit_rate": 1.0,
+        "warm_exact_correct_source_match_rate": 1.0,
+        "sham_false_positive_rate": 0.0,
+        "primary_tool_call_reduction_mean": 1.0,
+        "primary_tool_call_reduction_paired_wins_losses_ties": [
+          54,
+          0,
+          0
+        ]
+      },
+      "boundary": "Exact matched-signature, pilot-confirmed high-headroom ToolSandbox core families only. Does not claim transfer reuse, BFCL reuse lift, verifier-backed skill learning, broad ToolSandbox a4>a3 success, or monotonic cost improvements beyond the reported second-run tool-call reduction."
     },
     "bfcl_exact_function_guard": {
       "status": "unsupported_after_candidate_preservation_rerun_case_d",
@@ -732,7 +750,7 @@
       }
     },
     "toolsandbox_reuse_persistent_v3": {
-      "status": "pilot_completed_safety_passed_pending_formal",
+      "status": "formal_completed_supported",
       "prepare_script": "scripts/derive_toolsandbox_reuse_persistent_v3.py --phase all",
       "runner": "scripts/run_toolsandbox_reuse_persistent.py",
       "score_script": "scripts/score_toolsandbox_reuse_persistent.py",
@@ -743,6 +761,8 @@
       "pilot_source": "data/toolsandbox_reuse_persistent_v3_pilot_candidates.jsonl",
       "pilot_manifest": "data/toolsandbox_reuse_persistent_v3_pilot_candidates.manifest.json",
       "pilot_result_note": "docs/toolsandbox_reuse_v3_pilot_20260427.md",
+      "formal_result_note": "docs/toolsandbox_reuse_v3_formal_20260427.md",
+      "formal_outdir": "outputs/paper_suite/toolsandbox_reuse_persistent_v3",
       "scenario_inventory": "data/toolsandbox_official_scenario_inventory.json",
       "default_mode": "planner",
       "default_systems": "a3_interaction,a4_reuse_cold,a4_reuse_warm,a4_reuse_sham",
@@ -750,9 +770,9 @@
       "claim_ids": [
         "reuse_exact_match_cost"
       ],
-      "claim_strength": "pending",
-      "paper_role": "reuse_exact_match_cost_candidate",
-      "promotion_gate": "V3 can support only a narrow exact/matched-signature second-run cost claim. Primary gates must be computed on claim_scope=exact_match_cost and claim_inclusion=true only: >=12 exact claim families, >=10 pilot-confirmed headroom families, warm exact reuse hit >=0.50, warm exact correct-source match >=0.90, warm success >= cold success, positive cost reduction, and sham false positive <=0.05. Exact-scope admission now passes the final-source 1-run smoke safety gate, but reuse remains pending until 3-run formal passes. Inventory, static candidates, pilot results, and 1-run smoke are not paper claim evidence."
+      "claim_strength": "mechanism_supporting",
+      "paper_role": "reuse_exact_match_cost_mechanism",
+      "promotion_gate": "V3 supports only a narrow exact/matched-signature second-run cost claim. Primary gates are computed on claim_scope=exact_match_cost and claim_inclusion=true only: 18 exact claim families, 18 pilot-confirmed headroom families, warm exact reuse hit 1.0, warm exact correct-source match 1.0, warm success >= cold success, positive tool-call reduction, and sham false positive 0.0 in the 3-run formal. Inventory, static candidates, and pilot results are not claim evidence."
     },
     "toolsandbox_semantic_repair_official_v2": {
       "status": "formal_completed_pending_claim_review",
