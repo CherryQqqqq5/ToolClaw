@@ -354,17 +354,33 @@
       "paper_role": "readiness_only"
     },
     "toolsandbox_official": {
-      "status": "implemented",
+      "status": "historical_legacy_frozen88",
       "runner": "scripts/run_toolsandbox_bench.py",
       "default_source": "data/toolsandbox.formal.official.json",
       "default_mode": "planner",
       "default_systems": "a0_baseline,a1_recovery,a2_planner,a3_interaction,a4_reuse",
       "default_num_runs": 3,
+      "claim_ids": [],
+      "claim_strength": "historical",
+      "paper_role": "historical_legacy_only",
+      "source_boundary": "Legacy 88-row frozen official-run subset retained for provenance only. Current ToolSandbox headline source is toolsandbox_official_core_reproducible_strict."
+    },
+    "toolsandbox_official_core_reproducible_strict": {
+      "status": "formal_completed_supported",
+      "runner": "scripts/run_toolsandbox_bench.py",
+      "default_source": "data/toolsandbox.official_core_reproducible.frozen.json",
+      "default_manifest": "data/toolsandbox.official_core_reproducible.frozen.manifest.json",
+      "default_mode": "planner",
+      "default_systems": "s0_baseline,s1_recovery,s2_planner_overlay,s3_interaction_overlay,s4_reuse_overlay",
+      "default_num_runs": 3,
       "claim_ids": [
-        "interaction_headline"
+        "interaction_headline",
+        "strict_layer_monotonicity"
       ],
       "claim_strength": "headline",
-      "paper_role": "headline"
+      "paper_role": "headline",
+      "formal_bundle": "outputs/paper_suite/toolsandbox_official_core_reproducible_strict",
+      "source_boundary": "405-scenario core reproducible frozen export. RapidAPI/external ToolSandbox scenarios remain excluded and tracked separately."
     },
     "toolsandbox_semantic_repair_official_v1": {
       "status": "implemented",

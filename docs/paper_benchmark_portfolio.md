@@ -74,17 +74,19 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
   - current claim: `tau_bench_supporting`
   - reason: the current alignment pipeline is useful for internal comparison, but it is not yet paper-safe for headline claims until the semantic audit gate passes
 
-- `reuse_exact_match`
-  - role: pending narrow reuse claim benchmark
+- `toolsandbox_reuse_persistent_v3`
+  - role: mechanism-supporting exact matched-signature reuse benchmark
   - current claim: `reuse_exact_match_cost`
-  - reason: the repo has a v2 dataset and server-side smoke evidence, but no committed paper-safe v2 formal bundle yet shows warm exact hits plus positive cost/headroom deltas
+  - result bundle: `outputs/paper_suite/toolsandbox_reuse_persistent_v3`
+  - reason: the 3-run formal supports a narrow exact-reuse cost claim on pilot-confirmed high-headroom ToolSandbox core families: 18 primary exact families, 54 primary paired effects, warm exact hit and correct-source rates of 1.0, sham false-positive rate 0.0, and primary tool-call wins/losses/ties 54/0/0
+  - boundary: exact matched signatures only; no transfer reuse, BFCL reuse lift, broad ToolSandbox success lift, or verifier-backed skill-learning claim
 
 ## Current evidence boundary
 
 - `toolsandbox_official_core_reproducible_strict` is the current ToolSandbox core headline source; the legacy 88-row frozen export is historical evidence only.
 - ToolSandbox semantic-usefulness should be treated as a targeted mechanism claim anchored to `toolsandbox_semantic_repair_official_v1`, not a whole-benchmark headline claim.
 - Planner overlay should not be sold as an independent ToolSandbox core headline lift. The dedicated `toolsandbox_planner_sensitive_v2_f2` bundle remains the canonical mechanism evidence across all four V2 structural families, and `toolsandbox_planner_sensitive_v2_heldout` adds a robustness check with positive separation in 3/4 held-out families under paraphrase, tool renaming, shuffled candidates, and distractor stress. BFCL exact function-calling transfer remains a limitation. The guarded BFCL adapter can only become narrow supporting evidence after full-suite non-regression gates and the pre-registered baseline-missing-required slice gates pass.
-- Reuse should stay pending and scoped to exact/matched-signature cost reduction until a committed persistent-reuse V3 formal bundle demonstrates warm/cold/sham cost/headroom gains.
+- Reuse is now supported only for the narrow `toolsandbox_reuse_persistent_v3` exact matched-signature second-run tool-call cost claim; no-headroom, transfer, and sham controls remain separate and do not support a broad reuse claim.
 - ToolGym is best treated as a later supplementary stress test, not the main paper anchor.
 - WebArena, WorkArena, and OSWorld are strong benchmarks, but they move the paper toward browser or computer-use agents rather than workflow intelligence over tool calling.
 
@@ -103,7 +105,7 @@ Current strict formal result:
 - strict success: `s0=0.659259`, `s1=0.703704`, `s2=0.703704`, `s3=0.706173`, `s4=0.706173`
 - adjacent wins/losses/ties: `54/0/1161`, `0/0/1215`, `3/0/1212`, `0/0/1215`
 
-Allowed interpretation: the paper-facing strict ladder is primary-success non-regressive on the ToolSandbox core reproducible subset. Do not use this result as planner-overlay broad lift, reuse cost-reduction, or layer-by-layer cost improvement evidence. Planner-sensitive F2/held-out and reuse persistent V3 remain the separate mechanism and cost protocols.
+Allowed interpretation: the paper-facing strict ladder is primary-success non-regressive on the ToolSandbox core reproducible subset. Do not use this result as planner-overlay broad lift, reuse cost-reduction, or layer-by-layer cost improvement evidence. Planner-sensitive F2/held-out and reuse persistent V3 remain separate mechanism and exact-cost protocols.
 
 ## BFCL guarded exact-function adapter boundary on 2026-04-24
 
@@ -117,25 +119,32 @@ The guarded BFCL path is a paper-safety and diagnostic repair, not a planner hea
 
 Promotion failed in the latest guarded candidate-preservation rerun. `bfcl_exact_function_guard` still requires full-suite wrong-function non-regression, missing-required reduction, tool-selection non-regression, and success non-regression; `a2_success_ge_a0` and `a2_missing_required_lt_a0` did not pass. `bfcl_missing_required_guarded_reduction` additionally requires the pre-registered `baseline_missing_required_slice` gates, which did not pass because the slice has zero a0 rows in this rerun. The funnel now shows candidate visibility is effectively repaired and the next blocker is argument/call-shape failure after the correct function is selected.
 
-## ToolSandbox persistent reuse boundary on 2026-04-24
+## ToolSandbox persistent reuse boundary on 2026-04-27
 
-The paper-facing reuse path is now `toolsandbox_reuse_persistent_v2`, backed by a versioned paired source:
+The paper-facing reuse path is now `toolsandbox_reuse_persistent_v3`, backed by a versioned paired source and a 3-run formal bundle:
 
-- source: `data/toolsandbox_reuse_persistent_v2.jsonl`
-- manifest: `data/toolsandbox_reuse_persistent_v2.manifest.json`
+- source: `data/toolsandbox_reuse_persistent_v3.jsonl`
+- manifest: `data/toolsandbox_reuse_persistent_v3.manifest.json`
 - runner: `scripts/run_toolsandbox_reuse_persistent.py`
 - scorer: `scripts/score_toolsandbox_reuse_persistent.py`
+- result bundle: `outputs/paper_suite/toolsandbox_reuse_persistent_v3`
+- result note: `docs/toolsandbox_reuse_v3_formal_20260427.md`
 
-The suite separates pass-1 asset compilation from pass-2 evaluation and compares four pass-2 arms: `a3_interaction`, `a4_reuse_cold`, `a4_reuse_warm`, and `a4_reuse_sham`. The `sham` arm is mandatory because a paper-safe persistent-reuse claim requires showing that unrelated registries do not produce the same benefit.
+The suite separates pass-1 asset compilation from pass-2 evaluation and compares four pass-2 arms: `a3_interaction`, `a4_reuse_cold`, `a4_reuse_warm`, and `a4_reuse_sham`. Primary gates are computed only on `claim_scope=exact_match_cost` and `claim_inclusion=true`.
 
-Current status:
+Current formal status:
 
-- the v2 dataset is committed and has `family_count = 8`, `headroom_candidate_count = 3`, and `statistical_claim_allowed = false`.
-- server-side smoke indicates the sham false-positive issue has been addressed, but that smoke bundle is not a committed paper-safe formal result bundle.
-- paper-scope reuse remains exact-only: warm exact hits can count toward the claim only when source-family and signature provenance match.
-- reuse remains pending until a committed v2 smoke/formal bundle shows warm exact hits, low sham false positive, and positive cost/headroom delta.
+- total formal families: 38
+- primary exact/headroom families: 18
+- no-headroom controls: 12
+- transfer controls: 8
+- primary paired effects: 54
+- warm exact reuse hit rate: 1.0
+- warm exact correct-source match rate: 1.0
+- sham false-positive rate: 0.0
+- primary tool-call paired wins/losses/ties: 54 / 0 / 0
 
-This means reuse can be discussed as implemented protocol and pending evidence, not as a proven second-run cost-reduction claim.
+Allowed interpretation: exact matched-signature reuse reduces second-run tool-call cost on pilot-confirmed high-headroom ToolSandbox core families while preserving success and passing sham safety gates. Forbidden interpretation: broad transfer reuse, BFCL reuse lift, general ToolSandbox `a4 > a3` success, verifier-backed skill learning, or cost monotonicity across all metrics.
 
 ## ToolSandbox causality boundary on 2026-04-23
 
