@@ -30,6 +30,18 @@ GENERIC_FIXES = {
     "benchmark_final_response_mismatch": "Audit generic benchmark-facing final-response and milestone/summary alignment without adding scenario-specific rules.",
 }
 
+SUBCAUSE_FIXES = {
+    "final_response_milestone_gap": "Try a generic final response synthesizer that summarizes completed tool results and state updates without reading milestones.",
+    "state_milestone_gap": "Inspect generic state/precondition verification and state patch persistence.",
+    "tool_trace_milestone_gap": "Inspect whether runtime tool traces provide task-relevant evidence before finalization.",
+    "missing_interaction_gap": "Expand generic interaction triggers for unresolved or ambiguous user-provided information.",
+    "interaction_decoder_gap": "Expand generic semantic decoding for typed replies and state/input patches.",
+    "post_execution_verifier_gap": "Use completion verifier diagnostics to decide whether to ask, repair, or synthesize final response before stop.",
+    "raw_success_overclaim": "Tighten executor-side completion criteria only through gold-free runtime evidence.",
+    "scorer_contract_gap": "Audit adapter/scorer contract interpretation without changing runtime behavior.",
+    "unknown_raw_strict_gap": "Manually inspect representative traces and add generic diagnostic features.",
+}
+
 
 def _truthy(value: Any) -> bool:
     if isinstance(value, bool):
@@ -94,6 +106,7 @@ def extract_trace_evidence(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
     user_reply_count = 0
     tool_error_count = 0
     final_stop_reason = ""
+    completion_verifier: Dict[str, Any] = {}
 
     for event in events:
         if not isinstance(event, dict):
@@ -137,6 +150,8 @@ def extract_trace_evidence(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
             final_stop_reason = str(output.get("reason") or final_stop_reason or "")
             _append_unique(raw_message_patterns, metadata.get("failtax_label"))
             _append_unique(raw_message_patterns, metadata.get("root_cause"))
+        if event_type == "completion_verification":
+            completion_verifier = dict(output)
 
         for key in ("missing_input_keys", "unresolved_required_inputs", "missing_targets"):
             value = metadata.get(key)
@@ -160,6 +175,7 @@ def extract_trace_evidence(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
         "user_reply_count": user_reply_count,
         "tool_error_count": tool_error_count,
         "final_stop_reason": final_stop_reason,
+        "completion_verifier": completion_verifier,
     }
 
 
@@ -214,6 +230,34 @@ def classify_failure(row: Dict[str, str], trace_evidence: Dict[str, Any]) -> Tup
     return ("raw_success_but_strict_fail", "unclassified_strict_failure", "manual_review")
 
 
+def classify_subcause(row: Dict[str, str], trace_evidence: Dict[str, Any]) -> str:
+    verifier = trace_evidence.get("completion_verifier")
+    if isinstance(verifier, dict) and verifier:
+        missing = {str(item) for item in verifier.get("missing_evidence", []) if str(item)}
+        action = str(verifier.get("recommended_action") or "")
+        if "user_clarification_for_ambiguous_goal" in missing:
+            return "missing_interaction_gap"
+        if "unresolved_required_inputs" in missing:
+            return "state_milestone_gap"
+        if "successful_tool_result" in missing:
+            return "tool_trace_milestone_gap"
+        if "task_relevant_final_evidence" in missing and action == "synthesize_final_response":
+            return "final_response_milestone_gap"
+        if missing:
+            return "post_execution_verifier_gap"
+
+    raw_success = _truthy(row.get("raw_execution_success") or row.get("raw_success"))
+    execution_verified = _truthy(row.get("execution_verified_success"))
+    strict_success = _truthy(row.get("strict_scored_success") or row.get("success"))
+    if raw_success and not execution_verified:
+        return "raw_success_overclaim"
+    if execution_verified and not strict_success:
+        return "scorer_contract_gap"
+    if raw_success and not strict_success:
+        return "unknown_raw_strict_gap"
+    return "unknown_raw_strict_gap"
+
+
 def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system: str = "s4_reuse_overlay") -> Dict[str, Any]:
     grouped = _system_rows_by_run_task(rows)
     records: List[Dict[str, Any]] = []
@@ -225,12 +269,14 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
         trace = _load_trace(str(row.get("trace_path") or ""), root=repo_root)
         evidence = extract_trace_evidence(trace)
         category, subtype, owner = classify_failure(row, evidence)
+        subcause = classify_subcause(row, evidence)
         run_task = (str(row.get("run_index") or ""), str(row.get("task_id") or ""))
         record = {
             "run_index": row.get("run_index", ""),
             "task_id": row.get("task_id", ""),
             "system": target_system,
             "failure_category": category,
+            "failure_subcause": subcause,
             "error_subtype": subtype,
             "raw_message_pattern": evidence.get("raw_message_pattern", ""),
             "missing_input_keys": evidence.get("missing_input_keys", []),
@@ -244,6 +290,8 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
             "first_failed_layer": first_failed_layer(grouped.get(run_task, {})),
             "candidate_owning_layer": owner,
             "recommended_generic_fix": GENERIC_FIXES[category],
+            "recommended_subcause_fix": SUBCAUSE_FIXES[subcause],
+            "completion_verifier": evidence.get("completion_verifier", {}),
             "failure_type": row.get("failure_type", ""),
             "primary_failtax": row.get("primary_failtax", ""),
             "failtaxes": _safe_json_list(row.get("failtaxes")),
@@ -255,6 +303,7 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
 
     category_counts = Counter(record["failure_category"] for record in records)
     subtype_counts = Counter(record["error_subtype"] for record in records)
+    subcause_counts = Counter(record["failure_subcause"] for record in records)
     owner_counts = Counter(record["candidate_owning_layer"] for record in records)
     first_layer_counts = Counter(record["first_failed_layer"] for record in records)
     raw_success_strict_fail = sum(1 for record in records if record["raw_success_but_strict_fail"])
@@ -267,6 +316,7 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
         "runtime_execution_failure_count": len(records) - raw_success_strict_fail,
         "failure_category_counts": dict(sorted(category_counts.items())),
         "error_subtype_counts": dict(subtype_counts.most_common()),
+        "failure_subcause_counts": dict(sorted(subcause_counts.items())),
         "candidate_owning_layer_counts": dict(sorted(owner_counts.items())),
         "first_failed_layer_counts": dict(sorted(first_layer_counts.items())),
         "records": records,
@@ -297,12 +347,15 @@ def write_markdown(summary: Dict[str, Any], path: Path) -> None:
     lines.extend(["", "## First Failed Layer", "", "| layer | count |", "|---|---:|"])
     for layer, count in sorted(summary["first_failed_layer_counts"].items()):
         lines.append(f"| {layer} | {count} |")
+    lines.extend(["", "## Failure Subcauses", "", "| subcause | count |", "|---|---:|"])
+    for subcause, count in sorted(summary.get("failure_subcause_counts", {}).items()):
+        lines.append(f"| {subcause} | {count} |")
     lines.extend(
         [
             "",
             "## Example Diagnostics",
             "",
-            "| run | task_id | category | subtype | first_failed_layer | owner | stop_reason | trace_path |",
+            "| run | task_id | category | subcause | subtype | first_failed_layer | owner | stop_reason | trace_path |",
             "|---|---|---|---|---|---|---|---|",
         ]
     )
@@ -311,6 +364,7 @@ def write_markdown(summary: Dict[str, Any], path: Path) -> None:
             record["run_index"],
             record["task_id"],
             record["failure_category"],
+            record.get("failure_subcause", ""),
             record["error_subtype"],
             record["first_failed_layer"],
             record["candidate_owning_layer"],

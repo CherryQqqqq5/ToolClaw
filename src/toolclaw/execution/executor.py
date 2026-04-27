@@ -10,6 +10,7 @@ import time
 from typing import Any, Dict, Optional
 
 from toolclaw.execution.failtax import FailTaxClassifier
+from toolclaw.execution.completion_verifier import CompletionVerifier
 from toolclaw.execution.recovery import RecoveryEngine
 from toolclaw.execution.state_tracker import StateTracker
 from toolclaw.policy.policy_engine import PolicyEngine
@@ -104,12 +105,14 @@ class SequentialExecutor:
         recovery_engine: Optional[RecoveryEngine] = None,
         policy_engine: Optional[PolicyEngine] = None,
         failtax_classifier: Optional[FailTaxClassifier] = None,
+        completion_verifier: Optional[CompletionVerifier] = None,
         planner: Optional["HTGPPlanner"] = None,
         config: Optional[ExecutorConfig] = None,
     ) -> None:
         self.recovery_engine = recovery_engine or RecoveryEngine()
         self.policy_engine = policy_engine or PolicyEngine()
         self.failtax_classifier = failtax_classifier or FailTaxClassifier()
+        self.completion_verifier = completion_verifier or CompletionVerifier()
         self.planner = planner
         self.config = config or ExecutorConfig()
 
@@ -589,6 +592,18 @@ class SequentialExecutor:
                 )
             idx += 1
 
+        completion_verification = self.completion_verifier.verify(
+            workflow=workflow,
+            trace=trace,
+            state_values=tracker.state_values,
+        )
+        trace.metadata.task_annotations["completion_verifier"] = completion_verification.to_dict()
+        trace.add_event(
+            event_id="evt_completion_verification",
+            event_type=EventType.COMPLETION_VERIFICATION,
+            actor="completion_verifier",
+            output=completion_verification.to_dict(),
+        )
         trace.add_event(
             event_id="evt_stop_success",
             event_type=EventType.STOP,

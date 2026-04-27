@@ -38,6 +38,7 @@ class EventType(str, Enum):
     ROLLBACK = "rollback"
     REPLAN_TRIGGERED = "replan_triggered"
     REPLAN_APPLIED = "replan_applied"
+    COMPLETION_VERIFICATION = "completion_verification"
     STOP = "stop"
     ABORT = "abort"
 

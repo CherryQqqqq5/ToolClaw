@@ -124,3 +124,42 @@ def test_first_failed_layer_from_paired_system_rows(tmp_path: Path) -> None:
 
     assert summary["records"][0]["first_failed_layer"] == "s2_planner_overlay"
     assert summary["failure_category_counts"]["state_precondition_gap"] == 1
+
+
+def test_analyzer_maps_completion_verifier_to_subcause(tmp_path: Path) -> None:
+    module = _load_script()
+    trace = tmp_path / "trace.json"
+    _trace(
+        trace,
+        [
+            {
+                "event_type": "completion_verification",
+                "output": {
+                    "completion_verified": False,
+                    "missing_evidence": ["user_clarification_for_ambiguous_goal"],
+                    "recommended_action": "ask_user",
+                },
+            },
+            {"event_type": "stop", "output": {"status": "success", "reason": "success_criteria_satisfied"}},
+        ],
+    )
+    rows = [
+        {
+            "run_index": "1",
+            "task_id": "task",
+            "system": "s4_reuse_overlay",
+            "failure_type": "multiple_user_turn",
+            "primary_failtax": "selection",
+            "failtaxes": '["selection"]',
+            "strict_scored_success": "False",
+            "raw_execution_success": "True",
+            "execution_verified_success": "True",
+            "stop_reason": "success_criteria_satisfied",
+            "trace_path": str(trace),
+        },
+    ]
+
+    summary = module.build_taxonomy(rows, repo_root=tmp_path)
+
+    assert summary["records"][0]["failure_subcause"] == "missing_interaction_gap"
+    assert summary["failure_subcause_counts"]["missing_interaction_gap"] == 1
