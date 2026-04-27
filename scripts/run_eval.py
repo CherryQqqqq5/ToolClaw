@@ -66,7 +66,7 @@ from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
 from toolclaw.main import ToolClawRuntime
 from toolclaw.planner.capability_intents import CAPABILITY_PROFILES_BY_ID, infer_capability_from_text
 from toolclaw.planner.htgp import PlanningRequest, build_default_planner
-from toolclaw.planner.overlay import apply_planner_overlay, apply_reuse_overlay_noop
+from toolclaw.planner.overlay import apply_admitted_planner_overlay, apply_planner_overlay, apply_reuse_overlay_noop
 from toolclaw.registry import AssetRegistry, FileAssetRegistry, InMemoryAssetRegistry
 from toolclaw.schemas.workflow import CapabilityEdge, RiskLevel, TaskConstraints, ToolSpec, Workflow, WorkflowEdge
 
@@ -232,7 +232,7 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
     ),
     "s2_planner_overlay": SystemSpec(
         system_id="s2_planner_overlay",
-        workflow_mode="planner_overlay",
+        workflow_mode="planner_overlay_admitted",
         execution_mode="executor",
         allow_repair=True,
         allow_fallback=True,
@@ -240,7 +240,7 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
     ),
     "s3_interaction_overlay": SystemSpec(
         system_id="s3_interaction_overlay",
-        workflow_mode="planner_overlay",
+        workflow_mode="planner_overlay_admitted",
         execution_mode="interaction",
         compile_on_success=False,
         use_reuse=False,
@@ -250,7 +250,7 @@ SYSTEM_SPECS: Dict[str, SystemSpec] = {
     ),
     "s4_reuse_overlay": SystemSpec(
         system_id="s4_reuse_overlay",
-        workflow_mode="planner_overlay",
+        workflow_mode="planner_overlay_admitted",
         execution_mode="interaction",
         compile_on_success=False,
         use_reuse=False,
@@ -3090,6 +3090,54 @@ def _apply_planner_structural_fallback(
     return fallback
 
 
+
+_GOLD_TASK_KEYS_FOR_PLANNER = {
+    "milestones",
+    "reference_result_summary",
+    "result_summary",
+    "official_milestone_mapping",
+    "official_similarity",
+    "official_turn_count",
+    "scorer_gold_messages",
+    "expected_answer",
+    "ideal_turn_count",
+    "ideal_tool_calls",
+}
+_GOLD_METADATA_TOKENS_FOR_PLANNER = (
+    "official",
+    "scorer_gold",
+    "reference",
+    "milestone",
+    "result_summary",
+    "trajectory",
+    "gold",
+    "ideal_",
+)
+
+
+def _sanitize_task_for_planner_admission(task: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a planner-candidate payload with scorer/provenance gold removed."""
+
+    sanitized = deepcopy(task)
+    for key in list(sanitized):
+        key_l = str(key).lower()
+        if key in _GOLD_TASK_KEYS_FOR_PLANNER or key_l.startswith("official_"):
+            sanitized.pop(key, None)
+    if isinstance(sanitized.get("runtime_messages"), list):
+        sanitized["messages"] = list(sanitized.get("runtime_messages") or [])
+    else:
+        sanitized.pop("messages", None)
+    metadata = sanitized.get("metadata")
+    if isinstance(metadata, dict):
+        safe_metadata = {}
+        for key, value in metadata.items():
+            key_l = str(key).lower()
+            if any(token in key_l for token in _GOLD_METADATA_TOKENS_FOR_PLANNER):
+                continue
+            safe_metadata[key] = value
+        sanitized["metadata"] = safe_metadata
+    return sanitized
+
 def build_workflow_from_task(
     task: Dict[str, Any],
     mode: str = "demo",
@@ -3106,17 +3154,20 @@ def build_workflow_from_task(
     candidate_tools = _build_tool_specs(raw_tools)
     raw_query = str(task.get("query") or "").strip()
     planner_goal = _planner_goal_from_task(task, raw_query or Workflow.demo().task.user_goal)
-    if mode == "planner_overlay":
+    if mode in {"planner_overlay", "planner_overlay_admitted"}:
         base_workflow = build_workflow_from_task(task, mode="demo", spec=spec)
-        planner_workflow = build_workflow_from_task(task, mode="planner", spec=spec)
-        workflow = apply_planner_overlay(
-            base_workflow,
-            planner_workflow,
-            {
-                "system_id": spec.system_id if spec is not None else "",
-                "task_id": canonical_task_id(task),
-            },
-        )
+        planner_task = _sanitize_task_for_planner_admission(task) if mode == "planner_overlay_admitted" else task
+        planner_workflow = build_workflow_from_task(planner_task, mode="planner", spec=spec)
+        overlay_metadata = {
+            "system_id": spec.system_id if spec is not None else "",
+            "task_id": canonical_task_id(task),
+            "task_metadata": planner_task.get("metadata", {}) if isinstance(planner_task.get("metadata"), dict) else {},
+            "candidate_tool_ids": [tool.tool_id for tool in candidate_tools],
+        }
+        if mode == "planner_overlay_admitted":
+            workflow = apply_admitted_planner_overlay(base_workflow, planner_workflow, overlay_metadata)
+        else:
+            workflow = apply_planner_overlay(base_workflow, planner_workflow, overlay_metadata)
         if spec is not None and spec.system_id == "s4_reuse_overlay":
             workflow = apply_reuse_overlay_noop(
                 workflow,
@@ -3929,6 +3980,14 @@ def row_from_trace(
             source_semantic_family=source_semantic_family,
         )
     )
+    planner_decision = task_annotations.get("planner_admission_decision")
+    if not isinstance(planner_decision, dict):
+        planner_decision = {}
+    planner_mode = str(planner_decision.get("admission_mode") or "")
+    planner_takeover = bool(planner_decision.get("admitted") and planner_mode == "execution_takeover")
+    planner_reason = str(planner_decision.get("reason") or "")
+    planner_admitted_changes = planner_decision.get("admitted_changes") if isinstance(planner_decision.get("admitted_changes"), list) else []
+    planner_rejected_reasons = planner_decision.get("rejected_reasons") if isinstance(planner_decision.get("rejected_reasons"), list) else []
     benchmark = str((task.get("metadata") or {}).get("benchmark") or "").strip().lower() if isinstance(task.get("metadata"), dict) else ""
     benchmark_success = bool(metrics.get("success"))
     if benchmark == "bfcl":
@@ -3980,6 +4039,11 @@ def row_from_trace(
         reuse_source_family=source_family,
         reuse_target_semantic_family=target_semantic_family,
         reuse_source_semantic_family=source_semantic_family,
+        planner_admission_mode=planner_mode,
+        planner_takeover_admitted=planner_takeover,
+        planner_admission_reason=planner_reason,
+        planner_admitted_change_count=len(planner_admitted_changes),
+        planner_rejected_reason_count=len(planner_rejected_reasons),
         second_run_improvement=0.0,
         budget_violation=bool(metrics.get("budget_violation", False)),
         budget_violation_reason=str(metrics.get("budget_violation_reason") or ""),

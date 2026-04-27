@@ -1710,6 +1710,11 @@ class SequentialExecutor:
             "bfcl_canonicalized_step_count_after",
             "bfcl_rerank_diagnostics",
             "planner_observability",
+            "planner_overlay_applied",
+            "planner_overlay_mode",
+            "planner_overlay_policy_version",
+            "planner_overlay_admitted",
+            "planner_admission_decision",
         )
         return {key: workflow.metadata.get(key) for key in keys if workflow.metadata.get(key) is not None}
 

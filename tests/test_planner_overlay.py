@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 from toolclaw.planner.overlay import (
+    apply_admitted_planner_overlay,
     apply_planner_overlay,
     apply_reuse_overlay_noop,
     workflow_execution_fingerprint,
@@ -65,3 +66,15 @@ def test_reuse_overlay_no_exact_hit_preserves_workflow_fingerprint() -> None:
     assert workflow_execution_fingerprint(overlaid) == workflow_execution_fingerprint(workflow)
     assert overlaid.metadata["reuse_overlay_applied"] is True
     assert overlaid.metadata["reuse_overlay_mode"] == "observability_only_noop_v1"
+
+
+def test_admitted_planner_overlay_rejected_candidate_keeps_base_fingerprint() -> None:
+    base = Workflow.demo()
+    planner = deepcopy(base)
+    planner.execution_plan[0].tool_id = "different_tool"
+
+    overlaid = apply_admitted_planner_overlay(base, planner, {})
+
+    assert overlaid.metadata["planner_overlay_admitted"] is False
+    assert overlaid.metadata["planner_overlay_policy_version"] == "strict_superset_v2_admitted_execution"
+    assert workflow_execution_fingerprint(overlaid) == workflow_execution_fingerprint(base)

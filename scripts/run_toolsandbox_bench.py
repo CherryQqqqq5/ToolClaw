@@ -398,6 +398,11 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "reuse_source_family": str(raw_row.get("reuse_source_family", "") or ""),
         "reuse_target_semantic_family": str(raw_row.get("reuse_target_semantic_family", "") or ""),
         "reuse_source_semantic_family": str(raw_row.get("reuse_source_semantic_family", "") or ""),
+        "planner_admission_mode": str(raw_row.get("planner_admission_mode", "") or ""),
+        "planner_takeover_admitted": _bool_from_value(raw_row.get("planner_takeover_admitted", "False")),
+        "planner_admission_reason": str(raw_row.get("planner_admission_reason", "") or ""),
+        "planner_admitted_change_count": int(raw_row.get("planner_admitted_change_count", 0) or 0),
+        "planner_rejected_reason_count": int(raw_row.get("planner_rejected_reason_count", 0) or 0),
         "second_run_improvement": float(raw_row.get("second_run_improvement", 0.0) or 0.0),
         "budget_violation": _bool_from_value(raw_row.get("budget_violation", "False")),
         "budget_violation_reason": str(raw_row.get("budget_violation_reason", "")),
@@ -955,6 +960,70 @@ def _write_strict_layer_monotonicity_audit(outdir: Path, rows: List[Dict[str, An
     md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return audit
 
+
+
+def _write_planner_admission_audit(outdir: Path, rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    systems: Dict[str, Dict[str, Any]] = {}
+    for row in rows:
+        system = str(row.get("system") or "")
+        if not system:
+            continue
+        summary = systems.setdefault(
+            system,
+            {
+                "rows": 0,
+                "takeover_admitted_count": 0,
+                "admission_modes": {},
+                "admission_reasons": {},
+                "admitted_change_count": 0,
+                "rejected_reason_count": 0,
+            },
+        )
+        summary["rows"] += 1
+        mode = str(row.get("planner_admission_mode") or "none")
+        reason = str(row.get("planner_admission_reason") or "none")
+        summary["admission_modes"][mode] = int(summary["admission_modes"].get(mode, 0)) + 1
+        summary["admission_reasons"][reason] = int(summary["admission_reasons"].get(reason, 0)) + 1
+        if _bool_from_value(row.get("planner_takeover_admitted", False)):
+            summary["takeover_admitted_count"] += 1
+        summary["admitted_change_count"] += int(row.get("planner_admitted_change_count", 0) or 0)
+        summary["rejected_reason_count"] += int(row.get("planner_rejected_reason_count", 0) or 0)
+    strict_audit_path = outdir / "strict_layer_monotonicity_audit.json"
+    strict_regressions = None
+    if strict_audit_path.exists():
+        try:
+            strict_regressions = json.loads(strict_audit_path.read_text(encoding="utf-8")).get("regression_count")
+        except Exception:
+            strict_regressions = None
+    audit = {
+        "audit_version": "planner_admission_v2",
+        "strict_layer_regression_count": strict_regressions,
+        "total_rows": len(rows),
+        "systems": systems,
+        "takeover_admitted_count": sum(int(item.get("takeover_admitted_count", 0)) for item in systems.values()),
+        "rejected_reason_count": sum(int(item.get("rejected_reason_count", 0)) for item in systems.values()),
+    }
+    (outdir / "planner_admission_audit.json").write_text(json.dumps(audit, indent=2), encoding="utf-8")
+    lines = [
+        "# Planner Admission Audit",
+        "",
+        f"- audit_version: `{audit['audit_version']}`",
+        f"- total_rows: `{audit['total_rows']}`",
+        f"- takeover_admitted_count: `{audit['takeover_admitted_count']}`",
+        f"- rejected_reason_count: `{audit['rejected_reason_count']}`",
+        f"- strict_layer_regression_count: `{audit['strict_layer_regression_count']}`",
+        "",
+        "| system | rows | takeover_admitted | modes | reasons | rejected_reasons |",
+        "|---|---:|---:|---|---|---:|",
+    ]
+    for system, summary in sorted(systems.items()):
+        modes = ", ".join(f"{k}:{v}" for k, v in sorted(summary.get("admission_modes", {}).items()))
+        reasons = ", ".join(f"{k}:{v}" for k, v in sorted(summary.get("admission_reasons", {}).items()))
+        lines.append(
+            f"| {system} | {summary['rows']} | {summary['takeover_admitted_count']} | {modes} | {reasons} | {summary['rejected_reason_count']} |"
+        )
+    (outdir / "planner_admission_audit.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return audit
 
 def _focused_slice_summary(per_system_summary: Dict[str, Any]) -> Dict[str, Any]:
     per_category: Dict[str, Dict[str, Any]] = {}
@@ -1974,6 +2043,7 @@ def main() -> None:
     write_csv_rows(raw_run_rows, outdir / "comparison.raw.csv")
     write_csv_rows(scored_run_rows, outdir / "comparison.scored.csv")
     strict_audit = _write_strict_layer_monotonicity_audit(outdir, scored_run_rows)
+    planner_admission_audit = _write_planner_admission_audit(outdir, scored_run_rows)
     failure_type_summary = _failure_type_summary(outdir)
     (outdir / "per_failure_type_summary.json").write_text(
         json.dumps(failure_type_summary, indent=2),
@@ -2015,6 +2085,8 @@ def main() -> None:
             "strict_layer_monotonicity_regression_count": strict_audit.get("regression_count")
             if strict_audit.get("active_pairs")
             else None,
+            "planner_admission_audit_path": display_path(outdir / "planner_admission_audit.json"),
+            "planner_takeover_admitted_count": planner_admission_audit.get("takeover_admitted_count"),
             "local_debug_only_paths": [
                 display_path(outdir / "comparison.raw.csv"),
                 display_path(outdir / "latest_run_comparison.raw.csv"),

@@ -62,6 +62,11 @@ class EvalRow:
     reuse_source_family: str = ""
     reuse_target_semantic_family: str = ""
     reuse_source_semantic_family: str = ""
+    planner_admission_mode: str = ""
+    planner_takeover_admitted: bool = False
+    planner_admission_reason: str = ""
+    planner_admitted_change_count: int = 0
+    planner_rejected_reason_count: int = 0
 
 
 def write_rows_csv(rows: Iterable[EvalRow], csv_path: Path) -> None:
@@ -115,6 +120,11 @@ def write_rows_csv(rows: Iterable[EvalRow], csv_path: Path) -> None:
                 "reuse_source_family",
                 "reuse_target_semantic_family",
                 "reuse_source_semantic_family",
+                "planner_admission_mode",
+                "planner_takeover_admitted",
+                "planner_admission_reason",
+                "planner_admitted_change_count",
+                "planner_rejected_reason_count",
                 "second_run_improvement",
                 "budget_violation",
                 "budget_violation_reason",

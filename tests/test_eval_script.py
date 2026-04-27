@@ -3519,13 +3519,13 @@ def test_strict_overlay_system_specs_preserve_atomic_specs() -> None:
     spec.loader.exec_module(module)
 
     assert module.SYSTEM_SPECS["a2_planner"].workflow_mode == "planner"
-    assert module.SYSTEM_SPECS["s2_planner_overlay"].workflow_mode == "planner_overlay"
+    assert module.SYSTEM_SPECS["s2_planner_overlay"].workflow_mode == "planner_overlay_admitted"
     assert module.SYSTEM_SPECS["s2_planner_overlay"].allow_repair is True
     assert module.SYSTEM_SPECS["s2_planner_overlay"].allow_fallback is True
     assert module.SYSTEM_SPECS["s2_planner_overlay"].allow_suffix_replan is True
 
     s3 = module.SYSTEM_SPECS["s3_interaction_overlay"]
-    assert s3.workflow_mode == "planner_overlay"
+    assert s3.workflow_mode == "planner_overlay_admitted"
     assert s3.execution_mode == "interaction"
     assert s3.allow_repair is True
     assert s3.allow_fallback is True
@@ -3533,7 +3533,7 @@ def test_strict_overlay_system_specs_preserve_atomic_specs() -> None:
     assert s3.use_reuse is False
 
     s4 = module.SYSTEM_SPECS["s4_reuse_overlay"]
-    assert s4.workflow_mode == "planner_overlay"
+    assert s4.workflow_mode == "planner_overlay_admitted"
     assert s4.execution_mode == "interaction"
     assert s4.use_reuse is False
     assert s4.allow_suffix_replan is True
@@ -3582,7 +3582,7 @@ def test_execute_system_strict_interaction_uses_overlay_seed(monkeypatch, tmp_pa
         runtime=SimpleNamespace(executor=SimpleNamespace(run_until_blocked=lambda **kwargs: None)),
     )
 
-    assert build_calls == ["planner_overlay"]
+    assert build_calls == ["planner_overlay_admitted"]
     assert shell_calls and shell_calls[0]["use_reuse"] is False
     assert row.system == "s3_interaction_overlay"
 

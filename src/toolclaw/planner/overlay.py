@@ -8,14 +8,17 @@ from enum import Enum
 from typing import Any, Dict, List
 
 from toolclaw.schemas.workflow import Workflow
+from toolclaw.planner.admission import admit_planner_workflow
 
-_OVERLAY_METADATA_PREFIXES = ("planner_overlay_", "reuse_overlay_")
+_OVERLAY_METADATA_PREFIXES = ("planner_overlay_", "planner_admission_", "reuse_overlay_")
 _OVERLAY_METADATA_KEYS = {
     "planner_observability",
     "planner_candidate_metadata",
     "planner_candidate_step_count",
     "planner_candidate_tool_count",
     "planner_candidate_binding_count",
+    "base_workflow_fingerprint",
+    "planner_workflow_fingerprint",
 }
 
 
@@ -159,6 +162,51 @@ def apply_planner_overlay(
     after = workflow_execution_fingerprint(workflow)
     if after != before:
         raise AssertionError("planner overlay changed base execution fingerprint")
+    return workflow
+
+
+def apply_admitted_planner_overlay(
+    base_workflow: Workflow,
+    planner_workflow: Workflow,
+    metadata: Dict[str, Any] | None = None,
+) -> Workflow:
+    """Apply planner V2 with a gold-free admission gate.
+
+    The planner candidate may take over execution only when the admission gate
+    certifies it as a static repair or conservative refinement. Otherwise this
+    falls back to the V1 non-destructive observability overlay before execution,
+    so unsafe planner candidates never enter the runtime path.
+    """
+
+    planner_metadata = dict(metadata or {})
+    task_metadata = planner_metadata.get("task_metadata") if isinstance(planner_metadata.get("task_metadata"), dict) else {}
+    decision = admit_planner_workflow(
+        base_workflow=base_workflow,
+        planner_workflow=planner_workflow,
+        task_metadata=task_metadata,
+        admission_metadata=planner_metadata,
+    )
+    if decision.admitted and decision.admission_mode == "execution_takeover":
+        workflow = deepcopy(planner_workflow)
+        workflow.metadata["planner_overlay_applied"] = True
+        workflow.metadata["planner_overlay_mode"] = "admitted_execution_v2"
+        workflow.metadata["planner_overlay_policy_version"] = "strict_superset_v2_admitted_execution"
+        workflow.metadata["planner_overlay_admitted"] = True
+        workflow.metadata["planner_admission_decision"] = decision.to_dict()
+        workflow.metadata["base_workflow_fingerprint"] = workflow_execution_fingerprint(base_workflow)
+        workflow.metadata["planner_workflow_fingerprint"] = workflow_execution_fingerprint(planner_workflow)
+        workflow.metadata["planner_observability"] = {
+            "candidate_workflow_id": planner_workflow.workflow_id,
+            "candidate_task_id": planner_workflow.task.task_id,
+            "metadata": planner_metadata,
+        }
+        return workflow
+
+    workflow = apply_planner_overlay(base_workflow, planner_workflow, metadata)
+    workflow.metadata["planner_overlay_mode"] = "observability_only_v2"
+    workflow.metadata["planner_overlay_policy_version"] = "strict_superset_v2_admitted_execution"
+    workflow.metadata["planner_overlay_admitted"] = False
+    workflow.metadata["planner_admission_decision"] = decision.to_dict()
     return workflow
 
 
