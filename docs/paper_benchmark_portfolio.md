@@ -2,7 +2,7 @@
 
 This note updates the paper-facing benchmark plan after reviewing the current repository, archived outputs, and the newer benchmark landscape.
 
-Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.md](paper_claim_boundary_20260424.md). If older exploratory notes in this file conflict with that boundary document, use the boundary document and [configs/paper_claim_matrix.yaml](../configs/paper_claim_matrix.yaml) as the source of truth.
+Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.md](paper_claim_boundary_20260424.md). If older exploratory notes in this file conflict with that boundary document, use the boundary document and [configs/paper_claim_matrix.yaml](../configs/paper_claim_matrix.yaml) as the source of truth. For the consolidated layer-by-layer delta view, use [layer_delta_evidence_matrix_20260427.md](layer_delta_evidence_matrix_20260427.md).
 
 ## Current mapping
 
@@ -11,7 +11,7 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
   - current claims: `interaction_headline`, `strict_layer_monotonicity`
   - result bundle: `outputs/paper_suite/toolsandbox_official_core_reproducible_strict`
   - reason: the 405-row executed core frozen export supersedes the legacy 88-row frozen export for future ToolSandbox headline experiments. The strict ladder has `0 / 4860` adjacent primary-success regressions, with strict success `s0=0.659259`, `s1=0.703704`, `s2=0.703704`, `s3=0.706173`, and `s4=0.706173`.
-  - boundary: this is a core reproducible subset, not the external/API ToolSandbox suite; planner overlay and reuse overlay are conservative non-regression layers here, not independent broad-lift claims.
+  - boundary: this is a core reproducible subset, not the external/API ToolSandbox suite; planner overlay and reuse overlay are conservative non-regression layers here, not independent broad-lift claims. Layer-specific deltas are consolidated in `docs/layer_delta_evidence_matrix_20260427.md`.
 
 - `toolsandbox_legacy_frozen88`
   - role: historical legacy frozen official-run subset
