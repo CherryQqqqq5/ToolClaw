@@ -2290,16 +2290,12 @@ def _attach_current_result_summary(
     proxy_summary = adapter.build_proxy_result_summary(sample, trace_payload)
     reference_summary = adapter._extract_reference_result_summary(sample.raw_payload)
     metadata["toolsandbox_proxy_result"] = proxy_summary
+    metadata["toolsandbox_result"] = proxy_summary
+    metadata["toolsandbox_result_source"] = "toolclaw_proxy"
     if reference_summary:
         normalized_reference_summary = dict(reference_summary)
         normalized_reference_summary["source"] = "reference_result_summary"
-        # Prefer reference summaries for benchmark scoring when available.
-        metadata["toolsandbox_result"] = normalized_reference_summary
-        metadata["toolsandbox_result_source"] = "reference_result_summary"
         metadata["toolsandbox_reference_result"] = normalized_reference_summary
-    else:
-        metadata["toolsandbox_result"] = proxy_summary
-        metadata["toolsandbox_result_source"] = "toolclaw_proxy"
     trace_path.write_text(json.dumps(trace_payload, indent=2), encoding="utf-8")
     return trace_payload
 
