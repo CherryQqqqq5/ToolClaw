@@ -2,7 +2,7 @@ from copy import deepcopy
 
 from toolclaw.planner.admission import admit_planner_workflow
 from toolclaw.planner.overlay import apply_admitted_planner_overlay, workflow_execution_fingerprint
-from toolclaw.schemas.workflow import ToolSpec, Workflow, WorkflowStep
+from toolclaw.schemas.workflow import ActionType, ToolSpec, Workflow, WorkflowStep
 
 
 def _with_missing_required(workflow: Workflow) -> Workflow:
@@ -161,6 +161,62 @@ def test_admission_rejects_tool_correction_that_drops_grounded_input() -> None:
     assert f"grounded_value_mutation:{base.execution_plan[0].step_id}:query" in decision.rejected_reasons
 
 
+def test_admission_rejects_target_mutation_even_with_relaxed_opt_in() -> None:
+    base = _single_step(Workflow.demo())
+    planner = deepcopy(base)
+    base.execution_plan[0].inputs["target_path"] = "outputs/reports/base.txt"
+    planner.execution_plan[0].inputs["target_path"] = "outputs/reports/planner.txt"
+
+    decision = admit_planner_workflow(
+        base_workflow=base,
+        planner_workflow=planner,
+        admission_metadata={"allow_relaxed_planner_takeover": True},
+    )
+
+    assert decision.admitted is False
+    assert f"grounded_value_mutation:{base.execution_plan[0].step_id}:target_path" in decision.rejected_reasons
+
+
+def test_admission_rejects_state_slot_mutation_even_with_relaxed_opt_in() -> None:
+    base = _single_step(Workflow.demo())
+    planner = deepcopy(base)
+    base.execution_plan[0].metadata["preflight_state_policy"] = {"state_slot": "contact_id"}
+    planner.execution_plan[0].metadata["preflight_state_policy"] = {"state_slot": "reminder_id"}
+
+    decision = admit_planner_workflow(
+        base_workflow=base,
+        planner_workflow=planner,
+        admission_metadata={"allow_relaxed_planner_takeover": True},
+    )
+
+    assert decision.admitted is False
+    assert (
+        f"state_slot_semantics_mutation:{base.execution_plan[0].step_id}"
+        in decision.safety_checks["safe_tool_correction_rejections"]
+    )
+
+
+def test_admission_rejects_user_turn_budget_increase() -> None:
+    base = Workflow.demo()
+    base.task.constraints.max_user_turns = 0
+    planner = deepcopy(base)
+    planner.execution_plan.append(
+        WorkflowStep(
+            step_id="ask_user",
+            capability_id="cap_query_user",
+            tool_id=None,
+            action_type=ActionType.USER_QUERY,
+            inputs={"question": "Need clarification"},
+        )
+    )
+
+    decision = admit_planner_workflow(base_workflow=base, planner_workflow=planner)
+
+    assert decision.admitted is False
+    assert "budget_increase" in decision.rejected_reasons or "planner_static_invalid" in decision.rejected_reasons
+    assert decision.safety_checks["task_budget_preserved"] is False
+
+
 def test_admission_allows_base_invalid_planner_valid_when_semantics_preserved() -> None:
     base = _with_missing_required(Workflow.demo())
     planner = deepcopy(base)
@@ -212,6 +268,54 @@ def test_admission_rejects_generic_seed_mutating_domain_takeover() -> None:
 
     assert decision.admitted is False
     assert any("unsafe_domain_tools:modify_reminder" == reason for reason in decision.rejected_reasons)
+
+
+def test_admission_rejects_generic_seed_read_takeover_with_placeholder_inputs() -> None:
+    base = Workflow.demo()
+    search_contact = ToolSpec(tool_id="search_contacts", description="Search contacts")
+    base.context.candidate_tools.append(search_contact)
+    planner = deepcopy(base)
+    planner.execution_plan = [
+        WorkflowStep(
+            step_id="step_01",
+            capability_id="cap_retrieve",
+            tool_id="search_contacts",
+            inputs={"query": "retrieved_info"},
+        )
+    ]
+
+    decision = admit_planner_workflow(base_workflow=base, planner_workflow=planner)
+
+    assert decision.admitted is False
+    assert any(reason.startswith("placeholder_inputs:") for reason in decision.rejected_reasons)
+
+
+def test_admission_rejects_generic_seed_mutating_prefixes_by_default() -> None:
+    for tool_id in [
+        "add_contact",
+        "create_reminder",
+        "delete_contact",
+        "remove_contact",
+        "send_message",
+        "set_wifi_status",
+        "update_contact",
+    ]:
+        base = Workflow.demo()
+        base.context.candidate_tools.append(ToolSpec(tool_id=tool_id, description="Mutating domain tool"))
+        planner = deepcopy(base)
+        planner.execution_plan = [
+            WorkflowStep(
+                step_id="step_01",
+                capability_id="cap_modify",
+                tool_id=tool_id,
+                inputs={"query": "safe-looking query"},
+            )
+        ]
+
+        decision = admit_planner_workflow(base_workflow=base, planner_workflow=planner)
+
+        assert decision.admitted is False, tool_id
+        assert any(reason == f"unsafe_domain_tools:{tool_id}" for reason in decision.rejected_reasons)
 
 
 def test_admission_allows_strict_refinement_with_read_only_inserted_step() -> None:

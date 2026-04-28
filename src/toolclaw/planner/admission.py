@@ -29,6 +29,13 @@ TARGET_KEYS = (
     "state_slot",
     "path",
 )
+STATE_SLOT_KEYS = (
+    "state_slot",
+    "state_key",
+    "required_state_slot",
+    "required_state_slots",
+    "missing_state_slots",
+)
 READ_ONLY_TOKENS = ("read", "get", "list", "search", "lookup", "fetch", "retrieve", "check", "inspect", "validate", "verify")
 PRECONDITION_TOKENS = ("precondition", "acquire", "resolve", "lookup", "check", "inspect", "validate", "verify")
 GENERIC_SEED_TOOL_IDS = {"search_tool", "write_tool"}
@@ -186,6 +193,23 @@ def _target_values(step: WorkflowStep) -> Dict[str, Any]:
     return {key: inputs.get(key) for key in TARGET_KEYS if key in inputs and not _is_empty(inputs.get(key))}
 
 
+def _state_slot_values(step: WorkflowStep) -> Dict[str, Any]:
+    values: Dict[str, Any] = {}
+    inputs = step.inputs or {}
+    metadata = step.metadata or {}
+    for key in STATE_SLOT_KEYS:
+        if key in inputs and not _is_empty(inputs.get(key)):
+            values[f"inputs.{key}"] = inputs.get(key)
+        if key in metadata and not _is_empty(metadata.get(key)):
+            values[f"metadata.{key}"] = metadata.get(key)
+    policy = metadata.get("preflight_state_policy")
+    if isinstance(policy, dict):
+        for key in STATE_SLOT_KEYS:
+            if key in policy and not _is_empty(policy.get(key)):
+                values[f"metadata.preflight_state_policy.{key}"] = policy.get(key)
+    return values
+
+
 def _matched_base_indices(base_steps: List[WorkflowStep], planner_steps: List[WorkflowStep]) -> Tuple[bool, List[int], List[str]]:
     matched: List[int] = []
     rejected: List[str] = []
@@ -284,6 +308,10 @@ def _preserves_grounded_values(base_workflow: Workflow, planner_workflow: Workfl
         planner_targets = _target_values(planner_step)
         if _normalize(base_targets) != _normalize(planner_targets):
             reasons.append(f"target_semantics_mutation:{base_step.step_id}")
+        base_state_slots = _state_slot_values(base_step)
+        planner_state_slots = _state_slot_values(planner_step)
+        if _normalize(base_state_slots) != _normalize(planner_state_slots):
+            reasons.append(f"state_slot_semantics_mutation:{base_step.step_id}")
     return not reasons, reasons
 
 
@@ -314,6 +342,10 @@ def _grounded_inputs_preserved(base_step: WorkflowStep, planner_step: WorkflowSt
     planner_targets = _target_values(planner_step)
     if _normalize(base_targets) != _normalize(planner_targets):
         reasons.append(f"target_semantics_mutation:{base_step.step_id}")
+    base_state_slots = _state_slot_values(base_step)
+    planner_state_slots = _state_slot_values(planner_step)
+    if _normalize(base_state_slots) != _normalize(planner_state_slots):
+        reasons.append(f"state_slot_semantics_mutation:{base_step.step_id}")
     return not reasons, reasons
 
 

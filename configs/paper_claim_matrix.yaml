@@ -1,5 +1,21 @@
 {
-  "updated_at": "2026-04-26",
+  "updated_at": "2026-04-28",
+  "release_freeze": {
+    "status": "freeze_refactor_active",
+    "policy": "No new paper-facing benchmark feature should be added without a single source dataset, runner, output manifest, and report. Full traces/logs belong in release artifacts or external storage; git keeps manifests, scoreboards, claim summaries, and concise reports.",
+    "minimal_release_entries": [
+      "toolsandbox_official_core_reproducible_planner_admission",
+      "toolsandbox_planner_sensitive_v2_heldout",
+      "toolsandbox_vcr_frozen_synthetic",
+      "bfcl_fc_core"
+    ],
+    "claim_boundaries": [
+      "ToolSandbox full-core is boundary/contract validation unless a current runtime-visible strict bundle proves a broader lift.",
+      "Planner admission read-domain takeover is a conservative heuristic, not semantic proof; mutating takeover remains opt-in.",
+      "Reuse is exact-match cost/no-regression evidence, not a broad s4>s3 success-rate claim.",
+      "BFCL is a separate grounding/function-calling benchmark line and must not be merged into the ToolSandbox workflow headline."
+    ]
+  },
   "claims": {
     "interaction_headline": {
       "status": "supported_current_evidence",

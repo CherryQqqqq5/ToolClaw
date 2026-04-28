@@ -22,7 +22,22 @@ secrets/
 # Default: ignore generated outputs and data, then selectively unignore
 # the final paper-facing datasets and summaries we want to keep reproducible.
 outputs/*
+logs/*
+*.log
 data/*
+
+# Freeze 2026-04-28: keep fresh bulky artifacts outside code review paths.
+logs/**
+outputs/debug_*/**
+outputs/paper_suite_runtime_visible_*/**
+outputs/**/archive/**
+outputs/**/prepared/**
+outputs/**/raw/**
+outputs/**/runs/**
+outputs/**/trace*
+outputs/**/traces/**
+data/cache/**
+data/tmp/**
 !data/bfcl/
 data/bfcl/*
 !data/bfcl/bfcl_v4.fc_core.aligned.jsonl
