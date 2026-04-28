@@ -4004,6 +4004,7 @@ def test_strict_overlay_system_specs_preserve_atomic_specs() -> None:
     assert s4.workflow_mode == "planner_overlay_admitted"
     assert s4.execution_mode == "interaction"
     assert s4.use_reuse is False
+    assert s4.compile_on_success is False
     assert s4.allow_suffix_replan is True
 
 
@@ -4055,7 +4056,7 @@ def test_execute_system_strict_interaction_uses_overlay_seed(monkeypatch, tmp_pa
     assert row.system == "s3_interaction_overlay"
 
 
-def test_execute_system_strict_reuse_overlay_does_not_use_replacement_reuse(monkeypatch, tmp_path: Path) -> None:
+def test_execute_system_strict_reuse_overlay_keeps_shadow_no_execute_path(monkeypatch, tmp_path: Path) -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_strict_reuse_seed", module_path)
     assert spec is not None and spec.loader is not None
@@ -4066,9 +4067,6 @@ def test_execute_system_strict_reuse_overlay_does_not_use_replacement_reuse(monk
     workflow = Workflow.demo()
     workflow.metadata["benchmark"] = "toolsandbox"
     shell_calls: list[dict[str, object]] = []
-
-    def forbidden_run_task_with_reuse(_request):
-        raise AssertionError("strict reuse overlay must not call replacement reuse path")
 
     class _FakeShell:
         def run(self, **kwargs):
@@ -4089,7 +4087,6 @@ def test_execute_system_strict_reuse_overlay_does_not_use_replacement_reuse(monk
 
     runtime = SimpleNamespace(
         executor=SimpleNamespace(run_until_blocked=lambda **kwargs: None),
-        run_task_with_reuse=forbidden_run_task_with_reuse,
     )
     row = module.execute_system(
         spec=module.SYSTEM_SPECS["s4_reuse_overlay"],
@@ -4102,6 +4099,64 @@ def test_execute_system_strict_reuse_overlay_does_not_use_replacement_reuse(monk
     assert shell_calls and shell_calls[0]["use_reuse"] is False
     assert shell_calls[0]["seed_workflow"] is workflow
     assert row["system"] == "s4_reuse_overlay"
+
+
+def test_build_workflow_from_task_strict_reuse_overlay_is_exact_only() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_s4_exact_guard", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "toolsandbox_exact_reuse_guard_001",
+            "scenario": "single_tool",
+            "query": "Search my messages for the oldest text.",
+            "tool_allow_list": ["end_conversation", "search_messages"],
+            "candidate_tools": [
+                {"tool_id": "end_conversation", "description": "End the conversation."},
+                {"tool_id": "search_messages", "description": "Search text messages."},
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["single_tool"],
+                "reuse_family_id": "toolsandbox_exact_reuse_guard",
+            },
+        },
+        mode="planner_overlay_admitted",
+        spec=module.SYSTEM_SPECS["s4_reuse_overlay"],
+    )
+
+    assert workflow.metadata["reuse_scope"] == "exact"
+    assert workflow.metadata["reuse_allowed_modes"] == ["exact_reuse"]
+    assert workflow.metadata["reuse_require_source_family_match"] is True
+    assert workflow.metadata["reuse_claim_scope"] == "exact_match_cost_no_regression"
+    assert workflow.metadata["reuse_overlay_runtime_mode"] == "shadow_no_execute"
+
+
+def test_reuse_rollback_decision_falls_back_on_execution_failure() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_reuse_failure_rollback", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = Workflow.demo()
+    workflow.metadata["reusable_context"] = {
+        "reuse_mode": "exact_reuse",
+        "resolved_asset_ids": ["asset_1"],
+        "selected_match": {"asset_id": "asset_1", "reuse_mode": "exact_reuse"},
+    }
+    outcome = SimpleNamespace(workflow=workflow, success=False)
+
+    rollback = module._reuse_rollback_decision(outcome, {"metrics": {"repair_actions": 0}, "events": []})
+
+    assert rollback["reason"] == "reuse_path_execution_failure"
+    assert rollback["fallback_behavior"] == "a3_interaction"
+    assert rollback["selected_match"]["asset_id"] == "asset_1"
 
 
 

@@ -3840,9 +3840,14 @@ def build_workflow_from_task(
                 {
                     "system_id": spec.system_id,
                     "task_id": canonical_task_id(task),
-                    "exact_reuse_policy": "no_runtime_path_change_v1",
+                    "exact_reuse_policy": "shadow_exact_only_no_runtime_path_change_v1",
                 },
             )
+            workflow.metadata["reuse_scope"] = "exact"
+            workflow.metadata["reuse_claim_scope"] = "exact_match_cost_no_regression"
+            workflow.metadata["reuse_allowed_modes"] = ["exact_reuse"]
+            workflow.metadata["reuse_require_source_family_match"] = True
+            workflow.metadata["reuse_overlay_runtime_mode"] = "shadow_no_execute"
         return workflow
     if mode == "planner":
         planner = build_default_planner()
@@ -4341,7 +4346,21 @@ def _write_trace_payload(trace_path: Path, payload: Dict[str, Any]) -> None:
 
 def _reuse_rollback_decision(outcome: Any, trace_payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     reusable_context = dict(outcome.workflow.metadata.get("reusable_context", {}))
-    reuse_mode = str(reusable_context.get("reuse_mode") or "")
+    reuse_mode = str(reusable_context.get("reuse_mode") or "none")
+    if not bool(getattr(outcome, "success", False)):
+        return {
+            "applied": True,
+            "reason": "reuse_path_execution_failure",
+            "reuse_mode": reuse_mode,
+            "repair_actions": int(trace_payload.get("metrics", {}).get("repair_actions", 0) or 0),
+            "repair_budget": None,
+            "tool_calls_before_repair": None,
+            "resolved_asset_ids": list(reusable_context.get("resolved_asset_ids", [])),
+            "selected_match": dict(reusable_context.get("selected_match", {}))
+            if isinstance(reusable_context.get("selected_match", {}), dict)
+            else {},
+            "fallback_behavior": "a3_interaction",
+        }
     if reuse_mode not in {"transfer_reuse", "exact_reuse"}:
         return None
     events = list(trace_payload.get("events", []))
@@ -5016,6 +5035,7 @@ def execute_system(
                 backup_tool_map=backup_tool_map,
                 use_reuse=False,
                 compile_on_success=spec.compile_on_success,
+                seed_workflow=seed_workflow,
             )
             trace_payload = _load_trace_payload(trace_path)
             trace_payload.setdefault("metadata", {})
