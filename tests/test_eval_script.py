@@ -288,6 +288,50 @@ def test_build_workflow_from_task_restores_toolsandbox_goal_from_messages() -> N
     assert "query" not in workflow.execution_plan[0].inputs
 
 
+def test_build_workflow_from_task_excludes_toolsandbox_policy_system_prompt_from_goal() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_policy_system_prompt", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "toolsandbox_policy_prompt_001",
+            "scenario": "state_dependency",
+            "query": "Get me connected to the internet.",
+            "tool_allow_list": ["get_wifi_status", "set_wifi_status"],
+            "candidate_tools": ["get_wifi_status", "set_wifi_status"],
+            "messages": [
+                {
+                    "sender": "system",
+                    "recipient": "unknown",
+                    "content": "Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous.",
+                },
+                {
+                    "sender": "user",
+                    "recipient": "unknown",
+                    "content": "Get me connected to the internet.",
+                },
+                {
+                    "sender": "user",
+                    "recipient": "unknown",
+                    "content": "Disable Low Battery Mode first.",
+                },
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["state_dependency", "multiple_tool", "single_user_turn"],
+            },
+        },
+        mode="planner",
+    )
+
+    assert "Don't make assumptions" not in workflow.task.user_goal
+    assert workflow.task.user_goal == "Get me connected to the internet.\nDisable Low Battery Mode first."
+
+
 def test_build_workflow_from_task_toolsandbox_demo_uses_candidate_seed() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_demo_seed", module_path)

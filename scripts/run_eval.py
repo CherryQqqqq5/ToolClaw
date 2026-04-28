@@ -1995,11 +1995,14 @@ def _planner_goal_from_task(task: Dict[str, Any], fallback: str) -> str:
         if sender not in {"system", "user"}:
             continue
         content = message.get("content")
-        normalized = (
-            _recover_toolsandbox_message_content(content)
-            if sender == "system"
-            else str(content or "").strip()
-        )
+        if sender == "system":
+            # ToolSandbox sometimes stores the actual user instruction inside a
+            # system message as USER_INSTRUCTION + "...". Plain policy/system
+            # prompts are instructions to the agent, not the task goal.
+            raw_content = str(content or "")
+            normalized = _recover_toolsandbox_message_content(raw_content) if "USER_INSTRUCTION" in raw_content else ""
+        else:
+            normalized = str(content or "").strip()
         if normalized and normalized not in goal_parts:
             goal_parts.append(normalized)
     return "\n".join(goal_parts) if goal_parts else fallback
