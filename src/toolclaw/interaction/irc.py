@@ -28,6 +28,7 @@ class InteractionLoopConfig:
     reply_timeout_s: float = 45.0
     simulator_policy: SimulatedPolicy = field(default_factory=SimulatedPolicy)
     disable_user_queries: bool = False
+    enable_success_probe: bool = False
 
 
 class InteractionShell:
@@ -109,7 +110,8 @@ class InteractionShell:
         failure_counts: Dict[str, int] = {}
         max_turns = self._max_turns(outcome)
         if (
-            not outcome.blocked
+            self.config.enable_success_probe
+            and not outcome.blocked
             and outcome.success
             and turns == 0
             and self._should_force_interaction_probe(outcome=outcome, run_id=run_id)

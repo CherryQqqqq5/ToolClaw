@@ -86,6 +86,7 @@ class SystemSpec:
     disable_user_queries: bool = False
     noisy_user_replies: bool = False
     interaction_live_user_mode: str = ""
+    enable_success_probe: bool = False
 
 
 SYSTEM_SPECS: Dict[str, SystemSpec] = {
@@ -2823,6 +2824,13 @@ def _adapt_bfcl_workflow(
     return workflow
 
 
+def _shutdown_thread_pool_compat(pool: concurrent.futures.ThreadPoolExecutor, *, cancel_futures: bool = False) -> None:
+    try:
+        pool.shutdown(wait=False, cancel_futures=cancel_futures)
+    except TypeError:
+        pool.shutdown(wait=False)
+
+
 def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, Any]):
     scripted_payload = dict(backend_cfg.get("payload", {})) if isinstance(backend_cfg.get("payload"), dict) else {}
     scripted_replies = dict(backend_cfg.get("scripted_replies", {})) if isinstance(backend_cfg.get("scripted_replies"), dict) else {}
@@ -2935,7 +2943,7 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
             if future is not None:
                 future.cancel()
             if pool is not None:
-                pool.shutdown(wait=False, cancel_futures=True)
+                _shutdown_thread_pool_compat(pool, cancel_futures=True)
             fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
             return {
                 "payload": fallback_payload,
@@ -2946,7 +2954,7 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
             }
         except (urllib.error.URLError, TimeoutError, ValueError) as exc:
             if pool is not None:
-                pool.shutdown(wait=False, cancel_futures=True)
+                _shutdown_thread_pool_compat(pool, cancel_futures=True)
             fallback_payload = _enforce_tool_switch_payload(request, fallback_payload)
             return {
                 "payload": fallback_payload,
@@ -2957,7 +2965,7 @@ def _llm_backend_completion(backend_cfg: Dict[str, Any], policy_cfg: Dict[str, A
             }
         finally:
             if pool is not None:
-                pool.shutdown(wait=False, cancel_futures=True)
+                _shutdown_thread_pool_compat(pool, cancel_futures=True)
         try:
             parsed = json.loads(raw)
             content = (
@@ -3098,8 +3106,11 @@ _GOLD_TASK_KEYS_FOR_PLANNER = {
     "official_milestone_mapping",
     "official_similarity",
     "official_turn_count",
+    "scorer_gold",
     "scorer_gold_messages",
     "expected_answer",
+    "expected_recovery_path",
+    "gold_tool",
     "ideal_turn_count",
     "ideal_tool_calls",
 }
@@ -3113,6 +3124,23 @@ _GOLD_METADATA_TOKENS_FOR_PLANNER = (
     "gold",
     "ideal_",
 )
+
+
+def _normalize_hint_policy(hint_policy: str) -> str:
+    normalized = str(hint_policy or "runtime_visible").strip().lower()
+    if normalized not in {"runtime_visible", "legacy"}:
+        raise ValueError(f"unsupported hint_policy: {hint_policy}")
+    return normalized
+
+
+def _runtime_visibility(task: Dict[str, Any]) -> Dict[str, Any]:
+    direct = task.get("runtime_visibility")
+    if isinstance(direct, dict):
+        return direct
+    metadata = task.get("metadata")
+    if isinstance(metadata, dict) and isinstance(metadata.get("runtime_visibility"), dict):
+        return dict(metadata["runtime_visibility"])
+    return {}
 
 
 def _sanitize_task_for_planner_admission(task: Dict[str, Any]) -> Dict[str, Any]:
@@ -3138,26 +3166,62 @@ def _sanitize_task_for_planner_admission(task: Dict[str, Any]) -> Dict[str, Any]
         sanitized["metadata"] = safe_metadata
     return sanitized
 
+
+def _decision_visible_task(task: Dict[str, Any], *, hint_policy: str = "runtime_visible") -> Dict[str, Any]:
+    if _normalize_hint_policy(hint_policy) == "legacy":
+        return task
+    sanitized = _sanitize_task_for_planner_admission(task)
+    runtime_visibility = _runtime_visibility(task)
+    if runtime_visibility.get("full_messages_runtime_visible") is False:
+        if isinstance(task.get("runtime_messages"), list):
+            sanitized["messages"] = list(task.get("runtime_messages") or [])
+        else:
+            sanitized.pop("messages", None)
+    elif isinstance(task.get("messages"), list):
+        sanitized["messages"] = list(task.get("messages") or [])
+    if runtime_visibility.get("milestones_runtime_visible") is True:
+        if isinstance(task.get("milestones"), list):
+            sanitized["milestones"] = list(task.get("milestones") or [])
+    else:
+        sanitized.pop("milestones", None)
+    return sanitized
+
+
+def _sanitize_decision_hints(hints: Dict[str, Any], *, hint_policy: str = "runtime_visible") -> Dict[str, Any]:
+    if _normalize_hint_policy(hint_policy) == "legacy":
+        return hints
+    for key in _GOLD_TASK_KEYS_FOR_PLANNER:
+        hints.pop(key, None)
+    for key in list(hints):
+        key_l = str(key).lower()
+        if key_l.startswith("official_") or any(token in key_l for token in _GOLD_METADATA_TOKENS_FOR_PLANNER):
+            hints.pop(key, None)
+    return hints
+
+
 def build_workflow_from_task(
     task: Dict[str, Any],
     mode: str = "demo",
     *,
     spec: Optional[SystemSpec] = None,
+    hint_policy: str = "runtime_visible",
 ) -> Workflow:
     task = annotate_task_payload(task)
-    raw_metadata = task.get("metadata")
+    decision_task = _decision_visible_task(task, hint_policy=hint_policy)
+    metadata_task = decision_task if _normalize_hint_policy(hint_policy) == "runtime_visible" else task
+    raw_metadata = metadata_task.get("metadata")
     toolsandbox_metadata = raw_metadata if isinstance(raw_metadata, dict) and raw_metadata.get("benchmark") == "toolsandbox" else {}
     bfcl_metadata = raw_metadata if isinstance(raw_metadata, dict) and raw_metadata.get("benchmark") == "bfcl" else {}
-    raw_tools = task.get("candidate_tools")
-    if raw_tools is None and isinstance(task.get("tool_allow_list"), list):
-        raw_tools = list(task.get("tool_allow_list", []))
+    raw_tools = decision_task.get("candidate_tools")
+    if raw_tools is None and isinstance(decision_task.get("tool_allow_list"), list):
+        raw_tools = list(decision_task.get("tool_allow_list", []))
     candidate_tools = _build_tool_specs(raw_tools)
-    raw_query = str(task.get("query") or "").strip()
-    planner_goal = _planner_goal_from_task(task, raw_query or Workflow.demo().task.user_goal)
+    raw_query = str(decision_task.get("query") or "").strip()
+    planner_goal = _planner_goal_from_task(decision_task, raw_query or Workflow.demo().task.user_goal)
     if mode in {"planner_overlay", "planner_overlay_admitted"}:
-        base_workflow = build_workflow_from_task(task, mode="demo", spec=spec)
-        planner_task = _sanitize_task_for_planner_admission(task) if mode == "planner_overlay_admitted" else task
-        planner_workflow = build_workflow_from_task(planner_task, mode="planner", spec=spec)
+        base_workflow = build_workflow_from_task(task, mode="demo", spec=spec, hint_policy=hint_policy)
+        planner_task = _sanitize_task_for_planner_admission(task) if mode == "planner_overlay_admitted" else decision_task
+        planner_workflow = build_workflow_from_task(planner_task, mode="planner", spec=spec, hint_policy=hint_policy)
         overlay_metadata = {
             "system_id": spec.system_id if spec is not None else "",
             "task_id": canonical_task_id(task),
@@ -3195,16 +3259,16 @@ def build_workflow_from_task(
             if isinstance(raw_metadata, dict) and raw_metadata.get("benchmark")
             else None
         )
-        request.hints.user_style["tool_allow_list"] = list(task.get("tool_allow_list", []))
+        request.hints.user_style["tool_allow_list"] = list(decision_task.get("tool_allow_list", []))
         request.hints.user_style["categories"] = list(
             (raw_metadata or {}).get("toolsandbox_categories", [])
             if isinstance(raw_metadata, dict)
             else []
         )
-        request.hints.user_style["messages"] = list(task.get("messages", []))
-        request.hints.user_style["milestones"] = list(task.get("milestones", []))
-        request.hints.user_style["branch_options"] = list(task.get("branch_options", []))
-        request.hints.user_style["backup_tool_map"] = dict(task.get("backup_tool_map", {}))
+        request.hints.user_style["messages"] = list(decision_task.get("messages", []))
+        request.hints.user_style["milestones"] = list(decision_task.get("milestones", []))
+        request.hints.user_style["branch_options"] = list(decision_task.get("branch_options", []))
+        request.hints.user_style["backup_tool_map"] = dict(decision_task.get("backup_tool_map", {}))
         request.hints.user_style["requires_interaction"] = (
             bool((raw_metadata or {}).get("requires_interaction"))
             if isinstance(raw_metadata, dict)
@@ -3215,15 +3279,16 @@ def build_workflow_from_task(
                 request.hints.user_style["approval_scope"] = raw_metadata.get("approval_scope")
             if raw_metadata.get("approval_target_step") is not None:
                 request.hints.user_style["approval_target_step"] = raw_metadata.get("approval_target_step")
-        request.hints.user_style["primary_failtax"] = task.get("primary_failtax")
-        request.hints.user_style["failtaxes"] = list(task.get("failtaxes", []))
-        request.hints.user_style["failure_step"] = task.get("failure_step")
-        request.hints.user_style["expected_recovery_path"] = task.get("expected_recovery_path")
-        request.hints.user_style["gold_tool"] = task.get("gold_tool")
-        request.hints.user_style["state_slots"] = list(task.get("state_slots", []))
-        request.hints.user_style["dependency_edges"] = list(task.get("dependency_edges", []))
-        request.hints.user_style["ideal_turn_count"] = task.get("ideal_turn_count")
-        request.hints.user_style["ideal_tool_calls"] = task.get("ideal_tool_calls")
+        request.hints.user_style["primary_failtax"] = decision_task.get("primary_failtax")
+        request.hints.user_style["failtaxes"] = list(decision_task.get("failtaxes", []))
+        request.hints.user_style["failure_step"] = decision_task.get("failure_step")
+        request.hints.user_style["expected_recovery_path"] = decision_task.get("expected_recovery_path")
+        request.hints.user_style["gold_tool"] = decision_task.get("gold_tool")
+        request.hints.user_style["state_slots"] = list(decision_task.get("state_slots", []))
+        request.hints.user_style["dependency_edges"] = list(decision_task.get("dependency_edges", []))
+        request.hints.user_style["ideal_turn_count"] = decision_task.get("ideal_turn_count")
+        request.hints.user_style["ideal_tool_calls"] = decision_task.get("ideal_tool_calls")
+        _sanitize_decision_hints(request.hints.user_style, hint_policy=hint_policy)
         request.hints.user_style["tool_execution_backend"] = (
             str(task.get("tool_execution_backend") or (raw_metadata or {}).get("tool_execution_backend") or ("semantic_mock" if toolsandbox_metadata else "mock"))
         )
@@ -3335,10 +3400,10 @@ def build_workflow_from_task(
         workflow.metadata["simulated_policy"] = dict(task.get("simulated_policy", {}))
     if isinstance(task.get("reuse_override_inputs"), dict):
         workflow.metadata["reuse_override_inputs"] = dict(task.get("reuse_override_inputs", {}))
-    if task.get("messages") is not None:
-        workflow.metadata["messages"] = list(task.get("messages", []))
-    if task.get("milestones") is not None:
-        workflow.metadata["milestones"] = list(task.get("milestones", []))
+    if metadata_task.get("messages") is not None:
+        workflow.metadata["messages"] = list(metadata_task.get("messages", []))
+    if metadata_task.get("milestones") is not None:
+        workflow.metadata["milestones"] = list(metadata_task.get("milestones", []))
     if task.get("tool_allow_list") is not None:
         workflow.metadata["tool_allow_list"] = list(task.get("tool_allow_list", []))
     if isinstance(task.get("backup_tool_map"), dict):
@@ -3347,10 +3412,10 @@ def build_workflow_from_task(
         workflow.metadata["branch_options"] = list(task.get("branch_options", []))
     if task.get("reference_result_summary") is not None:
         workflow.metadata["toolsandbox_reference_result"] = dict(task.get("reference_result_summary", {}))
-    if task.get("ideal_turn_count") is not None:
-        workflow.metadata["ideal_turn_count"] = task.get("ideal_turn_count")
-    if task.get("ideal_tool_calls") is not None:
-        workflow.metadata["ideal_tool_calls"] = task.get("ideal_tool_calls")
+    if metadata_task.get("ideal_turn_count") is not None:
+        workflow.metadata["ideal_turn_count"] = metadata_task.get("ideal_turn_count")
+    if metadata_task.get("ideal_tool_calls") is not None:
+        workflow.metadata["ideal_tool_calls"] = metadata_task.get("ideal_tool_calls")
 
     if toolsandbox_metadata:
         allow_list = workflow.metadata.get("tool_allow_list") or []
@@ -3483,6 +3548,12 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--hint-policy",
+        choices=["runtime_visible", "legacy"],
+        default="runtime_visible",
+        help="Runtime decision hint policy. Paper-facing runs should use runtime_visible; legacy is for historical reproduction only.",
+    )
+    parser.add_argument(
         "--quiet-progress",
         action="store_true",
         help="Disable per-task progress logs.",
@@ -3541,7 +3612,7 @@ def parse_systems(raw_systems: str) -> List[SystemSpec]:
     return system_specs
 
 
-def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> PlanningRequest:
+def build_planning_request(workflow: Workflow, *, allow_reuse: bool, hint_policy: str = "runtime_visible") -> PlanningRequest:
     request = PlanningRequest(
         task=workflow.task,
         context=workflow.context,
@@ -3592,8 +3663,10 @@ def build_planning_request(workflow: Workflow, *, allow_reuse: bool) -> Planning
     request.hints.user_style["reuse_allowed_modes"] = list(workflow.metadata.get("reuse_allowed_modes", []))
     request.hints.user_style["reuse_require_source_family_match"] = workflow.metadata.get("reuse_require_source_family_match")
     request.hints.user_style["reuse_signature_key"] = workflow.metadata.get("reuse_signature_key")
+    request.hints.user_style["reuse_pass2_compile_allowed"] = workflow.metadata.get("reuse_pass2_compile_allowed")
     request.hints.user_style["reuse_override_inputs"] = dict(workflow.metadata.get("reuse_override_inputs", {}))
     request.hints.user_style["tool_execution_backend"] = workflow.metadata.get("tool_execution_backend")
+    _sanitize_decision_hints(request.hints.user_style, hint_policy=hint_policy)
     if not allow_reuse:
         request.hints.reusable_asset_ids = []
     return request
@@ -3620,24 +3693,31 @@ def _reuse_rollback_decision(outcome: Any, trace_payload: Dict[str, Any]) -> Opt
         (idx for idx, event in enumerate(events) if event.get("event_type") == "repair_triggered"),
         None,
     )
-    if first_repair_index is None:
-        return None
-    tool_calls_before_repair = sum(
-        1 for event in events[:first_repair_index] if event.get("event_type") == "tool_call"
-    )
     benchmark_hints = dict(outcome.workflow.metadata.get("benchmark_hints", {}))
     expected_tool_calls = int(benchmark_hints.get("ideal_tool_calls") or len(outcome.workflow.execution_plan) or 1)
     repair_actions = int(trace_payload.get("metrics", {}).get("repair_actions", 0) or 0)
     repair_budget = max(1, expected_tool_calls - 1)
-    early_repair = tool_calls_before_repair <= max(1, min(2, expected_tool_calls))
-    repair_overflow = repair_actions > repair_budget
-    if reuse_mode == "transfer_reuse" and not (early_repair or repair_overflow):
-        return None
+    if first_repair_index is None:
+        if reuse_mode != "transfer_reuse":
+            return None
+        tool_calls_before_repair = sum(1 for event in events if event.get("event_type") == "tool_call")
+        early_repair = False
+        repair_overflow = False
+    else:
+        tool_calls_before_repair = sum(
+            1 for event in events[:first_repair_index] if event.get("event_type") == "tool_call"
+        )
+        early_repair = tool_calls_before_repair <= max(1, min(2, expected_tool_calls))
+        repair_overflow = repair_actions > repair_budget
     if reuse_mode == "exact_reuse" and not repair_overflow:
         return None
     return {
         "applied": True,
-        "reason": "early_transfer_repair" if early_repair else "repair_budget_overflow",
+        "reason": (
+            "transfer_reuse_not_claim_supported"
+            if reuse_mode == "transfer_reuse" and not (early_repair or repair_overflow)
+            else ("early_transfer_repair" if early_repair else "repair_budget_overflow")
+        ),
         "reuse_mode": reuse_mode,
         "repair_actions": repair_actions,
         "repair_budget": repair_budget,
@@ -3696,6 +3776,7 @@ def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any], spec: SystemSpec
         config=InteractionLoopConfig(
             simulator_policy=simulator_policy,
             disable_user_queries=bool(spec.disable_user_queries) if spec is not None else False,
+            enable_success_probe=bool(spec.enable_success_probe) if spec is not None else False,
         ),
         reply_provider=reply_provider,
         semantic_decoder=SemanticDecoder(),
@@ -4121,6 +4202,7 @@ def execute_system(
     task_index: int,
     traces_dir: Path,
     runtime: Optional[ToolClawRuntime],
+    hint_policy: str = "runtime_visible",
 ) -> EvalRow:
     task_id = canonical_task_id(task)
     task = annotate_task_payload(task)
@@ -4132,7 +4214,7 @@ def execute_system(
     reused_artifact = False
 
     if spec.execution_mode == "baseline":
-        workflow = build_workflow_from_task(task, mode=spec.workflow_mode, spec=spec)
+        workflow = build_workflow_from_task(task, mode=spec.workflow_mode, spec=spec, hint_policy=hint_policy)
         baseline_trace, baseline_stop = run_baseline(
             workflow=workflow,
             run_id=f"{spec.system_id}_{task_id}",
@@ -4193,7 +4275,7 @@ def execute_system(
         raise RuntimeError(f"runtime missing for system {spec.system_id}")
 
     if spec.execution_mode == "executor":
-        workflow = build_workflow_from_task(task, mode=spec.workflow_mode, spec=spec)
+        workflow = build_workflow_from_task(task, mode=spec.workflow_mode, spec=spec, hint_policy=hint_policy)
         runtime.executor.run_until_blocked(
             workflow=workflow,
             run_id=f"{spec.system_id}_{task_id}",
@@ -4208,7 +4290,7 @@ def execute_system(
             reused_artifact=False,
         )
 
-    seed_workflow = build_workflow_from_task(task, mode=spec.workflow_mode, spec=spec)
+    seed_workflow = build_workflow_from_task(task, mode=spec.workflow_mode, spec=spec, hint_policy=hint_policy)
     benchmark = str(seed_workflow.metadata.get("benchmark") or "").strip().lower()
     approval_declared = bool(seed_workflow.task.constraints.requires_user_approval) or any(
         isinstance(edge, dict) and str(edge.get("type") or "").strip().lower() == "approval"
@@ -4235,7 +4317,7 @@ def execute_system(
             trace_path=trace_path,
             reused_artifact=False,
         )
-    request = build_planning_request(seed_workflow, allow_reuse=spec.use_reuse)
+    request = build_planning_request(seed_workflow, allow_reuse=spec.use_reuse, hint_policy=hint_policy)
     shell_task = dict(task)
     shell_task["_system_spec"] = spec
     shell = build_shell(runtime, shell_task)
@@ -4341,6 +4423,7 @@ def main() -> None:
                 task_index=idx,
                 traces_dir=traces_dir,
                 runtime=runtimes.get(spec.system_id),
+                hint_policy=args.hint_policy,
             )
             rows.append(row)
             completed_jobs += 1
