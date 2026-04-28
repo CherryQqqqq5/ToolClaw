@@ -1508,6 +1508,10 @@ class ToolSandboxAdapter:
         target = constraint.get("target_dataframe")
         target_values = self._contract_target_values(target)
         if namespace.endswith("sandbox"):
+            if self._contract_target_has_tool_trace(target):
+                if self._domain_tool_trace_events(trace_payload):
+                    return True, "tool_trace_event_present"
+                return False, "missing_tool_trace_event"
             final_response = self._extract_final_response_text(trace_payload)
             if not final_response:
                 return False, "missing_final_response"
@@ -1567,6 +1571,21 @@ class ToolSandboxAdapter:
             domain_events.append(event)
         return domain_events
 
+    @staticmethod
+    def _domain_tool_trace_events(trace_payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+        events = trace_payload.get("events", [])
+        if not isinstance(events, list):
+            return []
+        domain_events: List[Dict[str, Any]] = []
+        for event in events:
+            if not isinstance(event, dict) or str(event.get("event_type") or "") not in {"tool_call", "tool_result"}:
+                continue
+            tool_id = str(event.get("tool_id") or "").strip()
+            if not tool_id or tool_id == "end_conversation":
+                continue
+            domain_events.append(event)
+        return domain_events
+
     @classmethod
     def _contract_target_values(cls, value: Any) -> List[str]:
         values: List[str] = []
@@ -1603,6 +1622,16 @@ class ToolSandboxAdapter:
                 if content:
                     return content
         return ""
+
+    @staticmethod
+    def _contract_target_has_tool_trace(target: Any) -> bool:
+        if isinstance(target, dict):
+            if "tool_trace" in target:
+                return True
+            return any(ToolSandboxAdapter._contract_target_has_tool_trace(value) for value in target.values())
+        if isinstance(target, list):
+            return any(ToolSandboxAdapter._contract_target_has_tool_trace(item) for item in target)
+        return False
 
     @classmethod
     def _contract_values_covered(cls, text: str, values: List[str]) -> bool:

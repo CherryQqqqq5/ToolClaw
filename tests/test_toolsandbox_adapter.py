@@ -711,3 +711,43 @@ def test_toolsandbox_adapter_generic_milestones_keep_legacy_proxy_path() -> None
 
     assert summary["source"] == "toolclaw_proxy"
     assert "official_contract_proxy" not in summary
+
+
+def test_toolsandbox_adapter_contract_proxy_rejects_tool_trace_without_domain_tool() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="tool_trace_contract_proxy_reject",
+        raw_payload={
+            "categories": ["Single Tool Call"],
+            "tool_allow_list": ["find_holiday", "end_conversation"],
+            "milestones": ["Milestone"],
+            "official_milestone_contract": [
+                {
+                    "snapshot_constraints": [
+                        {
+                            "database_namespace": "DatabaseNamespace.SANDBOX",
+                            "snapshot_constraint": "snapshot_similarity",
+                            "target_dataframe": {
+                                "sender": "RoleType.EXECUTION_ENVIRONMENT",
+                                "recipient": "RoleType.AGENT",
+                                "tool_trace": "json.dumps",
+                            },
+                        }
+                    ]
+                }
+            ],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "events": [
+            {"event_type": "tool_call", "tool_id": "end_conversation", "tool_args": {"query": "When is Thanksgiving?"}},
+            {"event_type": "final_response_synthesized", "output": {"content": "Thanksgiving is on ..."}},
+        ],
+    }
+
+    summary = adapter.build_proxy_result_summary(sample, trace_payload)
+
+    assert summary["matched_milestones"] == 0
+    assert summary["success"] is False
+    assert summary["official_contract_diagnostics"][0]["reason"] == "missing_tool_trace_event"
