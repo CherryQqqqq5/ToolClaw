@@ -2092,6 +2092,28 @@ def _goal_prefers_mutation(goal_text: str) -> bool:
     return bool(_goal_tokens(goal_text) & _MUTATION_GOAL_TERMS)
 
 
+def _goal_needs_contact_lookup(goal_text: str) -> bool:
+    compact = " ".join(str(goal_text or "").lower().split())
+    tokens = _goal_tokens(compact)
+    if not ({"send", "text", "message"} & tokens):
+        return False
+    if not re.search(r"\b(to|recipient)\b", compact):
+        return False
+    if re.search(r"\+?\d[\d\-() ]{7,}\d", compact):
+        return False
+    if tokens & {"latest", "oldest", "last", "recent", "recency", "sent"} and not re.search(r"\bsend(?: a)? message to\b", compact):
+        return False
+    return True
+
+
+def _goal_updates_contact(goal_text: str) -> bool:
+    compact = " ".join(str(goal_text or "").lower().split())
+    tokens = _goal_tokens(compact)
+    if not (tokens & {"update", "modify", "change"}):
+        return False
+    return bool(tokens & {"contact", "phone", "number", "relationship"})
+
+
 def _seed_tool_relevance(tool: ToolSpec, goal_text: str, capability_id: str) -> int:
     goal_tokens = _goal_tokens(goal_text)
     tool_text = f"{tool.tool_id} {tool.description}".lower()
@@ -2108,6 +2130,16 @@ def _seed_tool_relevance(tool: ToolSpec, goal_text: str, capability_id: str) -> 
         score -= 4
     if goal_tokens & {"boss", "contact", "relationship", "name"} and "contact" in tool_tokens:
         score += 4
+    if _goal_needs_contact_lookup(goal_text):
+        if tool.tool_id == "search_contacts":
+            score += 12
+        if tool.tool_id == "search_messages":
+            score -= 8
+    if _goal_updates_contact(goal_text):
+        if tool.tool_id == "modify_contact":
+            score += 14
+        if tool.tool_id == "send_message_with_phone_number":
+            score -= 16
     if goal_tokens & {"wifi", "wi", "fi", "internet", "connected", "connect"} and "wifi" in tool_tokens:
         score += 4
     if goal_tokens & {"christmas", "holiday", "holidays"} and "holiday" in tool_tokens:
@@ -2188,6 +2220,7 @@ _PHONE_NUMBER_RE = re.compile(r"\+?\d[\d\-() ]{7,}\d")
 _MESSAGE_CONTENT_PATTERNS = (
     re.compile(r"\bsaying:\s*(.+)$", re.IGNORECASE | re.DOTALL),
     re.compile(r"\bsaying\s+(.+)$", re.IGNORECASE | re.DOTALL),
+    re.compile(r"\bmessage\s+(?:is|should be):?\s*(.+)$", re.IGNORECASE | re.DOTALL),
     re.compile(r"\bmessage(?:\s+to\s+[^:]+)?\s*:\s*(.+)$", re.IGNORECASE | re.DOTALL),
 )
 
@@ -2248,6 +2281,32 @@ def _seed_step_inputs(
         if message_content:
             inputs["content"] = message_content
     return inputs
+
+
+def _derive_toolsandbox_simulated_missing_arg_values(task: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = task.get("metadata")
+    if not (isinstance(metadata, dict) and metadata.get("benchmark") == "toolsandbox"):
+        return {}
+    messages = task.get("messages")
+    if not isinstance(messages, list):
+        return {}
+    values: Dict[str, Any] = {}
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        sender = _normalize_message_role(message.get("sender") or message.get("role"))
+        if sender != "user":
+            continue
+        content = str(message.get("content") or "").strip()
+        if not content:
+            continue
+        message_content = _extract_seed_message_content(content)
+        if message_content and "content" not in values:
+            values["content"] = message_content
+        phone_number = _extract_seed_phone_number(content)
+        if phone_number and "recipient_phone_number" not in values:
+            values["recipient_phone_number"] = phone_number
+    return values
 
 
 def _select_seed_read_tool(candidate_tools: List[ToolSpec], user_goal: str) -> Optional[ToolSpec]:
@@ -4076,9 +4135,13 @@ def build_shell(runtime: ToolClawRuntime, task: Dict[str, Any], spec: SystemSpec
     if spec is None and isinstance(task.get("_system_spec"), SystemSpec):
         spec = task["_system_spec"]
     policy_cfg = task.get("simulated_policy", {})
+    policy_cfg = dict(policy_cfg) if isinstance(policy_cfg, dict) else {}
+    missing_arg_values = _derive_toolsandbox_simulated_missing_arg_values(task)
+    if isinstance(policy_cfg.get("missing_arg_values"), dict):
+        missing_arg_values.update(policy_cfg["missing_arg_values"])
     simulator_policy = SimulatedPolicy(
         mode=policy_cfg.get("mode", "cooperative"),
-        missing_arg_values=policy_cfg.get("missing_arg_values", {}),
+        missing_arg_values=missing_arg_values,
         backup_tool_preferences=policy_cfg.get("backup_tool_preferences", {}),
         approval_responses=policy_cfg.get("approval_responses", {}),
         constraint_overrides=policy_cfg.get("constraint_overrides", {}),

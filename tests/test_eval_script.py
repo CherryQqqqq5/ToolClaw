@@ -521,6 +521,81 @@ def test_build_workflow_from_task_toolsandbox_send_message_keeps_quoted_content_
     assert "Resolve any issue alone" not in step.inputs["content"]
 
 
+def test_build_workflow_from_task_toolsandbox_named_send_prefers_contact_lookup() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_named_send", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "send_message_with_contact_content_cellular_off_10_distraction_tools",
+            "scenario": "state_dependency",
+            "query": "Send a message to Fredrik Thordendal saying: \"How's the new album coming along.\" Resolve any issue alone.",
+            "tool_allow_list": [
+                "search_messages",
+                "search_contacts",
+                "send_message_with_phone_number",
+                "end_conversation",
+            ],
+            "candidate_tools": [
+                "search_messages",
+                "search_contacts",
+                "send_message_with_phone_number",
+                "end_conversation",
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["state_dependency", "multiple_tool"],
+            },
+        },
+        mode="demo",
+    )
+
+    assert workflow.execution_plan[0].tool_id == "search_contacts"
+    assert workflow.execution_plan[1].tool_id == "send_message_with_phone_number"
+    assert workflow.execution_plan[1].inputs["content"] == "How's the new album coming along."
+
+
+def test_build_workflow_from_task_toolsandbox_modify_contact_does_not_send_message() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_modify_contact", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "modify_contact_with_message_recency_10_distraction_tools",
+            "scenario": "canonicalization",
+            "query": "Update the phone number of the last person I sent a message to to +10293847563",
+            "tool_allow_list": [
+                "search_messages",
+                "send_message_with_phone_number",
+                "modify_contact",
+                "end_conversation",
+            ],
+            "candidate_tools": [
+                "search_messages",
+                "send_message_with_phone_number",
+                "modify_contact",
+                "end_conversation",
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["canonicalization", "multiple_tool"],
+            },
+        },
+        mode="demo",
+    )
+
+    assert workflow.execution_plan[0].tool_id == "search_messages"
+    assert workflow.execution_plan[1].tool_id == "modify_contact"
+
+
 def test_build_workflow_from_task_toolsandbox_send_message_does_not_fabricate_missing_slots() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_send_missing_slots", module_path)
@@ -1540,6 +1615,40 @@ def test_parse_systems_supports_interaction_causality_ablation_systems() -> None
     ]
     assert systems[1].disable_user_queries is True
     assert systems[2].noisy_user_replies is True
+
+
+def test_build_shell_derives_toolsandbox_missing_content_for_simulator() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_sim_policy", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    shell = module.build_shell(
+        module.build_runtime(),
+        {
+            "metadata": {"benchmark": "toolsandbox"},
+            "messages": [
+                {"sender": "user", "content": "Send a message"},
+                {
+                    "sender": "user",
+                    "content": "I don't have the phone number, but it's Fredrik. The message is: How's the new album coming along.",
+                },
+            ],
+        },
+    )
+    reply = shell.reply_provider.reply(
+        InteractionRequest(
+            interaction_id="int_toolsandbox_content",
+            question="Provide the missing field(s): content.",
+            expected_answer_type="missing_asset_patch",
+            metadata={"patch_targets": {"content": "step.inputs.content"}},
+        )
+    )
+
+    assert reply.payload["content"] == "How's the new album coming along."
+    assert reply.raw_text == "auto-reply"
 
 
 def test_build_shell_applies_noisy_provider_from_system_spec() -> None:
