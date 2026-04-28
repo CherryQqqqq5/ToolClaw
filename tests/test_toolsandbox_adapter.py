@@ -588,3 +588,126 @@ def test_toolsandbox_adapter_final_response_does_not_satisfy_interaction_contrac
     assert score.diagnostics["interaction_contract_satisfied"] is False
     assert score.diagnostics["final_response_diagnostic"] == "interaction_contract_still_blocked"
     assert score.success is False
+
+
+def _contact_contract():
+    return [
+        {
+            "snapshot_constraints": [
+                {
+                    "database_namespace": "DatabaseNamespace.CONTACT",
+                    "snapshot_constraint": "addition_similarity",
+                    "target_dataframe": {
+                        "name": "Stephen Sondheim",
+                        "phone_number": "+19876543210",
+                        "relationship": None,
+                    },
+                    "reference_milestone_node_index": -1,
+                }
+            ]
+        },
+        {
+            "snapshot_constraints": [
+                {
+                    "database_namespace": "DatabaseNamespace.SANDBOX",
+                    "snapshot_constraint": "snapshot_similarity",
+                    "target_dataframe": {
+                        "sender": "RoleType.AGENT",
+                        "recipient": "RoleType.USER",
+                        "content": "Stephen Sondheim has been added to your contact",
+                    },
+                }
+            ]
+        },
+    ]
+
+
+def test_toolsandbox_adapter_contract_proxy_rejects_end_conversation_only() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="add_contact_contract_proxy_reject",
+        raw_payload={
+            "categories": ["Single Tool Call"],
+            "tool_allow_list": ["add_contact", "end_conversation"],
+            "milestones": ["Milestone", "Milestone"],
+            "official_milestone_contract": _contact_contract(),
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "events": [
+            {
+                "event_type": "tool_call",
+                "tool_id": "end_conversation",
+                "tool_args": {"query": "Add Stephen Sondheim to my contact, phone number +19876543210"},
+            },
+            {"event_type": "stop", "output": {"status": "success", "final_response": "Done."}},
+        ],
+    }
+
+    summary = adapter.build_proxy_result_summary(sample, trace_payload)
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert summary["official_contract_proxy"] is True
+    assert summary["matched_milestones"] == 0
+    assert summary["success"] is False
+    assert score.success is False
+    assert score.metrics["execution_verified_success"] == 0.0
+    assert score.diagnostics["matched_milestones"] == 0
+
+
+def test_toolsandbox_adapter_contract_proxy_accepts_domain_tool_and_final_response() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="add_contact_contract_proxy_accept",
+        raw_payload={
+            "categories": ["Single Tool Call"],
+            "tool_allow_list": ["add_contact", "end_conversation"],
+            "milestones": ["Milestone", "Milestone"],
+            "official_milestone_contract": _contact_contract(),
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "events": [
+            {
+                "event_type": "tool_call",
+                "tool_id": "add_contact",
+                "tool_args": {"name": "Stephen Sondheim", "phone_number": "+19876543210"},
+            },
+            {
+                "event_type": "final_response_synthesized",
+                "output": {"content": "Stephen Sondheim has been added to your contact."},
+            },
+        ],
+    }
+
+    summary = adapter.build_proxy_result_summary(sample, trace_payload)
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert summary["matched_milestones"] == 2
+    assert summary["similarity"] == 1.0
+    assert summary["success"] is True
+    assert score.success is True
+    assert score.metrics["execution_verified_success"] == 1.0
+
+
+def test_toolsandbox_adapter_generic_milestones_keep_legacy_proxy_path() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="generic_proxy_path",
+        raw_payload={
+            "categories": ["Single Tool Call"],
+            "tool_allow_list": ["end_conversation"],
+            "milestones": ["Milestone"],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "events": [{"event_type": "tool_call", "tool_id": "end_conversation"}],
+    }
+
+    summary = adapter.build_proxy_result_summary(sample, trace_payload)
+
+    assert summary["source"] == "toolclaw_proxy"
+    assert "official_contract_proxy" not in summary

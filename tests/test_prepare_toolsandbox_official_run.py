@@ -145,6 +145,67 @@ def test_prepare_toolsandbox_official_run_backfills_ground_truth_when_export_is_
     assert row["metadata"]["ground_truth_backfill_source"] == "vendored_scenario_source"
 
 
+def test_prepare_toolsandbox_official_run_extracts_structured_milestone_contract(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    run_dir = data_root / "agent_demo_user_demo_2026_04_04_00_00_00"
+    scenario_name = "add_contact_with_name_and_phone_number"
+    (run_dir / "trajectories" / scenario_name).mkdir(parents=True)
+
+    (run_dir / "result_summary.json").write_text(
+        json.dumps(
+            {
+                "per_scenario_results": [
+                    {
+                        "name": scenario_name,
+                        "categories": ["SINGLE_TOOL_CALL", "SINGLE_USER_TURN"],
+                        "similarity": 0.0,
+                        "turn_count": 2,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    out_path = tmp_path / "official.aligned.jsonl"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/prepare_toolsandbox_official_run.py",
+            "--run-dir",
+            "latest",
+            "--data-root",
+            str(data_root),
+            "--out",
+            str(out_path),
+        ],
+        check=True,
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+
+    rows = [json.loads(line) for line in out_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(rows) == 1
+    row = rows[0]
+    contract = row["official_milestone_contract"]
+    assert row["metadata"]["official_milestone_contract_present"] is True
+    assert len(contract) == 2
+    contact_constraint = contract[0]["snapshot_constraints"][0]
+    assert contact_constraint["database_namespace"] == "DatabaseNamespace.CONTACT"
+    assert contact_constraint["snapshot_constraint"] == "addition_similarity"
+    assert contact_constraint["target_dataframe"] == {
+        "name": "Stephen Sondheim",
+        "phone_number": "+19876543210",
+        "relationship": None,
+    }
+    sandbox_constraint = contract[1]["snapshot_constraints"][0]
+    assert sandbox_constraint["database_namespace"] == "DatabaseNamespace.SANDBOX"
+    assert sandbox_constraint["target_dataframe"]["content"] == "Stephen Sondheim has been added to your contact"
+
+
 def test_prepare_toolsandbox_official_run_uses_execution_context_tool_allow_list(tmp_path: Path) -> None:
     data_root = tmp_path / "data"
     run_dir = data_root / "agent_demo_user_demo_2026_04_04_00_00_00"

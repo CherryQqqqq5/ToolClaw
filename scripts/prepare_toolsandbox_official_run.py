@@ -278,6 +278,10 @@ def build_official_reference_summary(result_row: Dict[str, Any]) -> Dict[str, An
 def _ast_value(node: ast.AST) -> Any:
     if isinstance(node, ast.Constant):
         return node.value
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+        value = _ast_value(node.operand)
+        if isinstance(value, (int, float)):
+            return -value
     if isinstance(node, ast.List):
         return [_ast_value(item) for item in node.elts if not isinstance(item, ast.Starred)]
     if isinstance(node, ast.Tuple):
@@ -352,6 +356,78 @@ def _ast_milestones(node: ast.AST | None) -> List[Any]:
     return milestones
 
 
+def _ast_call_name(node: ast.AST) -> str:
+    if isinstance(node, ast.Call):
+        return _ast_call_name(node.func)
+    if isinstance(node, ast.Attribute):
+        base = _ast_call_name(node.value)
+        return f"{base}.{node.attr}" if base else node.attr
+    if isinstance(node, ast.Name):
+        return node.id
+    rendered = _ast_render(node)
+    return rendered or ""
+
+
+def _ast_keyword_map(node: ast.AST) -> Dict[str, ast.AST]:
+    if not isinstance(node, ast.Call):
+        return {}
+    return {keyword.arg: keyword.value for keyword in node.keywords if keyword.arg}
+
+
+def _ast_dataframe_payload(node: ast.AST | None) -> Any:
+    if not isinstance(node, ast.Call):
+        return _ast_value(node) if node is not None else None
+    call_name = _ast_call_name(node)
+    if not call_name.endswith("DataFrame"):
+        return _ast_value(node)
+    kwargs = _ast_keyword_map(node)
+    data_node = kwargs.get("data") or (node.args[0] if node.args else None)
+    return _ast_value(data_node) if data_node is not None else None
+
+
+def _ast_snapshot_constraint_contract(node: ast.AST) -> Dict[str, Any]:
+    if not isinstance(node, ast.Call) or not _ast_call_name(node).endswith("SnapshotConstraint"):
+        return {}
+    kwargs = _ast_keyword_map(node)
+    contract: Dict[str, Any] = {}
+    for key in ("database_namespace", "snapshot_constraint", "reference_milestone_node_index"):
+        if key in kwargs:
+            contract[key] = _ast_value(kwargs[key])
+    if "target_dataframe" in kwargs:
+        contract["target_dataframe"] = _ast_dataframe_payload(kwargs["target_dataframe"])
+    if "column_similarity_measure" in kwargs:
+        contract["column_similarity_measure"] = _ast_value(kwargs["column_similarity_measure"])
+    return {key: value for key, value in contract.items() if value is not None}
+
+
+def _ast_milestone_contracts(node: ast.AST | None) -> List[Dict[str, Any]]:
+    if not isinstance(node, ast.List):
+        return []
+    contracts: List[Dict[str, Any]] = []
+    for item in node.elts:
+        if isinstance(item, ast.Starred) or not isinstance(item, ast.Call):
+            continue
+        if not _ast_call_name(item).endswith("Milestone"):
+            continue
+        kwargs = _ast_keyword_map(item)
+        snapshot_constraints: List[Dict[str, Any]] = []
+        raw_constraints = kwargs.get("snapshot_constraints")
+        if isinstance(raw_constraints, ast.List):
+            for constraint_node in raw_constraints.elts:
+                if isinstance(constraint_node, ast.Starred):
+                    continue
+                parsed = _ast_snapshot_constraint_contract(constraint_node)
+                if parsed:
+                    snapshot_constraints.append(parsed)
+        contract: Dict[str, Any] = {"snapshot_constraints": snapshot_constraints}
+        rendered = _ast_render(item)
+        if rendered is not None:
+            contract["raw"] = rendered
+        if snapshot_constraints:
+            contracts.append(contract)
+    return contracts
+
+
 @lru_cache(maxsize=1)
 def load_vendored_ground_truth_index() -> Dict[str, Dict[str, Any]]:
     index: Dict[str, Dict[str, Any]] = {}
@@ -378,6 +454,7 @@ def load_vendored_ground_truth_index() -> Dict[str, Dict[str, Any]]:
                 "tool_allow_list": tool_allow_list,
                 "candidate_tools": list(tool_allow_list),
                 "milestones": _ast_milestones(kwargs.get("milestones")),
+                "official_milestone_contract": _ast_milestone_contracts(kwargs.get("milestones")),
                 "ground_truth_source": "vendored_scenario_source",
                 "ground_truth_source_path": str(path.resolve()),
             }
@@ -409,6 +486,7 @@ def load_bundled_ground_truth_index() -> Dict[str, Dict[str, Any]]:
                     "tool_allow_list": [],
                     "candidate_tools": [],
                     "milestones": [],
+                    "official_milestone_contract": [],
                     "ground_truth_source": "bundled_formal_source",
                     "ground_truth_source_path": str(path.resolve()),
                 },
@@ -429,6 +507,7 @@ def resolve_ground_truth(scenario_name: str) -> Dict[str, Any]:
                 "tool_allow_list": list(entry.get("tool_allow_list", [])),
                 "candidate_tools": list(entry.get("candidate_tools", [])),
                 "milestones": list(entry.get("milestones", [])),
+                "official_milestone_contract": list(entry.get("official_milestone_contract", [])),
                 "ground_truth_source": entry.get("ground_truth_source"),
                 "ground_truth_source_path": entry.get("ground_truth_source_path"),
             }
@@ -437,6 +516,7 @@ def resolve_ground_truth(scenario_name: str) -> Dict[str, Any]:
         "tool_allow_list": [],
         "candidate_tools": [],
         "milestones": [],
+        "official_milestone_contract": [],
         "ground_truth_source": None,
         "ground_truth_source_path": None,
     }
@@ -459,6 +539,7 @@ def iter_aligned_rows(run_dir: Path, result_summary: Dict[str, Any]) -> Iterable
         if not candidate_tools:
             candidate_tools = list(ground_truth["candidate_tools"]) or list(tool_allow_list)
         milestones = extract_milestones(scenario_export, item, ground_truth)
+        official_milestone_contract = list(ground_truth.get("official_milestone_contract", []))
         execution_scenario, execution_scenario_source = infer_execution_scenario(scenario_export, item)
         row_categories = list(item.get("categories", []))
         official_summary = build_official_reference_summary(item)
@@ -474,6 +555,7 @@ def iter_aligned_rows(run_dir: Path, result_summary: Dict[str, Any]) -> Iterable
             "categories": row_categories,
             "normalized_categories": normalized_categories(row_categories),
             "milestones": milestones,
+            "official_milestone_contract": official_milestone_contract,
             "ideal_turn_count": item.get("turn_count"),
             "ideal_tool_calls": scenario_export.get("ideal_tool_calls") or scenario_export.get("expected_tool_calls"),
             "result_summary": official_summary,
@@ -498,6 +580,7 @@ def iter_aligned_rows(run_dir: Path, result_summary: Dict[str, Any]) -> Iterable
                 "has_ground_truth_messages": has_ground_truth_messages,
                 "has_ground_truth_milestones": has_ground_truth_milestones,
                 "has_ground_truth_tools": has_ground_truth_tools,
+                "official_milestone_contract_present": bool(official_milestone_contract),
                 "ground_truth_backfill_source": ground_truth.get("ground_truth_source"),
                 "ground_truth_backfill_path": ground_truth.get("ground_truth_source_path"),
                 "execution_scenario_source": execution_scenario_source,

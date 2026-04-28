@@ -1163,6 +1163,7 @@ class ToolSandboxAdapter:
             "expected_query_type",
             "expected_patch_targets",
             "expected_effect_scope",
+            "official_milestone_contract",
             "gold_effective_patch",
             "gold_post_query_progress",
             "manual_label_status",
@@ -1403,6 +1404,10 @@ class ToolSandboxAdapter:
         )
 
     def build_proxy_result_summary(self, sample: BenchmarkSample, trace_payload: Dict[str, Any]) -> Dict[str, Any]:
+        official_contract = self._official_milestone_contract(sample.raw_payload)
+        if official_contract:
+            return self._build_official_contract_proxy_result_summary(sample, trace_payload, official_contract)
+
         trace_metrics = trace_payload.get("metrics", {})
         trace_events = trace_payload.get("events", [])
         final_response_signal = self._extract_final_response_signal(trace_payload)
@@ -1428,6 +1433,231 @@ class ToolSandboxAdapter:
             "final_response_present": bool(final_response_signal["present"]),
             "final_response_source": final_response_signal["source"],
         }
+
+    def _build_official_contract_proxy_result_summary(
+        self,
+        sample: BenchmarkSample,
+        trace_payload: Dict[str, Any],
+        official_contract: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        trace_metrics = trace_payload.get("metrics", {})
+        trace_events = trace_payload.get("events", [])
+        final_response_signal = self._extract_final_response_signal(trace_payload)
+        turn_count = self._extract_turn_count({}, trace_events)
+        matched_indices: List[int] = []
+        diagnostics: List[Dict[str, Any]] = []
+        for idx, milestone in enumerate(official_contract):
+            matched, reason = self._official_contract_milestone_matched(milestone, trace_payload)
+            diagnostics.append({"milestone_index": idx, "matched": matched, "reason": reason})
+            if matched:
+                matched_indices.append(idx)
+        total_milestones = len(official_contract)
+        matched_milestones = len(matched_indices)
+        similarity = (matched_milestones / total_milestones) if total_milestones else None
+        matched_set = set(matched_indices)
+        milestone_mapping: List[Any] = [idx if idx in matched_set else None for idx in range(total_milestones)]
+        success = bool(trace_metrics.get("success")) and total_milestones > 0 and matched_milestones == total_milestones
+        return {
+            "similarity": float(similarity) if similarity is not None else None,
+            "milestone_mapping": milestone_mapping,
+            "matched_milestones": matched_milestones,
+            "total_milestones": total_milestones,
+            "turn_count": turn_count,
+            "tool_calls": int(trace_metrics.get("tool_calls", 0)),
+            "success": success,
+            "source": "toolclaw_proxy",
+            "proxy_evaluation": True,
+            "official_contract_proxy": True,
+            "official_contract_diagnostics": diagnostics,
+            "final_response_present": bool(final_response_signal["present"]),
+            "final_response_source": final_response_signal["source"],
+        }
+
+    @staticmethod
+    def _official_milestone_contract(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
+        for container in (raw, raw.get("metadata", {})):
+            if not isinstance(container, dict):
+                continue
+            value = container.get("official_milestone_contract")
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+        return []
+
+    def _official_contract_milestone_matched(
+        self,
+        milestone: Dict[str, Any],
+        trace_payload: Dict[str, Any],
+    ) -> tuple[bool, str]:
+        constraints = milestone.get("snapshot_constraints")
+        if not isinstance(constraints, list) or not constraints:
+            return False, "missing_snapshot_constraints"
+        for constraint in constraints:
+            if not isinstance(constraint, dict):
+                return False, "invalid_snapshot_constraint"
+            matched, reason = self._official_snapshot_constraint_matched(constraint, trace_payload)
+            if not matched:
+                return False, reason
+        return True, "all_snapshot_constraints_matched"
+
+    def _official_snapshot_constraint_matched(
+        self,
+        constraint: Dict[str, Any],
+        trace_payload: Dict[str, Any],
+    ) -> tuple[bool, str]:
+        namespace = str(constraint.get("database_namespace") or "").lower()
+        target = constraint.get("target_dataframe")
+        target_values = self._contract_target_values(target)
+        if namespace.endswith("sandbox"):
+            final_response = self._extract_final_response_text(trace_payload)
+            if not final_response:
+                return False, "missing_final_response"
+            target_content = self._contract_target_content(target)
+            if target_content:
+                if self._text_covers_value(final_response, target_content):
+                    return True, "final_response_matches_target_content"
+                return False, "final_response_missing_target_content"
+            return True, "final_response_present"
+
+        domain_calls = self._domain_tool_call_events(trace_payload)
+        if not domain_calls:
+            return False, "missing_domain_tool_call"
+        for event in domain_calls:
+            tool_id = str(event.get("tool_id") or "")
+            call_text = self._event_search_text(event)
+            if not self._tool_matches_namespace(tool_id, namespace) and not self._contract_values_covered(call_text, target_values):
+                continue
+            if target_values and not self._contract_values_covered(call_text, target_values):
+                continue
+            return True, "domain_tool_matches_snapshot_target"
+        return False, "domain_tool_missing_snapshot_target"
+
+    @staticmethod
+    def _extract_final_response_text(trace_payload: Dict[str, Any]) -> str:
+        events = trace_payload.get("events", [])
+        if not isinstance(events, list):
+            return ""
+        for event in events:
+            if not isinstance(event, dict) or str(event.get("event_type") or "") != "final_response_synthesized":
+                continue
+            output = event.get("output") if isinstance(event.get("output"), dict) else {}
+            content = str(output.get("content") or "").strip()
+            if content:
+                return content
+        for event in reversed(events):
+            if not isinstance(event, dict) or str(event.get("event_type") or "") != "stop":
+                continue
+            output = event.get("output") if isinstance(event.get("output"), dict) else {}
+            content = str(output.get("final_response") or "").strip()
+            if content:
+                return content
+        return ""
+
+    @staticmethod
+    def _domain_tool_call_events(trace_payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+        events = trace_payload.get("events", [])
+        if not isinstance(events, list):
+            return []
+        domain_events: List[Dict[str, Any]] = []
+        for event in events:
+            if not isinstance(event, dict) or str(event.get("event_type") or "") != "tool_call":
+                continue
+            tool_id = str(event.get("tool_id") or "").strip()
+            if not tool_id or tool_id == "end_conversation":
+                continue
+            domain_events.append(event)
+        return domain_events
+
+    @classmethod
+    def _contract_target_values(cls, value: Any) -> List[str]:
+        values: List[str] = []
+        cls._collect_contract_values(value, values)
+        return values
+
+    @classmethod
+    def _collect_contract_values(cls, value: Any, values: List[str]) -> None:
+        if value is None:
+            return
+        if isinstance(value, dict):
+            for nested in value.values():
+                cls._collect_contract_values(nested, values)
+            return
+        if isinstance(value, list):
+            for nested in value:
+                cls._collect_contract_values(nested, values)
+            return
+        text = str(value).strip()
+        lowered = text.lower()
+        if not text or lowered in {"none", "null", "roletype.agent", "roletype.user"}:
+            return
+        values.append(text)
+
+    @staticmethod
+    def _contract_target_content(target: Any) -> str:
+        if isinstance(target, dict):
+            content = target.get("content")
+            if content is not None:
+                return str(content).strip()
+        if isinstance(target, list):
+            for item in target:
+                content = ToolSandboxAdapter._contract_target_content(item)
+                if content:
+                    return content
+        return ""
+
+    @classmethod
+    def _contract_values_covered(cls, text: str, values: List[str]) -> bool:
+        distinctive_values = [value for value in values if cls._is_distinctive_contract_value(value)]
+        if not distinctive_values:
+            return False
+        required = len(distinctive_values) if len(distinctive_values) <= 2 else max(2, len(distinctive_values) - 1)
+        covered = sum(1 for value in distinctive_values if cls._text_covers_value(text, value))
+        return covered >= required
+
+    @staticmethod
+    def _is_distinctive_contract_value(value: str) -> bool:
+        normalized = value.strip().lower()
+        if normalized in {"true", "false", "0", "1"}:
+            return True
+        if normalized.startswith("database") or normalized.endswith("similarity"):
+            return False
+        return len(normalized) >= 2
+
+    @staticmethod
+    def _text_covers_value(text: str, value: str) -> bool:
+        normalized_text = text.lower()
+        normalized_value = value.strip().lower()
+        if not normalized_value:
+            return False
+        if normalized_value in normalized_text:
+            return True
+        tokens = [token for token in normalized_value.replace("+", " ").replace("_", " ").split() if len(token) >= 3]
+        return bool(tokens) and all(token in normalized_text for token in tokens)
+
+    @staticmethod
+    def _event_search_text(event: Dict[str, Any]) -> str:
+        parts: List[str] = [str(event.get("tool_id") or "")]
+        for key in ("tool_args", "input", "output", "metadata"):
+            value = event.get(key)
+            if value is not None:
+                try:
+                    parts.append(json.dumps(value, sort_keys=True, ensure_ascii=False))
+                except TypeError:
+                    parts.append(str(value))
+        return " ".join(parts)
+
+    @staticmethod
+    def _tool_matches_namespace(tool_id: str, namespace: str) -> bool:
+        lowered_tool = tool_id.lower()
+        normalized_namespace = namespace.split(".")[-1]
+        namespace_hints = {
+            "contact": {"contact"},
+            "messaging": {"message", "sms", "text"},
+            "message": {"message", "sms", "text"},
+            "reminder": {"reminder"},
+            "setting": {"wifi", "cellular", "location", "battery", "setting", "status"},
+        }
+        hints = namespace_hints.get(normalized_namespace, {normalized_namespace} if normalized_namespace else set())
+        return any(hint and hint in lowered_tool for hint in hints)
 
     def _proxy_progress_signals(self, raw: Dict[str, Any], trace_payload: Dict[str, Any]) -> int:
         trace_metrics = trace_payload.get("metrics", {})
