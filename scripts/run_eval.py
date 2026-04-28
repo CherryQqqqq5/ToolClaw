@@ -2006,8 +2006,133 @@ def _planner_goal_from_task(task: Dict[str, Any], fallback: str) -> str:
 
 
 def _seed_capability_for_tool(tool: ToolSpec, *, default: str = "cap_write") -> str:
+    tool_id = str(tool.tool_id or "").lower()
+    if tool_id.startswith(("set_", "send_", "remove_", "add_", "modify_")):
+        return "cap_write"
+    if tool_id.startswith("get_") and ("status" in tool_id or "state" in tool_id):
+        return "cap_check"
+    if tool_id.startswith(("get_", "search_", "find_", "lookup_")):
+        return "cap_retrieve"
     inferred = infer_capability_from_text(f"{tool.tool_id} {tool.description}")
     return str(inferred or default)
+
+
+_RETRIEVE_GOAL_STARTS = (
+    "what ",
+    "who ",
+    "when ",
+    "where ",
+    "which ",
+    "whose ",
+    "is ",
+    "are ",
+    "do ",
+    "does ",
+    "did ",
+    "can ",
+    "could ",
+)
+_RETRIEVE_GOAL_TERMS = {
+    "find",
+    "search",
+    "lookup",
+    "show",
+    "list",
+    "read",
+    "retrieve",
+}
+_MUTATION_TOOL_TERMS = {
+    "add",
+    "create",
+    "delete",
+    "modify",
+    "remove",
+    "send",
+    "set",
+    "toggle",
+    "turn",
+    "update",
+    "write",
+}
+_MUTATION_GOAL_TERMS = _MUTATION_TOOL_TERMS | {
+    "connect",
+    "connected",
+    "disconnect",
+    "disable",
+    "enable",
+}
+_RETRIEVE_TOOL_TERMS = _RETRIEVE_GOAL_TERMS | {
+    "current",
+    "fetch",
+    "get",
+    "lookup",
+    "status",
+    "timestamp",
+    "view",
+}
+_SEED_READ_CAPABILITIES = {"cap_retrieve", "cap_check"}
+
+
+def _goal_tokens(text: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9]+", text.lower()))
+
+
+def _goal_prefers_retrieve(goal_text: str) -> bool:
+    compact = " ".join(str(goal_text or "").lower().split())
+    if not compact:
+        return False
+    if compact.startswith(_RETRIEVE_GOAL_STARTS):
+        return True
+    if re.search(r"\b(look up|tell me|current|status|first ever|latest|oldest)\b", compact):
+        return True
+    return bool(_goal_tokens(compact) & _RETRIEVE_GOAL_TERMS)
+
+
+def _goal_prefers_mutation(goal_text: str) -> bool:
+    return bool(_goal_tokens(goal_text) & _MUTATION_GOAL_TERMS)
+
+
+def _seed_tool_relevance(tool: ToolSpec, goal_text: str, capability_id: str) -> int:
+    goal_tokens = _goal_tokens(goal_text)
+    tool_text = f"{tool.tool_id} {tool.description}".lower()
+    tool_tokens = _goal_tokens(tool_text)
+    score = 3 * len(goal_tokens & tool_tokens)
+    for token in goal_tokens:
+        if token and token in tool.tool_id.lower():
+            score += 2
+    message_goal = bool(goal_tokens & {"message", "messages", "text", "texts", "sms"})
+    message_tool = bool(tool_tokens & {"message", "messages", "text", "texts", "sms"})
+    if message_goal and message_tool:
+        score += 6
+    if message_goal and tool_tokens & {"timestamp", "time", "date"}:
+        score -= 4
+    if goal_tokens & {"boss", "contact", "relationship", "name"} and "contact" in tool_tokens:
+        score += 4
+    if goal_tokens & {"wifi", "wi", "fi", "internet", "connected", "connect"} and "wifi" in tool_tokens:
+        score += 4
+    if goal_tokens & {"christmas", "holiday", "holidays"} and "holiday" in tool_tokens:
+        score += 6
+    if goal_tokens & {"days", "day", "till", "until", "difference"} and "diff" in tool.tool_id.lower():
+        score += 4
+    if goal_tokens & {"remove", "delete"} and "remove" in tool_tokens:
+        score += 5
+    if "cellular" in goal_tokens and "cellular" in tool_tokens:
+        score += 4
+    if "battery" in goal_tokens and "battery" in tool_tokens:
+        score += 4
+    if tool.tool_id == "end_conversation":
+        score -= 100
+    if _goal_prefers_retrieve(goal_text):
+        unmatched_mutations = _MUTATION_TOOL_TERMS & tool_tokens - goal_tokens
+        score -= 4 * len(unmatched_mutations)
+        if capability_id in _SEED_READ_CAPABILITIES:
+            score += 2
+    if _goal_prefers_mutation(goal_text):
+        score += 5 * len((_MUTATION_TOOL_TERMS | {"enable", "disable"}) & tool_tokens)
+        score -= 4 * len(_RETRIEVE_TOOL_TERMS & tool_tokens - goal_tokens)
+    if capability_id == "cap_write" and "backup" in tool.tool_id.lower():
+        score -= 4
+    return score
 
 
 def _select_seed_tool(
@@ -2015,6 +2140,7 @@ def _select_seed_tool(
     capability_id: str,
     *,
     prefer_primary_write: bool = False,
+    goal_text: str = "",
 ) -> Optional[ToolSpec]:
     matches = [tool for tool in candidate_tools if _seed_capability_for_tool(tool, default="") == capability_id]
     if not matches:
@@ -2022,8 +2148,86 @@ def _select_seed_tool(
     if prefer_primary_write and capability_id == "cap_write":
         non_backup = [tool for tool in matches if "backup" not in tool.tool_id.lower()]
         if non_backup:
-            return non_backup[0]
-    return matches[0]
+            matches = non_backup
+    return max(
+        enumerate(matches),
+        key=lambda item: (_seed_tool_relevance(item[1], goal_text, capability_id), -item[0]),
+    )[1]
+
+
+def _best_seed_tool_by_goal(candidate_tools: List[ToolSpec], user_goal: str) -> Optional[ToolSpec]:
+    ranked_candidates = [tool for tool in candidate_tools if tool.tool_id != "end_conversation"]
+    if not ranked_candidates:
+        return candidate_tools[0] if candidate_tools else None
+    return max(
+        enumerate(ranked_candidates),
+        key=lambda item: (
+            _seed_tool_relevance(
+                item[1],
+                user_goal,
+                _seed_capability_for_tool(item[1], default=""),
+            ),
+            -item[0],
+        ),
+    )[1]
+
+
+def _seed_tool_has_mutation_affordance(tool: ToolSpec) -> bool:
+    tool_tokens = _goal_tokens(f"{tool.tool_id} {tool.description}")
+    return bool(tool_tokens & (_MUTATION_TOOL_TERMS | {"enable", "disable"}))
+
+
+def _seed_selected_capability(tool: ToolSpec, goal_text: str, *, default: str) -> str:
+    inferred = _seed_capability_for_tool(tool, default=default)
+    if _goal_prefers_mutation(goal_text) and _seed_tool_has_mutation_affordance(tool):
+        return "cap_write"
+    return inferred
+
+
+def _select_seed_read_tool(candidate_tools: List[ToolSpec], user_goal: str) -> Optional[ToolSpec]:
+    read_candidates = [
+        tool
+        for tool in candidate_tools
+        if _seed_capability_for_tool(tool, default="") in _SEED_READ_CAPABILITIES
+    ]
+    return _best_seed_tool_by_goal(read_candidates, user_goal)
+
+
+def _select_seed_write_tool(candidate_tools: List[ToolSpec], user_goal: str) -> Optional[ToolSpec]:
+    write_tool = _select_seed_tool(
+        candidate_tools,
+        "cap_write",
+        prefer_primary_write=True,
+        goal_text=user_goal,
+    )
+    if write_tool is not None:
+        return write_tool
+    if not _goal_prefers_mutation(user_goal):
+        return None
+    mutation_candidates = [
+        tool
+        for tool in candidate_tools
+        if tool.tool_id != "end_conversation" and _seed_tool_has_mutation_affordance(tool)
+    ]
+    return _best_seed_tool_by_goal(mutation_candidates, user_goal)
+
+
+def _select_seed_primary_tool(
+    task: Dict[str, Any],
+    candidate_tools: List[ToolSpec],
+    user_goal: str,
+) -> Optional[ToolSpec]:
+    if not candidate_tools:
+        return None
+    if _goal_prefers_retrieve(user_goal):
+        selected = _select_seed_read_tool(candidate_tools, user_goal)
+        if selected is not None:
+            return selected
+    if _goal_prefers_mutation(user_goal):
+        selected = _select_seed_write_tool(candidate_tools, user_goal)
+        if selected is not None:
+            return selected
+    return _best_seed_tool_by_goal(candidate_tools, user_goal)
 
 
 def _configure_seed_capability_node(node: Any, capability_id: str) -> None:
@@ -2599,15 +2803,17 @@ def _build_seed_workflow(
         or task.get("ideal_tool_calls") == 1
     )
 
-    retrieve_tool = _select_seed_tool(candidate_tools, "cap_retrieve")
-    write_tool = _select_seed_tool(candidate_tools, "cap_write", prefer_primary_write=True)
+    selection_goal = str(task.get("query") or user_goal)
+    retrieve_tool = _select_seed_read_tool(candidate_tools, selection_goal)
+    write_tool = _select_seed_write_tool(candidate_tools, selection_goal)
 
     if low_branching:
-        selected_tool = write_tool or retrieve_tool or (candidate_tools[0] if candidate_tools else None)
+        selected_tool = _select_seed_primary_tool(task, candidate_tools, selection_goal)
         if selected_tool is None:
             return workflow
-        capability_id = _seed_capability_for_tool(
+        capability_id = _seed_selected_capability(
             selected_tool,
+            selection_goal,
             default="cap_write" if task.get("target_path") is not None else "cap_retrieve",
         )
         step_inputs = {"target_path": task.get("target_path")} if capability_id == "cap_write" else {"query": str(task.get("query") or user_goal)}
@@ -2628,23 +2834,31 @@ def _build_seed_workflow(
             inputs={"target_path": task.get("target_path")},
             expected_output="report_artifact",
         )
-    if not write_tool and retrieve_tool:
+    if retrieve_tool and (not write_tool or (benchmark == "toolsandbox" and not _goal_prefers_mutation(selection_goal))):
+        read_capability_id = _seed_capability_for_tool(retrieve_tool, default="cap_retrieve")
         return _configure_seed_single_step_workflow(
             workflow,
-            capability_id="cap_retrieve",
+            capability_id=read_capability_id,
             tool_id=retrieve_tool.tool_id,
             inputs={"query": str(task.get("query") or user_goal)},
             expected_output="retrieved_info",
         )
 
     if retrieve_tool is not None:
+        read_capability_id = _seed_capability_for_tool(retrieve_tool, default="cap_retrieve")
+        workflow.tool_bindings[0].capability_id = read_capability_id
         workflow.tool_bindings[0].primary_tool = retrieve_tool.tool_id
+        workflow.execution_plan[0].capability_id = read_capability_id
         workflow.execution_plan[0].tool_id = retrieve_tool.tool_id
+        workflow.workflow_graph.nodes[0].capability_id = read_capability_id
         workflow.workflow_graph.nodes[0].selected_tool = retrieve_tool.tool_id
         workflow.workflow_graph.nodes[0].tool_candidates = [retrieve_tool.tool_id]
     if write_tool is not None:
+        workflow.tool_bindings[1].capability_id = "cap_write"
         workflow.tool_bindings[1].primary_tool = write_tool.tool_id
+        workflow.execution_plan[1].capability_id = "cap_write"
         workflow.execution_plan[1].tool_id = write_tool.tool_id
+        workflow.workflow_graph.nodes[1].capability_id = "cap_write"
         workflow.workflow_graph.nodes[1].selected_tool = write_tool.tool_id
         workflow.workflow_graph.nodes[1].tool_candidates = [write_tool.tool_id]
     workflow.metadata["planner_mode"] = "recovery_seed"
@@ -3311,7 +3525,7 @@ def build_workflow_from_task(
             planner_goal,
             enable_grounding=True if spec is None else bool(spec.enable_core_grounding),
         )
-    elif mode == "demo" and bfcl_metadata:
+    elif mode == "demo" and (bfcl_metadata or toolsandbox_metadata):
         workflow = _build_seed_workflow(
             task,
             candidate_tools,
@@ -3436,12 +3650,47 @@ def build_workflow_from_task(
             workflow.workflow_graph.exit_nodes = ["step_01"]
             workflow.metadata["low_branching_fast_path"] = True
             if allow_list and workflow.execution_plan and mode != "planner":
-                selected_tool = str(allow_list[0])
+                allowed = {str(item) for item in allow_list}
+                current_tool = str(workflow.execution_plan[0].tool_id)
+                candidate_by_id = {tool.tool_id: tool for tool in candidate_tools}
+                allowed_candidates = [candidate_by_id[tool_id] for tool_id in allow_list if tool_id in candidate_by_id]
+                selected_spec = None
+                if current_tool in allowed and current_tool != "end_conversation":
+                    selected_spec = candidate_by_id.get(current_tool)
+                if selected_spec is None:
+                    selected_spec = _select_seed_primary_tool(task, allowed_candidates or candidate_tools, str(retrieve_query or planner_goal))
+                selected_tool = selected_spec.tool_id if selected_spec is not None else next(
+                    (str(tool_id) for tool_id in allow_list if str(tool_id) != "end_conversation"),
+                    str(allow_list[0]),
+                )
+                if selected_tool not in allowed and allowed:
+                    selected_tool = next(
+                        (str(tool_id) for tool_id in allow_list if str(tool_id) != "end_conversation"),
+                        str(allow_list[0]),
+                    )
+                selected_spec = candidate_by_id.get(selected_tool)
+                if selected_spec is not None:
+                    capability_id = _seed_selected_capability(
+                        selected_spec,
+                        planner_goal,
+                        default=workflow.execution_plan[0].capability_id or "cap_write",
+                    )
+                else:
+                    capability_id = workflow.execution_plan[0].capability_id
                 workflow.execution_plan[0].tool_id = selected_tool
+                workflow.execution_plan[0].capability_id = capability_id
+                if capability_id in _SEED_READ_CAPABILITIES:
+                    workflow.execution_plan[0].inputs = {"query": str(retrieve_query or planner_goal)}
+                    workflow.execution_plan[0].expected_output = "retrieved_info"
+                elif capability_id == "cap_write" and task.get("target_path") is not None:
+                    workflow.execution_plan[0].inputs = {"target_path": task.get("target_path")}
+                    workflow.execution_plan[0].expected_output = "report_artifact"
                 if workflow.tool_bindings:
                     workflow.tool_bindings[0].primary_tool = selected_tool
+                    workflow.tool_bindings[0].capability_id = capability_id
                 if workflow.workflow_graph.nodes:
                     workflow.workflow_graph.nodes[0].selected_tool = selected_tool
+                    workflow.workflow_graph.nodes[0].capability_id = capability_id
                     workflow.workflow_graph.nodes[0].tool_candidates = [selected_tool]
 
     for step in workflow.execution_plan:

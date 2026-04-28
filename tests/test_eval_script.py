@@ -278,6 +278,7 @@ def test_build_workflow_from_task_restores_toolsandbox_goal_from_messages() -> N
             ],
         },
         mode="planner",
+        hint_policy="legacy",
     )
 
     assert workflow.task.user_goal != "Send a message"
@@ -285,6 +286,205 @@ def test_build_workflow_from_task_restores_toolsandbox_goal_from_messages() -> N
     assert "How's the new album coming along" in workflow.task.user_goal
     assert workflow.execution_plan[0].inputs["name"] == "Fredrik Thordendal"
     assert "query" not in workflow.execution_plan[0].inputs
+
+
+def test_build_workflow_from_task_toolsandbox_demo_uses_candidate_seed() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_demo_seed", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "search_message_with_recency_oldest_alt",
+            "scenario": "single_tool",
+            "query": "What's the first ever text I have?",
+            "tool_allow_list": ["get_current_timestamp", "search_messages", "end_conversation"],
+            "candidate_tools": [
+                {"tool_id": "get_current_timestamp", "description": "Get the current timestamp."},
+                {"tool_id": "search_messages", "description": "Search text messages by content or recency."},
+                {"tool_id": "end_conversation", "description": "End the conversation."},
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["single_tool"],
+            },
+        },
+        mode="demo",
+    )
+
+    assert workflow.execution_plan[0].tool_id == "search_messages"
+    assert workflow.execution_plan[0].capability_id == "cap_retrieve"
+    assert [tool.tool_id for tool in workflow.context.candidate_tools] == [
+        "get_current_timestamp",
+        "search_messages",
+        "end_conversation",
+    ]
+
+
+def test_build_workflow_from_task_toolsandbox_retrieval_avoids_mutation_head() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_retrieve_rank", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "search_name_with_relationship",
+            "scenario": "single_tool",
+            "query": "What is the name of my boss?",
+            "tool_allow_list": ["remove_contact", "search_contacts"],
+            "candidate_tools": [
+                {"tool_id": "remove_contact", "description": "Remove a contact from the address book."},
+                {"tool_id": "search_contacts", "description": "Search contacts by relationship or name."},
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["single_tool"],
+            },
+        },
+        mode="demo",
+    )
+
+    assert workflow.execution_plan[0].tool_id == "search_contacts"
+    assert workflow.execution_plan[0].capability_id == "cap_retrieve"
+
+
+def test_build_workflow_from_task_toolsandbox_state_tools_do_not_fall_back_to_demo() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_state_seed", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "turn_on_wifi_low_battery_mode_implicit",
+            "scenario": "state_dependency",
+            "query": "Get me connected to the internet.",
+            "tool_allow_list": [
+                "end_conversation",
+                "set_wifi_status",
+                "get_low_battery_mode_status",
+                "get_wifi_status",
+                "set_low_battery_mode_status",
+            ],
+            "candidate_tools": [
+                "end_conversation",
+                "set_wifi_status",
+                "get_low_battery_mode_status",
+                "get_wifi_status",
+                "set_low_battery_mode_status",
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["state_dependency", "multiple_tool"],
+            },
+        },
+        mode="demo",
+    )
+
+    selected_tools = [step.tool_id for step in workflow.execution_plan]
+    assert "search_tool" not in selected_tools
+    assert "write_tool" not in selected_tools
+    assert any(tool_id.startswith("get_") for tool_id in selected_tools)
+    assert any(tool_id.startswith("set_") for tool_id in selected_tools)
+
+
+def test_build_workflow_from_task_toolsandbox_low_branching_skips_end_conversation() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_skip_end", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "toolsandbox_skip_end_001",
+            "scenario": "single_tool",
+            "query": "Search my messages for the oldest text.",
+            "tool_allow_list": ["end_conversation", "search_messages"],
+            "candidate_tools": [
+                {"tool_id": "end_conversation", "description": "End the conversation."},
+                {"tool_id": "search_messages", "description": "Search text messages."},
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["single_tool"],
+            },
+        },
+        mode="demo",
+    )
+
+    assert workflow.execution_plan[0].tool_id == "search_messages"
+
+
+def test_build_workflow_from_task_toolsandbox_status_query_ranks_matching_check_tool() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_status_rank", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "get_wifi_3_distraction_tools_arg_description_scrambled",
+            "scenario": "single_tool",
+            "query": "Is my wifi on?",
+            "tool_allow_list": ["get_location_service_status", "get_wifi_status", "end_conversation"],
+            "candidate_tools": [
+                {"tool_id": "get_location_service_status", "description": "Get location service status."},
+                {"tool_id": "get_wifi_status", "description": "Get wifi status."},
+                {"tool_id": "end_conversation", "description": "End the conversation."},
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["single_tool"],
+            },
+        },
+        mode="demo",
+    )
+
+    assert workflow.execution_plan[0].tool_id == "get_wifi_status"
+    assert workflow.execution_plan[0].capability_id in {"cap_retrieve", "cap_check"}
+
+
+def test_build_workflow_from_task_toolsandbox_mutation_goal_prefers_set_tool() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_mutation_rank", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "turn_on_wifi_low_battery_mode_implicit",
+            "scenario": "single_tool",
+            "query": "Turn on wifi.",
+            "tool_allow_list": ["get_wifi_status", "set_wifi_status", "end_conversation"],
+            "candidate_tools": [
+                {"tool_id": "get_wifi_status", "description": "Get wifi status."},
+                {"tool_id": "set_wifi_status", "description": "Set wifi status."},
+                {"tool_id": "end_conversation", "description": "End the conversation."},
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["single_tool"],
+            },
+        },
+        mode="demo",
+    )
+
+    assert workflow.execution_plan[0].tool_id == "set_wifi_status"
+    assert workflow.execution_plan[0].capability_id == "cap_write"
 
 
 def test_build_workflow_from_task_planner_preserves_approval_scope_metadata() -> None:
