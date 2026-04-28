@@ -508,6 +508,41 @@ def test_semantic_mock_timestamp_diff_payload_reflects_visible_inputs() -> None:
     assert result["payload"] == "time difference between current timestamp and holiday lookup"
 
 
+def test_toolsandbox_utility_backend_computes_timestamp_diff_from_runtime_clock() -> None:
+    workflow = Workflow.demo()
+    workflow.metadata["runtime_environment"] = {"current_timestamp": 1777200709.883973}
+    workflow.context.candidate_tools = [
+        ToolSpec(
+            tool_id="get_current_timestamp",
+            description="Get current POSIX timestamp.",
+            metadata={"execution_backend": "toolsandbox_utility"},
+        ),
+        ToolSpec(
+            tool_id="search_holiday",
+            description="Search a US holiday.",
+            metadata={"execution_backend": "toolsandbox_utility"},
+        ),
+        ToolSpec(
+            tool_id="timestamp_diff",
+            description="Compute timestamp difference.",
+            metadata={"execution_backend": "toolsandbox_utility"},
+        ),
+    ]
+
+    current = run_tool("get_current_timestamp", {}, workflow=workflow)["payload"]
+    christmas = run_tool("search_holiday", {"query": "How many days is it till Christmas Day"}, workflow=workflow)["payload"]
+    diff = run_tool(
+        "timestamp_diff",
+        {"start_timestamp": current, "end_timestamp": christmas},
+        workflow=workflow,
+    )
+
+    assert current == 1777200709.883973
+    assert christmas == 1798128000.0
+    assert diff["payload"]["days"] == 242
+    assert isinstance(diff["payload"]["seconds"], int)
+
+
 def test_executor_auto_approves_from_simulated_policy_and_continues(tmp_path: Path) -> None:
     workflow = Workflow.demo()
     workflow.task.constraints.requires_user_approval = True

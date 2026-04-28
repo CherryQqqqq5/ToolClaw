@@ -151,3 +151,21 @@ def test_final_response_synthesizer_prefers_last_tool_result_for_multistep_workf
 
     assert "time difference between current timestamp and holiday lookup" in result.content
     assert "How many days is it till Christmas Day" in result.content
+
+
+def test_final_response_synthesizer_renders_typed_timestamp_diff_payload() -> None:
+    workflow = _workflow(goal="How many days is it till Christmas Day")
+    workflow.execution_plan[0].tool_id = "timestamp_diff"
+    workflow.execution_plan[0].expected_output = "timestamp_diff_result"
+    trace = Trace(run_id="run", workflow_id=workflow.workflow_id, task_id=workflow.task.task_id)
+    trace.add_event(
+        event_id="evt_result",
+        event_type=EventType.TOOL_RESULT,
+        actor="environment",
+        tool_id="timestamp_diff",
+        output={"status": "success", "payload": {"days": 242, "seconds": 18490}},
+    )
+
+    result = FinalResponseSynthesizer().synthesize(workflow=workflow, trace=trace, state_values={})
+
+    assert "242 days and 18490 seconds" in result.content

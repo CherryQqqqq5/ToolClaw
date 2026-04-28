@@ -646,6 +646,16 @@ def test_toolsandbox_planner_generates_holiday_time_difference_chain() -> None:
         "search_holiday",
         "timestamp_diff",
     ]
+    utility_backends = {
+        tool.tool_id: tool.metadata.get("execution_backend")
+        for tool in planner.context.candidate_tools
+        if tool.tool_id in {"get_current_timestamp", "search_holiday", "timestamp_diff"}
+    }
+    assert utility_backends == {
+        "get_current_timestamp": "toolsandbox_utility",
+        "search_holiday": "toolsandbox_utility",
+        "timestamp_diff": "toolsandbox_utility",
+    }
     assert planner.metadata["planner_candidate_generation_pattern"] == "holiday_time_difference_chain_v1"
     assert overlaid.metadata["planner_overlay_admitted"] is True
     assert overlaid.metadata["planner_admission_decision"]["reason"] == "strict_refinement"

@@ -246,8 +246,12 @@ class FinalResponseSynthesizer:
 
     @classmethod
     def _clean_text(cls, value: Any, *, max_len: int) -> str:
-        if value is None or isinstance(value, (dict, list)):
+        if value is None:
             return ""
+        if isinstance(value, dict):
+            value = cls._render_mapping(value)
+        elif isinstance(value, list):
+            value = ", ".join(cls._clean_text(item, max_len=max_len) for item in value[:3])
         if cls._looks_like_gold_payload(value):
             return ""
         text = re.sub(r"\s+", " ", str(value)).strip().strip(". ")
@@ -257,6 +261,21 @@ class FinalResponseSynthesizer:
         if len(text) > max_len:
             text = text[: max_len - 1].rstrip() + "..."
         return text
+
+    @classmethod
+    def _render_mapping(cls, value: Dict[str, Any]) -> str:
+        clean = {str(key): item for key, item in value.items() if not cls._is_gold_key(key)}
+        if {"days", "seconds"}.issubset(clean):
+            return f"{clean['days']} days and {clean['seconds']} seconds"
+        if {"year", "month", "day"}.issubset(clean):
+            return f"{clean['year']}-{int(clean['month']):02d}-{int(clean['day']):02d}"
+        parts = []
+        for key in sorted(clean)[:4]:
+            item = clean[key]
+            if isinstance(item, (dict, list)) or cls._looks_like_gold_payload(item):
+                continue
+            parts.append(f"{key}: {item}")
+        return ", ".join(parts)
 
     @staticmethod
     def _has_any(text: str, tokens: Sequence[str]) -> bool:

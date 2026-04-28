@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import datetime
 import re
+from difflib import SequenceMatcher
 from typing import Any, Dict, Iterable, Optional
 
 from toolclaw.schemas.workflow import ToolSpec, Workflow
@@ -41,6 +43,21 @@ _STRUCTURAL_PLANNER_HINTS = {
     "execute",
     "executor",
 }
+_TOOL_SANDBOX_UTILITY_TOOLS = {
+    "get_current_timestamp",
+    "search_holiday",
+    "timestamp_diff",
+    "datetime_info_to_timestamp",
+    "timestamp_to_datetime_info",
+}
+_GOLD_METADATA_TOKENS = (
+    "milestone",
+    "reference",
+    "official_milestone",
+    "result_summary",
+    "scorer_gold",
+    "gold",
+)
 
 
 def run_tool(tool_id: str, args: Dict[str, Any], *, workflow: Optional[Workflow] = None) -> Dict[str, Any]:
@@ -50,6 +67,8 @@ def run_tool(tool_id: str, args: Dict[str, Any], *, workflow: Optional[Workflow]
         return run_mock_tool(tool_id, args)
     if backend == "semantic_mock":
         return _run_semantic_tool(tool_id, args, spec=spec)
+    if backend == "toolsandbox_utility":
+        return _run_toolsandbox_utility_tool(tool_id, args, spec=spec, workflow=workflow)
     if backend == "bfcl_stub":
         return _run_bfcl_stub(tool_id, args, spec=spec)
     if backend == "hybrid":
@@ -188,6 +207,73 @@ def _run_semantic_tool(tool_id: str, args: Dict[str, Any], *, spec: Optional[Too
     return result
 
 
+def _run_toolsandbox_utility_tool(
+    tool_id: str,
+    args: Dict[str, Any],
+    *,
+    spec: Optional[ToolSpec],
+    workflow: Optional[Workflow],
+) -> Dict[str, Any]:
+    if tool_id not in _TOOL_SANDBOX_UTILITY_TOOLS:
+        return _run_semantic_tool(tool_id, args, spec=spec)
+
+    if tool_id == "get_current_timestamp":
+        timestamp, source = _toolsandbox_current_timestamp(workflow)
+        return {
+            "status": "success",
+            "payload": timestamp,
+            "metadata": {"backend": "toolsandbox_utility", "time_source": source},
+        }
+    if tool_id == "search_holiday":
+        timestamp = _toolsandbox_search_holiday(args, workflow)
+        if timestamp is None:
+            raise ToolExecutionError("holiday not found")
+        return {"status": "success", "payload": timestamp, "metadata": {"backend": "toolsandbox_utility"}}
+    if tool_id == "timestamp_diff":
+        start_timestamp = _first_float_arg(args, "timestamp_0", "start_timestamp", "start_time", "start")
+        end_timestamp = _first_float_arg(args, "timestamp_1", "end_timestamp", "end_time", "end")
+        if start_timestamp is None or end_timestamp is None:
+            raise ToolExecutionError("missing required timestamp_diff input")
+        delta = datetime.datetime.fromtimestamp(end_timestamp) - datetime.datetime.fromtimestamp(start_timestamp)
+        return {
+            "status": "success",
+            "payload": {"days": delta.days, "seconds": delta.seconds},
+            "metadata": {"backend": "toolsandbox_utility"},
+        }
+    if tool_id == "datetime_info_to_timestamp":
+        required = ("year", "month", "day", "hour", "minute", "second")
+        if any(args.get(key) is None for key in required):
+            raise ToolExecutionError("missing required datetime field")
+        timestamp = datetime.datetime(
+            year=int(args["year"]),
+            month=int(args["month"]),
+            day=int(args["day"]),
+            hour=int(args["hour"]),
+            minute=int(args["minute"]),
+            second=int(args["second"]),
+        ).timestamp()
+        return {"status": "success", "payload": timestamp, "metadata": {"backend": "toolsandbox_utility"}}
+    if tool_id == "timestamp_to_datetime_info":
+        timestamp = _first_float_arg(args, "timestamp")
+        if timestamp is None:
+            raise ToolExecutionError("missing required timestamp")
+        target_datetime = datetime.datetime.fromtimestamp(timestamp)
+        return {
+            "status": "success",
+            "payload": {
+                "year": target_datetime.year,
+                "month": target_datetime.month,
+                "day": target_datetime.day,
+                "hour": target_datetime.hour,
+                "minute": target_datetime.minute,
+                "second": target_datetime.second,
+                "isoweekday": target_datetime.isoweekday(),
+            },
+            "metadata": {"backend": "toolsandbox_utility"},
+        }
+    return _run_semantic_tool(tool_id, args, spec=spec)
+
+
 def _run_bfcl_stub(tool_id: str, args: Dict[str, Any], *, spec: Optional[ToolSpec]) -> Dict[str, Any]:
     metadata = spec.metadata if spec and isinstance(spec.metadata, dict) else {}
     return {
@@ -199,6 +285,122 @@ def _run_bfcl_stub(tool_id: str, args: Dict[str, Any], *, spec: Optional[ToolSpe
             "backend": "bfcl_stub",
         },
     }
+
+
+def _toolsandbox_current_timestamp(workflow: Optional[Workflow]) -> tuple[float, str]:
+    metadata = workflow.metadata if workflow and isinstance(workflow.metadata, dict) else {}
+    for container_key in ("runtime_environment", "evaluation_clock"):
+        container = metadata.get(container_key)
+        if isinstance(container, dict):
+            for key in ("current_timestamp", "evaluation_timestamp", "timestamp"):
+                value = _safe_runtime_metadata_value(container, key)
+                parsed = _coerce_float(value)
+                if parsed is not None:
+                    return parsed, f"{container_key}.{key}"
+    for key in ("current_timestamp", "evaluation_timestamp"):
+        value = _safe_runtime_metadata_value(metadata, key)
+        parsed = _coerce_float(value)
+        if parsed is not None:
+            return parsed, key
+    return datetime.datetime.now().timestamp(), "wall_clock_fallback"
+
+
+def _toolsandbox_search_holiday(args: Dict[str, Any], workflow: Optional[Workflow]) -> Optional[float]:
+    holiday_name = _clean_holiday_query(
+        args.get("holiday_name")
+        or args.get("name")
+        or args.get("query")
+        or args.get("holiday")
+        or ""
+    )
+    if not holiday_name:
+        return None
+    year = _coerce_int(args.get("year"))
+    if year is None:
+        current_timestamp, _ = _toolsandbox_current_timestamp(workflow)
+        year = datetime.datetime.fromtimestamp(current_timestamp).year
+    holiday_date = _find_us_holiday_date(holiday_name, year)
+    if holiday_date is None:
+        return None
+    return datetime.datetime.combine(holiday_date, datetime.datetime.min.time()).timestamp()
+
+
+def _find_us_holiday_date(holiday_name: str, year: int) -> Optional[datetime.date]:
+    try:
+        import holidays  # type: ignore
+    except Exception:  # pragma: no cover - optional dependency fallback
+        holidays = None
+    if holidays is not None:
+        candidates = list(holidays.country_holidays(country="US", years=year).items())
+        best: tuple[float, Optional[datetime.date]] = (0.0, None)
+        normalized_query = holiday_name.lower()
+        for date_value, name in candidates:
+            score = SequenceMatcher(None, normalized_query, str(name).lower()).ratio()
+            if normalized_query in str(name).lower():
+                score = max(score, 0.95)
+            if score > best[0]:
+                best = (score, date_value)
+        if best[0] >= 0.72:
+            return best[1]
+    known = {
+        "christmas": datetime.date(year, 12, 25),
+        "christmas day": datetime.date(year, 12, 25),
+        "new year": datetime.date(year, 1, 1),
+        "new year's day": datetime.date(year, 1, 1),
+        "independence day": datetime.date(year, 7, 4),
+        "thanksgiving": _thanksgiving(year),
+    }
+    normalized = holiday_name.lower()
+    for key, date_value in known.items():
+        if key in normalized:
+            return date_value
+    return None
+
+
+def _thanksgiving(year: int) -> datetime.date:
+    date_value = datetime.date(year, 11, 1)
+    while date_value.weekday() != 3:
+        date_value += datetime.timedelta(days=1)
+    return date_value + datetime.timedelta(weeks=3)
+
+
+def _clean_holiday_query(value: Any) -> str:
+    text = re.sub(r"\s+", " ", str(value or "")).strip(" ?.!")
+    text = re.sub(r"\b(how|many|days|is|it|till|until|when|what|date|far|from|are|we|left|need|break|can|you|tell|me)\b", " ", text, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", text).strip(" ?.!") or str(value or "").strip()
+
+
+def _first_float_arg(args: Dict[str, Any], *keys: str) -> Optional[float]:
+    for key in keys:
+        parsed = _coerce_float(args.get(key))
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _coerce_float(value: Any) -> Optional[float]:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _coerce_int(value: Any) -> Optional[int]:
+    parsed = _coerce_float(value)
+    if parsed is None:
+        return None
+    return int(parsed)
+
+
+def _safe_runtime_metadata_value(metadata: Dict[str, Any], key: str) -> Any:
+    key_l = str(key).lower()
+    if any(token in key_l for token in _GOLD_METADATA_TOKENS):
+        return None
+    return metadata.get(key)
 
 
 def _validate_semantic_args(tool_id: str, args: Dict[str, Any], *, spec: Optional[ToolSpec], tool_tokens: set[str]) -> None:

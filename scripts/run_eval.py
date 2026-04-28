@@ -2407,6 +2407,31 @@ def _tool_ids(candidate_tools: List[ToolSpec]) -> set[str]:
     return {str(tool.tool_id) for tool in candidate_tools if str(tool.tool_id or "").strip()}
 
 
+def _with_toolsandbox_utility_backends(candidate_tools: List[ToolSpec]) -> List[ToolSpec]:
+    utility_tool_ids = {
+        "get_current_timestamp",
+        "search_holiday",
+        "timestamp_diff",
+        "datetime_info_to_timestamp",
+        "timestamp_to_datetime_info",
+    }
+    tools: List[ToolSpec] = []
+    for tool in candidate_tools:
+        metadata = dict(tool.metadata)
+        if tool.tool_id in utility_tool_ids:
+            metadata["execution_backend"] = "toolsandbox_utility"
+        tools.append(
+            ToolSpec(
+                tool_id=tool.tool_id,
+                description=tool.description,
+                input_schema_ref=tool.input_schema_ref,
+                output_schema_ref=tool.output_schema_ref,
+                metadata=metadata,
+            )
+        )
+    return tools
+
+
 def _configure_toolsandbox_planner_steps(
     workflow: Workflow,
     *,
@@ -2414,6 +2439,7 @@ def _configure_toolsandbox_planner_steps(
     steps: List[Dict[str, Any]],
     pattern: str,
 ) -> Workflow:
+    candidate_tools = _with_toolsandbox_utility_backends(candidate_tools)
     _ensure_workflow_capacity(workflow, len(steps))
     tool_by_id = {str(tool.tool_id): tool for tool in candidate_tools}
     workflow.context.candidate_tools = list(candidate_tools)
@@ -3859,6 +3885,8 @@ def build_workflow_from_task(
 
     if raw_tools is not None:
         workflow.context.candidate_tools = [] if workflow.metadata.get("bfcl_abstained") else candidate_tools
+    if toolsandbox_metadata and workflow.metadata.get("planner_candidate_generation_applied"):
+        workflow.context.candidate_tools = _with_toolsandbox_utility_backends(workflow.context.candidate_tools)
     if toolsandbox_metadata and not workflow.context.candidate_tools:
         raise ValueError(
             f"ToolSandbox task '{workflow.task.task_id}' has empty candidate_tools/tool_allow_list; refusing to fall back to demo tools."
