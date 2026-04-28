@@ -70,8 +70,15 @@ def test_build_scored_row_includes_mean_user_queries() -> None:
                 "effective_patch_rate": 0.25,
                 "post_query_progress_rate": 0.75,
                 "useful_interaction_round_rate": 0.25,
+                "official_contract_proxy": 1.0,
+                "contract_runtime_execution_gap": 1.0,
             },
-            "diagnostics": {"user_queries": 2, "categories": ["multiple_user_turn"]},
+            "diagnostics": {
+                "user_queries": 2,
+                "categories": ["multiple_user_turn"],
+                "official_contract_proxy": True,
+                "contract_runtime_execution_gap": True,
+            },
         },
     )
 
@@ -81,6 +88,10 @@ def test_build_scored_row_includes_mean_user_queries() -> None:
     assert row["effective_patch_rate"] == 0.25
     assert row["post_query_progress_rate"] == 0.75
     assert row["useful_interaction_round_rate"] == 0.25
+    assert row["official_contract_proxy"] is True
+    assert row["official_contract_proxy_rate"] == 1.0
+    assert row["contract_runtime_execution_gap"] is True
+    assert row["contract_runtime_execution_gap_rate"] == 1.0
 
 
 def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(tmp_path: Path) -> None:
@@ -181,6 +192,8 @@ def test_run_toolsandbox_bench_script_generates_scoreboard_and_category_summary(
     assert "useful_interaction_round_rate" in per_system["a0_baseline"]
     assert "repair_interaction_satisfied" in per_system["a0_baseline"]
     assert "proxy_summary_success" in per_system["a0_baseline"]
+    assert "official_contract_proxy_rate" in per_system["a0_baseline"]
+    assert "contract_runtime_execution_gap_rate" in per_system["a0_baseline"]
     assert "raw_trace_success_rate" in per_system["a0_baseline"]
     assert "raw_execution_success_rate" in per_system["a0_baseline"]
     assert "milestone_signal_coverage" in per_system["a0_baseline"]

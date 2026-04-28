@@ -1311,6 +1311,13 @@ class ToolSandboxAdapter:
         strict_scored_success = execution_verified_success and interaction_contract_satisfied
         repair_scored_success = strict_scored_success and repair_interaction_satisfied
         milestone_similarity = float(similarity) if similarity is not None else 0.0
+        official_contract_proxy = bool(result_summary.get("official_contract_proxy"))
+        contract_runtime_execution_gap = bool(
+            official_contract_proxy
+            and raw_trace_success
+            and not execution_verified_success
+            and result_summary_source == "toolclaw_proxy"
+        )
         expected_target_path = self._expected_write_target_path(sample.raw_payload, sample.sample_id)
         observed_target_path = self._observed_write_target_path(sample.raw_payload, trace_events)
 
@@ -1349,6 +1356,8 @@ class ToolSandboxAdapter:
                 "zero_query_success_count": 1.0 if (must_interact_expected and user_queries == 0 and raw_trace_success) else 0.0,
                 "proxy_summary_success": 1.0 if proxy_summary_success else 0.0,
                 "final_response_present": 1.0 if final_response_signal["present"] else 0.0,
+                "official_contract_proxy": 1.0 if official_contract_proxy else 0.0,
+                "contract_runtime_execution_gap": 1.0 if contract_runtime_execution_gap else 0.0,
                 "state_dependency_score": milestone_similarity if "state_dependency" in categories else 1.0,
                 "write_target_verified": 1.0 if write_target_verified else 0.0,
             },
@@ -1396,6 +1405,8 @@ class ToolSandboxAdapter:
                 "reference_result_summary_available": bool(reference_result_summary),
                 "expected_target_path": expected_target_path,
                 "observed_target_path": observed_target_path,
+                "official_contract_proxy": official_contract_proxy,
+                "contract_runtime_execution_gap": contract_runtime_execution_gap,
                 "final_response_present": bool(final_response_signal["present"]),
                 "final_response_source": final_response_signal["source"],
                 "final_response_length": final_response_signal["length"],
