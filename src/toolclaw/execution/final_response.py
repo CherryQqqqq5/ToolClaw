@@ -125,14 +125,17 @@ class FinalResponseSynthesizer:
         events: Sequence[Dict[str, Any]],
         state_values: Dict[str, Any],
     ) -> str:
+        goal_label = self._clean_text(workflow.task.user_goal, max_len=72)
+        if goal_label:
+            return goal_label
         candidate = self._first_public_value(
-            self._iter_step_values(workflow.execution_plan),
+            self._iter_step_values(reversed(workflow.execution_plan)),
             max_len=48,
         )
         if candidate:
             return candidate
         candidate = self._first_public_value(
-            self._iter_event_values(events),
+            self._iter_event_values(reversed(events)),
             max_len=48,
         )
         if candidate:
@@ -144,7 +147,7 @@ class FinalResponseSynthesizer:
         return candidate or "the requested task"
 
     def _detail_phrase(self, *, events: Sequence[Dict[str, Any]], state_values: Dict[str, Any]) -> str:
-        for event in events:
+        for event in reversed(events):
             output = event.get("output") if isinstance(event.get("output"), dict) else {}
             payload = output.get("payload") or output.get("message") or output.get("result")
             detail = self._clean_text(payload, max_len=80)

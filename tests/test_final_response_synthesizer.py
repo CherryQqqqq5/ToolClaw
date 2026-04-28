@@ -83,3 +83,71 @@ def test_final_response_synthesizer_uses_generic_action_templates() -> None:
     workflow.execution_plan[0].capability_id = "cap_send_message"
     workflow.execution_plan[0].tool_id = "generic_message_sender"
     trace = Trace(run_id="run", workflow_id=workflow.workflow_id, task_id=workflow.task.task_id)
+    trace.add_event(
+        event_id="evt_result",
+        event_type=EventType.TOOL_RESULT,
+        actor="environment",
+        tool_id="generic_message_sender",
+        output={"status": "success", "payload": "sent message to selected contact"},
+    )
+
+    result = FinalResponseSynthesizer().synthesize(workflow=workflow, trace=trace, state_values={})
+
+    assert "sent" in result.content.lower()
+
+
+def test_final_response_synthesizer_prefers_last_tool_result_for_multistep_workflows() -> None:
+    workflow = _workflow(goal="How many days is it till Christmas Day")
+    workflow.execution_plan = [
+        WorkflowStep(
+            step_id="step_01",
+            capability_id="cap_check",
+            tool_id="get_current_timestamp",
+            action_type=ActionType.TOOL_CALL,
+            inputs={},
+            expected_output="current_timestamp",
+        ),
+        WorkflowStep(
+            step_id="step_02",
+            capability_id="cap_retrieve",
+            tool_id="search_holiday",
+            action_type=ActionType.TOOL_CALL,
+            inputs={"query": "How many days is it till Christmas Day"},
+            expected_output="retrieved_info",
+        ),
+        WorkflowStep(
+            step_id="step_03",
+            capability_id="cap_retrieve",
+            tool_id="timestamp_diff",
+            action_type=ActionType.TOOL_CALL,
+            inputs={},
+            expected_output="timestamp_diff_result",
+        ),
+    ]
+    trace = Trace(run_id="run", workflow_id=workflow.workflow_id, task_id=workflow.task.task_id)
+    trace.add_event(
+        event_id="evt_result_01",
+        event_type=EventType.TOOL_RESULT,
+        actor="environment",
+        tool_id="get_current_timestamp",
+        output={"status": "success", "payload": "current timestamp"},
+    )
+    trace.add_event(
+        event_id="evt_result_02",
+        event_type=EventType.TOOL_RESULT,
+        actor="environment",
+        tool_id="search_holiday",
+        output={"status": "success", "payload": "holiday lookup"},
+    )
+    trace.add_event(
+        event_id="evt_result_03",
+        event_type=EventType.TOOL_RESULT,
+        actor="environment",
+        tool_id="timestamp_diff",
+        output={"status": "success", "payload": "time difference between current timestamp and holiday lookup"},
+    )
+
+    result = FinalResponseSynthesizer().synthesize(workflow=workflow, trace=trace, state_values={})
+
+    assert "time difference between current timestamp and holiday lookup" in result.content
+    assert "How many days is it till Christmas Day" in result.content

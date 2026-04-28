@@ -256,6 +256,14 @@ def _has_any_value(args: Dict[str, Any], keys: Iterable[str]) -> bool:
 
 
 def _default_payload(tool_id: str, args: Dict[str, Any], *, tool_tokens: set[str]) -> str:
+    id_tokens = _tokens(tool_id)
+    if "diff" in id_tokens and ("timestamp" in id_tokens or "time" in id_tokens):
+        start_value = args.get("start_timestamp") or args.get("start_time") or args.get("start")
+        end_value = args.get("end_timestamp") or args.get("end_time") or args.get("end")
+        if start_value is not None and end_value is not None:
+            return f"time difference between {start_value} and {end_value}"
+    if "timestamp" in id_tokens and ("current" in id_tokens or "now" in id_tokens):
+        return "current timestamp"
     if _RETRIEVE_HINTS.intersection(tool_tokens):
         query_like = args.get("query") or args.get("name") or args.get("phone_number") or args.get("person_id") or tool_id
         return f"summary for: {query_like}"

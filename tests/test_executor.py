@@ -12,6 +12,7 @@ from toolclaw.schemas.error import ErrorCategory, ErrorEvidence, ErrorSeverity, 
 from toolclaw.schemas.trace import EventType, Trace
 from toolclaw.schemas.workflow import ActionType, ToolSpec, Workflow, WorkflowStep
 from toolclaw.tools.mock_tools import ToolExecutionError
+from toolclaw.tools.runtime import run_tool
 
 
 class _NeverRepairEngine:
@@ -484,6 +485,27 @@ def test_executor_supports_semantic_mock_backend_for_non_toy_tools(tmp_path: Pat
     result_event = next(event for event in payload["events"] if event["event_type"] == EventType.TOOL_RESULT.value)
     assert result_event["tool_id"] == "set_wifi_status"
     assert "updated state" in result_event["output"]["payload"]
+
+
+def test_semantic_mock_timestamp_diff_payload_reflects_visible_inputs() -> None:
+    workflow = Workflow.demo()
+    workflow.metadata["tool_execution_backend"] = "semantic_mock"
+    workflow.context.candidate_tools = [
+        ToolSpec(
+            tool_id="timestamp_diff",
+            description="Compute the difference between two timestamps.",
+            metadata={"execution_backend": "semantic_mock"},
+        )
+    ]
+
+    result = run_tool(
+        "timestamp_diff",
+        {"start_timestamp": "current timestamp", "end_timestamp": "holiday lookup"},
+        workflow=workflow,
+    )
+
+    assert result["status"] == "success"
+    assert result["payload"] == "time difference between current timestamp and holiday lookup"
 
 
 def test_executor_auto_approves_from_simulated_policy_and_continues(tmp_path: Path) -> None:

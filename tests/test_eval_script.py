@@ -596,6 +596,61 @@ def test_build_workflow_from_task_toolsandbox_modify_contact_does_not_send_messa
     assert workflow.execution_plan[1].tool_id == "modify_contact"
 
 
+def test_toolsandbox_planner_generates_holiday_time_difference_chain() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_planner_chain", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    task = {
+        "task_id": "find_days_till_holiday_3_distraction_tools",
+        "scenario": "canonicalization",
+        "query": "How many days is it till Christmas Day",
+        "tool_allow_list": [
+            "datetime_info_to_timestamp",
+            "timestamp_diff",
+            "get_current_timestamp",
+            "search_holiday",
+            "end_conversation",
+            "shift_timestamp",
+            "timestamp_to_datetime_info",
+        ],
+        "candidate_tools": [
+            "datetime_info_to_timestamp",
+            "timestamp_diff",
+            "get_current_timestamp",
+            "search_holiday",
+            "end_conversation",
+            "shift_timestamp",
+            "timestamp_to_datetime_info",
+        ],
+        "metadata": {
+            "benchmark": "toolsandbox",
+            "toolsandbox_categories": ["canonicalization", "multiple_tool"],
+        },
+    }
+
+    base = module.build_workflow_from_task(task, mode="demo", spec=module.SYSTEM_SPECS["s1_recovery"])
+    planner = module.build_workflow_from_task(task, mode="planner", spec=module.SYSTEM_SPECS["s2_planner_overlay"])
+    overlaid = module.build_workflow_from_task(
+        task,
+        mode="planner_overlay_admitted",
+        spec=module.SYSTEM_SPECS["s2_planner_overlay"],
+    )
+
+    assert [step.tool_id for step in base.execution_plan] == ["search_holiday"]
+    assert [step.tool_id for step in planner.execution_plan] == [
+        "get_current_timestamp",
+        "search_holiday",
+        "timestamp_diff",
+    ]
+    assert planner.metadata["planner_candidate_generation_pattern"] == "holiday_time_difference_chain_v1"
+    assert overlaid.metadata["planner_overlay_admitted"] is True
+    assert overlaid.metadata["planner_admission_decision"]["reason"] == "strict_refinement"
+
+
 def test_build_workflow_from_task_toolsandbox_send_message_does_not_fabricate_missing_slots() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_send_missing_slots", module_path)
