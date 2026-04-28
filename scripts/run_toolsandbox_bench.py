@@ -352,6 +352,8 @@ def _build_scored_row(*, run_index: int, raw_row: Dict[str, str], score_payload:
         "proxy_summary_success_rate": float(metrics.get("proxy_summary_success", 0.0) or 0.0),
         "official_contract_proxy": _bool_from_value(str(bool(diagnostics.get("official_contract_proxy", metrics.get("official_contract_proxy", 0.0))))),
         "official_contract_proxy_rate": float(metrics.get("official_contract_proxy", 0.0) or 0.0),
+        "value_level_verified_success": _bool_from_value(str(bool(diagnostics.get("value_level_verified_success", metrics.get("value_level_verified_success", 0.0))))),
+        "value_level_verified_success_rate": float(metrics.get("value_level_verified_success", 0.0) or 0.0),
         "contract_runtime_execution_gap": _bool_from_value(str(bool(diagnostics.get("contract_runtime_execution_gap", metrics.get("contract_runtime_execution_gap", 0.0))))),
         "contract_runtime_execution_gap_rate": float(metrics.get("contract_runtime_execution_gap", 0.0) or 0.0),
         "raw_trace_success_rate": 1.0 if diagnostics.get("raw_trace_success") else 0.0,
