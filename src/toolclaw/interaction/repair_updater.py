@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import re
 from typing import Any, Dict, Optional
 
 from toolclaw.schemas.repair import Repair
@@ -56,6 +57,9 @@ class RepairUpdater:
         if step is not None:
             if step.capability_id == "cap_write" and not step.inputs.get("target_path"):
                 missing_input_keys.append("target_path")
+        for key in self._repair_missing_targets(repair):
+            if key not in missing_input_keys:
+                missing_input_keys.append(key)
         branch_options = []
         if step is not None and isinstance(step.metadata.get("branch_options"), list):
             branch_options = [str(item) for item in step.metadata.get("branch_options", []) if str(item)]
@@ -63,6 +67,9 @@ class RepairUpdater:
             branch_options = [str(item) for item in repair.metadata.get("branch_options", []) if str(item)]
         stale_assets = [str(item) for item in repair.metadata.get("stale_assets", []) if str(item)]
         missing_assets = [str(item) for item in repair.metadata.get("missing_assets", []) if str(item)]
+        for key in missing_input_keys:
+            if key not in missing_assets:
+                missing_assets.append(key)
         patch_targets = self._default_patch_targets(repair=repair, missing_input_keys=missing_input_keys)
         suggested_values = self._suggested_values(
             step=step,
@@ -248,6 +255,31 @@ class RepairUpdater:
     def apply_reply_to_workflow(self, workflow: Workflow, resume_patch: ResumePatch) -> Workflow:
         workflow.patch_with_resume(resume_patch)
         return workflow
+
+    @staticmethod
+    def _repair_missing_targets(repair: Repair) -> list[str]:
+        missing: list[str] = []
+
+        def add_targets(raw_targets: Any) -> None:
+            if not isinstance(raw_targets, list):
+                return
+            for item in raw_targets:
+                target = str(item or "").strip()
+                if target and target not in missing:
+                    missing.append(target)
+
+        for source_key in ("missing_assets", "missing_input_keys", "unresolved_required_inputs"):
+            add_targets(repair.metadata.get(source_key, []))
+        for action in repair.actions:
+            metadata = action.metadata if isinstance(action.metadata, dict) else {}
+            add_targets(metadata.get("missing_targets", []))
+        question = str(repair.interaction.question or "")
+        for match in re.finditer(r"`([^`]+)`", question):
+            for item in str(match.group(1)).split(","):
+                target = item.strip()
+                if target and target not in missing:
+                    missing.append(target)
+        return missing
 
     @staticmethod
     def _default_question(repair: Repair, step_id: str, missing_input_keys: list[str]) -> str:

@@ -2184,6 +2184,63 @@ def _seed_selected_capability(tool: ToolSpec, goal_text: str, *, default: str) -
     return inferred
 
 
+_PHONE_NUMBER_RE = re.compile(r"\+?\d[\d\-() ]{7,}\d")
+_MESSAGE_CONTENT_PATTERNS = (
+    re.compile(r"\bsaying:\s*(.+)$", re.IGNORECASE | re.DOTALL),
+    re.compile(r"\bsaying\s+(.+)$", re.IGNORECASE | re.DOTALL),
+    re.compile(r"\bmessage(?:\s+to\s+[^:]+)?\s*:\s*(.+)$", re.IGNORECASE | re.DOTALL),
+)
+
+
+def _extract_seed_phone_number(text: str) -> Optional[str]:
+    match = _PHONE_NUMBER_RE.search(str(text or ""))
+    if not match:
+        return None
+    return re.sub(r"[\s()\-]", "", match.group(0))
+
+
+def _extract_seed_message_content(text: str) -> Optional[str]:
+    raw = str(text or "").strip()
+    for pattern in _MESSAGE_CONTENT_PATTERNS:
+        match = pattern.search(raw)
+        if match:
+            return match.group(1).strip().strip('"').strip("'")
+    return None
+
+
+def _seed_step_expected_output(tool: ToolSpec, capability_id: str) -> str:
+    tool_id = str(tool.tool_id or "").lower()
+    if tool_id == "send_message_with_phone_number":
+        return "message_sent"
+    if capability_id == "cap_write":
+        return "report_artifact"
+    return "retrieved_info"
+
+
+def _seed_step_inputs(
+    *,
+    tool: ToolSpec,
+    capability_id: str,
+    task: Dict[str, Any],
+    user_goal: str,
+) -> Dict[str, Any]:
+    query = str(task.get("query") or user_goal)
+    inputs: Dict[str, Any] = {}
+    if capability_id == "cap_write" and task.get("target_path") is not None:
+        inputs["target_path"] = task.get("target_path")
+    if capability_id != "cap_write" or query:
+        inputs.setdefault("query", query)
+    tool_id = str(tool.tool_id or "").lower()
+    if tool_id == "send_message_with_phone_number":
+        phone_number = _extract_seed_phone_number(query)
+        message_content = _extract_seed_message_content(query)
+        if phone_number:
+            inputs["recipient_phone_number"] = phone_number
+        if message_content:
+            inputs["content"] = message_content
+    return inputs
+
+
 def _select_seed_read_tool(candidate_tools: List[ToolSpec], user_goal: str) -> Optional[ToolSpec]:
     read_candidates = [
         tool
@@ -2816,8 +2873,13 @@ def _build_seed_workflow(
             selection_goal,
             default="cap_write" if task.get("target_path") is not None else "cap_retrieve",
         )
-        step_inputs = {"target_path": task.get("target_path")} if capability_id == "cap_write" else {"query": str(task.get("query") or user_goal)}
-        expected_output = "report_artifact" if capability_id == "cap_write" else "retrieved_info"
+        step_inputs = _seed_step_inputs(
+            tool=selected_tool,
+            capability_id=capability_id,
+            task=task,
+            user_goal=user_goal,
+        )
+        expected_output = _seed_step_expected_output(selected_tool, capability_id)
         return _configure_seed_single_step_workflow(
             workflow,
             capability_id=capability_id,
@@ -2831,8 +2893,8 @@ def _build_seed_workflow(
             workflow,
             capability_id="cap_write",
             tool_id=write_tool.tool_id,
-            inputs={"target_path": task.get("target_path")},
-            expected_output="report_artifact",
+            inputs=_seed_step_inputs(tool=write_tool, capability_id="cap_write", task=task, user_goal=user_goal),
+            expected_output=_seed_step_expected_output(write_tool, "cap_write"),
         )
     if retrieve_tool and (not write_tool or (benchmark == "toolsandbox" and not _goal_prefers_mutation(selection_goal))):
         read_capability_id = _seed_capability_for_tool(retrieve_tool, default="cap_retrieve")
@@ -2840,8 +2902,8 @@ def _build_seed_workflow(
             workflow,
             capability_id=read_capability_id,
             tool_id=retrieve_tool.tool_id,
-            inputs={"query": str(task.get("query") or user_goal)},
-            expected_output="retrieved_info",
+            inputs=_seed_step_inputs(tool=retrieve_tool, capability_id=read_capability_id, task=task, user_goal=user_goal),
+            expected_output=_seed_step_expected_output(retrieve_tool, read_capability_id),
         )
 
     if retrieve_tool is not None:
@@ -2850,6 +2912,13 @@ def _build_seed_workflow(
         workflow.tool_bindings[0].primary_tool = retrieve_tool.tool_id
         workflow.execution_plan[0].capability_id = read_capability_id
         workflow.execution_plan[0].tool_id = retrieve_tool.tool_id
+        workflow.execution_plan[0].inputs = _seed_step_inputs(
+            tool=retrieve_tool,
+            capability_id=read_capability_id,
+            task=task,
+            user_goal=user_goal,
+        )
+        workflow.execution_plan[0].expected_output = _seed_step_expected_output(retrieve_tool, read_capability_id)
         workflow.workflow_graph.nodes[0].capability_id = read_capability_id
         workflow.workflow_graph.nodes[0].selected_tool = retrieve_tool.tool_id
         workflow.workflow_graph.nodes[0].tool_candidates = [retrieve_tool.tool_id]
@@ -2858,6 +2927,13 @@ def _build_seed_workflow(
         workflow.tool_bindings[1].primary_tool = write_tool.tool_id
         workflow.execution_plan[1].capability_id = "cap_write"
         workflow.execution_plan[1].tool_id = write_tool.tool_id
+        workflow.execution_plan[1].inputs = _seed_step_inputs(
+            tool=write_tool,
+            capability_id="cap_write",
+            task=task,
+            user_goal=user_goal,
+        )
+        workflow.execution_plan[1].expected_output = _seed_step_expected_output(write_tool, "cap_write")
         workflow.workflow_graph.nodes[1].capability_id = "cap_write"
         workflow.workflow_graph.nodes[1].selected_tool = write_tool.tool_id
         workflow.workflow_graph.nodes[1].tool_candidates = [write_tool.tool_id]
@@ -3679,7 +3755,15 @@ def build_workflow_from_task(
                     capability_id = workflow.execution_plan[0].capability_id
                 workflow.execution_plan[0].tool_id = selected_tool
                 workflow.execution_plan[0].capability_id = capability_id
-                if capability_id in _SEED_READ_CAPABILITIES:
+                if selected_spec is not None:
+                    workflow.execution_plan[0].inputs = _seed_step_inputs(
+                        tool=selected_spec,
+                        capability_id=capability_id,
+                        task=task,
+                        user_goal=str(retrieve_query or planner_goal),
+                    )
+                    workflow.execution_plan[0].expected_output = _seed_step_expected_output(selected_spec, capability_id)
+                elif capability_id in _SEED_READ_CAPABILITIES:
                     workflow.execution_plan[0].inputs = {"query": str(retrieve_query or planner_goal)}
                     workflow.execution_plan[0].expected_output = "retrieved_info"
                 elif capability_id == "cap_write" and task.get("target_path") is not None:

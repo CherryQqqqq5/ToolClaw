@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import re
 from typing import Any, Dict, List, Optional
 
 from toolclaw.schemas.repair import Repair, RepairType
@@ -44,6 +45,9 @@ class UncertaintyDetector:
         missing_input_keys = self._infer_missing_input_keys(step)
         continuation_missing_input_keys = self._continuation_missing_input_keys(step)
         for input_key in continuation_missing_input_keys:
+            if input_key not in missing_input_keys:
+                missing_input_keys.append(input_key)
+        for input_key in self._repair_missing_targets(repair):
             if input_key not in missing_input_keys:
                 missing_input_keys.append(input_key)
         missing_assets = self._collect_missing_assets(
@@ -269,6 +273,31 @@ class UncertaintyDetector:
                 "remaining_user_turns": remaining_user_turns,
             },
         )
+
+    @staticmethod
+    def _repair_missing_targets(repair: Repair) -> List[str]:
+        missing: List[str] = []
+
+        def add_targets(raw_targets: Any) -> None:
+            if not isinstance(raw_targets, list):
+                return
+            for item in raw_targets:
+                target = str(item or "").strip()
+                if target and target not in missing:
+                    missing.append(target)
+
+        for source_key in ("missing_assets", "missing_input_keys", "unresolved_required_inputs"):
+            add_targets(repair.metadata.get(source_key, []))
+        for action in repair.actions:
+            metadata = action.metadata if isinstance(action.metadata, dict) else {}
+            add_targets(metadata.get("missing_targets", []))
+        question = str(getattr(repair.interaction, "question", "") or "")
+        for match in re.finditer(r"`([^`]+)`", question):
+            for item in str(match.group(1)).split(","):
+                target = item.strip()
+                if target and target not in missing:
+                    missing.append(target)
+        return missing
 
     @staticmethod
     def _resolve_repair_step_id(workflow: Workflow, repair: Repair) -> str:

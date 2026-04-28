@@ -122,13 +122,16 @@ class RecoveryEngine:
 
         parsed_missing = self._extract_missing_required_fields(raw_message)
         explicit_required_targets = [
-            candidate
-            for candidate in [
-                *parsed_missing,
-                *missing_input_keys,
-                *unresolved_required_inputs,
+            normalized
+            for normalized in [
+                self._normalize_missing_target(candidate)
+                for candidate in [
+                    *parsed_missing,
+                    *missing_input_keys,
+                    *unresolved_required_inputs,
+                ]
             ]
-            if candidate
+            if normalized
         ]
         missing_targets: list[str] = []
         for candidate in [
@@ -137,8 +140,9 @@ class RecoveryEngine:
             *unresolved_required_inputs,
             *[str(item) for item in error.state_context.missing_assets if str(item)],
         ]:
-            if candidate and candidate not in missing_targets:
-                missing_targets.append(candidate)
+            normalized = self._normalize_missing_target(candidate)
+            if normalized and normalized not in missing_targets:
+                missing_targets.append(normalized)
 
         if not missing_targets:
             for candidate in ("target_path", "retrieved_info", "retrieved_summary"):
@@ -274,8 +278,10 @@ class RecoveryEngine:
                 result=RepairResult(status=RepairStatus.PENDING, success=None),
                 metadata={
                     "mapped_from_error_category": error.category.value,
+                    "missing_assets": list(missing_targets),
                     "missing_input_keys": list(missing_input_keys),
                     "unresolved_required_inputs": list(unresolved_required_inputs),
+                    "suggested_values": dict(recoverable_values),
                     "phase": "phase1_training_free",
                 },
             )
@@ -393,6 +399,15 @@ class RecoveryEngine:
                 if self._is_concrete_repair_value(query_text):
                     return query_text
         return None
+
+    @staticmethod
+    def _normalize_missing_target(target: object) -> str:
+        text = str(target or "").strip()
+        if not text:
+            return ""
+        if "." in text:
+            text = text.rsplit(".", 1)[-1]
+        return text.strip().replace(" ", "_")
 
     @staticmethod
     def _extract_missing_required_fields(raw_message: str) -> list[str]:

@@ -456,6 +456,35 @@ def test_build_workflow_from_task_toolsandbox_status_query_ranks_matching_check_
     assert workflow.execution_plan[0].capability_id in {"cap_retrieve", "cap_check"}
 
 
+def test_build_workflow_from_task_toolsandbox_send_message_grounds_visible_args() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_send_grounding", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "send_message_with_phone_number_and_content",
+            "scenario": "single_tool",
+            "query": "Send a message to +12453344098 saying: How's the new album coming along",
+            "tool_allow_list": ["send_message_with_phone_number", "end_conversation"],
+            "candidate_tools": ["send_message_with_phone_number", "end_conversation"],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["single_tool"],
+            },
+        },
+        mode="demo",
+    )
+
+    step = workflow.execution_plan[0]
+    assert step.tool_id == "send_message_with_phone_number"
+    assert step.inputs["recipient_phone_number"] == "+12453344098"
+    assert step.inputs["content"] == "How's the new album coming along"
+
+
 def test_build_workflow_from_task_toolsandbox_mutation_goal_prefers_set_tool() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_mutation_rank", module_path)

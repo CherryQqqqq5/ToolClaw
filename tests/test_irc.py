@@ -8,7 +8,7 @@ from toolclaw.interaction.irc import InteractionLoopConfig, InteractionShell
 from toolclaw.interaction.query_policy import QueryPolicy
 from toolclaw.interaction.repair_updater import RepairUpdater
 from toolclaw.interaction.semantic_decoder import SemanticDecoder, compile_decoded_signal_to_user_reply
-from toolclaw.interaction.uncertainty_detector import UncertaintyReport
+from toolclaw.interaction.uncertainty_detector import UncertaintyDetector, UncertaintyReport
 from toolclaw.interaction.user_simulator import SimulatedPolicy, UserSimulator
 from toolclaw.interaction.reply_provider import RawUserReply
 from toolclaw.main import ToolClawRuntime
@@ -27,6 +27,7 @@ from toolclaw.schemas.error import (
 from toolclaw.schemas.workflow import Permissions, TaskConstraints, TaskSpec, ToolSpec, Workflow, WorkflowContext
 from toolclaw.interaction.repair_updater import InteractionRequest, UserReply
 from toolclaw.schemas.trace import EventType
+from toolclaw.schemas.repair import Repair, RepairAction, RepairActionType, RepairInteraction, RepairType, WorkflowPatch
 
 
 class SlowReplyProvider:
@@ -117,6 +118,52 @@ def test_repair_updater_ingests_reply_and_resumes_workflow(tmp_path: Path) -> No
     assert resumed.success is True
     assert resumed.blocked is False
     assert resumed.final_state["retrieved_info"] == blocked.final_state["retrieved_info"]
+
+
+def test_missing_arg_interaction_preserves_typed_patch_target() -> None:
+    workflow = Workflow.demo()
+    workflow.context.candidate_tools = [
+        ToolSpec(tool_id="send_message_with_phone_number", description="Send a text message"),
+        ToolSpec(tool_id="end_conversation", description="End the conversation"),
+    ]
+    workflow.execution_plan[0].step_id = "step_01"
+    workflow.execution_plan[0].tool_id = "send_message_with_phone_number"
+    workflow.execution_plan[0].capability_id = "cap_write"
+    workflow.execution_plan[0].inputs = {"target_path": "outputs/message.txt"}
+    repair = Repair(
+        repair_id="rep_missing_content",
+        run_id="run_missing_content",
+        workflow_id=workflow.workflow_id,
+        repair_type=RepairType.ASK_USER,
+        actions=[
+            RepairAction(
+                action_id="act_ask_content",
+                action_type=RepairActionType.ASK_USER,
+                target="step_01",
+                metadata={"missing_targets": ["content"]},
+            )
+        ],
+        interaction=RepairInteraction(
+            ask_user=True,
+            question="Provide `content` so step step_01 can continue.",
+            expected_answer_type="missing_asset_patch",
+        ),
+        workflow_patch=WorkflowPatch(modified_steps=["step_01"]),
+        metadata={"mapped_from_error_category": "binding_failure"},
+    )
+
+    report = UncertaintyDetector().analyze_failure(workflow, repair, {"query": "Send a message"})
+    assert report.primary_label == "missing_asset"
+    assert report.metadata["missing_assets"] == ["content"]
+
+    plan = QueryPolicy().decide_query(report)
+    assert plan.question_type == "missing_asset_patch"
+    assert plan.patch_targets == {"content": "step.inputs.content"}
+    assert "tool_id" not in plan.response_schema.get("properties", {})
+
+    request = RepairUpdater().build_query(workflow, repair, {"query": "Send a message"})
+    assert request.context_summary["missing_input_keys"] == ["content"]
+    assert request.metadata["patch_targets"] == {"content": "step.inputs.content"}
 
 
 def test_repair_updater_accepts_fallback_path_and_tool_switch_reply() -> None:
