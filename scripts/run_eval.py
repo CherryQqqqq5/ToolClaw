@@ -2309,6 +2309,96 @@ def _derive_toolsandbox_simulated_missing_arg_values(task: Dict[str, Any]) -> Di
     return values
 
 
+def _toolsandbox_visible_followup_user_turns(task: Dict[str, Any]) -> List[Dict[str, Any]]:
+    metadata = task.get("metadata")
+    if not (isinstance(metadata, dict) and metadata.get("benchmark") == "toolsandbox"):
+        return []
+    raw_categories = metadata.get("toolsandbox_categories") or task.get("categories") or []
+    categories = {str(item).strip().lower() for item in raw_categories if str(item).strip()}
+    if not ({"multiple_user_turn", "insufficient_information"} & categories):
+        return []
+    runtime_visibility = _runtime_visibility(task)
+    if runtime_visibility.get("full_messages_runtime_visible") is False:
+        return []
+    messages = task.get("messages")
+    if not isinstance(messages, list):
+        return []
+    user_turns: List[Dict[str, Any]] = []
+    for index, message in enumerate(messages):
+        if not isinstance(message, dict):
+            continue
+        sender = _normalize_message_role(message.get("sender") or message.get("role"))
+        if sender != "user":
+            continue
+        content = _recover_toolsandbox_message_content(message.get("content"))
+        if content:
+            user_turns.append({"message_index": index, "content": content})
+    if len(user_turns) <= 1:
+        return []
+    return user_turns[1:]
+
+
+def _toolsandbox_reply_payload_from_visible_turn(content: str) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {"visible_user_content": content}
+    message_content = _extract_seed_message_content(content)
+    if message_content:
+        payload["content"] = message_content
+    phone_number = _extract_seed_phone_number(content)
+    if phone_number:
+        payload["recipient_phone_number"] = phone_number
+    return payload
+
+
+def _apply_toolsandbox_visible_interaction_continuation(
+    task: Dict[str, Any],
+    *,
+    spec: SystemSpec,
+) -> Dict[str, Any]:
+    if spec.execution_mode != "interaction":
+        return task
+    followups = _toolsandbox_visible_followup_user_turns(task)
+    if not followups:
+        return task
+    updated = deepcopy(task)
+    base_query = str(updated.get("query") or "").strip()
+    if not base_query:
+        messages = updated.get("messages")
+        if isinstance(messages, list):
+            for message in messages:
+                if not isinstance(message, dict):
+                    continue
+                if _normalize_message_role(message.get("sender") or message.get("role")) != "user":
+                    continue
+                base_query = _recover_toolsandbox_message_content(message.get("content"))
+                if base_query:
+                    break
+    continuation_lines = [
+        f"User clarification {index}: {turn['content']}"
+        for index, turn in enumerate(followups, start=1)
+    ]
+    updated["query"] = "\n\n".join(part for part in [base_query, *continuation_lines] if part)
+    metadata = dict(updated.get("metadata", {})) if isinstance(updated.get("metadata"), dict) else {}
+    metadata.update(
+        {
+            "toolsandbox_visible_interaction_continuation": True,
+            "toolsandbox_visible_interaction_policy_version": "visible_messages_pre_execution_v1",
+            "toolsandbox_visible_interaction_turn_count": len(followups),
+        }
+    )
+    updated["metadata"] = metadata
+    updated["toolsandbox_pre_execution_interactions"] = [
+        {
+            "turn_index": index,
+            "source_message_index": int(turn["message_index"]),
+            "question": "Please provide the missing information needed to complete this task.",
+            "reply_text": str(turn["content"]),
+            "payload": _toolsandbox_reply_payload_from_visible_turn(str(turn["content"])),
+        }
+        for index, turn in enumerate(followups, start=1)
+    ]
+    return updated
+
+
 def _select_seed_read_tool(candidate_tools: List[ToolSpec], user_goal: str) -> Optional[ToolSpec]:
     read_candidates = [
         tool
@@ -3919,6 +4009,8 @@ def build_workflow_from_task(
         workflow.metadata["budget_profile"] = dict(task.get("budget_profile", {}))
     if isinstance(task.get("simulated_policy"), dict):
         workflow.metadata["simulated_policy"] = dict(task.get("simulated_policy", {}))
+    if isinstance(task.get("toolsandbox_pre_execution_interactions"), list):
+        workflow.metadata["toolsandbox_pre_execution_interactions"] = list(task.get("toolsandbox_pre_execution_interactions", []))
     if isinstance(task.get("reuse_override_inputs"), dict):
         workflow.metadata["reuse_override_inputs"] = dict(task.get("reuse_override_inputs", {}))
     if metadata_task.get("messages") is not None:
@@ -4774,6 +4866,7 @@ def execute_system(
 ) -> EvalRow:
     task_id = canonical_task_id(task)
     task = annotate_task_payload(task)
+    task = _apply_toolsandbox_visible_interaction_continuation(task, spec=spec)
     scenario = str(task.get("scenario", "success"))
     trace_path = traces_dir / f"{task_index:03d}_{task_id}_{spec.system_id}.json"
     backup_tool_map = task.get("backup_tool_map", {})

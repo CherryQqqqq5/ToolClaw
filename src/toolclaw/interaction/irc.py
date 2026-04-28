@@ -109,6 +109,74 @@ class InteractionShell:
         turns = 0
         failure_counts: Dict[str, int] = {}
         max_turns = self._max_turns(outcome)
+        pre_execution_interactions = self._pre_execution_interactions(outcome)
+        if pre_execution_interactions:
+            metadata = combined_trace.setdefault("metadata", {})
+            metadata["pre_execution_interaction_count"] = int(metadata.get("pre_execution_interaction_count", 0)) + len(pre_execution_interactions)
+            metadata["pre_execution_interaction_policy_version"] = "visible_messages_pre_execution_v1"
+            for item in pre_execution_interactions:
+                turns += 1
+                interaction_stats["asked"] += 1
+                interaction_stats["necessary"] += 1
+                interaction_stats["asked_and_necessary"] += 1
+                query = InteractionRequest(
+                    interaction_id=f"int_visible_{run_id}_{turns:02d}",
+                    question=str(item.get("question") or "Please provide the missing information needed to complete this task."),
+                    expected_answer_type="missing_asset_patch",
+                    context_summary={"step_id": "pre_execution_interaction"},
+                    allowed_response_schema={
+                        "type": "object",
+                        "properties": {"visible_user_content": {"type": "string"}},
+                    },
+                    metadata={
+                        "query_policy": {
+                            "question_type": "missing_asset_patch",
+                            "target_scope": "visible_user_continuation",
+                            "urgency": "required",
+                        },
+                        "patch_targets": {
+                            key: f"visible_user_continuation.{key}"
+                            for key in dict(item.get("payload", {}) if isinstance(item.get("payload"), dict) else {}).keys()
+                        },
+                        "pre_execution_interaction": True,
+                        "source": "runtime_visible_messages",
+                        "source_message_index": item.get("source_message_index"),
+                    },
+                )
+                reply_payload = dict(item.get("payload", {}) if isinstance(item.get("payload"), dict) else {})
+                reply_text = str(item.get("reply_text") or reply_payload.get("visible_user_content") or "")
+                reply = UserReply(
+                    interaction_id=query.interaction_id,
+                    payload=reply_payload,
+                    raw_text=reply_text,
+                    accepted=True,
+                    status="accept",
+                    metadata={
+                        "patch_targets": dict(query.metadata.get("patch_targets", {})),
+                        "pre_execution_interaction": True,
+                        "provider": "runtime_visible_messages",
+                        "decoded_is_usable": bool(reply_payload),
+                        "target_alignment": 1.0 if reply_payload else 0.0,
+                    },
+                )
+                self._append_interaction_events(combined_trace, query=query, reply=reply, turn_index=turns)
+                self._append_interaction_round_outcome(
+                    combined_trace,
+                    turn_index=turns,
+                    query=query,
+                    reply=reply,
+                    answer_patch={
+                        "decoded_is_usable": bool(reply_payload),
+                        "target_alignment": 1.0 if reply_payload else 0.0,
+                        "semantic_conflict": False,
+                        "effective_patch": bool(reply_payload),
+                    },
+                    previous_failure_signature="pre_execution_missing_user_context",
+                    next_failure_signature="completed" if outcome.success and not outcome.blocked else self._failure_signature(outcome),
+                    query_was_necessary=True,
+                    post_query_progress=bool(outcome.success and not outcome.blocked),
+                    interaction_round_useful=bool(outcome.success and not outcome.blocked and reply_payload),
+                )
         if (
             self.config.enable_success_probe
             and not outcome.blocked
@@ -390,6 +458,17 @@ class InteractionShell:
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(trace_payload, indent=2), encoding="utf-8")
+
+    @staticmethod
+    def _pre_execution_interactions(outcome: ExecutionOutcome) -> list[Dict[str, Any]]:
+        interactions = outcome.workflow.metadata.get("toolsandbox_pre_execution_interactions")
+        if not isinstance(interactions, list):
+            return []
+        valid: list[Dict[str, Any]] = []
+        for item in interactions:
+            if isinstance(item, dict) and str(item.get("reply_text") or "").strip():
+                valid.append(dict(item))
+        return valid
 
     @staticmethod
     def _append_interaction_events(

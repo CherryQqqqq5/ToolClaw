@@ -4130,3 +4130,98 @@ def test_strict_interaction_probe_is_not_for_non_interaction_tasks() -> None:
 
     assert InteractionShell._should_force_interaction_probe(outcome=outcome, run_id="s3_task") is False
     assert InteractionShell._should_force_interaction_probe(outcome=outcome, run_id="s4_task") is False
+
+
+def test_toolsandbox_visible_followup_turns_only_apply_to_interaction_specs() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_visible_followups", module_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+
+    task = {
+        "task_id": "toolsandbox_visible_followup_001",
+        "query": "Send a message to the phone number I will provide.",
+        "messages": [
+            {"sender": "user", "content": "Send a message to the phone number I will provide."},
+            {"sender": "assistant", "content": "What phone number and message should I use?"},
+            {"sender": "user", "content": "Use +1 555-0100 saying: hello from visible turn"},
+        ],
+        "metadata": {
+            "benchmark": "toolsandbox",
+            "toolsandbox_categories": ["MULTIPLE_USER_TURN", "INSUFFICIENT_INFORMATION"],
+        },
+    }
+
+    s2_task = module._apply_toolsandbox_visible_interaction_continuation(
+        task,
+        spec=module.SYSTEM_SPECS["s2_planner_overlay"],
+    )
+    s3_task = module._apply_toolsandbox_visible_interaction_continuation(
+        task,
+        spec=module.SYSTEM_SPECS["s3_interaction_overlay"],
+    )
+
+    assert "toolsandbox_pre_execution_interactions" not in s2_task
+    assert s3_task["metadata"]["toolsandbox_visible_interaction_continuation"] is True
+    assert "User clarification 1" in s3_task["query"]
+    interaction = s3_task["toolsandbox_pre_execution_interactions"][0]
+    assert interaction["payload"]["recipient_phone_number"] == "+15550100"
+    assert interaction["payload"]["content"] == "hello from visible turn"
+
+
+def test_interaction_shell_counts_visible_pre_execution_interaction_as_repair(tmp_path: Path) -> None:
+    from types import SimpleNamespace
+    from toolclaw.execution.executor import ExecutionOutcome
+    from toolclaw.interaction.irc import InteractionShell
+    from toolclaw.main import ToolClawRuntime
+    from toolclaw.schemas.workflow import Workflow
+
+    workflow = Workflow.demo()
+    workflow.metadata["toolsandbox_pre_execution_interactions"] = [
+        {
+            "turn_index": 1,
+            "source_message_index": 2,
+            "question": "What phone number and message should I use?",
+            "reply_text": "Use +1 555-0100 saying: hello from visible turn",
+            "payload": {"recipient_phone_number": "+15550100", "content": "hello from visible turn"},
+        }
+    ]
+    trace_path = tmp_path / "trace.json"
+    trace_path.write_text(
+        json.dumps(
+            {
+                "metadata": {},
+                "metrics": {"success": True, "user_queries": 0},
+                "events": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    outcome = ExecutionOutcome(
+        run_id="s3_visible",
+        workflow=workflow,
+        success=True,
+        blocked=False,
+        pending_interaction=None,
+        final_state={},
+        trace_path=str(trace_path),
+    )
+    runtime = SimpleNamespace(
+        run_workflow=lambda **kwargs: outcome,
+        repair_updater=None,
+    )
+    shell = InteractionShell(runtime=runtime)  # type: ignore[arg-type]
+    request = SimpleNamespace(task=workflow.task, context=workflow.context, policy=workflow.policy)
+
+    shell.run(request=request, run_id="s3_visible", output_path=str(trace_path), seed_workflow=workflow)
+    payload = json.loads(trace_path.read_text(encoding="utf-8"))
+
+    assert payload["metadata"]["pre_execution_interaction_count"] == 1
+    assert payload["metrics"]["user_queries"] == 1
+    query_event = next(event for event in payload["events"] if event["event_type"] == "user_query")
+    reply_event = next(event for event in payload["events"] if event["event_type"] == "user_reply")
+    assert query_event["metadata"]["query_metadata"]["pre_execution_interaction"] is True
+    assert "interaction_probe" not in query_event["metadata"]["query_metadata"]
+    assert reply_event["metadata"]["reply_metadata"]["pre_execution_interaction"] is True
