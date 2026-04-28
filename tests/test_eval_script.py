@@ -193,10 +193,13 @@ def test_build_workflow_from_task_planner_falls_back_when_toolsandbox_plan_is_un
         mode="planner",
     )
 
-    assert workflow.metadata["planner_structural_fallback_applied"] is True
-    assert workflow.metadata["planner_structural_fallback_reason"] == "unbound_steps"
-    assert [step.tool_id for step in workflow.execution_plan] == ["search_tool", "write_tool"]
-    assert workflow.execution_plan[0].inputs["query"] == "Turn on cellular"
+    assert workflow.metadata["planner_candidate_generation_pattern"] == "setting_precondition_low_battery_chain_v1"
+    assert [step.tool_id for step in workflow.execution_plan] == [
+        "set_low_battery_mode_status",
+        "set_cellular_service_status",
+    ]
+    assert workflow.execution_plan[0].inputs["enabled"] is False
+    assert workflow.execution_plan[1].inputs["enabled"] is True
 
 
 def test_build_workflow_from_task_planner_single_write_respects_target_path() -> None:
@@ -703,6 +706,104 @@ def test_toolsandbox_planner_generates_holiday_time_difference_chain() -> None:
     assert planner.metadata["planner_candidate_generation_pattern"] == "holiday_time_difference_chain_v1"
     assert overlaid.metadata["planner_overlay_admitted"] is True
     assert overlaid.metadata["planner_admission_decision"]["reason"] == "strict_refinement"
+
+
+def test_toolsandbox_planner_generates_low_battery_setting_precondition_chain() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_setting_precondition", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "turn_on_wifi_low_battery_mode",
+            "scenario": "state_dependency",
+            "query": "Turn on wifi",
+            "tool_allow_list": [
+                "set_low_battery_mode_status",
+                "get_wifi_status",
+                "set_wifi_status",
+                "get_low_battery_mode_status",
+                "end_conversation",
+            ],
+            "candidate_tools": [
+                "set_low_battery_mode_status",
+                "get_wifi_status",
+                "set_wifi_status",
+                "get_low_battery_mode_status",
+                "end_conversation",
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["state_dependency", "multiple_tool", "single_user_turn"],
+            },
+        },
+        mode="planner",
+    )
+
+    assert workflow.metadata["planner_candidate_generation_pattern"] == "setting_precondition_low_battery_chain_v1"
+    assert [step.tool_id for step in workflow.execution_plan] == [
+        "set_low_battery_mode_status",
+        "set_wifi_status",
+    ]
+    assert workflow.execution_plan[0].inputs["enabled"] is False
+    assert workflow.execution_plan[1].inputs["enabled"] is True
+
+
+def test_toolsandbox_admits_visible_state_precondition_takeover() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_setting_precondition_admitted", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    workflow = module.build_workflow_from_task(
+        {
+            "task_id": "turn_on_wifi_low_battery_mode",
+            "scenario": "state_dependency",
+            "query": "Turn on wifi",
+            "tool_allow_list": [
+                "set_low_battery_mode_status",
+                "get_wifi_status",
+                "set_wifi_status",
+                "get_low_battery_mode_status",
+                "end_conversation",
+            ],
+            "candidate_tools": [
+                "set_low_battery_mode_status",
+                "get_wifi_status",
+                "set_wifi_status",
+                "get_low_battery_mode_status",
+                "end_conversation",
+            ],
+            "metadata": {
+                "benchmark": "toolsandbox",
+                "toolsandbox_categories": ["state_dependency", "multiple_tool", "single_user_turn"],
+            },
+        },
+        mode="planner_overlay_admitted",
+    )
+
+    assert workflow.metadata["planner_overlay_admitted"] is True
+    assert workflow.metadata["planner_admission_decision"]["reason"] == "visible_state_precondition_takeover"
+    assert [step.tool_id for step in workflow.execution_plan] == [
+        "set_low_battery_mode_status",
+        "set_wifi_status",
+    ]
+
+
+def test_semantic_mock_state_payload_preserves_boolean_setting_value() -> None:
+    from toolclaw.tools.runtime import run_tool
+
+    result = run_tool("set_wifi_status", {"enabled": True})
+    cellular_result = run_tool("set_cellular_service_status", {"enabled": True})
+
+    assert result["status"] == "success"
+    assert result["payload"] == "wifi has been turned on"
+    assert cellular_result["payload"] == "cellular service has been turned on"
 
 
 def test_build_workflow_from_task_toolsandbox_send_message_does_not_fabricate_missing_slots() -> None:

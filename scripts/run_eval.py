@@ -2608,6 +2608,40 @@ def _apply_toolsandbox_planner_candidate_generation(
     tool_ids = _tool_ids(candidate_tools)
     query = str(task.get("query") or user_goal)
     goal_tokens = _goal_tokens(query)
+    low_battery_setter = "set_low_battery_mode_status"
+    setting_targets = [
+        ("wifi", "set_wifi_status", {"wifi", "internet", "connect", "connected"}),
+        ("location", "set_location_service_status", {"location", "gps"}),
+        ("cellular", "set_cellular_service_status", {"cellular", "mobile", "service", "internet", "connect", "connected"}),
+    ]
+    for setting_name, setter_tool, setting_goal_tokens in setting_targets:
+        if (
+            low_battery_setter in tool_ids
+            and setter_tool in tool_ids
+            and goal_tokens.intersection(setting_goal_tokens)
+            and (goal_tokens & {"on", "enable", "enabled", "turn", "connect", "connected"})
+        ):
+            return _configure_toolsandbox_planner_steps(
+                planned_workflow,
+                candidate_tools=candidate_tools,
+                pattern="setting_precondition_low_battery_chain_v1",
+                steps=[
+                    {
+                        "capability_id": "cap_modify",
+                        "tool_id": low_battery_setter,
+                        "inputs": {"enabled": False, "state": False, "query": query},
+                        "expected_output": "low_battery_disabled",
+                        "metadata": {"read_only": False, "precondition_repair": True},
+                    },
+                    {
+                        "capability_id": "cap_modify",
+                        "tool_id": setter_tool,
+                        "inputs": {"enabled": True, "state": True, "query": query},
+                        "expected_output": f"{setting_name}_enabled",
+                        "metadata": {"read_only": False, "state_target": setting_name},
+                    },
+                ],
+            )
     if {
         "get_current_timestamp",
         "search_holiday",

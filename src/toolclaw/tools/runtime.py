@@ -457,6 +457,34 @@ def _has_any_value(args: Dict[str, Any], keys: Iterable[str]) -> bool:
     return False
 
 
+def _state_label_from_tool_id(tool_id: str) -> str:
+    normalized = str(tool_id or "").strip().lower()
+    for prefix in ("set_", "get_", "update_", "toggle_"):
+        if normalized.startswith(prefix):
+            normalized = normalized[len(prefix) :]
+            break
+    for suffix in ("_status", "_state"):
+        if normalized.endswith(suffix):
+            normalized = normalized[: -len(suffix)]
+    normalized = normalized.replace("_mode", " mode")
+    label = " ".join(token for token in normalized.split("_") if token)
+    return label or "state"
+
+
+def _coerce_bool_arg(value: Any) -> Optional[bool]:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and value in {0, 1}:
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "on", "enabled", "enable", "yes", "1"}:
+            return True
+        if normalized in {"false", "off", "disabled", "disable", "no", "0"}:
+            return False
+    return None
+
+
 def _default_payload(tool_id: str, args: Dict[str, Any], *, tool_tokens: set[str]) -> str:
     id_tokens = _tokens(tool_id)
     if "diff" in id_tokens and ("timestamp" in id_tokens or "time" in id_tokens):
@@ -477,6 +505,10 @@ def _default_payload(tool_id: str, args: Dict[str, Any], *, tool_tokens: set[str
             state_value = args.get("enabled")
             if state_value is None:
                 state_value = args.get("status", args.get("state", args.get("value", "updated")))
+            state_bool = _coerce_bool_arg(state_value)
+            if state_bool is not None:
+                label = _state_label_from_tool_id(tool_id)
+                return f"{label} has been turned {'on' if state_bool else 'off'}"
             return f"updated state to {state_value}"
         target_path = args.get("target_path")
         if target_path:
@@ -486,5 +518,9 @@ def _default_payload(tool_id: str, args: Dict[str, Any], *, tool_tokens: set[str
         state_value = args.get("enabled")
         if state_value is None:
             state_value = args.get("status", args.get("state", args.get("value", "updated")))
+        state_bool = _coerce_bool_arg(state_value)
+        if state_bool is not None:
+            label = _state_label_from_tool_id(tool_id)
+            return f"{label} has been turned {'on' if state_bool else 'off'}"
         return f"updated state to {state_value}"
     return f"tool {tool_id} executed successfully"
