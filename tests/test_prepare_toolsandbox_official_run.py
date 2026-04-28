@@ -5,6 +5,80 @@ import sys
 from pathlib import Path
 
 
+def _write_vendored_scenario_fixture(tmp_path: Path) -> Path:
+    scenario_root = tmp_path / "scenarios"
+    scenario_root.mkdir()
+    (scenario_root / "fixture_scenarios.py").write_text(
+        """
+SCENARIOS = [
+    ScenarioExtension(
+        name="send_message_with_contact_content_cellular_off_multiple_user_turn",
+        messages=[
+            {"sender": RoleType.USER, "recipient": RoleType.AGENT, "content": "Send a message"},
+        ],
+        tool_allow_list=[
+            "search_contacts",
+            "send_message_with_phone_number",
+            "set_cellular_service_status",
+            "get_cellular_service_status",
+        ],
+        milestones=[Milestone(), Milestone(), Milestone(), Milestone()],
+    ),
+    ScenarioExtension(
+        name="add_contact_with_name_and_phone_number",
+        messages=[
+            {"sender": RoleType.USER, "recipient": RoleType.AGENT, "content": "Add Stephen Sondheim to my contact, his phone_number is +19876543210"},
+        ],
+        tool_allow_list=["add_contact"],
+        milestones=[
+            Milestone(
+                snapshot_constraints=[
+                    SnapshotConstraint(
+                        database_namespace=DatabaseNamespace.CONTACT,
+                        snapshot_constraint=addition_similarity,
+                        target_dataframe=pl.DataFrame(
+                            {
+                                "name": "Stephen Sondheim",
+                                "phone_number": "+19876543210",
+                                "relationship": None,
+                            },
+                            schema={
+                                "name": pl.String,
+                                "phone_number": pl.String,
+                                "relationship": pl.String,
+                            },
+                        ),
+                        column_similarity_measure={
+                            "relationship": column_exact_match_similarity
+                        },
+                        reference_milestone_node_index=-1,
+                    )
+                ]
+            ),
+            Milestone(
+                snapshot_constraints=[
+                    SnapshotConstraint(
+                        database_namespace=DatabaseNamespace.SANDBOX,
+                        snapshot_constraint=snapshot_similarity,
+                        target_dataframe=pl.DataFrame(
+                            {
+                                "sender": RoleType.AGENT,
+                                "recipient": RoleType.USER,
+                                "content": "Stephen Sondheim has been added to your contact",
+                            }
+                        ),
+                    )
+                ]
+            ),
+        ],
+    ),
+]
+""",
+        encoding="utf-8",
+    )
+    return scenario_root
+
+
 def test_prepare_toolsandbox_official_run_extracts_latest_run(tmp_path: Path) -> None:
     data_root = tmp_path / "data"
     run_dir = data_root / "agent_demo_user_demo_2026_04_04_00_00_00"
@@ -106,6 +180,7 @@ def test_prepare_toolsandbox_official_run_backfills_ground_truth_when_export_is_
         encoding="utf-8",
     )
 
+    scenario_root = _write_vendored_scenario_fixture(tmp_path)
     out_path = tmp_path / "official.aligned.jsonl"
     completed = subprocess.run(
         [
@@ -120,7 +195,7 @@ def test_prepare_toolsandbox_official_run_backfills_ground_truth_when_export_is_
         ],
         check=True,
         cwd=Path(__file__).resolve().parents[1],
-        env={**os.environ, "PYTHONPATH": "src"},
+        env={**os.environ, "PYTHONPATH": "src", "TOOLSANDBOX_SCENARIO_ROOT": str(scenario_root)},
         capture_output=True,
         text=True,
     )
@@ -167,6 +242,7 @@ def test_prepare_toolsandbox_official_run_extracts_structured_milestone_contract
         encoding="utf-8",
     )
 
+    scenario_root = _write_vendored_scenario_fixture(tmp_path)
     out_path = tmp_path / "official.aligned.jsonl"
     completed = subprocess.run(
         [
@@ -181,7 +257,7 @@ def test_prepare_toolsandbox_official_run_extracts_structured_milestone_contract
         ],
         check=True,
         cwd=Path(__file__).resolve().parents[1],
-        env={**os.environ, "PYTHONPATH": "src"},
+        env={**os.environ, "PYTHONPATH": "src", "TOOLSANDBOX_SCENARIO_ROOT": str(scenario_root)},
         capture_output=True,
         text=True,
     )

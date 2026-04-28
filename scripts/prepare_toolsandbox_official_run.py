@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -431,9 +432,10 @@ def _ast_milestone_contracts(node: ast.AST | None) -> List[Dict[str, Any]]:
 @lru_cache(maxsize=1)
 def load_vendored_ground_truth_index() -> Dict[str, Dict[str, Any]]:
     index: Dict[str, Dict[str, Any]] = {}
-    if not VENDORED_SCENARIO_ROOT.exists():
+    scenario_root = Path(os.environ.get("TOOLSANDBOX_SCENARIO_ROOT", str(VENDORED_SCENARIO_ROOT)))
+    if not scenario_root.exists():
         return index
-    for path in sorted(VENDORED_SCENARIO_ROOT.glob("*_scenarios.py")):
+    for path in sorted(scenario_root.glob("*_scenarios.py")):
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         except SyntaxError:
