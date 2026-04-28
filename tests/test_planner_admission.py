@@ -48,6 +48,35 @@ def test_admission_rejects_gold_field_visibility() -> None:
     assert "gold_field_visible" in decision.rejected_reasons
 
 
+def test_admission_rejects_disallowed_base_seed_without_semantic_preservation() -> None:
+    base = Workflow.demo()
+    planner = deepcopy(base)
+    allowed_tool = ToolSpec(tool_id="allowed_tool", description="Allowed tool")
+    base.context.candidate_tools = [allowed_tool]
+    planner.context.candidate_tools = [allowed_tool]
+    planner.execution_plan = [
+        WorkflowStep(
+            step_id="planner_step",
+            capability_id="cap_update",
+            tool_id="allowed_tool",
+            inputs={"query": "different execution path"},
+        )
+    ]
+
+    decision = admit_planner_workflow(
+        base_workflow=base,
+        planner_workflow=planner,
+        admission_metadata={"candidate_tool_ids": ["allowed_tool"]},
+    )
+
+    assert decision.admitted is False
+    assert decision.admission_mode != "execution_takeover"
+    assert decision.reason == "no_admissible_execution_takeover"
+    assert decision.safety_checks["base_static_valid"] is False
+    assert decision.safety_checks["planner_static_valid"] is True
+    assert decision.safety_checks["grounded_values_preserved"] is False
+
+
 def test_admission_allows_base_invalid_planner_valid_when_semantics_preserved() -> None:
     base = _with_missing_required(Workflow.demo())
     planner = deepcopy(base)

@@ -360,15 +360,9 @@ def admit_planner_workflow(
             admitted_changes=[{"type": "strict_refinement", "inserted_step_count": inserted}],
             safety_checks=safety_checks,
         )
-    base_disallowed_seed = any(str(issue).startswith("disallowed_tool:") for issue in base_report["issues"])
-    if base_disallowed_seed and planner_report["ok"]:
-        return PlannerAdmissionDecision(
-            admitted=True,
-            admission_mode="execution_takeover",
-            reason="base_disallowed_seed_planner_valid",
-            admitted_changes=[{"type": "candidate_tool_seed_repaired", "base_issues": base_report["issues"]}],
-            safety_checks=safety_checks,
-        )
+    # A statically invalid demo seed is not enough evidence to let the planner
+    # replace the execution path. Admission still requires semantic preservation
+    # through the generic base-invalid branch below.
     if not base_report["ok"] and planner_report["ok"] and semantics_ok:
         return PlannerAdmissionDecision(
             admitted=True,
