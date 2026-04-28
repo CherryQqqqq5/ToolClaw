@@ -12,6 +12,12 @@ def _with_missing_required(workflow: Workflow) -> Workflow:
     return workflow
 
 
+def _single_step(workflow: Workflow) -> Workflow:
+    workflow = deepcopy(workflow)
+    workflow.execution_plan = [workflow.execution_plan[0]]
+    return workflow
+
+
 def test_admission_rejects_primary_tool_override_when_base_valid() -> None:
     base = Workflow.demo()
     planner = deepcopy(base)
@@ -77,6 +83,84 @@ def test_admission_rejects_disallowed_base_seed_without_semantic_preservation() 
     assert decision.safety_checks["grounded_values_preserved"] is False
 
 
+def test_admission_allows_base_invalid_same_shape_tool_correction() -> None:
+    base = _single_step(Workflow.demo())
+    planner = deepcopy(base)
+    allowed_tool = ToolSpec(tool_id="allowed_tool", description="Allowed replacement")
+    base.context.candidate_tools = [allowed_tool]
+    planner.context.candidate_tools = [allowed_tool]
+    base.execution_plan[0].tool_id = "not_allowed"
+    planner.execution_plan[0].tool_id = "allowed_tool"
+
+    decision = admit_planner_workflow(
+        base_workflow=base,
+        planner_workflow=planner,
+        admission_metadata={"candidate_tool_ids": ["allowed_tool"]},
+    )
+
+    assert decision.admitted is True
+    assert decision.admission_mode == "execution_takeover"
+    assert decision.reason == "base_invalid_safe_tool_correction"
+    assert decision.safety_checks["base_static_valid"] is False
+    assert decision.safety_checks["planner_static_valid"] is True
+    assert decision.safety_checks["safe_tool_correction"] is True
+
+
+def test_admission_rejects_valid_base_tool_correction_without_opt_in() -> None:
+    base = _single_step(Workflow.demo())
+    planner = deepcopy(base)
+    replacement = ToolSpec(tool_id="replacement_search", description="Replacement search")
+    base.context.candidate_tools.append(replacement)
+    planner.context.candidate_tools.append(replacement)
+    planner.execution_plan[0].tool_id = "replacement_search"
+
+    decision = admit_planner_workflow(base_workflow=base, planner_workflow=planner)
+
+    assert decision.admitted is False
+    assert decision.reason == "no_admissible_execution_takeover"
+    assert decision.safety_checks["base_static_valid"] is True
+    assert decision.safety_checks["safe_tool_correction"] is True
+    assert decision.safety_checks["allow_relaxed_planner_takeover"] is False
+
+
+def test_admission_allows_valid_base_tool_correction_with_explicit_opt_in() -> None:
+    base = _single_step(Workflow.demo())
+    planner = deepcopy(base)
+    replacement = ToolSpec(tool_id="replacement_search", description="Replacement search")
+    base.context.candidate_tools.append(replacement)
+    planner.context.candidate_tools.append(replacement)
+    planner.execution_plan[0].tool_id = "replacement_search"
+
+    decision = admit_planner_workflow(
+        base_workflow=base,
+        planner_workflow=planner,
+        admission_metadata={"allow_relaxed_planner_takeover": True},
+    )
+
+    assert decision.admitted is True
+    assert decision.reason == "relaxed_safe_tool_correction_opt_in"
+    assert any(change["type"] == "tool_correction" for change in decision.admitted_changes)
+
+
+def test_admission_rejects_tool_correction_that_drops_grounded_input() -> None:
+    base = _single_step(Workflow.demo())
+    planner = deepcopy(base)
+    replacement = ToolSpec(tool_id="replacement_search", description="Replacement search")
+    base.context.candidate_tools.append(replacement)
+    planner.context.candidate_tools.append(replacement)
+    planner.execution_plan[0].tool_id = "replacement_search"
+    planner.execution_plan[0].inputs.pop("query", None)
+
+    decision = admit_planner_workflow(
+        base_workflow=base,
+        planner_workflow=planner,
+        admission_metadata={"allow_relaxed_planner_takeover": True},
+    )
+
+    assert decision.admitted is False
+    assert f"grounded_value_mutation:{base.execution_plan[0].step_id}:query" in decision.rejected_reasons
+
+
 def test_admission_allows_base_invalid_planner_valid_when_semantics_preserved() -> None:
     base = _with_missing_required(Workflow.demo())
     planner = deepcopy(base)
@@ -87,6 +171,47 @@ def test_admission_allows_base_invalid_planner_valid_when_semantics_preserved() 
     assert decision.admitted is True
     assert decision.admission_mode == "execution_takeover"
     assert decision.reason in {"base_invalid_planner_valid", "planner_resolves_static_requirements"}
+
+
+def test_admission_allows_generic_seed_read_domain_takeover() -> None:
+    base = Workflow.demo()
+    search_holiday = ToolSpec(tool_id="search_holiday", description="Search holiday calendar")
+    base.context.candidate_tools.append(search_holiday)
+    planner = deepcopy(base)
+    planner.execution_plan = [
+        WorkflowStep(
+            step_id="step_01",
+            capability_id="cap_retrieve",
+            tool_id="search_holiday",
+            inputs={"query": "How many days is it till Christmas Day"},
+        )
+    ]
+
+    decision = admit_planner_workflow(base_workflow=base, planner_workflow=planner)
+
+    assert decision.admitted is True
+    assert decision.reason == "generic_seed_read_domain_takeover"
+    assert decision.safety_checks["generic_seed_read_domain_takeover"] is True
+
+
+def test_admission_rejects_generic_seed_mutating_domain_takeover() -> None:
+    base = Workflow.demo()
+    modify_reminder = ToolSpec(tool_id="modify_reminder", description="Modify reminders")
+    base.context.candidate_tools.append(modify_reminder)
+    planner = deepcopy(base)
+    planner.execution_plan = [
+        WorkflowStep(
+            step_id="step_01",
+            capability_id="cap_modify",
+            tool_id="modify_reminder",
+            inputs={"state_key": "state_checked"},
+        )
+    ]
+
+    decision = admit_planner_workflow(base_workflow=base, planner_workflow=planner)
+
+    assert decision.admitted is False
+    assert any("unsafe_domain_tools:modify_reminder" == reason for reason in decision.rejected_reasons)
 
 
 def test_admission_allows_strict_refinement_with_read_only_inserted_step() -> None:

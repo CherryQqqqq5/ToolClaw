@@ -31,6 +31,19 @@ TARGET_KEYS = (
 )
 READ_ONLY_TOKENS = ("read", "get", "list", "search", "lookup", "fetch", "retrieve", "check", "inspect", "validate", "verify")
 PRECONDITION_TOKENS = ("precondition", "acquire", "resolve", "lookup", "check", "inspect", "validate", "verify")
+GENERIC_SEED_TOOL_IDS = {"search_tool", "write_tool"}
+READ_DOMAIN_TOOL_PREFIXES = ("search_", "get_", "find_", "lookup_", "list_", "calculate_", "convert_")
+SIDE_EFFECT_TOOL_PREFIXES = ("add_", "create_", "delete_", "modify_", "remove_", "send_", "set_", "update_")
+PLACEHOLDER_INPUT_VALUES = {
+    "branch_selected",
+    "merged_state_ready",
+    "outputs/reports/demo_report.txt",
+    "outputs/reports/planned_report.txt",
+    "retrieved_info",
+    "state_checked",
+    "state_modified",
+    "summary_text",
+}
 
 
 @dataclass
@@ -274,6 +287,92 @@ def _preserves_grounded_values(base_workflow: Workflow, planner_workflow: Workfl
     return not reasons, reasons
 
 
+def _capability_family(capability_id: str) -> str:
+    normalized = str(capability_id or "").strip().lower()
+    if normalized in {"cap_retrieve", "cap_check", "cap_read", "cap_lookup", "cap_search"}:
+        return "read"
+    if normalized in {"cap_write", "cap_update", "cap_modify", "cap_create", "cap_delete", "cap_send"}:
+        return "write"
+    return normalized
+
+
+def _capability_compatible(base_step: WorkflowStep, planner_step: WorkflowStep) -> bool:
+    if str(base_step.capability_id or "") == str(planner_step.capability_id or ""):
+        return True
+    return _capability_family(base_step.capability_id) == _capability_family(planner_step.capability_id)
+
+
+def _grounded_inputs_preserved(base_step: WorkflowStep, planner_step: WorkflowStep) -> Tuple[bool, List[str]]:
+    reasons: List[str] = []
+    planner_inputs = planner_step.inputs or {}
+    for key, value in (base_step.inputs or {}).items():
+        if _is_empty(value):
+            continue
+        if _normalize(planner_inputs.get(key)) != _normalize(value):
+            reasons.append(f"grounded_value_mutation:{base_step.step_id}:{key}")
+    base_targets = _target_values(base_step)
+    planner_targets = _target_values(planner_step)
+    if _normalize(base_targets) != _normalize(planner_targets):
+        reasons.append(f"target_semantics_mutation:{base_step.step_id}")
+    return not reasons, reasons
+
+
+def _safe_tool_correction(
+    base_workflow: Workflow,
+    planner_workflow: Workflow,
+    *,
+    base_missing: set[str],
+    planner_missing: set[str],
+) -> Tuple[bool, List[str], List[Dict[str, Any]]]:
+    """Allow planner takeover for same-shape tool corrections only.
+
+    This is intentionally narrower than semantic equivalence: the planner may
+    swap a tool or fill missing args, but it cannot drop grounded values, change
+    target-like fields, add side-effecting steps, or change budgets.
+    """
+
+    base_steps = list(base_workflow.execution_plan or [])
+    planner_steps = list(planner_workflow.execution_plan or [])
+    if len(base_steps) != len(planner_steps):
+        return False, ["tool_correction_step_count_change"], []
+
+    reasons: List[str] = []
+    changes: List[Dict[str, Any]] = []
+    for index, (base_step, planner_step) in enumerate(zip(base_steps, planner_steps)):
+        if base_step.action_type != planner_step.action_type:
+            reasons.append(f"action_type_mutation:{base_step.step_id}")
+            continue
+        if not _capability_compatible(base_step, planner_step):
+            reasons.append(f"capability_mutation:{base_step.step_id}")
+        preserved, preserve_reasons = _grounded_inputs_preserved(base_step, planner_step)
+        if not preserved:
+            reasons.extend(preserve_reasons)
+        if str(base_step.tool_id or "") != str(planner_step.tool_id or ""):
+            changes.append(
+                {
+                    "type": "tool_correction",
+                    "step_id": base_step.step_id,
+                    "from_tool_id": str(base_step.tool_id or ""),
+                    "to_tool_id": str(planner_step.tool_id or ""),
+                    "index": index,
+                }
+            )
+        filled_keys = sorted(
+            key
+            for key, value in (planner_step.inputs or {}).items()
+            if _is_empty((base_step.inputs or {}).get(key)) and not _is_empty(value)
+        )
+        if filled_keys:
+            changes.append({"type": "input_fill", "step_id": base_step.step_id, "keys": filled_keys, "index": index})
+
+    resolved = sorted(base_missing - planner_missing)
+    if resolved:
+        changes.append({"type": "resolved_static_requirements", "requirements": resolved})
+    if not changes:
+        reasons.append("no_tool_correction_or_static_resolution")
+    return not reasons, sorted(set(reasons)), changes
+
+
 def _candidate_tool_constraints_preserved(
     base_workflow: Workflow,
     planner_workflow: Workflow,
@@ -292,6 +391,73 @@ def _task_budget_preserved(base_workflow: Workflow, planner_workflow: Workflow) 
     if base_constraints.max_user_turns is not None and planner_report["user_step_count"] > int(base_constraints.max_user_turns):
         return False
     return True
+
+
+def _is_generic_seed_step(step: WorkflowStep) -> bool:
+    return str(step.tool_id or "").strip() in GENERIC_SEED_TOOL_IDS
+
+
+def _is_safe_read_domain_tool(tool_id: str) -> bool:
+    normalized = str(tool_id or "").strip().lower()
+    if not normalized or normalized in GENERIC_SEED_TOOL_IDS or normalized == "end_conversation":
+        return False
+    if normalized.startswith(SIDE_EFFECT_TOOL_PREFIXES):
+        return False
+    return normalized.startswith(READ_DOMAIN_TOOL_PREFIXES)
+
+
+def _has_placeholder_inputs(step: WorkflowStep) -> bool:
+    for value in (step.inputs or {}).values():
+        if isinstance(value, str) and value.strip() in PLACEHOLDER_INPUT_VALUES:
+            return True
+    return False
+
+
+def _generic_seed_read_domain_takeover(
+    base_workflow: Workflow,
+    planner_workflow: Workflow,
+) -> Tuple[bool, List[str], List[Dict[str, Any]]]:
+    """Allow a safe domain-read plan to replace the generic recovery seed.
+
+    This deliberately excludes write/send/modify/set tools. The goal is to let
+    planner admission exercise low-risk tool-choice corrections without turning
+    the planner into a broad mutating executor before targeted controls exist.
+    """
+
+    base_steps = list(base_workflow.execution_plan or [])
+    planner_steps = list(planner_workflow.execution_plan or [])
+    rejected: List[str] = []
+    if not base_steps or not planner_steps:
+        return False, ["empty_plan"], []
+    if not all(_is_generic_seed_step(step) for step in base_steps):
+        return False, ["base_not_generic_seed"], []
+    if any(step.action_type != ActionType.TOOL_CALL for step in planner_steps):
+        rejected.append("planner_contains_non_tool_step")
+    unsafe_tools = [
+        str(step.tool_id)
+        for step in planner_steps
+        if not _is_safe_read_domain_tool(str(step.tool_id or ""))
+    ]
+    if unsafe_tools:
+        rejected.append(f"unsafe_domain_tools:{','.join(sorted(set(unsafe_tools)))}")
+    placeholder_steps = [str(step.step_id) for step in planner_steps if _has_placeholder_inputs(step)]
+    if placeholder_steps:
+        rejected.append(f"placeholder_inputs:{','.join(placeholder_steps)}")
+    if len(planner_steps) > len(base_steps):
+        rejected.append("planner_increases_step_count")
+    if rejected:
+        return False, sorted(set(rejected)), []
+    return (
+        True,
+        [],
+        [
+            {
+                "type": "generic_seed_read_domain_takeover",
+                "base_tools": [str(step.tool_id) for step in base_steps],
+                "planner_tools": [str(step.tool_id) for step in planner_steps],
+            }
+        ],
+    )
 
 
 def admit_planner_workflow(
@@ -320,6 +486,15 @@ def admit_planner_workflow(
     planner_report = _static_report(planner_workflow, allowed_tool_ids=allowed_tool_ids)
     semantics_ok, semantic_rejections = _preserves_grounded_values(base_workflow, planner_workflow)
     refinement_ok, matched_indices, refinement_rejections = _strict_refinement(base_workflow, planner_workflow)
+    base_missing = set(base_report["missing_required_inputs"] + base_report["missing_state_slots"])
+    planner_missing = set(planner_report["missing_required_inputs"] + planner_report["missing_state_slots"])
+    tool_correction_ok, tool_correction_rejections, tool_correction_changes = _safe_tool_correction(
+        base_workflow,
+        planner_workflow,
+        base_missing=base_missing,
+        planner_missing=planner_missing,
+    )
+    relaxed_takeover_opt_in = bool(admission_metadata.get("allow_relaxed_planner_takeover"))
     safety_checks = {
         "base_static_valid": base_report["ok"],
         "planner_static_valid": planner_report["ok"],
@@ -333,6 +508,9 @@ def admit_planner_workflow(
         "strict_refinement": refinement_ok,
         "matched_base_step_count": len(matched_indices),
         "gold_field_hits": gold_hits,
+        "safe_tool_correction": tool_correction_ok,
+        "safe_tool_correction_rejections": tool_correction_rejections,
+        "allow_relaxed_planner_takeover": relaxed_takeover_opt_in,
     }
     rejected: List[str] = []
     if gold_hits:
@@ -360,9 +538,8 @@ def admit_planner_workflow(
             admitted_changes=[{"type": "strict_refinement", "inserted_step_count": inserted}],
             safety_checks=safety_checks,
         )
-    # A statically invalid demo seed is not enough evidence to let the planner
-    # replace the execution path. Admission still requires semantic preservation
-    # through the generic base-invalid branch below.
+    # Default takeover stays conservative: a valid lower-layer seed is only
+    # replaced by same-shape tool correction when the caller explicitly opts in.
     if not base_report["ok"] and planner_report["ok"] and semantics_ok:
         return PlannerAdmissionDecision(
             admitted=True,
@@ -371,8 +548,14 @@ def admit_planner_workflow(
             admitted_changes=[{"type": "static_invalidity_repaired", "base_issues": base_report["issues"]}],
             safety_checks=safety_checks,
         )
-    base_missing = set(base_report["missing_required_inputs"] + base_report["missing_state_slots"])
-    planner_missing = set(planner_report["missing_required_inputs"] + planner_report["missing_state_slots"])
+    if not base_report["ok"] and planner_report["ok"] and tool_correction_ok:
+        return PlannerAdmissionDecision(
+            admitted=True,
+            admission_mode="execution_takeover",
+            reason="base_invalid_safe_tool_correction",
+            admitted_changes=tool_correction_changes,
+            safety_checks=safety_checks,
+        )
     resolved = sorted(base_missing - planner_missing)
     if resolved and planner_report["ok"] and semantics_ok:
         return PlannerAdmissionDecision(
@@ -382,9 +565,33 @@ def admit_planner_workflow(
             admitted_changes=[{"type": "resolved_static_requirements", "requirements": resolved}],
             safety_checks=safety_checks,
         )
+    if relaxed_takeover_opt_in and planner_report["ok"] and tool_correction_ok:
+        return PlannerAdmissionDecision(
+            admitted=True,
+            admission_mode="execution_takeover",
+            reason="relaxed_safe_tool_correction_opt_in",
+            admitted_changes=tool_correction_changes,
+            safety_checks=safety_checks,
+        )
+    read_takeover_ok, read_takeover_rejections, read_takeover_changes = _generic_seed_read_domain_takeover(
+        base_workflow,
+        planner_workflow,
+    )
+    safety_checks["generic_seed_read_domain_takeover"] = read_takeover_ok
+    safety_checks["generic_seed_read_domain_takeover_rejections"] = read_takeover_rejections
+    if read_takeover_ok and planner_report["ok"]:
+        return PlannerAdmissionDecision(
+            admitted=True,
+            admission_mode="execution_takeover",
+            reason="generic_seed_read_domain_takeover",
+            admitted_changes=read_takeover_changes,
+            safety_checks=safety_checks,
+        )
     if not semantics_ok:
         rejected.extend(semantic_rejections)
     rejected.extend(refinement_rejections)
+    rejected.extend(tool_correction_rejections)
+    rejected.extend(read_takeover_rejections)
     return PlannerAdmissionDecision(
         admitted=False,
         admission_mode="observability_only",
