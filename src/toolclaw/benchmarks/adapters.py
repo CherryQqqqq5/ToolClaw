@@ -1724,9 +1724,11 @@ class ToolSandboxAdapter:
 
     @staticmethod
     def _extract_current_result_summary(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
+        # Metadata is the canonical run-time summary attached by the bench runner;
+        # root-level summaries may come from source fixtures or legacy traces.
         for container in (
-            trace_payload,
             trace_payload.get("metadata", {}),
+            trace_payload,
         ):
             if isinstance(container, dict):
                 summary = container.get("toolsandbox_result") or container.get("result_summary")

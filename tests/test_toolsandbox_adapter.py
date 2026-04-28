@@ -101,6 +101,39 @@ def test_toolsandbox_adapter_scores_similarity_coverage_and_hallucination_avoida
     assert score.diagnostics["reference_result_summary_available"] is True
 
 
+def test_toolsandbox_adapter_prefers_metadata_summary_over_top_level_summary() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_metadata_summary_001",
+        raw_payload={
+            "categories": ["State Dependency"],
+            "milestones": ["disable wifi", "confirm wifi disabled"],
+        },
+    )
+    trace_payload = {
+        "toolsandbox_result": {
+            "similarity": 1.0,
+            "milestone_mapping": [0, 1],
+            "source": "reference_result_summary",
+        },
+        "metrics": {"success": False, "tool_calls": 1},
+        "metadata": {
+            "toolsandbox_result": {
+                "similarity": 0.5,
+                "milestone_mapping": [0, None],
+                "source": "toolclaw_proxy",
+            }
+        },
+        "events": [{"event_type": "tool_result", "tool_id": "set_wifi_status"}],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.metrics["milestone_similarity"] == 0.5
+    assert score.metrics["milestone_coverage"] == 0.5
+    assert score.diagnostics["result_summary_source"] == "toolclaw_proxy"
+
+
 def test_toolsandbox_adapter_ignores_external_reference_summary_when_trace_summary_missing() -> None:
     adapter = ToolSandboxAdapter()
     sample = BenchmarkSample(
