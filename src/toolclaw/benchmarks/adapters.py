@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import ast
 from collections import Counter
 from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
+import re
 from typing import Any, Dict, Iterable, List, Optional, Protocol
 
 from toolclaw.benchmarks.task_annotations import annotate_task_payload
@@ -1312,6 +1314,7 @@ class ToolSandboxAdapter:
         repair_scored_success = strict_scored_success and repair_interaction_satisfied
         milestone_similarity = float(similarity) if similarity is not None else 0.0
         official_contract_proxy = bool(result_summary.get("official_contract_proxy"))
+        value_level_verified_success = bool(result_summary.get("value_level_answer_verified")) and raw_trace_success
         contract_runtime_execution_gap = bool(
             official_contract_proxy
             and raw_trace_success
@@ -1357,6 +1360,7 @@ class ToolSandboxAdapter:
                 "proxy_summary_success": 1.0 if proxy_summary_success else 0.0,
                 "final_response_present": 1.0 if final_response_signal["present"] else 0.0,
                 "official_contract_proxy": 1.0 if official_contract_proxy else 0.0,
+                "value_level_verified_success": 1.0 if value_level_verified_success else 0.0,
                 "contract_runtime_execution_gap": 1.0 if contract_runtime_execution_gap else 0.0,
                 "state_dependency_score": milestone_similarity if "state_dependency" in categories else 1.0,
                 "write_target_verified": 1.0 if write_target_verified else 0.0,
@@ -1406,6 +1410,7 @@ class ToolSandboxAdapter:
                 "expected_target_path": expected_target_path,
                 "observed_target_path": observed_target_path,
                 "official_contract_proxy": official_contract_proxy,
+                "value_level_verified_success": value_level_verified_success,
                 "contract_runtime_execution_gap": contract_runtime_execution_gap,
                 "final_response_present": bool(final_response_signal["present"]),
                 "final_response_source": final_response_signal["source"],
@@ -1426,10 +1431,13 @@ class ToolSandboxAdapter:
         success = bool(trace_metrics.get("success"))
         user_queries = sum(1 for event in trace_events if event.get("event_type") == "user_query")
         turn_count = self._extract_turn_count({}, trace_events)
+        value_level_verified = self._value_level_answer_verified(sample.raw_payload, trace_payload)
         matched_milestones = 0
         if milestones:
             progress_signals = self._proxy_progress_signals(sample.raw_payload, trace_payload)
             matched_milestones = min(len(milestones), progress_signals)
+            if success and value_level_verified:
+                matched_milestones = len(milestones)
         similarity = (matched_milestones / len(milestones)) if milestones else None
         milestone_mapping: List[Any] = [idx for idx in range(matched_milestones)] + [None] * max(len(milestones) - matched_milestones, 0)
         return {
@@ -1441,6 +1449,7 @@ class ToolSandboxAdapter:
             "success": success,
             "source": "toolclaw_proxy",
             "proxy_evaluation": True,
+            "value_level_answer_verified": value_level_verified,
             "final_response_present": bool(final_response_signal["present"]),
             "final_response_source": final_response_signal["source"],
         }
@@ -1670,8 +1679,127 @@ class ToolSandboxAdapter:
             return False
         if normalized_value in normalized_text:
             return True
+        compact_text = normalized_text.replace(",", "")
+        compact_value = normalized_value.replace(",", "")
+        if compact_value and compact_value in compact_text:
+            return True
         tokens = [token for token in normalized_value.replace("+", " ").replace("_", " ").split() if len(token) >= 3]
         return bool(tokens) and all(token in normalized_text for token in tokens)
+
+    @classmethod
+    def _value_level_answer_verified(cls, raw: Dict[str, Any], trace_payload: Dict[str, Any]) -> bool:
+        expected_values = cls._reference_answer_values(raw)
+        if not expected_values:
+            return False
+        observed_text = cls._trace_value_search_text(trace_payload)
+        if not observed_text:
+            return False
+        return all(cls._text_covers_value(observed_text, value) for value in expected_values)
+
+    @classmethod
+    def _reference_answer_values(cls, raw: Dict[str, Any]) -> List[str]:
+        messages = cls._reference_messages(raw)
+        tool_value_groups: List[List[str]] = []
+        for message in messages:
+            if str(message.get("sender") or "").lower() != "tool":
+                continue
+            values = cls._structured_message_values(str(message.get("content") or ""))
+            if values:
+                tool_value_groups.append(values)
+        if tool_value_groups:
+            return tool_value_groups[-1]
+
+        for message in reversed(messages):
+            if str(message.get("sender") or "").lower() != "assistant":
+                continue
+            content = str(message.get("content") or "").strip()
+            if content:
+                return cls._numeric_text_values(content)
+        return []
+
+    @staticmethod
+    def _reference_messages(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
+        for container in (raw, raw.get("metadata", {})):
+            if not isinstance(container, dict):
+                continue
+            messages = container.get("messages")
+            if isinstance(messages, list):
+                return [message for message in messages if isinstance(message, dict)]
+        return []
+
+    @classmethod
+    def _structured_message_values(cls, content: str) -> List[str]:
+        stripped = content.strip()
+        if not stripped:
+            return []
+        parsed: Any = None
+        if stripped[0] in "{[":
+            try:
+                parsed = ast.literal_eval(stripped)
+            except (SyntaxError, ValueError):
+                try:
+                    parsed = json.loads(stripped)
+                except (TypeError, ValueError):
+                    parsed = None
+        values: List[str] = []
+        if parsed is not None:
+            cls._collect_leaf_answer_values(parsed, values)
+        if values:
+            return values
+        return cls._numeric_text_values(stripped)
+
+    @classmethod
+    def _collect_leaf_answer_values(cls, value: Any, values: List[str]) -> None:
+        if isinstance(value, dict):
+            for nested in value.values():
+                cls._collect_leaf_answer_values(nested, values)
+            return
+        if isinstance(value, (list, tuple, set)):
+            for nested in value:
+                cls._collect_leaf_answer_values(nested, values)
+            return
+        if isinstance(value, (int, float)):
+            values.append(cls._normalize_answer_value(str(value)))
+            return
+        text = str(value).strip()
+        if text:
+            values.extend(cls._numeric_text_values(text))
+
+    @staticmethod
+    def _numeric_text_values(text: str) -> List[str]:
+        values = [
+            ToolSandboxAdapter._normalize_answer_value(match.group(0))
+            for match in re.finditer(r"(?<!\w)[+-]?\d[\d,]*(?:\.\d+)?(?!\w)", text)
+        ]
+        return [value for value in values if value]
+
+    @staticmethod
+    def _normalize_answer_value(value: str) -> str:
+        normalized = value.strip().replace(",", "")
+        if normalized.endswith(".0"):
+            normalized = normalized[:-2]
+        return normalized
+
+    @staticmethod
+    def _trace_value_search_text(trace_payload: Dict[str, Any]) -> str:
+        parts: List[str] = []
+        final_response = ToolSandboxAdapter._extract_final_response_text(trace_payload)
+        if final_response:
+            parts.append(final_response)
+        events = trace_payload.get("events", [])
+        if isinstance(events, list):
+            for event in events:
+                if not isinstance(event, dict) or str(event.get("event_type") or "") not in {"tool_result", "final_response_synthesized", "stop"}:
+                    continue
+                for key in ("output", "tool_args", "metadata"):
+                    value = event.get(key)
+                    if value is None:
+                        continue
+                    try:
+                        parts.append(json.dumps(value, sort_keys=True, ensure_ascii=False))
+                    except TypeError:
+                        parts.append(str(value))
+        return " ".join(parts)
 
     @staticmethod
     def _event_search_text(event: Dict[str, Any]) -> str:

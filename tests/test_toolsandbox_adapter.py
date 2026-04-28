@@ -713,6 +713,72 @@ def test_toolsandbox_adapter_generic_milestones_keep_legacy_proxy_path() -> None
     assert "official_contract_proxy" not in summary
 
 
+def test_toolsandbox_adapter_value_level_verification_can_satisfy_proxy_milestones() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="holiday_value_proxy",
+        raw_payload={
+            "categories": ["Canonicalization", "Multiple Tool Call", "Single User Turn"],
+            "tool_allow_list": ["get_current_timestamp", "search_holiday", "timestamp_diff"],
+            "milestones": ["milestone_0", "milestone_1", "milestone_2", "milestone_3"],
+            "messages": [
+                {"sender": "user", "content": "How many days is it till Christmas Day"},
+                {"sender": "tool", "content": "1777200709.883973"},
+                {"sender": "tool", "content": "1798128000.0"},
+                {"sender": "tool", "content": "{'days': 242, 'seconds': 18490}"},
+                {"sender": "assistant", "content": "There are 242 days and 18490 seconds until Christmas Day."},
+            ],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 3},
+        "events": [
+            {"event_type": "tool_result", "tool_id": "timestamp_diff", "output": {"status": "success", "payload": {"days": 242, "seconds": 18490}}},
+            {"event_type": "final_response_synthesized", "output": {"content": "Result: 242 days and 18,490 seconds."}},
+        ],
+    }
+
+    summary = adapter.build_proxy_result_summary(sample, trace_payload)
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert summary["value_level_answer_verified"] is True
+    assert summary["matched_milestones"] == 4
+    assert summary["similarity"] == 1.0
+    assert score.success is True
+    assert score.metrics["value_level_verified_success"] == 1.0
+
+
+def test_toolsandbox_adapter_value_level_verification_rejects_wrong_values() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="holiday_value_proxy_wrong",
+        raw_payload={
+            "categories": ["Canonicalization", "Multiple Tool Call", "Single User Turn"],
+            "tool_allow_list": ["get_current_timestamp", "search_holiday", "timestamp_diff"],
+            "milestones": ["milestone_0", "milestone_1", "milestone_2", "milestone_3"],
+            "messages": [
+                {"sender": "tool", "content": "{'days': 242, 'seconds': 18490}"},
+                {"sender": "assistant", "content": "There are 242 days and 18490 seconds until Christmas Day."},
+            ],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 3},
+        "events": [
+            {"event_type": "tool_result", "tool_id": "timestamp_diff", "output": {"status": "success", "payload": {"days": 242, "seconds": 16767}}},
+            {"event_type": "final_response_synthesized", "output": {"content": "Result: 242 days and 16767 seconds."}},
+        ],
+    }
+
+    summary = adapter.build_proxy_result_summary(sample, trace_payload)
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert summary["value_level_answer_verified"] is False
+    assert summary["matched_milestones"] < 4
+    assert score.success is False
+    assert score.metrics["value_level_verified_success"] == 0.0
+
+
 def test_toolsandbox_adapter_contract_proxy_rejects_tool_trace_without_domain_tool() -> None:
     adapter = ToolSandboxAdapter()
     sample = BenchmarkSample(
