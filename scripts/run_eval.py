@@ -2203,8 +2203,17 @@ def _extract_seed_message_content(text: str) -> Optional[str]:
     raw = str(text or "").strip()
     for pattern in _MESSAGE_CONTENT_PATTERNS:
         match = pattern.search(raw)
-        if match:
-            return match.group(1).strip().strip('"').strip("'")
+        if not match:
+            continue
+        content = match.group(1).strip()
+        if not content:
+            return None
+        if content[0] in ('\"', "'"):
+            quote = content[0]
+            end = content.find(quote, 1)
+            if end > 0:
+                return content[1:end].strip()
+        return content.strip('"').strip("'")
     return None
 
 
