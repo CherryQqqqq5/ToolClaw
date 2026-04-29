@@ -13,7 +13,8 @@
       "ToolSandbox full-core is boundary/contract validation unless a current runtime-visible strict bundle proves a broader lift.",
       "Planner admission read-domain takeover is a conservative heuristic, not semantic proof; mutating takeover remains opt-in.",
       "Reuse is exact-match cost/no-regression evidence, not a broad s4>s3 success-rate claim.",
-      "BFCL is a separate grounding/function-calling benchmark line and must not be merged into the ToolSandbox workflow headline."
+      "BFCL is a separate grounding/function-calling benchmark line and must not be merged into the ToolSandbox workflow headline.",
+      "Full-core ToolSandbox s3 interaction overlay is strict-success non-regression evidence only; latest interaction cost audit shows the s3>s2 wins are tiny and probe-heavy, not broad semantic repair evidence."
     ]
   },
   "claims": {
@@ -49,7 +50,18 @@
           "s3_interaction_overlay": 0.706173,
           "s4_reuse_overlay": 0.706173
         },
-        "boundary": "core reproducible subset; RapidAPI/external ToolSandbox scenarios remain excluded and tracked separately"
+        "boundary": "core reproducible subset; RapidAPI/external ToolSandbox scenarios remain excluded and tracked separately",
+        "interaction_cost_boundary": {
+          "audit": "outputs/paper_suite_runtime_visible_20260428/toolsandbox_official_core_reproducible_llm_interaction_gpt52/interaction_cost_audit.md",
+          "s3_vs_s2_additional_wins": 3,
+          "s3_vs_s2_losses": 0,
+          "user_queries_per_additional_win": 120.0,
+          "probe_queries_per_additional_win": 119.0,
+          "repair_queries_per_additional_win": 1.0,
+          "semantic_credit_round_count_lower_bound": 0,
+          "repair_reply_attribution_warning_count": 714,
+          "boundary": "Interaction overlay headline remains strict-success ladder evidence only; do not present full-core s3 gains as semantic repair or cost-efficiency evidence."
+        }
       }
     },
     "strict_layer_monotonicity": {
@@ -68,7 +80,8 @@
           "planner_overlay_rejected_changes",
           "full_trajectory_messages_runtime_visible_false",
           "result_summary_coverage",
-          "milestone_signal_coverage"
+          "milestone_signal_coverage",
+          "interaction_cost_audit"
         ]
       },
       "formal_summary": {
@@ -107,28 +120,37 @@
           ]
         }
       },
-      "boundary": "This is a primary-success non-regression claim. It does not claim that planner or reuse independently lifts broad ToolSandbox core success, and it does not claim monotonic improvement for cost, tool-call, or user-turn metrics."
+      "boundary": "This is a primary-success non-regression claim. It does not claim that planner or reuse independently lifts broad ToolSandbox core success, and it does not claim monotonic improvement for cost, tool-call, or user-turn metrics. The latest interaction cost audit shows s3>s2 strict wins are probe-heavy and not semantic-credit evidence."
     },
     "interaction_semantic_usefulness_mechanism": {
-      "status": "supported_current_evidence",
-      "claim_strength": "mechanism_primary",
+      "status": "full405_semantic_repair_unsupported_targeted_slice_only",
+      "claim_strength": "limitation",
       "benchmark_suite": "toolsandbox_semantic_repair_official_v1",
-      "claim": "ToolSandbox semantic-repair official v1 carries the targeted official-slice mechanism claim: on trace-backed repair-semantic-positive tasks, interaction converts usable user replies into target-aligned effective patches and post-query progress, while probe-only controls remain contract/probe caveats.",
+      "claim": "Current full405 ToolSandbox LLM interaction evidence does not support a broad semantic-repair claim: the interaction cost audit reports only 3 s3>s2 strict wins, 357 probe-only rounds, semantic_credit_round_count lower bound 0, and 714 repair-reply attribution warnings. The targeted semantic-repair official slice remains separate mechanism evidence and must not be treated as full405 semantic repair evidence.",
       "metrics": {
         "primary": [
-          "repair_semantic_usefulness_supported",
-          "interaction_not_cheating_supported"
+          "full405_semantic_credit_round_count_lower_bound",
+          "full405_probe_only_round_count",
+          "full405_user_queries_per_additional_win",
+          "full405_repair_reply_attribution_warning_count"
         ],
         "supporting": [
-          "paired_delta_summary@repair_semantic_positive",
-          "reply_usable_rate@repair_semantic",
-          "target_aligned_patch_rate@repair_semantic",
-          "effective_patch_rate@repair_semantic",
-          "post_query_progress_rate@repair_semantic",
-          "useful_interaction_round_rate@repair_semantic",
+          "targeted_semantic_repair_official_slice_remains_separate",
           "probe_only_success_caveat_present"
         ]
-      }
+      },
+      "formal_summary": {
+        "full405_interaction_cost_audit": "outputs/paper_suite_runtime_visible_20260428/toolsandbox_official_core_reproducible_llm_interaction_gpt52/interaction_cost_audit.md",
+        "s3_vs_s2_additional_wins": 3,
+        "s3_vs_s2_losses": 0,
+        "user_queries_per_additional_win": 120.0,
+        "probe_queries_per_additional_win": 119.0,
+        "repair_queries_per_additional_win": 1.0,
+        "semantic_credit_round_count_lower_bound": 0,
+        "probe_only_round_count_s3": 357,
+        "repair_reply_attribution_warning_count": 714
+      },
+      "boundary": "Limitation/current full405 unsupported: targeted semantic repair slices are not full405 semantic repair evidence. Use this claim only to state the boundary until full405 interaction shows non-probe semantic credit."
     },
     "planner_binding_headline": {
       "status": "headline_not_supported_mechanism_only",
