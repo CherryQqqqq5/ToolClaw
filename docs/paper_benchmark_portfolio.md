@@ -6,12 +6,18 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
 
 ## Current mapping
 
-- `toolsandbox_official_core_reproducible_strict`
+- `toolsandbox_official_core_reproducible_planner_admission`
   - role: current headline source for stateful, conversational, on-policy workflow intelligence on the reproducible ToolSandbox core subset
   - current claims: `interaction_headline`, `strict_layer_monotonicity`
+  - result bundle: `outputs/paper_suite_runtime_visible_20260428/toolsandbox_official_core_reproducible_planner_admission`
+  - reason: the 405-row executed core frozen export supersedes the legacy 88-row frozen export and the 2026-04-26 strict bundle for future ToolSandbox headline experiments. The strict ladder has `0 / 4860` adjacent primary-success regressions, with strict success `s0=0.659259`, `s1=0.703704`, `s2=0.703704`, `s3=0.706173`, and `s4=0.706173`. The planner residual audit reports `planner_takeover_on_s1_fail_count=339`, `planner_utility_win_count=0`, `residual_row_count=339`, and `top_bucket=interaction_contract`, so `s2==s1` is interpreted as interaction-limited broad-core headroom rather than failed planner admission. The latest interaction cost audit reports only 3 additional strict wins for `s3` over `s2`, 0 losses, and 1212 ties, with 120 user queries and 119 probe queries per additional win; `s4` preserves `s3` with 0/0/1215 and has no demonstrated full405 strict-success lift.
+  - boundary: this is a core reproducible subset, not the external/API ToolSandbox suite; planner overlay and reuse overlay are conservative non-regression layers here, not independent broad-lift claims. On core, `s3` is a small probe-heavy strict-success increment rather than broad semantic-repair evidence, and `s4` is no-lift preservation; planner utility is evaluated on planner-sensitive suites. Layer-specific boundaries are consolidated in `docs/layer_delta_evidence_matrix_20260427.md`.
+
+- `toolsandbox_official_core_reproducible_strict`
+  - role: historical strict formal bundle superseded by `toolsandbox_official_core_reproducible_planner_admission`
+  - current claim: historical consistency only
   - result bundle: `outputs/paper_suite/toolsandbox_official_core_reproducible_strict`
-  - reason: the 405-row executed core frozen export supersedes the legacy 88-row frozen export for future ToolSandbox headline experiments. The strict ladder has `0 / 4860` adjacent primary-success regressions, with strict success `s0=0.659259`, `s1=0.703704`, `s2=0.703704`, `s3=0.706173`, and `s4=0.706173`. The planner residual audit reports `planner_takeover_on_s1_fail_count=339`, `planner_utility_win_count=0`, `residual_row_count=339`, and `top_bucket=interaction_contract`, so `s2==s1` is interpreted as interaction-limited broad-core headroom rather than failed planner admission.
-  - boundary: this is a core reproducible subset, not the external/API ToolSandbox suite; planner overlay and reuse overlay are conservative non-regression layers here, not independent broad-lift claims. On core, `s3` owns the remaining interaction-contract residual; planner utility is evaluated on planner-sensitive suites. Layer-specific deltas are consolidated in `docs/layer_delta_evidence_matrix_20260427.md`.
+  - reason: retained for provenance of the 2026-04-26 strict formal note, but no longer the current ToolSandbox core headline source
 
 - `toolsandbox_legacy_frozen88`
   - role: historical legacy frozen official-run subset
@@ -28,8 +34,8 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
     - `probe_only`: `failure_type in {multiple_user_turn, insufficient_information}`
 
 - `toolsandbox_interaction_live_v1`
-  - role: mechanism benchmark for interaction as workflow control signal
-  - current claim: mechanism supporting evidence for `interaction_semantic_usefulness_mechanism`
+  - role: targeted mechanism benchmark for interaction as workflow control signal
+  - current claim: targeted/pending evidence only; full405 semantic repair remains a limitation in `interaction_semantic_usefulness_mechanism`
   - reason: the live suite validates the semantic decoder and patch compiler under oracle, partial, noisy, irrelevant, and wrong-parameter user modes; it is supporting evidence, not the primary official mechanism suite
   - protocol:
     - `repair_semantic_primary`: `state_dependency` tasks where the main claim is evaluated
@@ -38,7 +44,7 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
 
 - `toolsandbox_semantic_repair_official_v1`
   - role: primary targeted official semantic-repair mechanism suite
-  - current claim: `interaction_semantic_usefulness_mechanism`
+  - current claim: targeted semantic-repair slice only; not full405 semantic-repair evidence
   - reason: the 3-run official-slice bundle shows `a3_full_interaction` separates from `a2_planner`, `a3_no_query`, and `a3_noisy_user` on repair-semantic-positive tasks while useful/effective patch metrics remain zero on probe-only controls
   - protocol:
     - `repair_semantic_positive`: trace-backed official tasks with human-reviewed useful repair signal
@@ -75,37 +81,37 @@ Canonical claim boundaries are now maintained in [paper_claim_boundary_20260424.
   - reason: the current alignment pipeline is useful for internal comparison, but it is not yet paper-safe for headline claims until the semantic audit gate passes
 
 - `toolsandbox_reuse_persistent_v3`
-  - role: mechanism-supporting exact matched-signature reuse benchmark
+  - role: mechanism-supporting narrow exact matched-signature reuse benchmark
   - current claim: `reuse_exact_match_cost`
   - result bundle: `outputs/paper_suite/toolsandbox_reuse_persistent_v3`
-  - reason: the 3-run formal supports a narrow exact-reuse cost claim on pilot-confirmed high-headroom ToolSandbox core families: 18 primary exact families, 54 primary paired effects, warm exact hit and correct-source rates of 1.0, sham false-positive rate 0.0, and primary tool-call wins/losses/ties 54/0/0
-  - boundary: exact matched signatures only; no transfer reuse, BFCL reuse lift, broad ToolSandbox success lift, or verifier-backed skill-learning claim
+  - reason: under exact matched signatures and pilot-confirmed recovery headroom, warm reuse reduces second-run tool-call cost on ToolSandbox core reuse families while preserving success, with correct source-family provenance and zero sham false positives.
+  - boundary: exact matched-signature, pilot-confirmed high-headroom ToolSandbox core families only; no broad transfer reuse, BFCL reuse lift, broad ToolSandbox reuse-over-interaction or `a4>a3` success lift, external/API reuse, verifier-backed skill learning, or monotonic cost improvements beyond the reported second-run tool-call reduction.
 
 ## Current evidence boundary
 
-- `toolsandbox_official_core_reproducible_strict` is the current ToolSandbox core headline source; the legacy 88-row frozen export is historical evidence only.
-- ToolSandbox semantic-usefulness should be treated as a targeted mechanism claim anchored to `toolsandbox_semantic_repair_official_v1`, not a whole-benchmark headline claim.
+- `toolsandbox_official_core_reproducible_planner_admission` is the current ToolSandbox core headline source; the legacy 88-row frozen export and the older `toolsandbox_official_core_reproducible_strict` bundle are historical evidence only.
+- ToolSandbox semantic-usefulness is currently a full405 limitation: targeted semantic-repair slices remain separate mechanism evidence and must not be treated as broad full405 semantic-repair support.
 - Planner overlay should not be sold as an independent ToolSandbox core headline lift. The residual audit shows all `s1_fail + s2_takeover + s2_fail` core rows are `interaction_contract`, so broad-core `s2` utility is interaction-limited. The dedicated `toolsandbox_planner_sensitive_v2_f2` bundle remains the canonical mechanism evidence across all four V2 structural families, and `toolsandbox_planner_sensitive_v2_heldout` adds a robustness check with positive separation in 3/4 held-out families under paraphrase, tool renaming, shuffled candidates, and distractor stress. BFCL exact function-calling transfer remains a limitation. The guarded BFCL adapter can only become narrow supporting evidence after full-suite non-regression gates and the pre-registered baseline-missing-required slice gates pass.
-- Reuse is now supported only for the narrow `toolsandbox_reuse_persistent_v3` exact matched-signature second-run tool-call cost claim; no-headroom, transfer, and sham controls remain separate and do not support a broad reuse claim.
+- Reuse is supported only for the narrow `reuse_exact_match_cost` claim from `toolsandbox_reuse_persistent_v3`: exact matched-signature, pilot-confirmed high-headroom ToolSandbox core families with second-run tool-call reduction and success preservation. No transfer, BFCL, broad ToolSandbox success, external/API reuse, or general skill-learning claim is supported.
 - ToolGym is best treated as a later supplementary stress test, not the main paper anchor.
 - WebArena, WorkArena, and OSWorld are strong benchmarks, but they move the paper toward browser or computer-use agents rather than workflow intelligence over tool calling.
 
 
 
-## Strict ladder formal boundary on 2026-04-26
+## Strict ladder formal boundary on 2026-04-27
 
 The strict `s0-s4` ladder is the paper-facing conservative-overlay ladder for the 405-row ToolSandbox core reproducible frozen export. It is separate from the atomic `a0-a4` mechanism-diagnostic systems.
 
 Current strict formal result:
 
 - source: `data/toolsandbox.official_core_reproducible.frozen.json`
-- result bundle: `outputs/paper_suite/toolsandbox_official_core_reproducible_strict`
+- result bundle: `outputs/paper_suite_runtime_visible_20260428/toolsandbox_official_core_reproducible_planner_admission`
 - samples/runs/scored rows: `405 / 3 / 6075`
 - adjacent primary-success regressions: `0 / 4860`
 - strict success: `s0=0.659259`, `s1=0.703704`, `s2=0.703704`, `s3=0.706173`, `s4=0.706173`
 - adjacent wins/losses/ties: `54/0/1161`, `0/0/1215`, `3/0/1212`, `0/0/1215`
 
-Allowed interpretation: the paper-facing strict ladder is primary-success non-regressive on the ToolSandbox core reproducible subset. Do not use this result as planner-overlay broad lift, reuse cost-reduction, or layer-by-layer cost improvement evidence. Planner-sensitive F2/held-out and reuse persistent V3 remain separate mechanism and exact-cost protocols.
+Allowed interpretation: the paper-facing strict ladder is primary-success non-regressive on the ToolSandbox core reproducible subset. The current `s3` increment is small and probe-heavy: 3 additional strict wins over `s2`, 0 losses, 1212 ties, 120 user queries per additional win, and 119 probe queries per additional win. Do not use this result as broad semantic repair, planner-overlay broad lift, reuse cost-reduction, or layer-by-layer cost improvement evidence. Planner-sensitive F2/held-out and reuse persistent v3 remain separate mechanism and exact-cost protocols.
 
 ## BFCL guarded exact-function adapter boundary on 2026-04-24
 
@@ -119,32 +125,26 @@ The guarded BFCL path is a paper-safety and diagnostic repair, not a planner hea
 
 Promotion failed in the latest guarded candidate-preservation rerun. `bfcl_exact_function_guard` still requires full-suite wrong-function non-regression, missing-required reduction, tool-selection non-regression, and success non-regression; `a2_success_ge_a0` and `a2_missing_required_lt_a0` did not pass. `bfcl_missing_required_guarded_reduction` additionally requires the pre-registered `baseline_missing_required_slice` gates, which did not pass because the slice has zero a0 rows in this rerun. The funnel now shows candidate visibility is effectively repaired and the next blocker is argument/call-shape failure after the correct function is selected.
 
-## ToolSandbox persistent reuse boundary on 2026-04-27
+## Exact matched-signature reuse boundary on 2026-04-28
 
-The paper-facing reuse path is now `toolsandbox_reuse_persistent_v3`, backed by a versioned paired source and a 3-run formal bundle:
+The paper-facing reuse path remains `toolsandbox_reuse_persistent_v3`, aligned with `reuse_exact_match_cost` in the claim matrix:
 
 - source: `data/toolsandbox_reuse_persistent_v3.jsonl`
-- manifest: `data/toolsandbox_reuse_persistent_v3.manifest.json`
-- runner: `scripts/run_toolsandbox_reuse_persistent.py`
-- scorer: `scripts/score_toolsandbox_reuse_persistent.py`
 - result bundle: `outputs/paper_suite/toolsandbox_reuse_persistent_v3`
 - result note: `docs/toolsandbox_reuse_v3_formal_20260427.md`
 
-The suite separates pass-1 asset compilation from pass-2 evaluation and compares four pass-2 arms: `a3_interaction`, `a4_reuse_cold`, `a4_reuse_warm`, and `a4_reuse_sham`. Primary gates are computed only on `claim_scope=exact_match_cost` and `claim_inclusion=true`.
-
 Current formal status:
 
-- total formal families: 38
-- primary exact/headroom families: 18
-- no-headroom controls: 12
-- transfer controls: 8
-- primary paired effects: 54
+- family count: 38
+- primary exact families: 18
+- primary paired effect count: 54
 - warm exact reuse hit rate: 1.0
-- warm exact correct-source match rate: 1.0
+- warm exact correct source match rate: 1.0
 - sham false-positive rate: 0.0
-- primary tool-call paired wins/losses/ties: 54 / 0 / 0
+- primary tool-call reduction mean: 1.0
+- primary tool-call reduction paired wins/losses/ties: 54 / 0 / 0
 
-Allowed interpretation: exact matched-signature reuse reduces second-run tool-call cost on pilot-confirmed high-headroom ToolSandbox core families while preserving success and passing sham safety gates. Forbidden interpretation: broad transfer reuse, BFCL reuse lift, general ToolSandbox `a4 > a3` success, verifier-backed skill learning, or cost monotonicity across all metrics.
+Allowed interpretation: exact matched-signature warm reuse reduces second-run tool-call cost on pilot-confirmed high-headroom ToolSandbox core reuse families while preserving success and maintaining correct source-family provenance. Forbidden interpretation: broad transfer reuse, BFCL reuse lift, general ToolSandbox `a4 > a3` or reuse-over-interaction full405 success, verifier-backed skill learning, external/API reuse, broad binding repair, or monotonic cost improvement beyond the reported second-run tool-call reduction.
 
 ## ToolSandbox causality boundary on 2026-04-23
 
@@ -158,9 +158,9 @@ The current ToolSandbox causality instrumentation is implemented in the benchmar
 
 Current boundary:
 
-- causal v2 is not the primary positive semantic repair mechanism evidence.
+- causal v2 is not positive semantic repair mechanism evidence.
 - causal v2 shows that full-suite gains can be probe/contract-mediated, especially on must-query or probe-only rows.
-- the positive mechanism claim is now anchored to `toolsandbox_semantic_repair_official_v1`, whose primary slice is targeted to trace-backed semantic repair.
+- targeted semantic-repair slices remain separate mechanism evidence and are not current full405 semantic-repair support.
 - noisy-user success on probe-only rows must remain a caveat, not a semantic repair win.
 
 Interaction Live v1 formal run:
@@ -170,7 +170,7 @@ Interaction Live v1 formal run:
 - result bundle: [outputs/interaction_live_v1_formal/claim_summary.json](../outputs/interaction_live_v1_formal/claim_summary.json)
 - verdicts:
   - `interaction_as_control_signal_supported = true`
-  - `semantic_usefulness_supported_on_repair_semantic = true`
+  - `targeted_semantic_slice_signal_present = true`
   - `probe_only_success_caveat_present = true`
   - `noisy_user_not_counted_as_useful_repair = true`
   - `irrelevant_user_not_counted_as_useful_repair = true`

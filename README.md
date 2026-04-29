@@ -16,12 +16,11 @@ Paper-facing benchmark planning now lives in [docs/paper_benchmark_portfolio.md]
 
 - Phase-1 contract: implemented and reproducible
 - Phase-2 follow-ups: partially implemented and partially validated
-- Main headline benchmark result: frozen in `outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1`
-- Reuse-specific regression on the targeted core follow-up bench: fixed
-- Evidence for exact-match reuse cost reduction on high-headroom recovery cases: established on targeted Tau2 follow-ups, but not yet reproduced by the ToolSandbox persistent-reuse V1 suite
-- ToolSandbox persistent-reuse V1: implemented, but current smoke is gated by sham false positives and missing cost headroom
-- Evidence for `a4 > a3`: still not established
-- Evidence for broad transfer-reuse gains: still not established
+- Current paper-facing ToolSandbox headline source: `outputs/paper_suite/toolsandbox_official_core_reproducible_planner_admission`
+- Current strict 405-core ladder from the runtime-visible certified planner-admission bundle: `s0=0.659259`, `s1=0.703704`, `s2=0.703704`, `s3=0.706173`, `s4=0.706173`
+- Interaction is bounded by the latest full-core cost audit: `s3` adds 3 strict wins over `s2` with 0 losses and 1212 ties, at 120 user queries and 119 probe queries per additional win; planner broad core utility remains unsupported
+- Reuse has no demonstrated full405 strict-success lift over interaction and does not establish broad transfer-reuse gains
+- Exact-match reuse cost reduction is supported only on targeted high-headroom recovery cases
 
 ## System Ladder
 
@@ -98,25 +97,34 @@ Current repository-non-claims:
 
 ## Current Benchmark Picture
 
-### Official 88-sample ToolSandbox benchmark
+### Current 405-scenario ToolSandbox core strict ladder
 
-The current paper-facing frozen headline result is `outputs/paper_final_freeze_20260423/toolsandbox_official_post8249ee1`.
+The current paper-facing strict bundle is `outputs/paper_suite_runtime_visible_20260428/toolsandbox_official_core_reproducible_planner_admission`. It was rerun with `hint_policy=runtime_visible`, preserves the strict ladder numbers, and is the canonical current ToolSandbox core headline source. The matching boundary notes are `docs/paper_claim_boundary_20260424.md` and `docs/toolsandbox_core_strict_ladder_formal_20260427.md`.
 
-Current repo-supported headline numbers:
+Current repo-supported strict headline numbers:
 
-| system | mean_success_rate | pass@k | consistency |
+| system | strict_success |
+| --- | ---: |
+| `s0_baseline` | 0.659259 |
+| `s1_recovery` | 0.703704 |
+| `s2_planner_overlay` | 0.703704 |
+| `s3_interaction_overlay` | 0.706173 |
+| `s4_reuse_overlay` | 0.706173 |
+
+Adjacent paired counts:
+
+| comparison | wins | losses | ties |
 | --- | ---: | ---: | ---: |
-| `a0_baseline` | 0.636 | 0.636 | 1.000 |
-| `a1_recovery` | 0.682 | 0.682 | 1.000 |
-| `a2_planner` | 0.693 | 0.693 | 1.000 |
-| `a3_interaction` | 1.000 | 1.000 | 1.000 |
-| `a4_reuse` | 1.000 | 1.000 | 1.000 |
+| `s1>=s0` | 54 | 0 | 1161 |
+| `s2>=s1` | 0 | 0 | 1215 |
+| `s3_interaction_overlay_ge_s2_planner_overlay` | 3 | 0 | 1212 |
+| `s4_reuse_overlay_ge_s3_interaction_overlay` | 0 | 0 | 1215 |
 
 Interpretation:
 
-- interaction is still the dominant capability jump
-- planner is no longer below recovery-only after structural fallback, but its main-benchmark lift is small relative to interaction
-- reuse matches interaction on the official benchmark but does not exceed it
+- interaction adds only a small probe-heavy strict-core success delta after recovery and planning
+- planner is mechanism evidence on planner-sensitive slices, not broad core lift
+- reuse preserves strict-core interaction success but has no demonstrated full405 success lift
 
 ### Historical core-slice reuse problem
 
