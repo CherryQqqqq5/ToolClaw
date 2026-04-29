@@ -693,6 +693,34 @@ def test_toolsandbox_utility_backend_does_not_guess_scrambled_clock_without_tool
     assert result["metadata"]["time_source"] == "wall_clock_fallback"
 
 
+def test_toolsandbox_utility_backend_replays_official_run_directory_clock(tmp_path: Path) -> None:
+    trajectory_dir = tmp_path / "agent_model_user_model_04_26_2026_18_51_29" / "trajectories" / "task"
+    trajectory_dir.mkdir(parents=True)
+    (trajectory_dir / "conversation.json").write_text(
+        json.dumps(
+            [
+                {"role": "tool", "name": "search_holiday", "content": "1798128000.0"},
+                {"role": "tool", "name": "end_conversation", "content": "null"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    workflow = Workflow.demo()
+    workflow.metadata["trajectory_dir"] = str(trajectory_dir)
+    workflow.context.candidate_tools = [
+        ToolSpec(
+            tool_id="get_current_timestamp",
+            description="Get current POSIX timestamp.",
+            metadata={"execution_backend": "toolsandbox_utility"},
+        )
+    ]
+
+    result = run_tool("get_current_timestamp", {}, workflow=workflow)
+
+    assert result["payload"] == 1777200689.0
+    assert result["metadata"]["time_source"] == "trajectory_dir.official_run_timestamp"
+
+
 def test_executor_auto_approves_from_simulated_policy_and_continues(tmp_path: Path) -> None:
     workflow = Workflow.demo()
     workflow.task.constraints.requires_user_approval = True

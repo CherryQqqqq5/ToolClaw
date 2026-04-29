@@ -333,7 +333,11 @@ def _toolsandbox_frozen_trajectory_timestamp(metadata: Dict[str, Any]) -> Option
         parsed = _coerce_float(message.get("content"))
         if parsed is not None:
             return parsed, "trajectory_dir.conversation.get_current_timestamp"
-    return _toolsandbox_frozen_execution_context_timestamp(Path(str(trajectory_dir)))
+    trajectory_path = Path(str(trajectory_dir))
+    trace_timestamp = _toolsandbox_frozen_execution_context_timestamp(trajectory_path)
+    if trace_timestamp is not None:
+        return trace_timestamp
+    return _toolsandbox_frozen_run_directory_timestamp(trajectory_path)
 
 
 def _toolsandbox_frozen_execution_context_timestamp(trajectory_dir: Path) -> Optional[tuple[float, str]]:
@@ -366,6 +370,29 @@ def _toolsandbox_frozen_execution_context_timestamp(trajectory_dir: Path) -> Opt
             parsed = _coerce_float(trace.get("result"))
             if parsed is not None:
                 return parsed, "trajectory_dir.execution_context.get_current_timestamp"
+    return None
+
+
+def _toolsandbox_frozen_run_directory_timestamp(trajectory_dir: Path) -> Optional[tuple[float, str]]:
+    pattern = re.compile(r"_(\d{2})_(\d{2})_(\d{4})_(\d{2})_(\d{2})_(\d{2})(?:$|_)")
+    for parent in trajectory_dir.parents:
+        match = pattern.search(parent.name)
+        if match is None:
+            continue
+        month, day, year, hour, minute, second = (int(part) for part in match.groups())
+        try:
+            timestamp = datetime.datetime(
+                year,
+                month,
+                day,
+                hour,
+                minute,
+                second,
+                tzinfo=datetime.timezone(datetime.timedelta(hours=8)),
+            ).timestamp()
+        except ValueError:
+            return None
+        return timestamp, "trajectory_dir.official_run_timestamp"
     return None
 
 
