@@ -572,7 +572,7 @@ def test_toolsandbox_utility_backend_replays_frozen_trajectory_clock(tmp_path: P
     result = run_tool("get_current_timestamp", {}, workflow=workflow)
 
     assert result["payload"] == 1777200709.883973
-    assert result["metadata"]["time_source"] == "trajectory_dir.get_current_timestamp"
+    assert result["metadata"]["time_source"] == "trajectory_dir.conversation.get_current_timestamp"
 
 
 def test_toolsandbox_utility_backend_replays_scrambled_trajectory_clock(tmp_path: Path) -> None:
@@ -612,6 +612,41 @@ def test_toolsandbox_utility_backend_replays_scrambled_trajectory_clock(tmp_path
         ),
         encoding="utf-8",
     )
+    (trajectory_dir / "execution_context.json").write_text(
+        json.dumps(
+            {
+                "_dbs": {
+                    "SANDBOX": [
+                        {
+                            "openai_function_name": "utilities_2",
+                            "tool_trace": [
+                                json.dumps(
+                                    {
+                                        "tool_name": "get_current_timestamp",
+                                        "arguments": {},
+                                        "result": 1777201796.931531,
+                                    }
+                                )
+                            ],
+                        },
+                        {
+                            "openai_function_name": "utilities_3",
+                            "tool_trace": [
+                                json.dumps(
+                                    {
+                                        "tool_name": "search_holiday",
+                                        "arguments": {"holiday_name": "Christmas Day"},
+                                        "result": 1798156800.0,
+                                    }
+                                )
+                            ],
+                        },
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
     workflow = Workflow.demo()
     workflow.metadata["trajectory_dir"] = str(trajectory_dir)
     workflow.context.candidate_tools = [
@@ -625,10 +660,10 @@ def test_toolsandbox_utility_backend_replays_scrambled_trajectory_clock(tmp_path
     result = run_tool("get_current_timestamp", {}, workflow=workflow)
 
     assert result["payload"] == 1777201796.931531
-    assert result["metadata"]["time_source"] == "trajectory_dir.get_current_timestamp"
+    assert result["metadata"]["time_source"] == "trajectory_dir.execution_context.get_current_timestamp"
 
 
-def test_toolsandbox_utility_backend_replays_first_numeric_scrambled_tool_result(tmp_path: Path) -> None:
+def test_toolsandbox_utility_backend_does_not_guess_scrambled_clock_without_tool_trace(tmp_path: Path) -> None:
     trajectory_dir = tmp_path / "trajectory"
     trajectory_dir.mkdir()
     (trajectory_dir / "conversation.json").write_text(
@@ -654,8 +689,8 @@ def test_toolsandbox_utility_backend_replays_first_numeric_scrambled_tool_result
 
     result = run_tool("get_current_timestamp", {}, workflow=workflow)
 
-    assert result["payload"] == 1777201796.931531
-    assert result["metadata"]["time_source"] == "trajectory_dir.get_current_timestamp"
+    assert result["payload"] != 1777201796.931531
+    assert result["metadata"]["time_source"] == "wall_clock_fallback"
 
 
 def test_executor_auto_approves_from_simulated_policy_and_continues(tmp_path: Path) -> None:

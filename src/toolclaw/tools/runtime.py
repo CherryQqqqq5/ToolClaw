@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import re
 from difflib import SequenceMatcher
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from toolclaw.schemas.workflow import ToolSpec, Workflow
 from toolclaw.tools.mock_tools import MOCK_TOOL_REGISTRY, ToolExecutionError, run_mock_tool
@@ -304,13 +304,13 @@ def _toolsandbox_current_timestamp(workflow: Optional[Workflow]) -> tuple[float,
         parsed = _coerce_float(value)
         if parsed is not None:
             return parsed, key
-    timestamp = _toolsandbox_frozen_trajectory_timestamp(metadata)
-    if timestamp is not None:
-        return timestamp, "trajectory_dir.get_current_timestamp"
+    frozen_timestamp = _toolsandbox_frozen_trajectory_timestamp(metadata)
+    if frozen_timestamp is not None:
+        return frozen_timestamp
     return datetime.datetime.now().timestamp(), "wall_clock_fallback"
 
 
-def _toolsandbox_frozen_trajectory_timestamp(metadata: Dict[str, Any]) -> Optional[float]:
+def _toolsandbox_frozen_trajectory_timestamp(metadata: Dict[str, Any]) -> Optional[tuple[float, str]]:
     trajectory_dir = _safe_runtime_metadata_value(metadata, "trajectory_dir")
     if not trajectory_dir:
         return None
@@ -332,65 +332,40 @@ def _toolsandbox_frozen_trajectory_timestamp(metadata: Dict[str, Any]) -> Option
             continue
         parsed = _coerce_float(message.get("content"))
         if parsed is not None:
-            return parsed
-    parsed = _toolsandbox_scrambled_trajectory_timestamp(messages)
-    if parsed is not None:
-        return parsed
-    return None
+            return parsed, "trajectory_dir.conversation.get_current_timestamp"
+    return _toolsandbox_frozen_execution_context_timestamp(Path(str(trajectory_dir)))
 
 
-def _toolsandbox_scrambled_trajectory_timestamp(messages: List[Any]) -> Optional[float]:
-    for index, message in enumerate(messages):
-        if not isinstance(message, dict):
+def _toolsandbox_frozen_execution_context_timestamp(trajectory_dir: Path) -> Optional[tuple[float, str]]:
+    path = trajectory_dir / "execution_context.json"
+    if not path.exists() or not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    dbs = payload.get("_dbs") if isinstance(payload, dict) else None
+    sandbox_rows = dbs.get("SANDBOX") if isinstance(dbs, dict) else None
+    if not isinstance(sandbox_rows, list):
+        return None
+    for row in sandbox_rows:
+        if not isinstance(row, dict):
             continue
-        if str(message.get("role") or "").strip().lower() != "assistant":
+        tool_traces = row.get("tool_trace")
+        if not isinstance(tool_traces, list):
             continue
-        tool_calls = message.get("tool_calls")
-        if not isinstance(tool_calls, list) or not tool_calls:
-            continue
-        first_tool_call = next((call for call in tool_calls if isinstance(call, dict)), None)
-        if first_tool_call is None:
-            continue
-        parsed = _numeric_tool_result_after_call(messages[index + 1 :], first_tool_call)
-        if parsed is not None:
-            return parsed
-    return _first_numeric_tool_result(messages)
-
-
-def _numeric_tool_result_after_call(messages: List[Any], tool_call: Dict[str, Any]) -> Optional[float]:
-    call_id = str(tool_call.get("id") or "").strip()
-    function = tool_call.get("function")
-    call_name = str((function or {}).get("name") if isinstance(function, dict) else tool_call.get("name") or "").strip()
-    first_numeric: Optional[float] = None
-    for message in messages:
-        if not isinstance(message, dict):
-            continue
-        role = str(message.get("role") or "").strip().lower()
-        if role == "assistant":
-            break
-        if role != "tool":
-            continue
-        parsed = _coerce_float(message.get("content"))
-        if parsed is None:
-            continue
-        if first_numeric is None:
-            first_numeric = parsed
-        message_call_id = str(message.get("tool_call_id") or message.get("id") or "").strip()
-        message_name = str(message.get("name") or "").strip()
-        if (call_id and message_call_id == call_id) or (call_name and message_name == call_name):
-            return parsed
-    return first_numeric
-
-
-def _first_numeric_tool_result(messages: List[Any]) -> Optional[float]:
-    for message in messages:
-        if not isinstance(message, dict):
-            continue
-        if str(message.get("role") or "").strip().lower() != "tool":
-            continue
-        parsed = _coerce_float(message.get("content"))
-        if parsed is not None:
-            return parsed
+        for raw_trace in tool_traces:
+            if not isinstance(raw_trace, str):
+                continue
+            try:
+                trace = json.loads(raw_trace)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(trace, dict) or trace.get("tool_name") != "get_current_timestamp":
+                continue
+            parsed = _coerce_float(trace.get("result"))
+            if parsed is not None:
+                return parsed, "trajectory_dir.execution_context.get_current_timestamp"
     return None
 
 
