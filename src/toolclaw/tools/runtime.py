@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import re
 from difflib import SequenceMatcher
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from toolclaw.schemas.workflow import ToolSpec, Workflow
 from toolclaw.tools.mock_tools import MOCK_TOOL_REGISTRY, ToolExecutionError, run_mock_tool
@@ -329,6 +329,64 @@ def _toolsandbox_frozen_trajectory_timestamp(metadata: Dict[str, Any]) -> Option
         name = str(message.get("name") or "").strip()
         role = str(message.get("role") or "").strip().lower()
         if role != "tool" or name != "get_current_timestamp":
+            continue
+        parsed = _coerce_float(message.get("content"))
+        if parsed is not None:
+            return parsed
+    parsed = _toolsandbox_scrambled_trajectory_timestamp(messages)
+    if parsed is not None:
+        return parsed
+    return None
+
+
+def _toolsandbox_scrambled_trajectory_timestamp(messages: List[Any]) -> Optional[float]:
+    for index, message in enumerate(messages):
+        if not isinstance(message, dict):
+            continue
+        if str(message.get("role") or "").strip().lower() != "assistant":
+            continue
+        tool_calls = message.get("tool_calls")
+        if not isinstance(tool_calls, list) or not tool_calls:
+            continue
+        first_tool_call = next((call for call in tool_calls if isinstance(call, dict)), None)
+        if first_tool_call is None:
+            continue
+        parsed = _numeric_tool_result_after_call(messages[index + 1 :], first_tool_call)
+        if parsed is not None:
+            return parsed
+    return _first_numeric_tool_result(messages)
+
+
+def _numeric_tool_result_after_call(messages: List[Any], tool_call: Dict[str, Any]) -> Optional[float]:
+    call_id = str(tool_call.get("id") or "").strip()
+    function = tool_call.get("function")
+    call_name = str((function or {}).get("name") if isinstance(function, dict) else tool_call.get("name") or "").strip()
+    first_numeric: Optional[float] = None
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        role = str(message.get("role") or "").strip().lower()
+        if role == "assistant":
+            break
+        if role != "tool":
+            continue
+        parsed = _coerce_float(message.get("content"))
+        if parsed is None:
+            continue
+        if first_numeric is None:
+            first_numeric = parsed
+        message_call_id = str(message.get("tool_call_id") or message.get("id") or "").strip()
+        message_name = str(message.get("name") or "").strip()
+        if (call_id and message_call_id == call_id) or (call_name and message_name == call_name):
+            return parsed
+    return first_numeric
+
+
+def _first_numeric_tool_result(messages: List[Any]) -> Optional[float]:
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        if str(message.get("role") or "").strip().lower() != "tool":
             continue
         parsed = _coerce_float(message.get("content"))
         if parsed is not None:

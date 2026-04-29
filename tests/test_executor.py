@@ -575,6 +575,89 @@ def test_toolsandbox_utility_backend_replays_frozen_trajectory_clock(tmp_path: P
     assert result["metadata"]["time_source"] == "trajectory_dir.get_current_timestamp"
 
 
+def test_toolsandbox_utility_backend_replays_scrambled_trajectory_clock(tmp_path: Path) -> None:
+    trajectory_dir = tmp_path / "trajectory"
+    trajectory_dir.mkdir()
+    (trajectory_dir / "conversation.json").write_text(
+        json.dumps(
+            [
+                {"role": "assistant", "content": "final answer timestamp 9999999999"},
+                {
+                    "role": "assistant",
+                    "tool_calls": [
+                        {"id": "call_current", "function": {"name": "utilities_2"}},
+                        {"id": "call_holiday", "function": {"name": "utilities_3"}},
+                        {"id": "call_diff", "function": {"name": "utilities_6"}},
+                    ],
+                },
+                {
+                    "role": "tool",
+                    "name": "utilities_2",
+                    "tool_call_id": "call_current",
+                    "content": "1777201796.931531",
+                },
+                {
+                    "role": "tool",
+                    "name": "utilities_3",
+                    "tool_call_id": "call_holiday",
+                    "content": "1798156800.0",
+                },
+                {
+                    "role": "tool",
+                    "name": "utilities_6",
+                    "tool_call_id": "call_diff",
+                    "content": "{\"days\": 241, \"seconds\": 17603}",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+    workflow = Workflow.demo()
+    workflow.metadata["trajectory_dir"] = str(trajectory_dir)
+    workflow.context.candidate_tools = [
+        ToolSpec(
+            tool_id="get_current_timestamp",
+            description="Get current POSIX timestamp.",
+            metadata={"execution_backend": "toolsandbox_utility"},
+        )
+    ]
+
+    result = run_tool("get_current_timestamp", {}, workflow=workflow)
+
+    assert result["payload"] == 1777201796.931531
+    assert result["metadata"]["time_source"] == "trajectory_dir.get_current_timestamp"
+
+
+def test_toolsandbox_utility_backend_replays_first_numeric_scrambled_tool_result(tmp_path: Path) -> None:
+    trajectory_dir = tmp_path / "trajectory"
+    trajectory_dir.mkdir()
+    (trajectory_dir / "conversation.json").write_text(
+        json.dumps(
+            [
+                {"role": "assistant", "content": "final answer timestamp 9999999999"},
+                {"role": "tool", "name": "utilities_2", "content": "1777201796.931531"},
+                {"role": "tool", "name": "utilities_3", "content": "1798156800.0"},
+                {"role": "tool", "name": "utilities_6", "content": "{\"days\": 241, \"seconds\": 17603}"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    workflow = Workflow.demo()
+    workflow.metadata["trajectory_dir"] = str(trajectory_dir)
+    workflow.context.candidate_tools = [
+        ToolSpec(
+            tool_id="get_current_timestamp",
+            description="Get current POSIX timestamp.",
+            metadata={"execution_backend": "toolsandbox_utility"},
+        )
+    ]
+
+    result = run_tool("get_current_timestamp", {}, workflow=workflow)
+
+    assert result["payload"] == 1777201796.931531
+    assert result["metadata"]["time_source"] == "trajectory_dir.get_current_timestamp"
+
+
 def test_executor_auto_approves_from_simulated_policy_and_continues(tmp_path: Path) -> None:
     workflow = Workflow.demo()
     workflow.task.constraints.requires_user_approval = True
