@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import datetime
+import json
+from pathlib import Path
 import re
 from difflib import SequenceMatcher
 from typing import Any, Dict, Iterable, Optional
@@ -302,7 +304,36 @@ def _toolsandbox_current_timestamp(workflow: Optional[Workflow]) -> tuple[float,
         parsed = _coerce_float(value)
         if parsed is not None:
             return parsed, key
+    timestamp = _toolsandbox_frozen_trajectory_timestamp(metadata)
+    if timestamp is not None:
+        return timestamp, "trajectory_dir.get_current_timestamp"
     return datetime.datetime.now().timestamp(), "wall_clock_fallback"
+
+
+def _toolsandbox_frozen_trajectory_timestamp(metadata: Dict[str, Any]) -> Optional[float]:
+    trajectory_dir = _safe_runtime_metadata_value(metadata, "trajectory_dir")
+    if not trajectory_dir:
+        return None
+    path = Path(str(trajectory_dir)) / "conversation.json"
+    if not path.exists() or not path.is_file():
+        return None
+    try:
+        messages = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(messages, list):
+        return None
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        name = str(message.get("name") or "").strip()
+        role = str(message.get("role") or "").strip().lower()
+        if role != "tool" or name != "get_current_timestamp":
+            continue
+        parsed = _coerce_float(message.get("content"))
+        if parsed is not None:
+            return parsed
+    return None
 
 
 def _toolsandbox_search_holiday(args: Dict[str, Any], workflow: Optional[Workflow]) -> Optional[float]:

@@ -3838,6 +3838,16 @@ def _sanitize_decision_hints(hints: Dict[str, Any], *, hint_policy: str = "runti
     return hints
 
 
+def _attach_execution_runtime_metadata(workflow: Workflow, task: Dict[str, Any]) -> Workflow:
+    metadata = task.get("metadata")
+    if not isinstance(metadata, dict):
+        return workflow
+    trajectory_dir = metadata.get("trajectory_dir")
+    if trajectory_dir:
+        workflow.metadata["trajectory_dir"] = str(trajectory_dir)
+    return workflow
+
+
 def build_workflow_from_task(
     task: Dict[str, Any],
     mode: str = "demo",
@@ -4932,6 +4942,7 @@ def execute_system(
 
     if spec.execution_mode == "baseline":
         workflow = build_workflow_from_task(task, mode=spec.workflow_mode, spec=spec, hint_policy=hint_policy)
+        _attach_execution_runtime_metadata(workflow, task)
         baseline_trace, baseline_stop = run_baseline(
             workflow=workflow,
             run_id=f"{spec.system_id}_{task_id}",
@@ -4993,6 +5004,7 @@ def execute_system(
 
     if spec.execution_mode == "executor":
         workflow = build_workflow_from_task(task, mode=spec.workflow_mode, spec=spec, hint_policy=hint_policy)
+        _attach_execution_runtime_metadata(workflow, task)
         runtime.executor.run_until_blocked(
             workflow=workflow,
             run_id=f"{spec.system_id}_{task_id}",
@@ -5008,6 +5020,7 @@ def execute_system(
         )
 
     seed_workflow = build_workflow_from_task(task, mode=spec.workflow_mode, spec=spec, hint_policy=hint_policy)
+    _attach_execution_runtime_metadata(seed_workflow, task)
     benchmark = str(seed_workflow.metadata.get("benchmark") or "").strip().lower()
     approval_declared = bool(seed_workflow.task.constraints.requires_user_approval) or any(
         isinstance(edge, dict) and str(edge.get("type") or "").strip().lower() == "approval"

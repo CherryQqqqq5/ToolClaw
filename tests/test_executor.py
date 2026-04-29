@@ -484,7 +484,7 @@ def test_executor_supports_semantic_mock_backend_for_non_toy_tools(tmp_path: Pat
     payload = json.loads((tmp_path / "semantic_mock_trace.json").read_text(encoding="utf-8"))
     result_event = next(event for event in payload["events"] if event["event_type"] == EventType.TOOL_RESULT.value)
     assert result_event["tool_id"] == "set_wifi_status"
-    assert "updated state" in result_event["output"]["payload"]
+    assert result_event["output"]["payload"] == "wifi has been turned off"
 
 
 def test_semantic_mock_timestamp_diff_payload_reflects_visible_inputs() -> None:
@@ -541,6 +541,38 @@ def test_toolsandbox_utility_backend_computes_timestamp_diff_from_runtime_clock(
     assert christmas == 1798128000.0
     assert diff["payload"]["days"] == 242
     assert isinstance(diff["payload"]["seconds"], int)
+
+
+def test_toolsandbox_utility_backend_replays_frozen_trajectory_clock(tmp_path: Path) -> None:
+    trajectory_dir = tmp_path / "trajectory"
+    trajectory_dir.mkdir()
+    (trajectory_dir / "conversation.json").write_text(
+        json.dumps(
+            [
+                {"role": "assistant", "tool_calls": [{"function": {"name": "get_current_timestamp"}}]},
+                {
+                    "role": "tool",
+                    "name": "get_current_timestamp",
+                    "content": "1777200709.883973",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+    workflow = Workflow.demo()
+    workflow.metadata["trajectory_dir"] = str(trajectory_dir)
+    workflow.context.candidate_tools = [
+        ToolSpec(
+            tool_id="get_current_timestamp",
+            description="Get current POSIX timestamp.",
+            metadata={"execution_backend": "toolsandbox_utility"},
+        )
+    ]
+
+    result = run_tool("get_current_timestamp", {}, workflow=workflow)
+
+    assert result["payload"] == 1777200709.883973
+    assert result["metadata"]["time_source"] == "trajectory_dir.get_current_timestamp"
 
 
 def test_executor_auto_approves_from_simulated_policy_and_continues(tmp_path: Path) -> None:

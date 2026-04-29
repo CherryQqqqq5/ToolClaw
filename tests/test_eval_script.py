@@ -4201,6 +4201,87 @@ def test_execute_system_strict_interaction_uses_overlay_seed(monkeypatch, tmp_pa
     assert row.system == "s3_interaction_overlay"
 
 
+def test_execute_system_attaches_trajectory_dir_only_for_runtime(monkeypatch, tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_runtime_trajectory", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    trajectory_dir = tmp_path / "official_trajectory"
+    trajectory_dir.mkdir()
+    task = {
+        "task_id": "find_days_till_holiday_runtime_clock",
+        "scenario": "canonicalization",
+        "query": "How many days is it till Christmas Day",
+        "tool_allow_list": [
+            "datetime_info_to_timestamp",
+            "timestamp_diff",
+            "get_current_timestamp",
+            "search_holiday",
+            "end_conversation",
+            "timestamp_to_datetime_info",
+        ],
+        "candidate_tools": [
+            "datetime_info_to_timestamp",
+            "timestamp_diff",
+            "get_current_timestamp",
+            "search_holiday",
+            "end_conversation",
+            "timestamp_to_datetime_info",
+        ],
+        "metadata": {
+            "benchmark": "toolsandbox",
+            "toolsandbox_categories": ["canonicalization", "multiple_tool"],
+            "trajectory_dir": str(trajectory_dir),
+        },
+    }
+
+    planned_workflow = module.build_workflow_from_task(
+        task,
+        mode="planner_overlay_admitted",
+        spec=module.SYSTEM_SPECS["s3_interaction_overlay"],
+    )
+    assert "trajectory_dir" not in planned_workflow.metadata
+    assert "trajectory" not in json.dumps(planned_workflow.metadata.get("planner_admission_decision", {}))
+
+    shell_calls: list[dict[str, object]] = []
+
+    class _FakeShell:
+        def run(self, **kwargs):
+            shell_calls.append(kwargs)
+            Path(kwargs["output_path"]).write_text(
+                json.dumps({"events": [], "metrics": {"success": True}, "metadata": {}}),
+                encoding="utf-8",
+            )
+            return SimpleNamespace(workflow=kwargs["seed_workflow"], success=True)
+
+    monkeypatch.setattr(module, "build_shell", lambda runtime, task: _FakeShell())
+    monkeypatch.setattr(
+        module,
+        "row_from_trace",
+        lambda **kwargs: {"system": kwargs["system"], "task_id": kwargs["task"]["task_id"]},
+    )
+
+    row = module.execute_system(
+        spec=module.SYSTEM_SPECS["s3_interaction_overlay"],
+        task=task,
+        task_index=1,
+        traces_dir=tmp_path,
+        runtime=SimpleNamespace(executor=SimpleNamespace(run_until_blocked=lambda **kwargs: None)),
+    )
+
+    assert row["system"] == "s3_interaction_overlay"
+    assert shell_calls
+    seed_workflow = shell_calls[0]["seed_workflow"]
+    request = shell_calls[0]["request"]
+    assert seed_workflow.metadata["trajectory_dir"] == str(trajectory_dir)
+    encoded_request_hints = json.dumps(request.hints.user_style, default=str)
+    assert "trajectory_dir" not in encoded_request_hints
+    assert str(trajectory_dir) not in encoded_request_hints
+
+
 def test_execute_system_strict_reuse_overlay_keeps_shadow_no_execute_path(monkeypatch, tmp_path: Path) -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_strict_reuse_seed", module_path)
