@@ -543,14 +543,17 @@
         "case": "D",
         "paper_safe_for_claim": true,
         "a2_wrong_func_name_le_a0": true,
-        "a2_tool_selection_ge_a0": true,
+        "a2_tool_selection_ge_a0": false,
         "a2_success_ge_a0": false,
         "a2_missing_required_lt_a0": false,
         "dominant_actionable_drop_stage": "selected_correct_arg_or_shape_error",
         "prepared_to_runtime_drop_per_system": 3,
         "bfcl_abstain_candidate_elision_per_system": 824,
         "selected_correct_arg_or_shape_error_per_system": 745
-      }
+      },
+      "provenance_notes": [
+        "Claim hygiene update: current outputs/paper_suite/bfcl_fc_core/claim_summary.json full_suite_gates has a2_tool_selection_ge_a0=false, so BFCL remains limitation-only evidence."
+      ]
     },
     "bfcl_agentic_ext": {
       "status": "implemented",
