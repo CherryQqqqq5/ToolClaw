@@ -1237,3 +1237,130 @@ def test_planner_takeover_residual_audit_classifies_s1_fail_s2_fail_takeovers(tm
     assert "Planner Takeover Residual Audit" in report
     assert "interaction_contract" in report
     assert "No scenario-name or ToolSandbox tool-name repair recommendations" in report
+
+
+def test_statistical_robustness_summary_supports_strict_ladder_systems() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_toolsandbox_bench.py"
+    spec = importlib.util.spec_from_file_location("run_toolsandbox_bench_strict_stats", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    per_sample = {
+        "task_a": {"success_rate": 0.0},
+        "task_b": {"success_rate": 1.0},
+    }
+    scoreboard = {
+        "per_system_summary": {
+            "s0_baseline": {"per_sample": per_sample},
+            "s1_recovery": {"per_sample": {"task_a": {"success_rate": 1.0}, "task_b": {"success_rate": 1.0}}},
+            "s2_planner_overlay": {"per_sample": {"task_a": {"success_rate": 1.0}, "task_b": {"success_rate": 1.0}}},
+            "s3_interaction_overlay": {"per_sample": {"task_a": {"success_rate": 1.0}, "task_b": {"success_rate": 1.0}}},
+            "s4_reuse_overlay": {"per_sample": {"task_a": {"success_rate": 1.0}, "task_b": {"success_rate": 1.0}}},
+        }
+    }
+
+    summary = module._statistical_robustness_summary(scoreboard)
+
+    assert summary["protocol"] == "strict_superset_ladder"
+    assert [row["right_system"] for row in summary["paired_overall"]] == [
+        "s1_recovery",
+        "s2_planner_overlay",
+        "s3_interaction_overlay",
+        "s4_reuse_overlay",
+    ]
+    assert summary["paired_overall"][0]["num_tasks"] == 2
+    assert summary["paired_overall"][0]["wins"] == 1
+    assert summary["paired_overall"][1]["ties"] == 2
+
+
+def test_backend_fidelity_report_counts_clock_sources(tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_toolsandbox_bench.py"
+    spec = importlib.util.spec_from_file_location("run_toolsandbox_bench_backend_fidelity", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    trace_path = tmp_path / "trace.json"
+    trace_path.write_text(
+        json.dumps(
+            {
+                "events": [
+                    {
+                        "event_type": "tool_result",
+                        "tool_id": "get_current_timestamp",
+                        "output": {
+                            "status": "success",
+                            "payload": 1777200709,
+                            "metadata": {
+                                "backend": "toolsandbox_utility",
+                                "time_source": "trajectory_dir.official_run_timestamp",
+                            },
+                        },
+                    },
+                    {
+                        "event_type": "tool_result",
+                        "tool_id": "get_current_timestamp",
+                        "output": {"status": "success", "payload": "current timestamp"},
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    scored_path = tmp_path / "comparison.scored.csv"
+    with scored_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "task_id",
+                "system",
+                "trace_path",
+                "raw_execution_success",
+                "execution_verified_success",
+                "strict_scored_success",
+                "contract_runtime_execution_gap",
+                "proxy_summary_success",
+                "result_summary_coverage",
+                "reference_summary_coverage",
+                "milestone_signal_coverage",
+                "result_summary_source",
+            ],
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "task_id": "clock_case",
+                "system": "s2_planner_overlay",
+                "trace_path": str(trace_path),
+                "raw_execution_success": "True",
+                "execution_verified_success": "True",
+                "strict_scored_success": "False",
+                "contract_runtime_execution_gap": "1.0",
+                "proxy_summary_success": "True",
+                "result_summary_coverage": "1.0",
+                "reference_summary_coverage": "0.0",
+                "milestone_signal_coverage": "0.0",
+                "result_summary_source": "toolclaw_proxy",
+            }
+        )
+
+    summary = module._backend_fidelity_report(tmp_path)
+
+    timestamp = summary["timestamp_tool_results"]
+    assert timestamp["time_source_counts"]["trajectory_dir.official_run_timestamp"] == 1
+    assert timestamp["time_source_counts"]["missing"] == 1
+    assert timestamp["utility_time_source_counts"]["trajectory_dir.official_run_timestamp"] == 1
+    assert timestamp["wall_clock_fallback_count"] == 0
+    assert timestamp["missing_time_source_count"] == 1
+    assert summary["raw_strict_gap_row_count"] == 1
+    assert summary["contract_runtime_execution_gap_row_count"] == 1
+
+    report_path = tmp_path / "backend_fidelity_report.md"
+    module._write_backend_fidelity_markdown(summary, report_path)
+    report = report_path.read_text(encoding="utf-8")
+    assert "ToolSandbox Backend Fidelity Report" in report
+    assert "trajectory_dir.official_run_timestamp" in report
+    assert "wall_clock_fallback_count: `0`" in report

@@ -607,6 +607,166 @@ def _write_raw_vs_benchmark_gap_markdown(summary: Dict[str, Any], out_path: Path
     out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _count_key(counts: Dict[str, int], key: Any) -> None:
+    normalized = str(key or "missing")
+    counts[normalized] = counts.get(normalized, 0) + 1
+
+
+def _backend_fidelity_report(outdir: Path) -> Dict[str, Any]:
+    rows = _load_scored_rows(outdir)
+    trace_cache: Dict[str, Dict[str, Any]] = {}
+    time_source_counts: Dict[str, int] = {}
+    utility_time_source_counts: Dict[str, int] = {}
+    backend_counts: Dict[str, int] = {}
+    result_summary_source_counts: Dict[str, int] = {}
+
+    for row in rows:
+        _count_key(result_summary_source_counts, row.get("result_summary_source") or "missing")
+        trace_path = str(row.get("trace_path") or "")
+        if trace_path and trace_path not in trace_cache:
+            trace_cache[trace_path] = _load_trace_payload(trace_path)
+
+    timestamp_result_count = 0
+    timestamp_missing_time_source_count = 0
+    for trace_payload in trace_cache.values():
+        for event in trace_payload.get("events", []):
+            if event.get("event_type") != "tool_result":
+                continue
+            if event.get("tool_id") != "get_current_timestamp":
+                continue
+            timestamp_result_count += 1
+            output = event.get("output") if isinstance(event.get("output"), dict) else {}
+            metadata = output.get("metadata", {}) if isinstance(output, dict) else {}
+            time_source = metadata.get("time_source") if isinstance(metadata, dict) else None
+            backend = metadata.get("backend") if isinstance(metadata, dict) else None
+            if time_source is None:
+                timestamp_missing_time_source_count += 1
+            _count_key(time_source_counts, time_source)
+            _count_key(backend_counts, backend)
+            if backend == "toolsandbox_utility":
+                _count_key(utility_time_source_counts, time_source)
+
+    per_system: Dict[str, Dict[str, Any]] = {}
+    for system in sorted({str(row.get("system") or "unknown") for row in rows}):
+        system_rows = [row for row in rows if str(row.get("system") or "unknown") == system]
+        per_system[system] = {
+            "num_rows": len(system_rows),
+            "raw_execution_success": _mean_float(system_rows, "raw_execution_success"),
+            "execution_verified_success": _mean_float(system_rows, "execution_verified_success"),
+            "strict_scored_success": _mean_float(system_rows, "strict_scored_success"),
+            "contract_runtime_execution_gap": _mean_float(system_rows, "contract_runtime_execution_gap"),
+            "proxy_summary_success": _mean_float(system_rows, "proxy_summary_success"),
+            "result_summary_coverage": _mean_float(system_rows, "result_summary_coverage"),
+            "reference_summary_coverage": _mean_float(system_rows, "reference_summary_coverage"),
+            "milestone_signal_coverage": _mean_float(system_rows, "milestone_signal_coverage"),
+        }
+
+    raw_strict_gap_rows = [
+        row
+        for row in rows
+        if _float_cell(row.get("raw_execution_success", 0.0)) > 0.0
+        and _float_cell(row.get("strict_scored_success", 0.0)) <= 0.0
+    ]
+    wall_clock_fallback_count = int(time_source_counts.get("wall_clock_fallback", 0))
+    return {
+        "summary_version": "toolsandbox_backend_fidelity_v1",
+        "interpretation": "This report audits benchmark/runtime contract fidelity. It is diagnostic evidence only; it should not be interpreted as planner, interaction, or reuse algorithm lift.",
+        "num_scored_rows": len(rows),
+        "num_trace_files": len(trace_cache),
+        "per_system": per_system,
+        "result_summary_source_counts": result_summary_source_counts,
+        "timestamp_tool_results": {
+            "total": timestamp_result_count,
+            "time_source_counts": time_source_counts,
+            "utility_time_source_counts": utility_time_source_counts,
+            "backend_counts": backend_counts,
+            "missing_time_source_count": timestamp_missing_time_source_count,
+            "wall_clock_fallback_count": wall_clock_fallback_count,
+            "official_run_timestamp_count": int(time_source_counts.get("trajectory_dir.official_run_timestamp", 0)),
+        },
+        "raw_strict_gap_row_count": len(raw_strict_gap_rows),
+        "contract_runtime_execution_gap_row_count": sum(
+            1 for row in rows if _float_cell(row.get("contract_runtime_execution_gap", 0.0)) > 0.0
+        ),
+        "frozen_clock_contract": {
+            "wall_clock_fallback_present": wall_clock_fallback_count > 0,
+            "execution_only_clock_sources": sorted(
+                source
+                for source in time_source_counts
+                if source.startswith("trajectory_dir.")
+            ),
+        },
+        "claim_boundary": {
+            "runtime_fidelity_diagnostic_only": True,
+            "oracle_control_detected": False,
+            "planner_lift_claim_supported_by_this_report": False,
+        },
+    }
+
+
+def _write_backend_fidelity_markdown(summary: Dict[str, Any], out_path: Path) -> None:
+    timestamp = dict(summary.get("timestamp_tool_results", {}))
+    frozen_clock = dict(summary.get("frozen_clock_contract", {}))
+    lines = [
+        "# ToolSandbox Backend Fidelity Report",
+        "",
+        str(summary.get("interpretation", "")),
+        "",
+        "## Runtime Clock",
+        "",
+        f"- timestamp_tool_results: `{int(timestamp.get('total', 0))}`",
+        f"- wall_clock_fallback_count: `{int(timestamp.get('wall_clock_fallback_count', 0))}`",
+        f"- official_run_timestamp_count: `{int(timestamp.get('official_run_timestamp_count', 0))}`",
+        f"- timestamp_missing_time_source_count: `{int(timestamp.get('missing_time_source_count', 0))}`",
+        f"- wall_clock_fallback_present: `{bool(frozen_clock.get('wall_clock_fallback_present', False))}`",
+        "",
+        "### Time Sources",
+        "",
+        "| source | count |",
+        "|---|---:|",
+    ]
+    for source, count in sorted(dict(timestamp.get("time_source_counts", {})).items()):
+        lines.append(f"| {source} | {int(count)} |")
+    lines.extend([
+        "",
+        "### Utility Time Sources",
+        "",
+        "| source | count |",
+        "|---|---:|",
+    ])
+    for source, count in sorted(dict(timestamp.get("utility_time_source_counts", {})).items()):
+        lines.append(f"| {source} | {int(count)} |")
+    lines.extend([
+        "",
+        "## Result Sources",
+        "",
+        "| result_summary_source | count |",
+        "|---|---:|",
+    ])
+    for source, count in sorted(dict(summary.get("result_summary_source_counts", {})).items()):
+        lines.append(f"| {source} | {int(count)} |")
+    lines.extend([
+        "",
+        "## Per System",
+        "",
+        "| system | rows | raw_execution_success | execution_verified_success | strict_scored_success | contract_runtime_execution_gap | proxy_summary_success | milestone_signal_coverage |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
+    ])
+    for system, stats in sorted(dict(summary.get("per_system", {})).items()):
+        lines.append(
+            f"| {system} | {int(stats.get('num_rows', 0))} | {float(stats.get('raw_execution_success', 0.0)):.3f} | {float(stats.get('execution_verified_success', 0.0)):.3f} | {float(stats.get('strict_scored_success', 0.0)):.3f} | {float(stats.get('contract_runtime_execution_gap', 0.0)):.3f} | {float(stats.get('proxy_summary_success', 0.0)):.3f} | {float(stats.get('milestone_signal_coverage', 0.0)):.3f} |"
+        )
+    lines.extend([
+        "",
+        "## Claim Boundary",
+        "",
+        f"- raw_strict_gap_row_count: `{int(summary.get('raw_strict_gap_row_count', 0))}`",
+        f"- contract_runtime_execution_gap_row_count: `{int(summary.get('contract_runtime_execution_gap_row_count', 0))}`",
+        "- This report is runtime-fidelity evidence, not a standalone algorithmic improvement claim.",
+    ])
+    out_path.write_text("\n".join(lines), encoding="utf-8")
+
+
 TOOLSANDBOX_GROUP_METRICS = [
     AggregateMetric("execution_verified_success"),
     AggregateMetric("strict_scored_success"),
@@ -734,6 +894,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=None, help="Limit number of samples")
     parser.add_argument("--smoke", action="store_true", help="Run a small smoke slice (min(limit, 10))")
     parser.add_argument("--num-runs", type=int, default=1, help="Repeat runs to estimate pass@k and consistency")
+    parser.add_argument(
+        "--hint-policy",
+        choices=["runtime_visible", "legacy"],
+        default="runtime_visible",
+        help="Runtime decision hint policy passed to run_eval.py. Use legacy only for historical reproduction.",
+    )
     parser.add_argument(
         "--asset-registry-root",
         default=None,
@@ -2003,7 +2169,15 @@ def _focused_slice_filters() -> Dict[str, Any]:
 def _statistical_robustness_summary(scoreboard: Dict[str, Any]) -> Dict[str, Any]:
     per_system_summary = dict(scoreboard.get("per_system_summary", {}))
     systems = set(per_system_summary)
-    if {"a1_recovery", "a2_planner", "a3_full_interaction", "a3_no_query", "a3_noisy_user"}.issubset(systems):
+    if {"s0_baseline", "s1_recovery", "s2_planner_overlay", "s3_interaction_overlay", "s4_reuse_overlay"}.issubset(systems):
+        pair_specs = [
+            ("s1_recovery", "s0_baseline"),
+            ("s2_planner_overlay", "s1_recovery"),
+            ("s3_interaction_overlay", "s2_planner_overlay"),
+            ("s4_reuse_overlay", "s3_interaction_overlay"),
+        ]
+        protocol = "strict_superset_ladder"
+    elif {"a1_recovery", "a2_planner", "a3_full_interaction", "a3_no_query", "a3_noisy_user"}.issubset(systems):
         pair_specs = [
             ("a3_full_interaction", "a3_no_query"),
             ("a3_full_interaction", "a3_noisy_user"),
@@ -2052,6 +2226,7 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
     gap_summary_exists = (outdir / "raw_vs_benchmark_gap_summary.json").exists()
     causal_summary: Dict[str, Any] = {}
     causal_summary_path = outdir / "causal_claim_summary.json"
+    backend_fidelity_path = outdir / "backend_fidelity_report.md"
     if causal_summary_path.exists():
         try:
             causal_summary = json.loads(causal_summary_path.read_text(encoding="utf-8"))
@@ -2083,6 +2258,7 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
         f"- causal_claim_summary: `{display_path(outdir / 'causal_claim_summary.json') if causal_summary_path.exists() else 'not_generated'}`",
         f"- causal_claim_report: `{display_path(outdir / 'causal_claim_report.md') if (outdir / 'causal_claim_report.md').exists() else 'not_generated'}`",
         f"- raw_vs_benchmark_gap_summary: `{display_path(outdir / 'raw_vs_benchmark_gap_summary.md') if gap_summary_exists else 'not_generated'}`",
+        f"- backend_fidelity_report: `{display_path(backend_fidelity_path) if backend_fidelity_path.exists() else 'not_generated'}`",
         f"- per_failure_type_summary: `{display_path(outdir / 'per_failure_type_summary.md')}`",
         f"- repair_loop_summary: `{display_path(outdir / 'repair_loop_summary.md')}`",
         f"- statistical_robustness_summary: `{display_path(outdir / 'statistical_robustness_summary.json')}`",
@@ -2275,7 +2451,7 @@ def _write_toolsandbox_report(scoreboard: Dict[str, Any], outdir: Path, *, reuse
             "- `mean_success_rate` is computed from strict scored success, not from proxy summaries alone.",
             "- `strict_scored_success` is the benchmark-facing success after the must-interact gate is applied.",
             "- `repair_scored_success` is stricter: it only counts runs that both score successfully and include at least one non-probe repair interaction.",
-            "- `interaction_contract_satisfied` can be lifted by an interaction probe; `repair_interaction_satisfied` cannot.",
+            "- `interaction_contract_satisfied` excludes interaction probes; probe-only turns are reported separately via `probe_user_queries`.",
             "- `raw_trace_success_rate` / `raw_execution_success_rate` are reported separately because executor success and benchmark-verified success can diverge.",
             "- `proxy_summary_success` tracks runs that looked successful under the attached ToolClaw proxy summary path.",
             "- `milestone_signal_coverage` shows whether the trace carried an explicit milestone verification signal; low coverage weakens benchmark claims even if proxy summaries exist.",
@@ -2444,7 +2620,14 @@ def main() -> None:
         asset_registry_root = None
         if args.asset_registry_root:
             asset_registry_root = Path(args.asset_registry_root) / f"run_{run_index:02d}"
-        invoke_run_eval(normalized_path, run_outdir, args.mode, systems, asset_registry_root=asset_registry_root)
+        invoke_run_eval(
+            normalized_path,
+            run_outdir,
+            args.mode,
+            systems,
+            asset_registry_root=asset_registry_root,
+            hint_policy=args.hint_policy,
+        )
         raw_report_path = run_outdir / "report.md"
         if raw_report_path.exists():
             raw_report_path.replace(run_outdir / "raw_report.md")
@@ -2547,6 +2730,12 @@ def main() -> None:
         encoding="utf-8",
     )
     _write_raw_vs_benchmark_gap_markdown(gap_summary, outdir / "raw_vs_benchmark_gap_summary.md")
+    backend_fidelity_report = _backend_fidelity_report(outdir)
+    (outdir / "backend_fidelity_report.json").write_text(
+        json.dumps(backend_fidelity_report, indent=2),
+        encoding="utf-8",
+    )
+    _write_backend_fidelity_markdown(backend_fidelity_report, outdir / "backend_fidelity_report.md")
     latest_run_index = args.num_runs
     write_csv_rows([row for row in raw_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.raw.csv")
     write_csv_rows([row for row in scored_run_rows if int(row["run_index"]) == latest_run_index], outdir / "latest_run_comparison.scored.csv")
@@ -2564,6 +2753,8 @@ def main() -> None:
             "latest_raw_report_path": display_path(outdir / "latest_run_raw_report.md") if (outdir / "latest_run_raw_report.md").exists() else None,
             "raw_vs_benchmark_gap_summary_path": display_path(outdir / "raw_vs_benchmark_gap_summary.json"),
             "raw_vs_benchmark_gap_report_path": display_path(outdir / "raw_vs_benchmark_gap_summary.md"),
+            "backend_fidelity_report_path": display_path(outdir / "backend_fidelity_report.json"),
+            "backend_fidelity_markdown_path": display_path(outdir / "backend_fidelity_report.md"),
             "strict_layer_monotonicity_audit_path": display_path(outdir / "strict_layer_monotonicity_audit.json")
             if (outdir / "strict_layer_monotonicity_audit.json").exists()
             else None,
@@ -2627,6 +2818,12 @@ def main() -> None:
             "claim_ids": CAUSAL_CLAIM_IDS if (outdir / "causal_claim_summary.json").exists() else None,
             "planner_sensitive_summary_path": display_path(outdir / "planner_sensitive_summary.json")
             if (outdir / "planner_sensitive_summary.json").exists()
+            else None,
+            "backend_fidelity_report_path": display_path(outdir / "backend_fidelity_report.json")
+            if (outdir / "backend_fidelity_report.json").exists()
+            else None,
+            "backend_fidelity_markdown_path": display_path(outdir / "backend_fidelity_report.md")
+            if (outdir / "backend_fidelity_report.md").exists()
             else None,
             "hint_leakage_report_path": display_path(outdir / "hint_leakage_report.json")
             if (outdir / "hint_leakage_report.json").exists()
