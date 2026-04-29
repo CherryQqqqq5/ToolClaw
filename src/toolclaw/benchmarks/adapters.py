@@ -1200,7 +1200,11 @@ class ToolSandboxAdapter:
         final_response_signal = self._extract_final_response_signal(trace_payload)
         current_result_summary = self._extract_current_result_summary(trace_payload)
         reference_result_summary = self._extract_reference_result_summary(sample.raw_payload)
-        result_summary = current_result_summary or self.build_proxy_result_summary(sample, trace_payload)
+        result_summary, proxy_summary_recomputed = self._select_result_summary(
+            sample,
+            trace_payload,
+            current_result_summary,
+        )
         categories = self._extract_categories(sample.raw_payload)
         similarity = self._extract_similarity(result_summary)
         raw_trace_success = bool(trace_metrics.get("success"))
@@ -1302,13 +1306,14 @@ class ToolSandboxAdapter:
             write_target_verified=write_target_verified,
         )
         must_interact_expected = self._must_interact_expected(sample.raw_payload, categories)
-        interaction_contract_satisfied = (user_queries > 0 or approval_requests > 0) if must_interact_expected else True
         repair_interaction_satisfied = (
             repair_user_queries > 0
             or repair_user_replies > 0
             or approval_requests > 0
             or approval_responses > 0
         )
+        meaningful_interaction_satisfied = repair_user_queries > 0 or approval_requests > 0
+        interaction_contract_satisfied = meaningful_interaction_satisfied if must_interact_expected else True
         interaction_gate_blocked = must_interact_expected and not interaction_contract_satisfied
         strict_scored_success = execution_verified_success and interaction_contract_satisfied
         repair_scored_success = strict_scored_success and repair_interaction_satisfied
@@ -1406,6 +1411,7 @@ class ToolSandboxAdapter:
                 "milestone_signal_available": total_milestones > 0 and has_explicit_milestone_signal,
                 "used_result_summary": bool(result_summary),
                 "result_summary_source": result_summary_source,
+                "proxy_summary_recomputed": proxy_summary_recomputed,
                 "reference_result_summary_available": bool(reference_result_summary),
                 "expected_target_path": expected_target_path,
                 "observed_target_path": observed_target_path,
@@ -1453,6 +1459,32 @@ class ToolSandboxAdapter:
             "final_response_present": bool(final_response_signal["present"]),
             "final_response_source": final_response_signal["source"],
         }
+
+    def _select_result_summary(
+        self,
+        sample: BenchmarkSample,
+        trace_payload: Dict[str, Any],
+        current_result_summary: Dict[str, Any],
+    ) -> tuple[Dict[str, Any], bool]:
+        rebuilt = self.build_proxy_result_summary(sample, trace_payload)
+        if not current_result_summary:
+            return rebuilt, False
+        if self._result_summary_source(current_result_summary) != "toolclaw_proxy":
+            return current_result_summary, False
+        if self._result_summary_source(rebuilt) != "toolclaw_proxy":
+            return current_result_summary, False
+
+        current_mapping = self._extract_milestone_mapping(current_result_summary)
+        rebuilt_mapping = self._extract_milestone_mapping(rebuilt)
+        current_total = self._expected_milestone_count(sample.raw_payload, current_mapping)
+        rebuilt_total = self._expected_milestone_count(sample.raw_payload, rebuilt_mapping)
+        current_matched = self._matched_milestones(current_mapping, current_result_summary)
+        rebuilt_matched = self._matched_milestones(rebuilt_mapping, rebuilt)
+        if bool(rebuilt.get("official_contract_proxy")) and not bool(current_result_summary.get("official_contract_proxy")):
+            return rebuilt, True
+        if rebuilt_total >= current_total and rebuilt_matched > current_matched:
+            return rebuilt, True
+        return current_result_summary, False
 
     def _build_official_contract_proxy_result_summary(
         self,
@@ -1679,11 +1711,12 @@ class ToolSandboxAdapter:
             return False
         if normalized_value in normalized_text:
             return True
-        compact_text = normalized_text.replace(",", "")
-        compact_value = normalized_value.replace(",", "")
+        compact_text = re.sub(r"[^a-z0-9]+", "", normalized_text)
+        compact_value = re.sub(r"[^a-z0-9]+", "", normalized_value)
         if compact_value and compact_value in compact_text:
             return True
-        tokens = [token for token in normalized_value.replace("+", " ").replace("_", " ").split() if len(token) >= 3]
+        token_text = re.sub(r"[^a-z0-9]+", " ", normalized_value)
+        tokens = [token for token in token_text.split() if len(token) >= 3]
         return bool(tokens) and all(token in normalized_text for token in tokens)
 
     @classmethod
@@ -1835,9 +1868,9 @@ class ToolSandboxAdapter:
             for event in trace_events
             if event.get("event_type") in {"tool_call", "tool_result"} and str(event.get("tool_id") or "").strip()
         ]
-        # Count progress depth: non-write capabilities collapse to one slot each, but distinct
-        # write-capable tools get separate slots so planner-sensitive tasks (e.g. archive vs primary
-        # writer) can match multi-milestone traces without relying on coarse "write" alone.
+        # Count progress depth: read-only capabilities collapse to one slot each, but distinct
+        # mutating tools get separate slots so multi-state repairs can satisfy multi-milestone
+        # traces without needing synthetic repair events.
         progress_keys: set[tuple[str, ...]] = set()
         for tool_id in tool_ids:
             capability = self._infer_proxy_tool_capability(raw, tool_id)
@@ -1845,6 +1878,8 @@ class ToolSandboxAdapter:
                 continue
             if capability == "write":
                 progress_keys.add(("write", tool_id))
+            elif capability == "state" and self._is_mutating_state_tool(tool_id):
+                progress_keys.add(("state", tool_id))
             else:
                 progress_keys.add((capability,))
         progress_base = len(progress_keys)
@@ -1914,6 +1949,11 @@ class ToolSandboxAdapter:
         if any(token in text for token in state_hints):
             return "state"
         return ""
+
+    @staticmethod
+    def _is_mutating_state_tool(tool_id: str) -> bool:
+        normalized = tool_id.strip().lower()
+        return normalized.startswith(("set_", "toggle_", "enable_", "disable_", "update_"))
 
     def _make_sample(self, raw: Dict[str, Any], idx: int) -> BenchmarkSample:
         sample_id = str(
@@ -1999,7 +2039,14 @@ class ToolSandboxAdapter:
 
     def _extract_categories(self, raw: Dict[str, Any]) -> List[str]:
         categories: List[str] = []
-        raw_categories = raw.get("categories") or raw.get("category")
+        raw_metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
+        raw_categories = (
+            raw.get("categories")
+            or raw.get("category")
+            or raw.get("toolsandbox_categories")
+            or raw_metadata.get("toolsandbox_categories")
+            or raw_metadata.get("categories")
+        )
         if isinstance(raw_categories, list):
             for value in raw_categories:
                 normalized = self._normalize_category(value)
@@ -2315,7 +2362,7 @@ class ToolSandboxAdapter:
         return None
 
     def _expected_write_target_path(self, raw: Dict[str, Any], task_id: str) -> Optional[str]:
-        if raw.get("target_path") is not None:
+        if raw.get("target_path") is not None and self._task_expects_write(raw):
             return str(raw.get("target_path"))
         if self._task_expects_write(raw):
             return f"{self.default_target_dir}/{task_id}.txt"
@@ -2388,8 +2435,6 @@ class ToolSandboxAdapter:
         return self._paths_match_for_benchmark_write(expected_target_path, observed_target_path)
 
     def _task_expects_write(self, raw: Dict[str, Any]) -> bool:
-        if raw.get("target_path") is not None:
-            return True
         tool_ids = self._tool_allow_list(raw)
         if not tool_ids:
             tool_ids = [

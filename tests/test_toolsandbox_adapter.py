@@ -374,6 +374,38 @@ def test_write_target_verification_accepts_normalized_relative_paths() -> None:
     assert score.metrics["execution_verified_success"] == 1.0
 
 
+def test_toolsandbox_adapter_does_not_require_target_path_for_non_write_task() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="holiday_value_proxy_non_write_target_path",
+        raw_payload={
+            "categories": ["Canonicalization", "Multiple Tool Call", "Single User Turn"],
+            "target_path": "outputs/toolsandbox/reports/holiday_value_proxy_non_write_target_path.txt",
+            "tool_allow_list": ["get_current_timestamp", "search_holiday", "timestamp_diff"],
+            "milestones": ["milestone_0", "milestone_1", "milestone_2", "milestone_3"],
+            "messages": [
+                {"sender": "tool", "content": "{'days': 242, 'seconds': 18490}"},
+                {"sender": "assistant", "content": "There are 242 days and 18490 seconds until Christmas Day."},
+            ],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 3},
+        "events": [
+            {"event_type": "tool_result", "tool_id": "timestamp_diff", "output": {"status": "success", "payload": {"days": 242, "seconds": 18490}}},
+            {"event_type": "final_response_synthesized", "output": {"content": "Result: 242 days and 18,490 seconds."}},
+        ],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.success is True
+    assert score.metrics["execution_verified_success"] == 1.0
+    assert score.metrics["value_level_verified_success"] == 1.0
+    assert score.metrics["write_target_verified"] == 1.0
+    assert score.diagnostics["expected_target_path"] is None
+
+
 def test_toolsandbox_adapter_distinguishes_probe_only_interaction_from_repair_interaction() -> None:
     adapter = ToolSandboxAdapter()
     sample = BenchmarkSample(
@@ -411,14 +443,44 @@ def test_toolsandbox_adapter_distinguishes_probe_only_interaction_from_repair_in
     score = adapter.score_trace(sample, trace_payload)
 
     assert score.metrics["execution_verified_success"] == 1.0
-    assert score.metrics["strict_scored_success"] == 1.0
-    assert score.metrics["interaction_contract_satisfied"] == 1.0
+    assert score.metrics["strict_scored_success"] == 0.0
+    assert score.metrics["interaction_contract_satisfied"] == 0.0
     assert score.metrics["repair_interaction_satisfied"] == 0.0
     assert score.metrics["repair_scored_success"] == 0.0
     assert score.diagnostics["probe_user_queries"] == 1
     assert score.diagnostics["repair_user_queries"] == 0
     assert score.diagnostics["probe_user_replies"] == 1
     assert score.diagnostics["repair_user_replies"] == 0
+
+
+def test_toolsandbox_adapter_reads_categories_from_metadata_for_interaction_gate() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="toolsandbox_metadata_categories_001",
+        raw_payload={
+            "metadata": {"toolsandbox_categories": ["Multiple User Turn"]},
+            "milestones": ["ask", "complete"],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "metadata": {
+            "toolsandbox_result": {
+                "similarity": 1.0,
+                "milestone_mapping": [0, 1],
+                "source": "toolclaw_proxy",
+            }
+        },
+        "events": [],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.diagnostics["categories"] == ["multiple_user_turn"]
+    assert score.diagnostics["must_interact_expected"] is True
+    assert score.metrics["execution_verified_success"] == 1.0
+    assert score.metrics["interaction_contract_satisfied"] == 0.0
+    assert score.metrics["strict_scored_success"] == 0.0
 
 
 def test_toolsandbox_adapter_counts_non_probe_interaction_as_repair_success() -> None:
@@ -748,6 +810,47 @@ def test_toolsandbox_adapter_value_level_verification_can_satisfy_proxy_mileston
     assert score.metrics["value_level_verified_success"] == 1.0
 
 
+def test_toolsandbox_adapter_recomputes_stale_toolclaw_proxy_summary() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="holiday_value_proxy_stale_summary",
+        raw_payload={
+            "categories": ["Canonicalization", "Multiple Tool Call", "Single User Turn"],
+            "tool_allow_list": ["get_current_timestamp", "search_holiday", "timestamp_diff"],
+            "milestones": ["milestone_0", "milestone_1", "milestone_2", "milestone_3"],
+            "messages": [
+                {"sender": "tool", "content": "{'days': 242, 'seconds': 18490}"},
+                {"sender": "assistant", "content": "There are 242 days and 18490 seconds until Christmas Day."},
+            ],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 3},
+        "metadata": {
+            "toolsandbox_result": {
+                "similarity": 0.5,
+                "milestone_mapping": [0, 1, None, None],
+                "matched_milestones": 2,
+                "source": "toolclaw_proxy",
+            }
+        },
+        "events": [
+            {"event_type": "tool_result", "tool_id": "timestamp_diff", "output": {"status": "success", "payload": {"days": 242, "seconds": 18490}}},
+            {"event_type": "final_response_synthesized", "output": {"content": "Result: 242 days and 18,490 seconds."}},
+        ],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.success is True
+    assert score.metrics["execution_verified_success"] == 1.0
+    assert score.metrics["value_level_verified_success"] == 1.0
+    assert score.diagnostics["proxy_summary_recomputed"] is True
+    assert score.diagnostics["matched_milestones"] == 4
+    assert score.diagnostics["result_summary_source"] == "toolclaw_proxy"
+    assert score.diagnostics["official_contract_proxy"] is False
+
+
 def test_toolsandbox_adapter_value_level_verification_rejects_wrong_values() -> None:
     adapter = ToolSandboxAdapter()
     sample = BenchmarkSample(
@@ -817,3 +920,94 @@ def test_toolsandbox_adapter_contract_proxy_rejects_tool_trace_without_domain_to
     assert summary["matched_milestones"] == 0
     assert summary["success"] is False
     assert summary["official_contract_diagnostics"][0]["reason"] == "missing_tool_trace_event"
+
+
+def test_toolsandbox_adapter_contract_proxy_matches_punctuated_final_response_values() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="wifi_contract_proxy_punctuation",
+        raw_payload={
+            "categories": ["Single Tool Call"],
+            "tool_allow_list": ["set_wifi_status", "end_conversation"],
+            "milestones": ["Milestone"],
+            "official_milestone_contract": [
+                {
+                    "snapshot_constraints": [
+                        {
+                            "database_namespace": "DatabaseNamespace.SANDBOX",
+                            "snapshot_constraint": "snapshot_similarity",
+                            "target_dataframe": {
+                                "sender": "RoleType.AGENT",
+                                "recipient": "RoleType.USER",
+                                "content": "Wi-Fi has been turned on.",
+                            },
+                        }
+                    ]
+                }
+            ],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 1},
+        "events": [
+            {"event_type": "tool_call", "tool_id": "set_wifi_status", "tool_args": {"enabled": True}},
+            {"event_type": "final_response_synthesized", "output": {"content": "Result: wifi has been turned on."}},
+        ],
+    }
+
+    summary = adapter.build_proxy_result_summary(sample, trace_payload)
+
+    assert summary["matched_milestones"] == 1
+    assert summary["success"] is True
+
+
+def test_toolsandbox_adapter_counts_distinct_mutating_state_tools_as_progress() -> None:
+    adapter = ToolSandboxAdapter()
+    sample = BenchmarkSample(
+        sample_id="state_precondition_chain_proxy_progress",
+        raw_payload={
+            "categories": ["State Dependency", "Multiple Tool Call", "Single User Turn"],
+            "tool_allow_list": [
+                "set_low_battery_mode_status",
+                "set_wifi_status",
+                "get_wifi_status",
+                "end_conversation",
+            ],
+            "milestones": ["disable precondition", "set target", "finalize"],
+        },
+    )
+    trace_payload = {
+        "metrics": {"success": True, "tool_calls": 2},
+        "events": [
+            {
+                "event_type": "tool_call",
+                "tool_id": "set_low_battery_mode_status",
+                "tool_args": {"enabled": False},
+            },
+            {
+                "event_type": "tool_result",
+                "tool_id": "set_low_battery_mode_status",
+                "output": {"status": "success", "payload": "low battery mode has been turned off"},
+            },
+            {
+                "event_type": "tool_call",
+                "tool_id": "set_wifi_status",
+                "tool_args": {"enabled": True},
+            },
+            {
+                "event_type": "tool_result",
+                "tool_id": "set_wifi_status",
+                "output": {"status": "success", "payload": "wifi has been turned on"},
+            },
+            {
+                "event_type": "final_response_synthesized",
+                "output": {"content": "Result: wifi has been turned on."},
+            },
+        ],
+    }
+
+    score = adapter.score_trace(sample, trace_payload)
+
+    assert score.success is True
+    assert score.diagnostics["matched_milestones"] == 3
+    assert score.metrics["milestone_similarity"] == 1.0
