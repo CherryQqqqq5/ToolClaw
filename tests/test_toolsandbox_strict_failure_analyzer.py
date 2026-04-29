@@ -263,8 +263,64 @@ def test_workflow_residual_detects_missing_mutating_action_after_clock_only(tmp_
     record = summary["records"][0]
     assert record["workflow_residual"] == "missing_action_step"
     assert summary["workflow_residual_counts"]["missing_action_step"] == 1
+    assert summary["workflow_obligation_missing_required_action_count"] == 1
+    assert summary["workflow_obligation_classifier_version"] == "toolsandbox_workflow_obligation_shadow_v1"
+    audit = record["workflow_obligation_audit"]
+    assert audit["audit_only"] is True
+    assert audit["repair_enabled"] is False
+    assert audit["status"] == "missing_required_action"
+    assert audit["expected_action_tools"] == ["add_reminder"]
+    assert audit["executed_mutating_tools"] == []
     assert record["semantic_payload_placeholder"] is False
     assert record["domain_state_evidence_present"] is False
+
+
+def test_workflow_obligation_audit_marks_executed_mutation_as_satisfied(tmp_path: Path) -> None:
+    module = _load_script()
+    trace = tmp_path / "trace.json"
+    _trace(
+        trace,
+        [
+            {
+                "event_type": "tool_call",
+                "tool_id": "add_reminder",
+                "tool_args": {"query": "Remind me to buy milk tomorrow at 5PM", "content": "buy milk"},
+            },
+            {
+                "event_type": "tool_result",
+                "tool_id": "add_reminder",
+                "output": {
+                    "status": "success",
+                    "payload": {"reminder_id": "rem_1", "content": "buy milk", "reminder_timestamp": 1777201796.9},
+                },
+            },
+            {"event_type": "final_response_synthesized", "output": {"content": "I created the reminder."}},
+            {"event_type": "stop", "output": {"status": "success", "reason": "success_criteria_satisfied"}},
+        ],
+    )
+    rows = [
+        {
+            "run_index": "1",
+            "task_id": "task",
+            "system": "s4_reuse_overlay",
+            "failure_type": "canonicalization",
+            "strict_scored_success": "False",
+            "raw_execution_success": "True",
+            "execution_verified_success": "True",
+            "interaction_contract_satisfied": "True",
+            "stop_reason": "success_criteria_satisfied",
+            "trace_path": str(trace),
+        },
+    ]
+
+    summary = module.build_taxonomy(rows, repo_root=tmp_path)
+
+    audit = summary["records"][0]["workflow_obligation_audit"]
+    assert audit["status"] == "satisfied"
+    assert audit["expected_action_tools"] == ["add_reminder"]
+    assert audit["executed_mutating_tools"] == ["add_reminder"]
+    assert audit["audit_only"] is True
+    assert summary["workflow_obligation_audit_counts"] == {"satisfied": 1}
 
 
 def test_workflow_residual_detects_placeholder_search_summary(tmp_path: Path) -> None:
@@ -306,6 +362,8 @@ def test_workflow_residual_detects_placeholder_search_summary(tmp_path: Path) ->
 
     record = summary["records"][0]
     assert record["workflow_residual"] == "summary_not_field_evidence"
+    assert record["workflow_obligation_audit"]["status"] == "not_required"
+    assert record["workflow_obligation_audit"]["audit_only"] is True
     assert record["semantic_payload_placeholder"] is True
     assert record["placeholder_tool_ids"] == ["search_messages"]
     assert record["domain_state_evidence_present"] is False

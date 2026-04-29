@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -89,6 +90,9 @@ MUTATION_GOAL_TOKENS = (
     "turn",
     "update",
 )
+OBLIGATION_CLASSIFIER_VERSION = "toolsandbox_workflow_obligation_shadow_v1"
+
+
 
 
 def _truthy(value: Any) -> bool:
@@ -430,6 +434,58 @@ def classify_subcause(row: Dict[str, str], trace_evidence: Dict[str, Any]) -> st
     return "unknown_raw_strict_gap"
 
 
+def classify_workflow_obligation_audit(
+    row: Dict[str, str],
+    trace_evidence: Dict[str, Any],
+    trace_payload: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Shadow-only classifier for missing workflow action obligations.
+
+    The classifier uses visible task text plus the executed tool trace. It does
+    not read milestones, result summaries, reference answers, or task IDs, and
+    it only emits audit diagnostics for downstream analysis.
+    """
+
+    tool_calls = trace_evidence.get("tool_calls", []) if isinstance(trace_evidence, dict) else []
+    executed_tools = [str(call.get("tool_id") or "") for call in tool_calls if isinstance(call, dict)]
+    executed_mutating_tools = [tool_id for tool_id in executed_tools if _is_mutating_tool(tool_id)]
+    executed_read_only_tools = [tool_id for tool_id in executed_tools if _is_read_only_tool(tool_id)]
+    goal_text = _task_goal_text(trace_payload, trace_evidence).lower()
+    goal_tokens = set(re.findall(r"[a-z0-9]+", goal_text))
+    expected_action_tools: List[str] = []
+
+    if {"remind", "reminder", "reminders", "todo"} & goal_tokens:
+        expected_action_tools.append("add_reminder")
+    if ({"send", "text", "message"} & goal_tokens) and not ({"search", "find", "latest", "oldest"} & goal_tokens):
+        expected_action_tools.append("send_message_with_phone_number")
+    if ({"update", "modify", "change"} & goal_tokens) and ({"contact", "phone", "number", "relationship"} & goal_tokens):
+        expected_action_tools.append("modify_contact")
+    if ({"add", "create"} & goal_tokens) and "contact" in goal_tokens:
+        expected_action_tools.append("add_contact")
+
+    goal_requires_mutation = bool(expected_action_tools) or bool(goal_tokens & set(MUTATION_GOAL_TOKENS))
+    missing_required_action = bool(goal_requires_mutation and not executed_mutating_tools)
+    if missing_required_action:
+        status = "missing_required_action"
+    elif goal_requires_mutation:
+        status = "satisfied"
+    else:
+        status = "not_required"
+    return {
+        "classifier_version": OBLIGATION_CLASSIFIER_VERSION,
+        "audit_only": True,
+        "repair_enabled": False,
+        "goal_requires_mutation": goal_requires_mutation,
+        "expected_action_tools": sorted(set(expected_action_tools)),
+        "executed_tools": executed_tools,
+        "executed_read_only_tools": executed_read_only_tools,
+        "executed_mutating_tools": executed_mutating_tools,
+        "missing_required_action": missing_required_action,
+        "status": status,
+        "evidence_sources": ["visible_goal_text", "tool_trace"],
+    }
+
+
 def classify_workflow_residual(row: Dict[str, str], trace_evidence: Dict[str, Any], trace_payload: Dict[str, Any]) -> str:
     raw_success = _truthy(row.get("raw_execution_success") or row.get("raw_success"))
     strict_success = _truthy(row.get("strict_scored_success") or row.get("success"))
@@ -452,12 +508,11 @@ def classify_workflow_residual(row: Dict[str, str], trace_evidence: Dict[str, An
     final_response = trace_evidence.get("final_response") if isinstance(trace_evidence, dict) else {}
     final_response_present = bool(final_response.get("present")) if isinstance(final_response, dict) else False
 
-    goal_text = _task_goal_text(trace_payload, trace_evidence).lower()
-    goal_requires_mutation = any(token in goal_text for token in MUTATION_GOAL_TOKENS)
+    obligation_audit = classify_workflow_obligation_audit(row, trace_evidence, trace_payload)
 
     if interaction_blocked:
         return "interaction_contract_missing"
-    if goal_requires_mutation and not mutating_calls and read_only_calls:
+    if obligation_audit.get("missing_required_action") and read_only_calls:
         return "missing_action_step"
     if has_placeholder and any(tool_id.startswith("search_") or tool_id.startswith("find_") for tool_id in result_tool_ids):
         return "summary_not_field_evidence"
@@ -487,6 +542,7 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
         category, subtype, owner = classify_failure(row, evidence)
         subcause = classify_subcause(row, evidence)
         workflow_residual = classify_workflow_residual(row, evidence, trace)
+        obligation_audit = classify_workflow_obligation_audit(row, evidence, trace)
         run_task = (str(row.get("run_index") or ""), str(row.get("task_id") or ""))
         record = {
             "run_index": row.get("run_index", ""),
@@ -495,6 +551,7 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
             "failure_category": category,
             "failure_subcause": subcause,
             "workflow_residual": workflow_residual,
+            "workflow_obligation_audit": obligation_audit,
             "error_subtype": subtype,
             "raw_message_pattern": evidence.get("raw_message_pattern", ""),
             "missing_input_keys": evidence.get("missing_input_keys", []),
@@ -530,6 +587,9 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
     subtype_counts = Counter(record["error_subtype"] for record in records)
     subcause_counts = Counter(record["failure_subcause"] for record in records)
     workflow_residual_counts = Counter(record["workflow_residual"] for record in records)
+    workflow_obligation_audit_counts = Counter(
+        record.get("workflow_obligation_audit", {}).get("status", "unknown") for record in records
+    )
     owner_counts = Counter(record["candidate_owning_layer"] for record in records)
     first_layer_counts = Counter(record["first_failed_layer"] for record in records)
     raw_success_strict_fail = sum(1 for record in records if record["raw_success_but_strict_fail"])
@@ -551,6 +611,9 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
         "error_subtype_counts": dict(subtype_counts.most_common()),
         "failure_subcause_counts": dict(sorted(subcause_counts.items())),
         "workflow_residual_counts": dict(sorted(workflow_residual_counts.items())),
+        "workflow_obligation_audit_counts": dict(sorted(workflow_obligation_audit_counts.items())),
+        "workflow_obligation_missing_required_action_count": workflow_obligation_audit_counts.get("missing_required_action", 0),
+        "workflow_obligation_classifier_version": OBLIGATION_CLASSIFIER_VERSION,
         "candidate_owning_layer_counts": dict(sorted(owner_counts.items())),
         "first_failed_layer_counts": dict(sorted(first_layer_counts.items())),
         "records": records,
@@ -591,6 +654,9 @@ def write_markdown(summary: Dict[str, Any], path: Path) -> None:
     lines.extend(["", "## Workflow Residuals", "", "| residual | count |", "|---|---:|"])
     for residual, count in sorted(summary.get("workflow_residual_counts", {}).items()):
         lines.append(f"| {residual} | {count} |")
+    lines.extend(["", "## Workflow Obligation Audit", "", "| status | count |", "|---|---:|"])
+    for status, count in sorted(summary.get("workflow_obligation_audit_counts", {}).items()):
+        lines.append(f"| {status} | {count} |")
     lines.extend(
         [
             "",
