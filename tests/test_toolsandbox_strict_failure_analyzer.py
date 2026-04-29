@@ -221,3 +221,181 @@ def test_analyzer_reports_final_response_absent_subcause(tmp_path: Path) -> None
 
     assert summary["final_response_absent_count"] == 1
     assert summary["records"][0]["failure_subcause"] == "final_response_absent"
+
+
+def test_workflow_residual_detects_missing_mutating_action_after_clock_only(tmp_path: Path) -> None:
+    module = _load_script()
+    trace = tmp_path / "trace.json"
+    _trace(
+        trace,
+        [
+            {
+                "event_type": "tool_call",
+                "tool_id": "get_current_timestamp",
+                "tool_args": {"query": "Remind me to buy milk tomorrow at 5PM"},
+            },
+            {
+                "event_type": "tool_result",
+                "tool_id": "get_current_timestamp",
+                "output": {"status": "success", "payload": "current timestamp"},
+            },
+            {"event_type": "final_response_synthesized", "output": {"content": "I created the reminder."}},
+            {"event_type": "stop", "output": {"status": "success", "reason": "success_criteria_satisfied"}},
+        ],
+    )
+    rows = [
+        {
+            "run_index": "1",
+            "task_id": "task",
+            "system": "s4_reuse_overlay",
+            "failure_type": "canonicalization",
+            "strict_scored_success": "False",
+            "raw_execution_success": "True",
+            "execution_verified_success": "True",
+            "interaction_contract_satisfied": "True",
+            "stop_reason": "success_criteria_satisfied",
+            "trace_path": str(trace),
+        },
+    ]
+
+    summary = module.build_taxonomy(rows, repo_root=tmp_path)
+
+    record = summary["records"][0]
+    assert record["workflow_residual"] == "missing_action_step"
+    assert summary["workflow_residual_counts"]["missing_action_step"] == 1
+    assert record["semantic_payload_placeholder"] is False
+    assert record["domain_state_evidence_present"] is False
+
+
+def test_workflow_residual_detects_placeholder_search_summary(tmp_path: Path) -> None:
+    module = _load_script()
+    trace = tmp_path / "trace.json"
+    _trace(
+        trace,
+        [
+            {
+                "event_type": "tool_call",
+                "tool_id": "search_messages",
+                "tool_args": {"query": "Find the latest message from Alex"},
+            },
+            {
+                "event_type": "tool_result",
+                "tool_id": "search_messages",
+                "output": {"status": "success", "payload": "summary for: Find the latest message from Alex"},
+            },
+            {"event_type": "final_response_synthesized", "output": {"content": "I found the message."}},
+            {"event_type": "stop", "output": {"status": "success", "reason": "success_criteria_satisfied"}},
+        ],
+    )
+    rows = [
+        {
+            "run_index": "1",
+            "task_id": "task",
+            "system": "s4_reuse_overlay",
+            "failure_type": "canonicalization",
+            "strict_scored_success": "False",
+            "raw_execution_success": "True",
+            "execution_verified_success": "True",
+            "interaction_contract_satisfied": "True",
+            "stop_reason": "success_criteria_satisfied",
+            "trace_path": str(trace),
+        },
+    ]
+
+    summary = module.build_taxonomy(rows, repo_root=tmp_path)
+
+    record = summary["records"][0]
+    assert record["workflow_residual"] == "summary_not_field_evidence"
+    assert record["semantic_payload_placeholder"] is True
+    assert record["placeholder_tool_ids"] == ["search_messages"]
+    assert record["domain_state_evidence_present"] is False
+
+
+def test_workflow_residual_detects_mutation_without_state_delta(tmp_path: Path) -> None:
+    module = _load_script()
+    trace = tmp_path / "trace.json"
+    _trace(
+        trace,
+        [
+            {
+                "event_type": "tool_call",
+                "tool_id": "modify_contact",
+                "tool_args": {"person_id": "person_1", "phone_number": "555-0101"},
+            },
+            {
+                "event_type": "tool_result",
+                "tool_id": "modify_contact",
+                "output": {"status": "success", "payload": "tool modify_contact executed successfully"},
+            },
+            {"event_type": "final_response_synthesized", "output": {"content": "I updated the contact."}},
+            {"event_type": "stop", "output": {"status": "success", "reason": "success_criteria_satisfied"}},
+        ],
+    )
+    rows = [
+        {
+            "run_index": "1",
+            "task_id": "task",
+            "system": "s4_reuse_overlay",
+            "failure_type": "canonicalization",
+            "strict_scored_success": "False",
+            "raw_execution_success": "True",
+            "execution_verified_success": "True",
+            "interaction_contract_satisfied": "True",
+            "stop_reason": "success_criteria_satisfied",
+            "trace_path": str(trace),
+        },
+    ]
+
+    summary = module.build_taxonomy(rows, repo_root=tmp_path)
+
+    record = summary["records"][0]
+    assert record["workflow_residual"] == "missing_state_diff"
+    assert record["semantic_payload_placeholder"] is True
+    assert record["placeholder_tool_ids"] == ["modify_contact"]
+    assert record["domain_state_evidence_present"] is False
+
+
+def test_workflow_residual_keeps_typed_payload_as_rendering_gap(tmp_path: Path) -> None:
+    module = _load_script()
+    trace = tmp_path / "trace.json"
+    _trace(
+        trace,
+        [
+            {
+                "event_type": "tool_call",
+                "tool_id": "search_messages",
+                "tool_args": {"query": "latest message from Alex"},
+            },
+            {
+                "event_type": "tool_result",
+                "tool_id": "search_messages",
+                "output": {
+                    "status": "success",
+                    "payload": [{"message_id": "msg_1", "content": "Bring the report", "sender_person_id": "person_1"}],
+                },
+            },
+            {"event_type": "final_response_synthesized", "output": {"content": "Bring the report"}},
+            {"event_type": "stop", "output": {"status": "success", "reason": "success_criteria_satisfied"}},
+        ],
+    )
+    rows = [
+        {
+            "run_index": "1",
+            "task_id": "task",
+            "system": "s4_reuse_overlay",
+            "failure_type": "canonicalization",
+            "strict_scored_success": "False",
+            "raw_execution_success": "True",
+            "execution_verified_success": "True",
+            "interaction_contract_satisfied": "True",
+            "stop_reason": "success_criteria_satisfied",
+            "trace_path": str(trace),
+        },
+    ]
+
+    summary = module.build_taxonomy(rows, repo_root=tmp_path)
+
+    record = summary["records"][0]
+    assert record["workflow_residual"] == "pure_final_rendering"
+    assert record["semantic_payload_placeholder"] is False
+    assert record["domain_state_evidence_present"] is True

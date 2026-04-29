@@ -45,6 +45,51 @@ SUBCAUSE_FIXES = {
     "unknown_raw_strict_gap": "Manually inspect representative traces and add generic diagnostic features.",
 }
 
+WORKFLOW_RESIDUAL_FIXES = {
+    "missing_action_step": "Add a gold-free workflow obligation check: tasks that require mutation must not finalize after read-only evidence only.",
+    "summary_not_field_evidence": "Replace placeholder search summaries with typed runtime-visible records before downstream binding or finalization.",
+    "missing_state_diff": "Require mutating tools to return or persist a structured state delta before the trace can satisfy stateful strict contracts.",
+    "placeholder_tool_result_contract_gap": "Treat generic placeholder tool outputs as insufficient benchmark evidence and route to recovery or contract runtime.",
+    "final_response_without_field_evidence": "Restrict finalization to concrete tool payloads or state values; do not use generic summaries as evidence.",
+    "interaction_contract_missing": "Route unresolved user-dependent contracts through the interaction policy instead of finalizing.",
+    "pure_final_rendering": "Limit fixes to benchmark-facing rendering only after typed tool evidence and state obligations are already present.",
+    "manual_review": "Inspect representative traces and add only generic workflow-contract diagnostics.",
+}
+
+READ_ONLY_TOOL_PREFIXES = ("get_", "search_", "find_", "lookup_", "list_", "query_", "retrieve_")
+MUTATING_TOOL_PREFIXES = (
+    "add_",
+    "create_",
+    "delete_",
+    "modify_",
+    "remove_",
+    "send_",
+    "set_",
+    "update_",
+    "turn_",
+)
+
+MUTATION_GOAL_TOKENS = (
+    "add",
+    "book",
+    "call",
+    "cancel",
+    "create",
+    "delete",
+    "modify",
+    "remind",
+    "remove",
+    "reply",
+    "reserve",
+    "reschedule",
+    "schedule",
+    "send",
+    "set",
+    "text",
+    "turn",
+    "update",
+)
+
 
 def _truthy(value: Any) -> bool:
     if isinstance(value, bool):
@@ -94,6 +139,76 @@ def _append_unique(items: List[str], value: Any) -> None:
         items.append(text)
 
 
+def _stringify_payload(payload: Any) -> str:
+    if isinstance(payload, str):
+        return payload
+    try:
+        return json.dumps(payload, sort_keys=True, ensure_ascii=False)
+    except Exception:
+        return str(payload)
+
+
+def _payload_has_domain_fields(payload: Any) -> bool:
+    if isinstance(payload, dict):
+        keys = {str(key).lower() for key in payload}
+        if keys & {
+            "content",
+            "message_id",
+            "person_id",
+            "phone_number",
+            "reminder_id",
+            "reminder_timestamp",
+            "state_delta",
+            "state_patch",
+            "timestamp",
+        }:
+            return True
+        return any(_payload_has_domain_fields(value) for value in payload.values())
+    if isinstance(payload, list):
+        return any(_payload_has_domain_fields(item) for item in payload)
+    return False
+
+
+def _is_placeholder_payload(tool_id: str, payload: Any) -> bool:
+    text = _stringify_payload(payload).strip().lower()
+    if not text:
+        return True
+    if text.startswith("summary for:"):
+        return True
+    if text.startswith("tool ") and " executed successfully" in text:
+        return True
+    if text in {"updated", "retrieved_info", "auto_filled_value"}:
+        return True
+    if text == "current timestamp" and tool_id != "get_current_timestamp":
+        return True
+    return False
+
+
+def _is_read_only_tool(tool_id: str) -> bool:
+    return tool_id.startswith(READ_ONLY_TOOL_PREFIXES)
+
+
+def _is_mutating_tool(tool_id: str) -> bool:
+    return tool_id.startswith(MUTATING_TOOL_PREFIXES)
+
+
+def _task_goal_text(trace_payload: Dict[str, Any], trace_evidence: Dict[str, Any]) -> str:
+    for container in (trace_payload, trace_payload.get("metadata"), trace_payload.get("workflow")):
+        if not isinstance(container, dict):
+            continue
+        for key in ("query", "task_goal", "goal", "instruction", "user_instruction"):
+            value = container.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    for tool_call in trace_evidence.get("tool_calls", []) if isinstance(trace_evidence, dict) else []:
+        args = tool_call.get("args") if isinstance(tool_call, dict) else {}
+        if isinstance(args, dict):
+            query = args.get("query") or args.get("instruction") or args.get("content")
+            if isinstance(query, str) and query.strip():
+                return query.strip()
+    return ""
+
+
 def extract_trace_evidence(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
     events = trace_payload.get("events", [])
     if not isinstance(events, list):
@@ -111,6 +226,10 @@ def extract_trace_evidence(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
     final_stop_reason = ""
     completion_verifier: Dict[str, Any] = {}
     final_response: Dict[str, Any] = {"present": False, "source": "", "length": 0}
+    tool_calls: List[Dict[str, Any]] = []
+    tool_results: List[Dict[str, Any]] = []
+    placeholder_tool_ids: List[str] = []
+    domain_state_evidence_present = False
 
     for event in events:
         if not isinstance(event, dict):
@@ -123,6 +242,12 @@ def extract_trace_evidence(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
             user_query_count += 1
         if event_type == "user_reply":
             user_reply_count += 1
+        if event_type == "tool_call":
+            tool_id = str(event.get("tool_id") or output.get("tool_id") or "")
+            args = event.get("tool_args") if isinstance(event.get("tool_args"), dict) else {}
+            if not args:
+                args = output.get("tool_args") if isinstance(output.get("tool_args"), dict) else {}
+            tool_calls.append({"tool_id": tool_id, "args": args})
         if event_type == "repair_triggered":
             _append_unique(repair_types, output.get("repair_type"))
             for key in output.get("metadata", {}).get("missing_input_keys", []) if isinstance(output.get("metadata"), dict) else []:
@@ -150,6 +275,23 @@ def extract_trace_evidence(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
         if event_type == "tool_result" and str(output.get("status") or "").lower() in {"failed", "error"}:
             tool_error_count += 1
             _append_unique(raw_message_patterns, output.get("reason") or output.get("message") or output.get("payload"))
+        if event_type == "tool_result":
+            tool_id = str(event.get("tool_id") or output.get("tool_id") or "")
+            payload = output.get("payload") if isinstance(output, dict) else None
+            placeholder = _is_placeholder_payload(tool_id, payload)
+            if placeholder:
+                _append_unique(placeholder_tool_ids, tool_id)
+            if _payload_has_domain_fields(payload):
+                domain_state_evidence_present = True
+            tool_results.append(
+                {
+                    "tool_id": tool_id,
+                    "status": output.get("status", "") if isinstance(output, dict) else "",
+                    "placeholder": placeholder,
+                    "domain_fields_present": _payload_has_domain_fields(payload),
+                    "payload_preview": _stringify_payload(payload)[:180],
+                }
+            )
         if event_type == "stop":
             final_stop_reason = str(output.get("reason") or final_stop_reason or "")
             _append_unique(raw_message_patterns, metadata.get("failtax_label"))
@@ -189,6 +331,11 @@ def extract_trace_evidence(trace_payload: Dict[str, Any]) -> Dict[str, Any]:
         "final_stop_reason": final_stop_reason,
         "completion_verifier": completion_verifier,
         "final_response": final_response,
+        "tool_calls": tool_calls,
+        "tool_results": tool_results,
+        "placeholder_tool_ids": placeholder_tool_ids,
+        "semantic_payload_placeholder": bool(placeholder_tool_ids),
+        "domain_state_evidence_present": domain_state_evidence_present,
     }
 
 
@@ -283,6 +430,50 @@ def classify_subcause(row: Dict[str, str], trace_evidence: Dict[str, Any]) -> st
     return "unknown_raw_strict_gap"
 
 
+def classify_workflow_residual(row: Dict[str, str], trace_evidence: Dict[str, Any], trace_payload: Dict[str, Any]) -> str:
+    raw_success = _truthy(row.get("raw_execution_success") or row.get("raw_success"))
+    strict_success = _truthy(row.get("strict_scored_success") or row.get("success"))
+    execution_verified = _truthy(row.get("execution_verified_success"))
+    interaction_blocked = _truthy(row.get("interaction_contract_satisfied")) is False and (
+        str(row.get("failure_type") or "") in {"multiple_user_turn", "insufficient_information"}
+    )
+    if strict_success:
+        return ""
+
+    tool_calls = trace_evidence.get("tool_calls", []) if isinstance(trace_evidence, dict) else []
+    tool_results = trace_evidence.get("tool_results", []) if isinstance(trace_evidence, dict) else []
+    tool_ids = [str(call.get("tool_id") or "") for call in tool_calls if isinstance(call, dict)]
+    result_tool_ids = [str(result.get("tool_id") or "") for result in tool_results if isinstance(result, dict)]
+    mutating_calls = [tool_id for tool_id in tool_ids if _is_mutating_tool(tool_id)]
+    read_only_calls = [tool_id for tool_id in tool_ids if _is_read_only_tool(tool_id)]
+    placeholder_ids = trace_evidence.get("placeholder_tool_ids", [])
+    has_placeholder = bool(placeholder_ids)
+    has_domain_evidence = bool(trace_evidence.get("domain_state_evidence_present"))
+    final_response = trace_evidence.get("final_response") if isinstance(trace_evidence, dict) else {}
+    final_response_present = bool(final_response.get("present")) if isinstance(final_response, dict) else False
+
+    goal_text = _task_goal_text(trace_payload, trace_evidence).lower()
+    goal_requires_mutation = any(token in goal_text for token in MUTATION_GOAL_TOKENS)
+
+    if interaction_blocked:
+        return "interaction_contract_missing"
+    if goal_requires_mutation and not mutating_calls and read_only_calls:
+        return "missing_action_step"
+    if has_placeholder and any(tool_id.startswith("search_") or tool_id.startswith("find_") for tool_id in result_tool_ids):
+        return "summary_not_field_evidence"
+    if mutating_calls and not has_domain_evidence:
+        return "missing_state_diff"
+    if has_placeholder and final_response_present and not has_domain_evidence:
+        return "final_response_without_field_evidence"
+    if has_placeholder:
+        return "placeholder_tool_result_contract_gap"
+    if raw_success and execution_verified and final_response_present and has_domain_evidence:
+        return "pure_final_rendering"
+    if raw_success and final_response_present and has_domain_evidence:
+        return "pure_final_rendering"
+    return "manual_review"
+
+
 def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system: str = "s4_reuse_overlay") -> Dict[str, Any]:
     grouped = _system_rows_by_run_task(rows)
     records: List[Dict[str, Any]] = []
@@ -295,6 +486,7 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
         evidence = extract_trace_evidence(trace)
         category, subtype, owner = classify_failure(row, evidence)
         subcause = classify_subcause(row, evidence)
+        workflow_residual = classify_workflow_residual(row, evidence, trace)
         run_task = (str(row.get("run_index") or ""), str(row.get("task_id") or ""))
         record = {
             "run_index": row.get("run_index", ""),
@@ -302,6 +494,7 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
             "system": target_system,
             "failure_category": category,
             "failure_subcause": subcause,
+            "workflow_residual": workflow_residual,
             "error_subtype": subtype,
             "raw_message_pattern": evidence.get("raw_message_pattern", ""),
             "missing_input_keys": evidence.get("missing_input_keys", []),
@@ -316,8 +509,14 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
             "candidate_owning_layer": owner,
             "recommended_generic_fix": GENERIC_FIXES[category],
             "recommended_subcause_fix": SUBCAUSE_FIXES[subcause],
+            "recommended_workflow_fix": WORKFLOW_RESIDUAL_FIXES[workflow_residual],
             "completion_verifier": evidence.get("completion_verifier", {}),
             "final_response": evidence.get("final_response", {"present": False, "source": "", "length": 0}),
+            "tool_calls": evidence.get("tool_calls", []),
+            "tool_results": evidence.get("tool_results", []),
+            "semantic_payload_placeholder": evidence.get("semantic_payload_placeholder", False),
+            "placeholder_tool_ids": evidence.get("placeholder_tool_ids", []),
+            "domain_state_evidence_present": evidence.get("domain_state_evidence_present", False),
             "failure_type": row.get("failure_type", ""),
             "primary_failtax": row.get("primary_failtax", ""),
             "failtaxes": _safe_json_list(row.get("failtaxes")),
@@ -330,12 +529,15 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
     category_counts = Counter(record["failure_category"] for record in records)
     subtype_counts = Counter(record["error_subtype"] for record in records)
     subcause_counts = Counter(record["failure_subcause"] for record in records)
+    workflow_residual_counts = Counter(record["workflow_residual"] for record in records)
     owner_counts = Counter(record["candidate_owning_layer"] for record in records)
     first_layer_counts = Counter(record["first_failed_layer"] for record in records)
     raw_success_strict_fail = sum(1 for record in records if record["raw_success_but_strict_fail"])
     final_response_present = sum(1 for record in records if record.get("final_response", {}).get("present"))
+    placeholder_count = sum(1 for record in records if record.get("semantic_payload_placeholder"))
+    domain_evidence_count = sum(1 for record in records if record.get("domain_state_evidence_present"))
     return {
-        "analysis_version": "toolsandbox_strict_failure_taxonomy_v1",
+        "analysis_version": "toolsandbox_strict_failure_taxonomy_v2_workflow_residuals",
         "target_system": target_system,
         "failure_row_count": len(records),
         "unique_failed_task_count": len({record["task_id"] for record in records}),
@@ -343,9 +545,12 @@ def build_taxonomy(rows: List[Dict[str, str]], *, repo_root: Path, target_system
         "runtime_execution_failure_count": len(records) - raw_success_strict_fail,
         "final_response_present_count": final_response_present,
         "final_response_absent_count": len(records) - final_response_present,
+        "semantic_payload_placeholder_count": placeholder_count,
+        "domain_state_evidence_present_count": domain_evidence_count,
         "failure_category_counts": dict(sorted(category_counts.items())),
         "error_subtype_counts": dict(subtype_counts.most_common()),
         "failure_subcause_counts": dict(sorted(subcause_counts.items())),
+        "workflow_residual_counts": dict(sorted(workflow_residual_counts.items())),
         "candidate_owning_layer_counts": dict(sorted(owner_counts.items())),
         "first_failed_layer_counts": dict(sorted(first_layer_counts.items())),
         "records": records,
@@ -364,6 +569,8 @@ def write_markdown(summary: Dict[str, Any], path: Path) -> None:
         f"- runtime_execution_failure_count: `{summary['runtime_execution_failure_count']}`",
         f"- final_response_present_count: `{summary.get('final_response_present_count', 0)}`",
         f"- final_response_absent_count: `{summary.get('final_response_absent_count', 0)}`",
+        f"- semantic_payload_placeholder_count: `{summary.get('semantic_payload_placeholder_count', 0)}`",
+        f"- domain_state_evidence_present_count: `{summary.get('domain_state_evidence_present_count', 0)}`",
         "",
         "## Failure Categories",
         "",
@@ -381,13 +588,16 @@ def write_markdown(summary: Dict[str, Any], path: Path) -> None:
     lines.extend(["", "## Failure Subcauses", "", "| subcause | count |", "|---|---:|"])
     for subcause, count in sorted(summary.get("failure_subcause_counts", {}).items()):
         lines.append(f"| {subcause} | {count} |")
+    lines.extend(["", "## Workflow Residuals", "", "| residual | count |", "|---|---:|"])
+    for residual, count in sorted(summary.get("workflow_residual_counts", {}).items()):
+        lines.append(f"| {residual} | {count} |")
     lines.extend(
         [
             "",
             "## Example Diagnostics",
             "",
-            "| run | task_id | category | subcause | subtype | first_failed_layer | owner | stop_reason | trace_path |",
-            "|---|---|---|---|---|---|---|---|",
+            "| run | task_id | category | subcause | workflow_residual | subtype | first_failed_layer | owner | stop_reason | trace_path |",
+            "|---|---|---|---|---|---|---|---|---|---|",
         ]
     )
     for record in summary["records"][:25]:
@@ -396,6 +606,7 @@ def write_markdown(summary: Dict[str, Any], path: Path) -> None:
             record["task_id"],
             record["failure_category"],
             record.get("failure_subcause", ""),
+            record.get("workflow_residual", ""),
             record["error_subtype"],
             record["first_failed_layer"],
             record["candidate_owning_layer"],
