@@ -2508,11 +2508,21 @@ def _with_toolsandbox_utility_backends(candidate_tools: List[ToolSpec]) -> List[
         "datetime_info_to_timestamp",
         "timestamp_to_datetime_info",
     }
+    contract_tool_ids = {
+        "search_messages",
+        "search_contacts",
+        "add_reminder",
+        "modify_contact",
+        "add_contact",
+        "send_message_with_phone_number",
+    }
     tools: List[ToolSpec] = []
     for tool in candidate_tools:
         metadata = dict(tool.metadata)
         if tool.tool_id in utility_tool_ids:
             metadata["execution_backend"] = "toolsandbox_utility"
+        elif tool.tool_id in contract_tool_ids:
+            metadata["execution_backend"] = "toolsandbox_contract"
         tools.append(
             ToolSpec(
                 tool_id=tool.tool_id,
@@ -4027,7 +4037,7 @@ def build_workflow_from_task(
 
     if raw_tools is not None:
         workflow.context.candidate_tools = [] if workflow.metadata.get("bfcl_abstained") else candidate_tools
-    if toolsandbox_metadata and workflow.metadata.get("planner_candidate_generation_applied"):
+    if toolsandbox_metadata and workflow.context.candidate_tools:
         workflow.context.candidate_tools = _with_toolsandbox_utility_backends(workflow.context.candidate_tools)
     if toolsandbox_metadata and not workflow.context.candidate_tools:
         raise ValueError(

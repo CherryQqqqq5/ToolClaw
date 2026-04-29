@@ -708,6 +708,30 @@ def test_toolsandbox_planner_generates_holiday_time_difference_chain() -> None:
     assert overlaid.metadata["planner_admission_decision"]["reason"] == "strict_refinement"
 
 
+def test_toolsandbox_domain_tools_route_to_contract_backend() -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
+    spec = importlib.util.spec_from_file_location("run_eval_module_contract_backend", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    tools = module._with_toolsandbox_utility_backends(
+        [
+            ToolSpec(tool_id="search_messages", description="Search messages.", metadata={"execution_backend": "semantic_mock"}),
+            ToolSpec(tool_id="modify_contact", description="Modify a contact.", metadata={}),
+            ToolSpec(tool_id="get_current_timestamp", description="Get time.", metadata={}),
+            ToolSpec(tool_id="end_conversation", description="End.", metadata={}),
+        ]
+    )
+
+    backends = {tool.tool_id: tool.metadata.get("execution_backend") for tool in tools}
+    assert backends["search_messages"] == "toolsandbox_contract"
+    assert backends["modify_contact"] == "toolsandbox_contract"
+    assert backends["get_current_timestamp"] == "toolsandbox_utility"
+    assert backends["end_conversation"] is None
+
+
 def test_toolsandbox_planner_generates_low_battery_setting_precondition_chain() -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "run_eval.py"
     spec = importlib.util.spec_from_file_location("run_eval_module_toolsandbox_setting_precondition", module_path)

@@ -11,6 +11,7 @@ from typing import Any, Dict, Iterable, Optional
 
 from toolclaw.schemas.workflow import ToolSpec, Workflow
 from toolclaw.tools.mock_tools import MOCK_TOOL_REGISTRY, ToolExecutionError, run_mock_tool
+from toolclaw.tools.toolsandbox_contract import CONTRACT_TOOL_IDS, run_toolsandbox_contract_tool
 
 _TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 _RETRIEVE_HINTS = {"retrieve", "search", "find", "lookup", "fetch", "query", "read", "get", "collect"}
@@ -71,6 +72,8 @@ def run_tool(tool_id: str, args: Dict[str, Any], *, workflow: Optional[Workflow]
         return _run_semantic_tool(tool_id, args, spec=spec)
     if backend == "toolsandbox_utility":
         return _run_toolsandbox_utility_tool(tool_id, args, spec=spec, workflow=workflow)
+    if backend == "toolsandbox_contract":
+        return run_toolsandbox_contract_tool(tool_id, args, workflow=workflow)
     if backend == "bfcl_stub":
         return _run_bfcl_stub(tool_id, args, spec=spec)
     if backend == "hybrid":
@@ -102,6 +105,8 @@ def _resolve_backend(tool_id: str, *, spec: Optional[ToolSpec], workflow: Option
             return normalized
     if tool_id in MOCK_TOOL_REGISTRY:
         return "mock"
+    if tool_id in CONTRACT_TOOL_IDS and str(workflow_metadata.get("benchmark") or "").lower() == "toolsandbox":
+        return "toolsandbox_contract"
     return "semantic_mock"
 
 
